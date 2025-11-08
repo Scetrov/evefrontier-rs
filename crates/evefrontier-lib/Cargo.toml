@@ -1,0 +1,16 @@
+[package]
+name = "evefrontier-lib"
+version = "0.1.0"
+edition = "2021"
+authors = ["EveFrontier Contributors"]
+description = "Core library for EveFrontier dataset handling and pathfinding."
+license = "Apache-2.0"
+
+[dependencies]
+anyhow.workspace = true
+thiserror.workspace = true
+directories.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+rusqlite.workspace = true
+tracing.workspace = true
