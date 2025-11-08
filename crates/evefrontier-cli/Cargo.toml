@@ -1,0 +1,15 @@
+[package]
+name = "evefrontier-cli"
+version = "0.1.0"
+edition = "2021"
+authors = ["EveFrontier Contributors"]
+description = "Command-line interface for EveFrontier dataset and pathfinding tools."
+license = "Apache-2.0"
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+directories.workspace = true
+evefrontier-lib = { path = "../evefrontier-lib" }
+tracing.workspace = true
+tracing-subscriber.workspace = true
