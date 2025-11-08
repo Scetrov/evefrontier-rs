@@ -9,7 +9,7 @@ resolver = "2"
 edition = "2021"
 authors = ["EveFrontier Contributors"]
 license = "Apache-2.0"
-repository = "https://github.com/example/evefrontier-rs"
+repository = "https://github.com/scetrov/evefrontier-rs"
 description = "Workspace for EveFrontier pathfinding library, CLI, and AWS Lambda functions."
 
 [workspace.dependencies]
