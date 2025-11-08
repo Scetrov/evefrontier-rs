@@ -23,7 +23,7 @@ struct Cli {
 enum Command {
     /// Ensure the dataset is downloaded and report its location.
     Download,
-    /// Compute a route between two system names using the bundled fixture graph.
+    /// Compute a route between two system names using the loaded dataset.
     Route {
         /// Starting system name.
         #[arg(long = "from")]
