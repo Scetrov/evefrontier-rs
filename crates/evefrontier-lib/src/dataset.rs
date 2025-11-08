@@ -32,9 +32,7 @@ pub fn ensure_c3e6_dataset(target: Option<&Path>) -> Result<PathBuf> {
 
     if let Some(env_path) = env::var_os("EVEFRONTIER_DATA_DIR") {
         let resolved = canonical_dataset_path(Path::new(&env_path));
-        if resolved.exists() {
-            return Ok(resolved);
-        }
+        return ensure_or_download(&resolved);
     }
 
     let default = default_dataset_path()?;
