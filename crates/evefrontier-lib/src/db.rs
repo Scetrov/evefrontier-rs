@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::path::Path;
+use std::sync::Arc;
 
 use rusqlite::{Connection, Row};
 use tracing::debug;
@@ -21,7 +22,7 @@ pub struct System {
 pub struct Starmap {
     pub systems: HashMap<SystemId, System>,
     pub name_to_id: HashMap<String, SystemId>,
-    pub adjacency: HashMap<SystemId, Vec<SystemId>>,
+    pub adjacency: Arc<HashMap<SystemId, Vec<SystemId>>>,
 }
 
 impl Starmap {
@@ -49,7 +50,7 @@ pub fn load_starmap(db_path: &Path) -> Result<Starmap> {
     debug!(?schema, path = %db_path.display(), "loading starmap");
 
     let systems = load_systems(&connection, schema)?;
-    let adjacency = load_adjacency(&connection, schema)?;
+    let adjacency = Arc::new(load_adjacency(&connection, schema)?);
 
     let mut name_to_id = HashMap::new();
     for system in systems.values() {
@@ -112,6 +113,12 @@ fn load_systems(
     Ok(systems)
 }
 
+/// Load jump connections into adjacency lists.
+///
+/// The loader inserts edges in both directions for every row, assuming that
+/// jumps are bidirectional gate connections. One-way travel (such as wormholes)
+/// is not currently modeled and would require schema changes or additional
+/// metadata to represent directionality accurately.
 fn load_adjacency(
     connection: &Connection,
     schema: SchemaVariant,
