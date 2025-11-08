@@ -1,42 +1,60 @@
-# evefrontier-pathfinder
+# EveFrontier Rust Workspace
 
-A Rust executable that:
+This repository contains a Rust workspace for working with the EveFrontier static dataset. It
+provides:
 
-1. Downloads the latest `evefrontier_datasets` release from GitHub (if not already cached).
-2. Extracts / locates the `c3e6` starmap SQLite database.
-3. Loads solar systems and gate jumps.
-4. Builds a gate graph.
-5. Computes a greedy "optimal" path starting from a given system name that:
-   - visits all reachable systems at least once
-   - returns to the starting system
-   - prints the route in EVE-style `<a href="showinfo:5//ID">NAME</a>` format, marking duplicates
-     with `D`.
+- `evefrontier-lib` — a reusable library that knows how to locate the dataset, load the starmap into
+  memory, build graphs, and run pathfinding algorithms.
+- `evefrontier-cli` — a command line interface that wraps the library APIs and exposes developer
+  utilities such as route computation.
+- (Planned) AWS Lambda crates for serverless endpoints that reuse the same library code.
 
-## Usage
+The workspace follows the structure documented in [`docs/INITIAL_SETUP.md`](docs/INITIAL_SETUP.md)
+and the accepted ADRs under [`docs/adrs/`](docs/adrs/).
 
-```bash
-cargo run --release -- "P:STK3"
-```
+## Getting started
 
-or another system name, e.g.:
+1. Ensure the Rust toolchain pinned in [`.rust-toolchain`](.rust-toolchain) is installed:
 
-```bash
-cargo run --release -- "O.5CD.XNS"
-```
+   ```bash
+   rustup toolchain install $(cat .rust-toolchain)
+   rustup override set $(cat .rust-toolchain)
+   ```
 
-The binary will:
+2. Build the workspace:
 
-- Cache the downloaded release in your OS user cache directory (e.g. `~/.cache/evefrontier_datasets`
-  on Linux).
-- Reuse the cached asset and extracted DB on subsequent runs.
+   ```bash
+   cargo build --workspace
+   ```
 
-## Building
+3. Run tests:
 
-```bash
-cargo build --release
-```
+   ```bash
+   cargo test --workspace
+   ```
 
-The resulting executable will be at:
+4. Run the CLI (use the bundled fixture until the downloader is implemented):
 
-- `target/release/evefrontier-pathfinder` (Linux/macOS)
-- `target/release/evefrontier-pathfinder.exe` (Windows)
+   ```bash
+   cargo run -p evefrontier-cli -- route --from "Y:170N" --to "BetaTest" --data-dir docs/fixtures/minimal_static_data.db
+   ```
+
+   The `--data-dir` flag accepts either a directory (the dataset filename will be appended) or a path
+   to a `.db` file. If omitted, the CLI resolves the dataset location using the order described in
+   [`docs/INITIAL_SETUP.md`](docs/INITIAL_SETUP.md).
+
+## Library highlights
+
+- `ensure_c3e6_dataset` — resolves the dataset path using CLI arguments, environment variables, or
+  platform-specific defaults, and (eventually) downloads the dataset if needed.
+- `load_starmap` — loads systems and jumps from the SQLite database with basic schema detection.
+- `build_graph` and `find_route` — construct an adjacency graph and compute simple breadth-first
+  routes between two systems.
+
+See [`docs/TODO.md`](docs/TODO.md) for the comprehensive backlog covering the downloader, advanced
+pathfinding options, Lambda integration, and additional tooling.
+
+## Contributing
+
+Please review [`CONTRIBUTING.md`](CONTRIBUTING.md) and the ADRs before submitting changes. All code
+changes must add an entry to [`CHANGELOG.md`](CHANGELOG.md).
