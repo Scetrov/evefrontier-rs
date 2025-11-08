@@ -4,6 +4,9 @@ use crate::db::SystemId;
 use crate::graph::Graph;
 
 /// Find a route between `start` and `goal` using breadth-first search.
+///
+/// The returned path is the shortest in terms of jump count because the graph
+/// is treated as unweighted.
 pub fn find_route(graph: &Graph, start: SystemId, goal: SystemId) -> Option<Vec<SystemId>> {
     if start == goal {
         return Some(vec![start]);

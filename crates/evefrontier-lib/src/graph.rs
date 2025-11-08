@@ -1,11 +1,12 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use crate::db::{Starmap, SystemId};
 
 /// Graph structure used by pathfinding algorithms.
 #[derive(Debug, Clone, Default)]
 pub struct Graph {
-    adjacency: HashMap<SystemId, Vec<SystemId>>,
+    adjacency: Arc<HashMap<SystemId, Vec<SystemId>>>,
 }
 
 impl Graph {
@@ -21,6 +22,6 @@ impl Graph {
 /// Build a pathfinding graph from the in-memory starmap.
 pub fn build_graph(starmap: &Starmap) -> Graph {
     Graph {
-        adjacency: starmap.adjacency.clone(),
+        adjacency: Arc::clone(&starmap.adjacency),
     }
 }

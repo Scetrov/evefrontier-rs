@@ -2,8 +2,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use tracing::Level;
-use tracing_subscriber::FmtSubscriber;
+use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 use evefrontier_lib::{
     build_graph, ensure_c3e6_dataset, find_route, load_starmap, Error as LibError,
@@ -84,9 +83,9 @@ fn handle_route(target: Option<&Path>, from: &str, to: &str) -> Result<()> {
 }
 
 fn init_tracing() {
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
     let subscriber = FmtSubscriber::builder()
-        .with_max_level(Level::INFO)
-        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .with_env_filter(env_filter)
         .finish();
 
     let _ = tracing::subscriber::set_global_default(subscriber);

@@ -9,7 +9,7 @@ Tasks are grouped by domain; checkboxes track completion status.
 - [ ] Establish the Cargo workspace layout with `crates/evefrontier-lib`, `crates/evefrontier-cli`,
       and Lambda crates (for example `crates/evefrontier-lambda-route`, `crates/evefrontier-lambda-scout-gates`,
       `crates/evefrontier-lambda-scout-range`). Ensure shared code lives in the library crate.
-- [ ] Configure Nx to orchestrate Rust, lint, and security tasks (align with ADR 0006 and
+- [ ] Configure Nx to orchestrate Rust, lint, and security tasks (align with [ADR 0006](adrs/0006-software-components.md) and
       `.github/copilot-instructions.md`). Define tasks for `build`, `test`, `lint`, `clippy`,
       `audit`, and dependency update reporting.
 - [ ] Add `package.json`, `pnpm-lock.yaml`, and Nx project configuration. Document developer
@@ -23,10 +23,10 @@ Tasks are grouped by domain; checkboxes track completion status.
 
 - [ ] Implement `ensure_c3e6_dataset` to download the latest dataset release from GitHub, cache it
       in the OS cache directory under `evefrontier_datasets/`, perform atomic writes, and optionally
-      extract `.zip` archives (ADR 0003).
+      extract `.zip` archives ([ADR 0003](adrs/0003-downloader-caching.md)).
 - [ ] Support injecting a pre-existing dataset path (for tests) and allow callers to override the
       cache location.
-- [ ] Implement `load_starmap` with runtime schema detection (ADR 0004) for both `SolarSystems` / `Jumps`
+- [ ] Implement `load_starmap` with runtime schema detection ([ADR 0004](adrs/0004-schema-detection.md)) for both `SolarSystems` / `Jumps`
       and legacy `mapSolarSystems` datasets.
 - [ ] Define the `Starmap` data model, including system metadata, adjacency lists, and a
       `HashMap` for name-to-ID lookups.
@@ -73,7 +73,7 @@ Tasks are grouped by domain; checkboxes track completion status.
 ## Testing & Quality
 
 - [ ] Ensure `cargo fmt`, `cargo clippy --all-targets --all-features`, and `cargo test --workspace`
-      run cleanly; hook them into Nx and CI (ADR 0007).
+      run cleanly; hook them into Nx and CI ([ADR 0007](adrs/0007-devsecops-practices.md)).
 - [ ] Add dataset fixture management helpers to keep fixtures synchronized and documented in
       `docs/fixtures/README.md`.
 - [ ] Integrate `cargo audit` and Node SCA checks into CI and document remediation workflows.
