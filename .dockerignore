@@ -1,0 +1,48 @@
+# Ignore git and local build artifacts to keep Docker context small
+.git
+.gitignore
+.target
+target
+node_modules
+npm-debug.log
+pnpm-lock.yaml
+pnpm-lock.yaml
+pnpm-debug.log
+
+# Rust and node caches
+.nx
+.cache
+
+# IDE/editor folders
+.vscode
+.idea
+
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+
+# Local dataset cache
+evefrontier_datasets
+
+# Logs and temp files
+*.log
+logs/
+*.tmp
+.tmp/
+
+# Docs build output
+docs/_book
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Avoid copying sensitive config
+.husky
+
+# If using multi-stage builds, avoid copying these
+Cargo.lock
+
+# Keep dockerignore itself
+!.dockerignore
