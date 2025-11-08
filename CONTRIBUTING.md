@@ -142,6 +142,7 @@ Notes
 - If you don't want to install Node locally, you can still build and test the Rust crates; however
   markdown linting and other Node-based tooling won't run until Node/pnpm is available.
 - ensure that your commit message is less than 72 chars in the first line, add more details in the summary from line 3 onwards.
+- use conventional commit standards to create clear commits
 
 Thanks for helping improve the project. If you add new developer-facing tools, please update
 `CONTRIBUTING.md` and `docs/adrs/0006-software-components.md`.
