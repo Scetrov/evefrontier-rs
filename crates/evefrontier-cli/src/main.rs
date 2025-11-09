@@ -322,8 +322,12 @@ fn init_tracing() {
 }
 
 fn print_logo() {
-    const LOGO: &str = r"#==============================#
-#       EveFrontier CLI        #
-#==============================#";
+    const LOGO: &str = concat!(
+        "\x1b[38;5;208m",
+        "╭──────────────────────────────╮\n",
+        "│       EveFrontier CLI       │\n",
+        "╰──────────────────────────────╯",
+        "\x1b[0m",
+    );
     println!("{}", LOGO);
 }

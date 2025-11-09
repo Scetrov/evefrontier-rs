@@ -110,7 +110,7 @@ The CLI resolves the data path in the following order:
 3. XDG `directories::ProjectDirs` default location. Examples:
    - Linux: `~/.local/share/evefrontier/static_data.db`
    - macOS: `~/Library/Application Support/com.evefrontier.evefrontier/static_data.db`
-   - Windows: `%LOCALAPPDATA%\\EveFrontier\\static_data.db`
+   - Windows: `%APPDATA%\\evefrontier\\data\\static_data.db`
 
 If the dataset is absent in all locations, the library will attempt to download it automatically.
 

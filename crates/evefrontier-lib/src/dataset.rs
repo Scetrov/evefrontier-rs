@@ -16,7 +16,63 @@ const DATASET_FILENAME: &str = "static_data.db";
 pub fn default_dataset_path() -> Result<PathBuf> {
     let dirs = ProjectDirs::from("com", "evefrontier", "evefrontier")
         .ok_or(Error::ProjectDirsUnavailable)?;
-    Ok(dirs.data_dir().join(DATASET_FILENAME))
+    Ok(normalize_data_dir(dirs.data_dir()).join(DATASET_FILENAME))
+}
+
+fn normalize_data_dir(path: &Path) -> PathBuf {
+    #[cfg(windows)]
+    {
+        normalize_windows_data_dir(path)
+    }
+    #[cfg(not(windows))]
+    {
+        path.to_path_buf()
+    }
+}
+
+#[cfg(windows)]
+fn normalize_windows_data_dir(path: &Path) -> PathBuf {
+    use std::ffi::OsStr;
+
+    fn eq_ignore_ascii_case(a: &OsStr, b: &OsStr) -> bool {
+        a.to_string_lossy()
+            .eq_ignore_ascii_case(&b.to_string_lossy())
+    }
+
+    let mut current = path.to_path_buf();
+
+    loop {
+        let next = if let Some(parent) = current.parent() {
+            if let Some(parent_name) = parent.file_name() {
+                if let Some(grandparent) = parent.parent() {
+                    if let Some(grandparent_name) = grandparent.file_name() {
+                        if eq_ignore_ascii_case(parent_name, grandparent_name) {
+                            let mut base = grandparent.to_path_buf();
+                            if let Some(file_name) = current.file_name() {
+                                base.push(file_name);
+                            }
+                            Some(base)
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        match next {
+            Some(candidate) => current = candidate,
+            None => return current,
+        }
+    }
 }
 
 /// Ensure a dataset release is available locally and return its absolute path.
