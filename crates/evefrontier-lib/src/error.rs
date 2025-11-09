@@ -16,9 +16,21 @@ pub enum Error {
     #[error("failed to resolve project directories for dataset cache")]
     ProjectDirsUnavailable,
 
-    /// The downloader has not been implemented yet.
-    #[error("dataset download is not yet implemented")]
-    DownloadNotImplemented,
+    /// No suitable cache directory could be resolved for storing download artifacts.
+    #[error("failed to resolve cache directories for dataset downloads")]
+    CacheDirsUnavailable,
+
+    /// Raised when the GitHub release did not contain a usable dataset asset.
+    #[error("no dataset asset found in GitHub release {tag}")]
+    DatasetAssetMissing { tag: String },
+
+    /// Raised when a specific dataset release tag does not exist.
+    #[error("dataset release {tag} not found on GitHub")]
+    DatasetReleaseNotFound { tag: String },
+
+    /// Raised when an archive asset did not contain a `.db` file.
+    #[error("archive {archive} did not contain a dataset database file")]
+    ArchiveMissingDatabase { archive: PathBuf },
 
     /// Raised when attempting to load a schema that is not supported.
     #[error("unsupported dataset schema; expected SolarSystems/Jumps or mapSolarSystems tables")]
@@ -39,4 +51,12 @@ pub enum Error {
     /// Wrapper for IO errors.
     #[error(transparent)]
     Io(#[from] std::io::Error),
+
+    /// Wrapper for HTTP client errors.
+    #[error(transparent)]
+    Http(#[from] reqwest::Error),
+
+    /// Wrapper for ZIP archive parsing errors.
+    #[error(transparent)]
+    Zip(#[from] zip::result::ZipError),
 }

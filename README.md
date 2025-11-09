@@ -33,20 +33,25 @@ and the accepted ADRs under [`docs/adrs/`](docs/adrs/).
    cargo test --workspace
    ```
 
-4. Run the CLI (use the bundled fixture until the downloader is implemented):
+4. Run the CLI (it will download the dataset automatically on first use):
 
    ```bash
-   cargo run -p evefrontier-cli -- route --from "Y:170N" --to "BetaTest" --data-dir docs/fixtures/minimal_static_data.db
+   cargo run -p evefrontier-cli -- download
+   cargo run -p evefrontier-cli -- route --from "Y:170N" --to "BetaTest"
    ```
 
    The `--data-dir` flag accepts either a directory (the dataset filename will be appended) or a path
    to a `.db` file. If omitted, the CLI resolves the dataset location using the order described in
-   [`docs/INITIAL_SETUP.md`](docs/INITIAL_SETUP.md).
+   [`docs/INITIAL_SETUP.md`](docs/INITIAL_SETUP.md). Pass `--dataset e6c2` (for example) to download a
+   specific dataset tag; otherwise the CLI downloads the latest release from
+   [`Scetrov/evefrontier_datasets`](https://github.com/Scetrov/evefrontier_datasets).
 
 ## Library highlights
 
-- `ensure_c3e6_dataset` — resolves the dataset path using CLI arguments, environment variables, or
-  platform-specific defaults, and (eventually) downloads the dataset if needed.
+- `ensure_dataset` — resolves the dataset path using CLI arguments, environment variables, or
+  platform-specific defaults, downloads the requested dataset release (latest by default), and caches
+  it under the OS cache directory. `ensure_c3e6_dataset` remains available as a convenience wrapper
+  for the Era 6 Cycle 3 dataset.
 - `load_starmap` — loads systems and jumps from the SQLite database with basic schema detection.
 - `build_graph` and `find_route` — construct an adjacency graph and compute simple breadth-first
   routes between two systems.
