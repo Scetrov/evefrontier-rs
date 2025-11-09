@@ -193,7 +193,7 @@ impl ReleaseMarker {
         }
     }
 
-    fn to_string(&self) -> String {
+    fn format(&self) -> String {
         format!(
             "requested={}\nresolved={}\n",
             self.requested.as_str(),
