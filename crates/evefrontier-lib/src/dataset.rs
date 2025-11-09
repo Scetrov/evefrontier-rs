@@ -47,13 +47,11 @@ pub fn ensure_c3e6_dataset(target: Option<&Path>) -> Result<PathBuf> {
 }
 
 fn ensure_or_download(path: &Path, release: &DatasetRelease) -> Result<PathBuf> {
-    let mut resolved_tag_hint = None;
-
     if path.exists() {
         match evaluate_cache_state(path, release)? {
             CacheState::Fresh => return Ok(path.to_path_buf()),
-            CacheState::Stale { resolved_tag } => {
-                resolved_tag_hint = resolved_tag;
+            CacheState::Stale { .. } => {
+                // Stale cache detected; proceed with re-download
             }
         }
     }
@@ -68,8 +66,7 @@ fn ensure_or_download(path: &Path, release: &DatasetRelease) -> Result<PathBuf> 
         path.display()
     );
     let resolved_tag = download_dataset_with_tag(path, release.clone())?;
-    let marker_tag = resolved_tag_hint.unwrap_or_else(|| resolved_tag.clone());
-    write_release_marker(path, release, &marker_tag)?;
+    write_release_marker(path, release, &resolved_tag)?;
     Ok(path.to_path_buf())
 }
 
@@ -144,7 +141,7 @@ fn write_release_marker(path: &Path, release: &DatasetRelease, tag: &str) -> Res
     }
 
     let marker = ReleaseMarker::new(release, tag);
-    fs::write(marker_path, marker.to_string())?;
+    fs::write(marker_path, marker.format())?;
     Ok(())
 }
 
