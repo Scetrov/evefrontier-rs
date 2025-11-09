@@ -2,6 +2,7 @@ use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
+use evefrontier_lib::ensure_dataset;
 use evefrontier_lib::github::{download_dataset, download_latest_dataset, DatasetRelease};
 use tempfile::tempdir;
 use zip::write::FileOptions;
@@ -88,6 +89,36 @@ fn download_specific_release_from_override() -> evefrontier_lib::Result<()> {
     let original = fs::read(fixture)?;
     let copied = fs::read(&target)?;
     assert_eq!(original, copied, "dataset contents should match override");
+
+    Ok(())
+}
+
+#[test]
+fn ensure_dataset_redownloads_when_tag_changes() -> evefrontier_lib::Result<()> {
+    let temp_dir = tempdir()?;
+    let dataset_path = temp_dir.path().join("static_data.db");
+
+    let source_one = temp_dir.path().join("source-one.db");
+    fs::write(&source_one, b"first")?;
+    let source_two = temp_dir.path().join("source-two.db");
+    fs::write(&source_two, b"second")?;
+
+    with_dataset_override(&source_one, || {
+        ensure_dataset(Some(dataset_path.as_path()), DatasetRelease::tag("e6c3"))
+            .expect("initial download succeeds");
+    });
+
+    assert_eq!(fs::read(&dataset_path)?, b"first");
+    let marker_path = dataset_path.with_file_name("static_data.db.release");
+    assert_eq!(fs::read_to_string(&marker_path)?, "e6c3");
+
+    with_dataset_override(&source_two, || {
+        ensure_dataset(Some(dataset_path.as_path()), DatasetRelease::tag("e6c2"))
+            .expect("tag change triggers re-download");
+    });
+
+    assert_eq!(fs::read(&dataset_path)?, b"second");
+    assert_eq!(fs::read_to_string(&marker_path)?, "e6c2");
 
     Ok(())
 }

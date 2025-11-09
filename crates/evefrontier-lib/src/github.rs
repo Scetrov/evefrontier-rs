@@ -62,7 +62,7 @@ impl fmt::Display for DatasetRelease {
 /// `EVEFRONTIER_DATASET_SOURCE` environment variable, which accepts either a
 /// path to a `.db` file or a `.zip` archive containing the database.
 pub fn download_latest_dataset(target_path: &Path) -> Result<()> {
-    download_dataset(target_path, DatasetRelease::Latest)
+    download_dataset_with_tag(target_path, DatasetRelease::Latest).map(|_| ())
 }
 
 /// Download the specified dataset release from GitHub into `target_path`.
@@ -71,6 +71,13 @@ pub fn download_latest_dataset(target_path: &Path) -> Result<()> {
 /// metadata through the GitHub API, caches the resulting asset, and copies the
 /// database into the requested `target_path`.
 pub fn download_dataset(target_path: &Path, release: DatasetRelease) -> Result<()> {
+    download_dataset_with_tag(target_path, release).map(|_| ())
+}
+
+pub(crate) fn download_dataset_with_tag(
+    target_path: &Path,
+    release: DatasetRelease,
+) -> Result<String> {
     if let Some(source) = env::var_os(DATASET_SOURCE_ENV) {
         let override_path = PathBuf::from(source);
         info!(
@@ -78,7 +85,11 @@ pub fn download_dataset(target_path: &Path, release: DatasetRelease) -> Result<(
             override = %override_path.display(),
             "using local dataset override"
         );
-        return copy_from_override(&override_path, target_path);
+        copy_from_override(&override_path, target_path)?;
+        return Ok(match release {
+            DatasetRelease::Latest => "latest".to_string(),
+            DatasetRelease::Tag(tag) => tag,
+        });
     }
 
     let cache_dir = dataset_cache_dir()?;
@@ -113,7 +124,7 @@ pub fn download_dataset(target_path: &Path, release: DatasetRelease) -> Result<(
     }
 
     copy_cached_to_target(&cached_dataset, target_path)?;
-    Ok(())
+    Ok(release_response.tag_name)
 }
 
 fn copy_from_override(source: &Path, target: &Path) -> Result<()> {
