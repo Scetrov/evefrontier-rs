@@ -54,8 +54,12 @@ fn download_from_local_database_override() -> evefrontier_lib::Result<()> {
         let target = temp_dir.path().join("static_data.db");
 
         // Use the direct helper to avoid global env var mutation.
-        evefrontier_lib::github::download_latest_from_source_with_cache(&target, &fixture_copy, cache)
-            .expect("download succeeds");
+        evefrontier_lib::github::download_latest_from_source_with_cache(
+            &target,
+            &fixture_copy,
+            cache,
+        )
+        .expect("download succeeds");
 
         assert!(target.exists(), "target file should exist");
         let original = fs::read(fixture).unwrap();
@@ -68,17 +72,21 @@ fn download_from_local_database_override() -> evefrontier_lib::Result<()> {
 #[test]
 fn download_from_local_archive_override() -> evefrontier_lib::Result<()> {
     with_cache_dir(|cache| {
-    let temp_dir = tempdir().unwrap();
-    let fixture = fixture_path();
-    let fixture_copy = temp_dir.path().join("fixture.db");
-    fs::copy(&fixture, &fixture_copy).unwrap();
-    let archive_path = temp_dir.path().join("fixture.zip");
+        let temp_dir = tempdir().unwrap();
+        let fixture = fixture_path();
+        let fixture_copy = temp_dir.path().join("fixture.db");
+        fs::copy(&fixture, &fixture_copy).unwrap();
+        let archive_path = temp_dir.path().join("fixture.zip");
 
-    create_zip_with_file(&archive_path, &fixture_copy).unwrap();
+        create_zip_with_file(&archive_path, &fixture_copy).unwrap();
 
         let target = temp_dir.path().join("static_data.db");
-        evefrontier_lib::github::download_latest_from_source_with_cache(&target, &archive_path, cache)
-            .expect("download succeeds");
+        evefrontier_lib::github::download_latest_from_source_with_cache(
+            &target,
+            &archive_path,
+            cache,
+        )
+        .expect("download succeeds");
 
         assert!(target.exists(), "target file should exist");
         let original = fs::read(fixture).unwrap();
@@ -101,8 +109,13 @@ fn download_specific_release_from_override() -> evefrontier_lib::Result<()> {
         fs::copy(&fixture, &fixture_copy).unwrap();
         let target = temp_dir.path().join("static_data.db");
 
-        evefrontier_lib::github::download_from_source_with_cache(&target, DatasetRelease::tag("e6c2"), &fixture_copy, cache)
-            .expect("download succeeds with override");
+        evefrontier_lib::github::download_from_source_with_cache(
+            &target,
+            DatasetRelease::tag("e6c2"),
+            &fixture_copy,
+            cache,
+        )
+        .expect("download succeeds with override");
 
         assert!(target.exists(), "target file should exist");
         let original = fs::read(fixture).unwrap();
@@ -124,8 +137,13 @@ fn ensure_dataset_redownloads_when_tag_changes() -> evefrontier_lib::Result<()> 
         let source_two = temp_dir.path().join("source-two.db");
         fs::write(&source_two, b"second").unwrap();
 
-        evefrontier_lib::github::download_from_source_with_cache(&dataset_path, DatasetRelease::tag("e6c3"), &source_one, cache)
-            .expect("initial download succeeds");
+        evefrontier_lib::github::download_from_source_with_cache(
+            &dataset_path,
+            DatasetRelease::tag("e6c3"),
+            &source_one,
+            cache,
+        )
+        .expect("initial download succeeds");
 
         assert_eq!(fs::read(&dataset_path).unwrap(), b"first");
         let marker_path = dataset_path.with_file_name("static_data.db.release");
@@ -133,8 +151,13 @@ fn ensure_dataset_redownloads_when_tag_changes() -> evefrontier_lib::Result<()> 
         assert!(marker.contains("requested=tag"));
         assert!(marker.contains("resolved=e6c3"));
 
-        evefrontier_lib::github::download_from_source_with_cache(&dataset_path, DatasetRelease::tag("e6c2"), &source_two, cache)
-            .expect("tag change triggers re-download");
+        evefrontier_lib::github::download_from_source_with_cache(
+            &dataset_path,
+            DatasetRelease::tag("e6c2"),
+            &source_two,
+            cache,
+        )
+        .expect("tag change triggers re-download");
 
         assert_eq!(fs::read(&dataset_path).unwrap(), b"second");
         let marker = fs::read_to_string(&marker_path).unwrap();
@@ -156,8 +179,13 @@ fn ensure_dataset_redownloads_when_switching_back_to_latest() -> evefrontier_lib
         let source_two = temp_dir.path().join("source-two.db");
         fs::write(&source_two, b"second").unwrap();
 
-        evefrontier_lib::github::download_from_source_with_cache(&dataset_path, DatasetRelease::tag("e6c2"), &source_one, cache)
-            .expect("initial tagged download succeeds");
+        evefrontier_lib::github::download_from_source_with_cache(
+            &dataset_path,
+            DatasetRelease::tag("e6c2"),
+            &source_one,
+            cache,
+        )
+        .expect("initial tagged download succeeds");
 
         assert_eq!(fs::read(&dataset_path).unwrap(), b"first");
         let marker_path = dataset_path.with_file_name("static_data.db.release");
@@ -165,8 +193,12 @@ fn ensure_dataset_redownloads_when_switching_back_to_latest() -> evefrontier_lib
         assert!(marker.contains("requested=tag"));
         assert!(marker.contains("resolved=e6c2"));
 
-        evefrontier_lib::github::download_latest_from_source_with_cache(&dataset_path, &source_two, cache)
-            .expect("latest request refreshes dataset");
+        evefrontier_lib::github::download_latest_from_source_with_cache(
+            &dataset_path,
+            &source_two,
+            cache,
+        )
+        .expect("latest request refreshes dataset");
 
         assert_eq!(fs::read(&dataset_path).unwrap(), b"second");
         let marker = fs::read_to_string(&marker_path).unwrap();
@@ -191,8 +223,12 @@ fn ensure_dataset_redownloads_when_latest_release_changes() -> evefrontier_lib::
         fs::write(&source_path, b"fresh").unwrap();
 
         with_latest_tag_override("e6c3", || {
-            evefrontier_lib::github::download_latest_from_source_with_cache(&dataset_path, &source_path, cache)
-                .expect("latest change triggers re-download");
+            evefrontier_lib::github::download_latest_from_source_with_cache(
+                &dataset_path,
+                &source_path,
+                cache,
+            )
+            .expect("latest change triggers re-download");
         });
 
         assert_eq!(fs::read(&dataset_path).unwrap(), b"fresh");

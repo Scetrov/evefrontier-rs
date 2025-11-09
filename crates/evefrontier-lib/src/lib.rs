@@ -4,7 +4,7 @@
 //! starmap into memory, build graph representations, and run pathfinding
 //! algorithms. Higher-level consumers (CLI, Lambdas) should only depend on the
 //! functions exported here instead of reimplementing behavior.
-//! 
+//!
 
 #![deny(warnings)]
 

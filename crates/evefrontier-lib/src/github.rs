@@ -256,7 +256,8 @@ fn copy_from_override(source: &Path, target: &Path) -> Result<()> {
 fn copy_from_override_with_cache(source: &Path, target: &Path, cache_dir: &Path) -> Result<()> {
     fs::create_dir_all(cache_dir)?;
 
-    let cached_dataset = PathBuf::from(cache_dir).join(format!("local-{}", target_dataset_filename(target)));
+    let cached_dataset =
+        PathBuf::from(cache_dir).join(format!("local-{}", target_dataset_filename(target)));
     if source
         .extension()
         .and_then(|ext| ext.to_str())

@@ -103,7 +103,9 @@ fn evaluate_cache_state(path: &Path, release: &DatasetRelease) -> Result<CacheSt
                     }
                 }
             }
-            _ => Ok(CacheState::Stale { _resolved_tag: None }),
+            _ => Ok(CacheState::Stale {
+                _resolved_tag: None,
+            }),
         },
         DatasetRelease::Tag(expected) => match marker {
             Some(marker) if marker.resolved_tag == *expected => Ok(CacheState::Fresh),
