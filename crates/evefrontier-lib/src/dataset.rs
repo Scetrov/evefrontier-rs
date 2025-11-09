@@ -89,7 +89,7 @@ fn evaluate_cache_state(path: &Path, release: &DatasetRelease) -> Result<CacheSt
                             Ok(CacheState::Fresh)
                         } else {
                             Ok(CacheState::Stale {
-                                resolved_tag: Some(current_tag),
+                                _resolved_tag: Some(current_tag),
                             })
                         }
                     }
@@ -103,12 +103,12 @@ fn evaluate_cache_state(path: &Path, release: &DatasetRelease) -> Result<CacheSt
                     }
                 }
             }
-            _ => Ok(CacheState::Stale { resolved_tag: None }),
+            _ => Ok(CacheState::Stale { _resolved_tag: None }),
         },
         DatasetRelease::Tag(expected) => match marker {
             Some(marker) if marker.resolved_tag == *expected => Ok(CacheState::Fresh),
             _ => Ok(CacheState::Stale {
-                resolved_tag: Some(expected.clone()),
+                _resolved_tag: Some(expected.clone()),
             }),
         },
     }
@@ -243,5 +243,5 @@ impl FromStr for ReleaseMarker {
 
 enum CacheState {
     Fresh,
-    Stale { resolved_tag: Option<String> },
+    Stale { _resolved_tag: Option<String> },
 }

@@ -19,13 +19,15 @@ use crate::error::{Error, Result};
 const RELEASES_API_BASE: &str =
     "https://api.github.com/repos/Scetrov/evefrontier_datasets/releases";
 const CACHE_DIR_NAME: &str = "evefrontier_datasets";
+const CACHE_DIR_ENV: &str = "EVEFRONTIER_DATASET_CACHE_DIR";
 const DATASET_SOURCE_ENV: &str = "EVEFRONTIER_DATASET_SOURCE";
 const LATEST_TAG_OVERRIDE_ENV: &str = "EVEFRONTIER_DATASET_LATEST_TAG";
 
 /// Identifier for a GitHub dataset release to download.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum DatasetRelease {
     /// Download the latest published release.
+    #[default]
     Latest,
     /// Download a release identified by its Git tag (for example `e6c3`).
     Tag(String),
@@ -38,12 +40,6 @@ impl DatasetRelease {
 
     pub fn tag<T: Into<String>>(tag: T) -> Self {
         DatasetRelease::Tag(tag.into())
-    }
-}
-
-impl Default for DatasetRelease {
-    fn default() -> Self {
-        DatasetRelease::Latest
     }
 }
 
@@ -75,6 +71,91 @@ pub fn download_dataset(target_path: &Path, release: DatasetRelease) -> Result<(
     download_dataset_with_tag(target_path, release).map(|_| ())
 }
 
+/// Test helper: download the latest dataset but use `source` as a local override
+/// (either a `.db` file or a `.zip` archive). This avoids using the global
+/// `EVEFRONTIER_DATASET_SOURCE` env var so tests can run in parallel.
+pub fn download_latest_from_source(target_path: &Path, source: &Path) -> Result<()> {
+    download_from_source(target_path, DatasetRelease::Latest, source).map(|_| ())
+}
+
+/// Test helper: download the specified release but use `source` as a local
+/// override (either a `.db` file or a `.zip` archive). Returns the resolved
+/// tag so callers can inspect it if needed.
+pub fn download_from_source(
+    target_path: &Path,
+    release: DatasetRelease,
+    source: &Path,
+) -> Result<String> {
+    copy_from_override(source, target_path)?;
+    resolve_release_tag(&release)
+}
+
+/// Test helper: same as `download_latest_from_source` but use the provided
+/// `cache_dir` instead of reading/modifying the global environment. This
+/// avoids races when tests run in parallel.
+pub fn download_latest_from_source_with_cache(
+    target_path: &Path,
+    source: &Path,
+    cache_dir: &Path,
+) -> Result<()> {
+    download_from_source_with_cache(target_path, DatasetRelease::Latest, source, cache_dir)
+        .map(|_| ())
+}
+
+/// Test helper: same as `download_from_source` but uses an explicit
+/// `cache_dir` provided by the caller. Returns the resolved tag.
+pub fn download_from_source_with_cache(
+    target_path: &Path,
+    release: DatasetRelease,
+    source: &Path,
+    cache_dir: &Path,
+) -> Result<String> {
+    copy_from_override_with_cache(source, target_path, cache_dir)?;
+
+    // Determine the resolved tag. For local overrides we want to mimic the
+    // behavior of the env-var path used in the main downloader: if a
+    // LATEST_TAG_OVERRIDE_ENV is set, honor it; otherwise, when a local
+    // `source` is provided and the request is for `Latest`, return the
+    // literal string "latest" so release markers reflect that an unpinned
+    // (local) source was used.
+    let resolved = match &release {
+        DatasetRelease::Latest => {
+            if let Ok(override_tag) = env::var(LATEST_TAG_OVERRIDE_ENV) {
+                let tag = override_tag.trim().to_string();
+                if !tag.is_empty() {
+                    tag
+                } else {
+                    "latest".to_string()
+                }
+            } else if source.exists() {
+                "latest".to_string()
+            } else {
+                resolve_release_tag(&release)?
+            }
+        }
+        DatasetRelease::Tag(t) => t.clone(),
+    };
+
+    // Write a simple release marker adjacent to the target to match
+    // `write_release_marker`'s format so tests can assert on it.
+    if let Some(file_name) = target_path.file_name() {
+        let mut marker_name = file_name.to_os_string();
+        marker_name.push(".release");
+        let marker_path = target_path.with_file_name(marker_name);
+        if let Some(parent) = marker_path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        let requested = match &release {
+            DatasetRelease::Latest => "latest",
+            DatasetRelease::Tag(_) => "tag",
+        };
+        let contents = format!("requested={}\nresolved={}\n", requested, resolved);
+        fs::write(marker_path, contents)?;
+    }
+
+    Ok(resolved)
+}
+
 pub(crate) fn download_dataset_with_tag(
     target_path: &Path,
     release: DatasetRelease,
@@ -87,10 +168,13 @@ pub(crate) fn download_dataset_with_tag(
             "using local dataset override"
         );
         copy_from_override(&override_path, target_path)?;
-        return Ok(match release {
-            DatasetRelease::Latest => "latest".to_string(),
-            DatasetRelease::Tag(tag) => tag,
-        });
+
+        // When using a local override we still want to record the resolved
+        // release tag. This honors the `EVEFRONTIER_DATASET_LATEST_TAG`
+        // override used by tests (or other local tooling) so the release
+        // marker reflects the actual resolved tag instead of the literal
+        // string "latest".
+        return resolve_release_tag(&release);
     }
 
     let cache_dir = dataset_cache_dir()?;
@@ -169,7 +253,29 @@ fn copy_from_override(source: &Path, target: &Path) -> Result<()> {
     copy_cached_to_target(&cached_dataset, target)
 }
 
+fn copy_from_override_with_cache(source: &Path, target: &Path, cache_dir: &Path) -> Result<()> {
+    fs::create_dir_all(cache_dir)?;
+
+    let cached_dataset = PathBuf::from(cache_dir).join(format!("local-{}", target_dataset_filename(target)));
+    if source
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .map(|ext| ext.eq_ignore_ascii_case("zip"))
+        .unwrap_or(false)
+    {
+        extract_archive(source, &cached_dataset)?;
+    } else {
+        copy_file_atomic(source, &cached_dataset)?;
+    }
+
+    copy_cached_to_target(&cached_dataset, target)
+}
+
 fn dataset_cache_dir() -> Result<PathBuf> {
+    if let Some(override_dir) = env::var_os(CACHE_DIR_ENV) {
+        return Ok(PathBuf::from(override_dir));
+    }
+
     let dirs = BaseDirs::new().ok_or(Error::CacheDirsUnavailable)?;
     Ok(dirs.cache_dir().join(CACHE_DIR_NAME))
 }
@@ -345,12 +451,20 @@ fn extract_archive(archive_path: &Path, destination: &Path) -> Result<()> {
             continue;
         }
 
-        let name = entry
-            .enclosed_name()
-            .map(|p| p.to_string_lossy().to_ascii_lowercase())
-            .unwrap_or_default();
+        // Explicit validation: skip entries with path traversal attempts
+        let safe_name = match entry.enclosed_name() {
+            Some(path) => path.to_string_lossy().to_ascii_lowercase(),
+            None => {
+                // enclosed_name() returns None for unsafe paths like "../../../etc/passwd"
+                warn!(
+                    "skipping archive entry with unsafe path in {}",
+                    archive_path.display()
+                );
+                continue;
+            }
+        };
 
-        if name.ends_with(".db") {
+        if safe_name.ends_with(".db") {
             let mut tmp = NamedTempFile::new_in(&parent)?;
             io::copy(&mut entry, tmp.as_file_mut())?;
             tmp.flush()?;
