@@ -46,7 +46,7 @@ Tasks are grouped by domain; checkboxes track completion status.
 
 ## CLI (`evefrontier-cli`)
 
-- [ ] Implement the CLI skeleton with Clap, including global `--data-dir`, `--format`, `--no-logo`,
+- [x] Implement the CLI skeleton with Clap, including global `--data-dir`, `--format`, `--no-logo`,
       and other shared options. Respect the data path resolution order defined in `docs/INITIAL_SETUP.md`.
 - [x] Implement the `download` subcommand that wraps `ensure_c3e6_dataset`, reports the resolved path,
       and exits with appropriate codes.

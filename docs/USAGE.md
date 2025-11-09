@@ -35,6 +35,13 @@ Developer invocation (build-and-run via cargo):
 cargo run -p evefrontier-cli -- <subcommand> [args]
 ```
 
+Global options accepted by every subcommand:
+
+- `--data-dir <PATH>` — override the dataset directory or file.
+- `--dataset <TAG>` — request a specific dataset release.
+- `--format <text|json>` — control the command output format (`text` by default).
+- `--no-logo` — suppress the ASCII banner (automatically implied for JSON output).
+
 ### Examples
 
 - Download the latest dataset to the default location resolved by the CLI and report the path:
@@ -49,10 +56,22 @@ cargo run -p evefrontier-cli -- <subcommand> [args]
   evefrontier-cli download --data-dir docs/fixtures --dataset e6c3
   ```
 
+- Retrieve dataset metadata as JSON for scripting workflows:
+
+  ```pwsh
+  evefrontier-cli download --format json
+  ```
+
 - Calculate a route between two systems using an existing dataset path:
 
   ```pwsh
   evefrontier-cli route --from "Y:170N" --to "BetaTest" --data-dir docs/fixtures/minimal_static_data.db
+  ```
+
+- Request structured route output suitable for downstream tooling:
+
+  ```pwsh
+  evefrontier-cli route --from "Y:170N" --to "BetaTest" --format json
   ```
 
 - Calculate a route after pre-setting the dataset path via environment variable:

@@ -279,6 +279,8 @@ dependencies = [
  "clap",
  "directories",
  "evefrontier-lib",
+ "serde",
+ "serde_json",
  "tracing",
  "tracing-subscriber",
 ]
