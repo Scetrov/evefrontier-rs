@@ -9,6 +9,7 @@ use zip::write::FileOptions;
 use zip::ZipWriter;
 
 const DATASET_SOURCE_ENV: &str = "EVEFRONTIER_DATASET_SOURCE";
+const LATEST_TAG_ENV: &str = "EVEFRONTIER_DATASET_LATEST_TAG";
 
 fn fixture_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/fixtures/minimal_static_data.db")
@@ -24,11 +25,29 @@ where
     drop(guard);
 }
 
+fn with_latest_tag_override<F>(tag: &str, f: F)
+where
+    F: FnOnce(),
+{
+    std::env::set_var(LATEST_TAG_ENV, tag);
+    let guard = LatestTagGuard;
+    f();
+    drop(guard);
+}
+
 struct ScopeGuard;
 
 impl Drop for ScopeGuard {
     fn drop(&mut self) {
         std::env::remove_var(DATASET_SOURCE_ENV);
+    }
+}
+
+struct LatestTagGuard;
+
+impl Drop for LatestTagGuard {
+    fn drop(&mut self) {
+        std::env::remove_var(LATEST_TAG_ENV);
     }
 }
 
@@ -157,6 +176,33 @@ fn ensure_dataset_redownloads_when_switching_back_to_latest() -> evefrontier_lib
     let marker = fs::read_to_string(&marker_path)?;
     assert!(marker.contains("requested=latest"));
     assert!(marker.contains("resolved=latest"));
+
+    Ok(())
+}
+
+#[test]
+fn ensure_dataset_redownloads_when_latest_release_changes() -> evefrontier_lib::Result<()> {
+    let temp_dir = tempdir()?;
+    let dataset_path = temp_dir.path().join("static_data.db");
+    fs::write(&dataset_path, b"cached")?;
+
+    let marker_path = dataset_path.with_file_name("static_data.db.release");
+    fs::write(&marker_path, "requested=latest\nresolved=e6c2\n")?;
+
+    let source_path = temp_dir.path().join("source-new.db");
+    fs::write(&source_path, b"fresh")?;
+
+    with_latest_tag_override("e6c3", || {
+        with_dataset_override(&source_path, || {
+            ensure_dataset(Some(dataset_path.as_path()), DatasetRelease::latest())
+                .expect("latest change triggers re-download");
+        });
+    });
+
+    assert_eq!(fs::read(&dataset_path)?, b"fresh");
+    let marker = fs::read_to_string(&marker_path)?;
+    assert!(marker.contains("requested=latest"));
+    assert!(marker.contains("resolved=e6c3"));
 
     Ok(())
 }

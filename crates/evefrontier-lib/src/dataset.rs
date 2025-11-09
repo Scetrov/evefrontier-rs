@@ -4,10 +4,10 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use directories::ProjectDirs;
-use tracing::info;
+use tracing::{debug, info};
 
 use crate::error::{Error, Result};
-use crate::github::{download_dataset_with_tag, DatasetRelease};
+use crate::github::{download_dataset_with_tag, resolve_release_tag, DatasetRelease};
 
 /// Default filename for the cached dataset.
 const DATASET_FILENAME: &str = "static_data.db";
@@ -47,8 +47,15 @@ pub fn ensure_c3e6_dataset(target: Option<&Path>) -> Result<PathBuf> {
 }
 
 fn ensure_or_download(path: &Path, release: &DatasetRelease) -> Result<PathBuf> {
-    if path.exists() && !needs_redownload(path, release)? {
-        return Ok(path.to_path_buf());
+    let mut resolved_tag_hint = None;
+
+    if path.exists() {
+        match evaluate_cache_state(path, release)? {
+            CacheState::Fresh => return Ok(path.to_path_buf()),
+            CacheState::Stale { resolved_tag } => {
+                resolved_tag_hint = resolved_tag;
+            }
+        }
     }
 
     if let Some(parent) = path.parent() {
@@ -61,7 +68,8 @@ fn ensure_or_download(path: &Path, release: &DatasetRelease) -> Result<PathBuf> 
         path.display()
     );
     let resolved_tag = download_dataset_with_tag(path, release.clone())?;
-    write_release_marker(path, release, &resolved_tag)?;
+    let marker_tag = resolved_tag_hint.unwrap_or_else(|| resolved_tag.clone());
+    write_release_marker(path, release, &marker_tag)?;
     Ok(path.to_path_buf())
 }
 
@@ -73,15 +81,39 @@ fn canonical_dataset_path(path: &Path) -> PathBuf {
     path.join(DATASET_FILENAME)
 }
 
-fn needs_redownload(path: &Path, release: &DatasetRelease) -> Result<bool> {
+fn evaluate_cache_state(path: &Path, release: &DatasetRelease) -> Result<CacheState> {
     let marker = read_release_marker(path)?;
     match release {
-        DatasetRelease::Latest => Ok(marker
-            .map(|marker| !matches!(marker.requested, MarkerRequest::Latest))
-            .unwrap_or(true)),
-        DatasetRelease::Tag(expected) => Ok(marker
-            .map(|marker| marker.resolved_tag != *expected)
-            .unwrap_or(true)),
+        DatasetRelease::Latest => match marker {
+            Some(marker) if matches!(marker.requested, MarkerRequest::Latest) => {
+                match resolve_release_tag(release) {
+                    Ok(current_tag) => {
+                        if marker.resolved_tag == current_tag {
+                            Ok(CacheState::Fresh)
+                        } else {
+                            Ok(CacheState::Stale {
+                                resolved_tag: Some(current_tag),
+                            })
+                        }
+                    }
+                    Err(error) => {
+                        debug!(
+                            %error,
+                            path = %path.display(),
+                            "failed to resolve latest release tag; assuming cached dataset is current"
+                        );
+                        Ok(CacheState::Fresh)
+                    }
+                }
+            }
+            _ => Ok(CacheState::Stale { resolved_tag: None }),
+        },
+        DatasetRelease::Tag(expected) => match marker {
+            Some(marker) if marker.resolved_tag == *expected => Ok(CacheState::Fresh),
+            _ => Ok(CacheState::Stale {
+                resolved_tag: Some(expected.clone()),
+            }),
+        },
     }
 }
 
@@ -210,4 +242,9 @@ impl FromStr for ReleaseMarker {
             }
         }
     }
+}
+
+enum CacheState {
+    Fresh,
+    Stale { resolved_tag: Option<String> },
 }

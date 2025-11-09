@@ -20,6 +20,7 @@ const RELEASES_API_BASE: &str =
     "https://api.github.com/repos/Scetrov/evefrontier_datasets/releases";
 const CACHE_DIR_NAME: &str = "evefrontier_datasets";
 const DATASET_SOURCE_ENV: &str = "EVEFRONTIER_DATASET_SOURCE";
+const LATEST_TAG_OVERRIDE_ENV: &str = "EVEFRONTIER_DATASET_LATEST_TAG";
 
 /// Identifier for a GitHub dataset release to download.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -125,6 +126,28 @@ pub(crate) fn download_dataset_with_tag(
 
     copy_cached_to_target(&cached_dataset, target_path)?;
     Ok(release_response.tag_name)
+}
+
+pub(crate) fn resolve_release_tag(release: &DatasetRelease) -> Result<String> {
+    match release {
+        DatasetRelease::Latest => {
+            if let Some(override_tag) = env::var_os(LATEST_TAG_OVERRIDE_ENV) {
+                let tag = override_tag.to_string_lossy().trim().to_string();
+                if !tag.is_empty() {
+                    return Ok(tag);
+                }
+            }
+
+            if env::var_os(DATASET_SOURCE_ENV).is_some() {
+                return Ok("latest".to_string());
+            }
+
+            let client = build_client()?;
+            let release_response = fetch_release(&client, release)?;
+            Ok(release_response.tag_name)
+        }
+        DatasetRelease::Tag(tag) => Ok(tag.clone()),
+    }
 }
 
 fn copy_from_override(source: &Path, target: &Path) -> Result<()> {
