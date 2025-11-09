@@ -110,7 +110,9 @@ fn ensure_dataset_redownloads_when_tag_changes() -> evefrontier_lib::Result<()> 
 
     assert_eq!(fs::read(&dataset_path)?, b"first");
     let marker_path = dataset_path.with_file_name("static_data.db.release");
-    assert_eq!(fs::read_to_string(&marker_path)?, "e6c3");
+    let marker = fs::read_to_string(&marker_path)?;
+    assert!(marker.contains("requested=tag"));
+    assert!(marker.contains("resolved=e6c3"));
 
     with_dataset_override(&source_two, || {
         ensure_dataset(Some(dataset_path.as_path()), DatasetRelease::tag("e6c2"))
@@ -118,7 +120,43 @@ fn ensure_dataset_redownloads_when_tag_changes() -> evefrontier_lib::Result<()> 
     });
 
     assert_eq!(fs::read(&dataset_path)?, b"second");
-    assert_eq!(fs::read_to_string(&marker_path)?, "e6c2");
+    let marker = fs::read_to_string(&marker_path)?;
+    assert!(marker.contains("requested=tag"));
+    assert!(marker.contains("resolved=e6c2"));
+
+    Ok(())
+}
+
+#[test]
+fn ensure_dataset_redownloads_when_switching_back_to_latest() -> evefrontier_lib::Result<()> {
+    let temp_dir = tempdir()?;
+    let dataset_path = temp_dir.path().join("static_data.db");
+
+    let source_one = temp_dir.path().join("source-one.db");
+    fs::write(&source_one, b"first")?;
+    let source_two = temp_dir.path().join("source-two.db");
+    fs::write(&source_two, b"second")?;
+
+    with_dataset_override(&source_one, || {
+        ensure_dataset(Some(dataset_path.as_path()), DatasetRelease::tag("e6c2"))
+            .expect("initial tagged download succeeds");
+    });
+
+    assert_eq!(fs::read(&dataset_path)?, b"first");
+    let marker_path = dataset_path.with_file_name("static_data.db.release");
+    let marker = fs::read_to_string(&marker_path)?;
+    assert!(marker.contains("requested=tag"));
+    assert!(marker.contains("resolved=e6c2"));
+
+    with_dataset_override(&source_two, || {
+        ensure_dataset(Some(dataset_path.as_path()), DatasetRelease::latest())
+            .expect("latest request refreshes dataset");
+    });
+
+    assert_eq!(fs::read(&dataset_path)?, b"second");
+    let marker = fs::read_to_string(&marker_path)?;
+    assert!(marker.contains("requested=latest"));
+    assert!(marker.contains("resolved=latest"));
 
     Ok(())
 }
