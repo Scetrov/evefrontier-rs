@@ -46,7 +46,7 @@ cargo run -p evefrontier-cli -- <subcommand> [args]
 - Download a specific dataset tag into a custom directory (helpful for tests or fixtures):
 
   ```pwsh
-  evefrontier-cli download --data-dir docs/fixtures --dataset e6c2
+  evefrontier-cli download --data-dir docs/fixtures --dataset e6c3
   ```
 
 - Calculate a route between two systems using an existing dataset path:
