@@ -21,10 +21,10 @@ Tasks are grouped by domain; checkboxes track completion status.
 
 ## Library (`evefrontier-lib`)
 
-- [ ] Implement `ensure_c3e6_dataset` to download the latest dataset release from GitHub, cache it
+- [x] Implement `ensure_c3e6_dataset` to download the latest dataset release from GitHub, cache it
       in the OS cache directory under `evefrontier_datasets/`, perform atomic writes, and optionally
       extract `.zip` archives ([ADR 0003](adrs/0003-downloader-caching.md)).
-- [ ] Support injecting a pre-existing dataset path (for tests) and allow callers to override the
+- [x] Support injecting a pre-existing dataset path (for tests) and allow callers to override the
       cache location.
 - [ ] Implement `load_starmap` with runtime schema detection ([ADR 0004](adrs/0004-schema-detection.md)) for both `SolarSystems` / `Jumps`
       and legacy `mapSolarSystems` datasets.
@@ -48,7 +48,7 @@ Tasks are grouped by domain; checkboxes track completion status.
 
 - [ ] Implement the CLI skeleton with Clap, including global `--data-dir`, `--format`, `--no-logo`,
       and other shared options. Respect the data path resolution order defined in `docs/INITIAL_SETUP.md`.
-- [ ] Implement the `download` subcommand that wraps `ensure_c3e6_dataset`, reports the resolved path,
+- [x] Implement the `download` subcommand that wraps `ensure_c3e6_dataset`, reports the resolved path,
       and exits with appropriate codes.
 - [ ] Implement routing subcommands (`route`, `search`, `path`) that call into the library to build
       the graph and produce formatted output, including optional arguments (`--algorithm`,

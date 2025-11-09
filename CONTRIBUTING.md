@@ -27,8 +27,8 @@ behave respectfully.
 Before merging a PR that modifies code, docs, or other user-visible behavior, add a short entry to
 `CHANGELOG.md` under the `Unreleased` section. The entry should contain a one-line summary, the date
 (YYYY-MM-DD), the author (name or `auto-llm:<id>`), and a tag `[manual]` or `[auto-llm]`. LLM/agent
-edits must append the changelog entry when they apply changes. Reviewers should verify the changelog
-entry for clarity.
+edits must append the changelog entry when they apply changes, check the system time to identify the
+actual date do not use dates in the past. Reviewers should verify the changelog entry for clarity.
 
 ## Local development
 
@@ -138,10 +138,12 @@ Signing and releases
 Notes
 
 - If you need deterministic runs for tests that use the dataset downloader, call
-  `ensure_c3e6_dataset(Some(path))` to provide a fixed dataset path.
+  `ensure_dataset(Some(path), DatasetRelease::latest())` (or choose a specific
+  `DatasetRelease::tag(...)`) to provide a fixed dataset path.
 - If you don't want to install Node locally, you can still build and test the Rust crates; however
   markdown linting and other Node-based tooling won't run until Node/pnpm is available.
-- ensure that your commit message is less than 72 chars in the first line, add more details in the summary from line 3 onwards.
+- ensure that your commit message is less than 72 chars in the first line, add more details in the
+  summary from line 3 onwards.
 - use conventional commit standards to create clear commits
 
 Thanks for helping improve the project. If you add new developer-facing tools, please update
