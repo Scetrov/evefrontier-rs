@@ -5,7 +5,7 @@ use clap::{Parser, Subcommand};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 use evefrontier_lib::{
-    build_graph, ensure_c3e6_dataset, find_route, load_starmap, Error as LibError,
+    build_graph, ensure_dataset, find_route, load_starmap, DatasetRelease, Error as LibError,
 };
 
 #[derive(Parser, Debug)]
@@ -14,6 +14,10 @@ struct Cli {
     /// Override the dataset directory or file path.
     #[arg(long)]
     data_dir: Option<PathBuf>,
+
+    /// Dataset release tag to download (defaults to the latest release when omitted).
+    #[arg(long)]
+    dataset: Option<String>,
 
     #[command(subcommand)]
     command: Command,
@@ -36,23 +40,31 @@ enum Command {
 
 fn main() -> Result<()> {
     init_tracing();
-    let cli = Cli::parse();
+    let Cli {
+        data_dir,
+        dataset,
+        command,
+    } = Cli::parse();
 
-    match cli.command {
-        Command::Download => handle_download(cli.data_dir.as_deref()),
-        Command::Route { from, to } => handle_route(cli.data_dir.as_deref(), &from, &to),
+    match command {
+        Command::Download => handle_download(data_dir.as_deref(), dataset.as_deref()),
+        Command::Route { from, to } => {
+            handle_route(data_dir.as_deref(), dataset.as_deref(), &from, &to)
+        }
     }
 }
 
-fn handle_download(target: Option<&Path>) -> Result<()> {
-    let dataset_path = ensure_c3e6_dataset(target)
+fn handle_download(target: Option<&Path>, dataset: Option<&str>) -> Result<()> {
+    let release = dataset_release(dataset);
+    let dataset_path = ensure_dataset(target, release)
         .context("failed to locate or download the EveFrontier dataset")?;
     println!("Dataset available at {}", dataset_path.display());
     Ok(())
 }
 
-fn handle_route(target: Option<&Path>, from: &str, to: &str) -> Result<()> {
-    let dataset_path = ensure_c3e6_dataset(target)
+fn handle_route(target: Option<&Path>, dataset: Option<&str>, from: &str, to: &str) -> Result<()> {
+    let release = dataset_release(dataset);
+    let dataset_path = ensure_dataset(target, release)
         .context("failed to locate or download the EveFrontier dataset")?;
     let starmap = load_starmap(&dataset_path)
         .with_context(|| format!("failed to load dataset from {}", dataset_path.display()))?;
@@ -80,6 +92,11 @@ fn handle_route(target: Option<&Path>, from: &str, to: &str) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn dataset_release(spec: Option<&str>) -> DatasetRelease {
+    spec.map(DatasetRelease::tag)
+        .unwrap_or_else(DatasetRelease::latest)
 }
 
 fn init_tracing() {

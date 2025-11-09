@@ -138,7 +138,8 @@ Signing and releases
 Notes
 
 - If you need deterministic runs for tests that use the dataset downloader, call
-  `ensure_c3e6_dataset(Some(path))` to provide a fixed dataset path.
+  `ensure_dataset(Some(path), DatasetRelease::latest())` (or choose a specific
+  `DatasetRelease::tag(...)`) to provide a fixed dataset path.
 - If you don't want to install Node locally, you can still build and test the Rust crates; however
   markdown linting and other Node-based tooling won't run until Node/pnpm is available.
 - ensure that your commit message is less than 72 chars in the first line, add more details in the summary from line 3 onwards.

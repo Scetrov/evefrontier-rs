@@ -36,8 +36,9 @@ cargo test --workspace
 
 Notes
 
-- If tests require the dataset, call `ensure_c3e6_dataset(Some(path))` in tests or provide the
-  dataset path via environment/config when running the CLI.
+- If tests require the dataset, call `ensure_dataset(Some(path), DatasetRelease::latest())` in tests
+  or provide the dataset path via environment/config when running the CLI. `ensure_c3e6_dataset`
+  remains available when the Era 6 Cycle 3 dataset is specifically required.
 - See `docs/DEPENDENCIES.md` and `CONTRIBUTING.md` for additional setup and contribution
   guidelines.
 
@@ -59,11 +60,12 @@ Notes
 
 Implement a small, stable public surface so other tools and Lambdas can reuse behavior:
 
-- `ensure_c3e6_dataset(target_dir: Option<&Path>) -> Result<PathBuf>`
-  - Downloads or locates the dataset DB and returns an absolute path.
+- `ensure_dataset(target_dir: Option<&Path>, release: DatasetRelease) -> Result<PathBuf>`
+  - Downloads or locates the requested dataset DB and returns an absolute path.
   - Accepts either a path to an existing `.db` file or downloads a release asset from GitHub,
     caching under the OS cache dir (e.g. `directories::BaseDirs::cache_dir()/evefrontier_datasets/`).
   - Download to a temporary file and atomically rename to the final filename on success.
+  - `ensure_c3e6_dataset` is a helper that pins the release to `DatasetRelease::tag("e6c3")`.
 
 - `load_starmap(db_path: &Path) -> Result<Starmap>`
   - Loads systems and jumps into in-memory structures. `Starmap` should contain:
@@ -78,7 +80,7 @@ Implement a small, stable public surface so other tools and Lambdas can reuse be
 ## 4. CLI surface
 
 - Subcommands (minimum):
-  - `download` — ensure dataset present (wraps `ensure_c3e6_dataset`).
+- `download` — ensure dataset present (wraps `ensure_dataset`).
   - `route <SYSTEM>` — compute a route from a named system using the library API.
 
 - Data path resolution order:

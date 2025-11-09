@@ -14,3 +14,6 @@ serde.workspace = true
 serde_json.workspace = true
 rusqlite.workspace = true
 tracing.workspace = true
+reqwest.workspace = true
+tempfile.workspace = true
+zip.workspace = true
