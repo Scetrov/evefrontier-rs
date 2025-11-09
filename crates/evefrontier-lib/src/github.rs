@@ -350,7 +350,7 @@ fn extract_archive(archive_path: &Path, destination: &Path) -> Result<()> {
             .map(|p| p.to_string_lossy().to_ascii_lowercase())
             .unwrap_or_default();
 
-        if name.ends_with(".db") || name.contains("c3e6") {
+        if name.ends_with(".db") {
             let mut tmp = NamedTempFile::new_in(&parent)?;
             io::copy(&mut entry, tmp.as_file_mut())?;
             tmp.flush()?;
