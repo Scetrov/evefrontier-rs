@@ -395,24 +395,36 @@ fn load_adjacency(
 }
 
 fn row_to_system(row: &Row<'_>) -> rusqlite::Result<System> {
+    // Use named column aliases produced by the SELECT in `load_static_systems`
+    const COL_ID: &str = "system_id";
+    const COL_NAME: &str = "system_name";
+    const COL_CONSTELLATION_ID: &str = "constellation_id";
+    const COL_CONSTELLATION_NAME: &str = "constellation_name";
+    const COL_REGION_ID: &str = "region_id";
+    const COL_REGION_NAME: &str = "region_name";
+    const COL_SECURITY_STATUS: &str = "security_status";
+    const COL_POSITION_X: &str = "position_x";
+    const COL_POSITION_Y: &str = "position_y";
+    const COL_POSITION_Z: &str = "position_z";
+
     let position = match (
-        row.get::<_, Option<f64>>(7)?,
-        row.get::<_, Option<f64>>(8)?,
-        row.get::<_, Option<f64>>(9)?,
+        row.get::<_, Option<f64>>(COL_POSITION_X)?,
+        row.get::<_, Option<f64>>(COL_POSITION_Y)?,
+        row.get::<_, Option<f64>>(COL_POSITION_Z)?,
     ) {
         (Some(x), Some(y), Some(z)) => SystemPosition::new(x, y, z),
         _ => None,
     };
 
     Ok(System {
-        id: row.get(0)?,
-        name: row.get(1)?,
+        id: row.get::<_, SystemId>(COL_ID)?,
+        name: row.get::<_, String>(COL_NAME)?,
         metadata: SystemMetadata {
-            constellation_id: row.get(2)?,
-            constellation_name: row.get(3)?,
-            region_id: row.get(4)?,
-            region_name: row.get(5)?,
-            security_status: row.get(6)?,
+            constellation_id: row.get::<_, Option<i64>>(COL_CONSTELLATION_ID)?,
+            constellation_name: row.get::<_, Option<String>>(COL_CONSTELLATION_NAME)?,
+            region_id: row.get::<_, Option<i64>>(COL_REGION_ID)?,
+            region_name: row.get::<_, Option<String>>(COL_REGION_NAME)?,
+            security_status: row.get::<_, Option<f64>>(COL_SECURITY_STATUS)?,
             temperature: None,
         },
         position,
