@@ -117,12 +117,10 @@ pub fn find_route_dijkstra(
     queue.push(QueueEntry::new(start, 0.0));
 
     while let Some(entry) = queue.pop() {
-        let current_distance = match distances.get(&entry.node) {
-            Some(distance) if (*distance - entry.cost.0).abs() < f64::EPSILON => *distance,
-            Some(distance) if *distance < entry.cost.0 => continue,
-            Some(distance) => *distance,
-            None => continue,
-        };
+        if distances.get(&entry.node).map_or(true, |&d| d < entry.cost.0) {
+            continue;
+        }
+        let current_distance = *distances.get(&entry.node).unwrap();
 
         if entry.node == goal {
             return Some(reconstruct_path(&parents, start, goal));
