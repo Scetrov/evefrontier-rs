@@ -173,11 +173,16 @@ pub fn find_route_a_star(
         // if the cost matches the stored g_score (within floating-point epsilon), the second
         // skips stale entries where we already found a better path. The third arm handles
         // cases where the guards don't match but we still have a valid score to process.
-        let current_score = match g_score.get(&entry.node) {
-            Some(score) if (*score - entry.cost.0).abs() < f64::EPSILON => *score,
-            Some(score) if *score < entry.cost.0 => continue,
-            Some(score) => *score,
-            None => continue,
+        let current_score = if let Some(score) = g_score.get(&entry.node) {
+            if (*score - entry.cost.0).abs() < f64::EPSILON {
+                *score
+            } else if *score < entry.cost.0 {
+                continue;
+            } else {
+                *score
+            }
+        } else {
+            continue;
         };
 
         if entry.node == goal {
