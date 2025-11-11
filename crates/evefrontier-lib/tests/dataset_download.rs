@@ -1,6 +1,7 @@
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::sync::{Mutex, OnceLock};
 
 use evefrontier_lib::github::DatasetRelease;
 use tempfile::tempdir;
@@ -11,6 +12,11 @@ const LATEST_TAG_ENV: &str = "EVEFRONTIER_DATASET_LATEST_TAG";
 
 fn fixture_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/fixtures/minimal_static_data.db")
+}
+
+fn env_lock() -> &'static Mutex<()> {
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(()))
 }
 
 fn with_cache_dir<F>(f: F)
@@ -27,6 +33,7 @@ fn with_latest_tag_override<F>(tag: &str, f: F)
 where
     F: FnOnce(),
 {
+    let _guard = env_lock().lock().expect("acquire env lock");
     std::env::set_var(LATEST_TAG_ENV, tag);
     let guard = LatestTagGuard;
     f();
