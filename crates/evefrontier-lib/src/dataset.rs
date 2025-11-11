@@ -38,6 +38,14 @@ pub fn test_normalize_data_dir(path: &Path) -> PathBuf {
 }
 
 #[cfg(windows)]
+/// Maximum number of iterations allowed when collapsing duplicate path segments.
+/// This limit prevents infinite loops in the normalization logic in case of
+/// deeply nested or maliciously crafted paths with repeated directory names.
+/// The value 100 is chosen as a conservative upper bound: in practice, no
+/// reasonable data directory path should require anywhere near this many
+/// collapses, but this ensures we bound the work performed and avoid denial-of-service
+/// or hangs due to pathological input. If the limit is reached, normalization
+/// stops and returns the best-effort result.
 // Cap duplicate-directory collapsing so a maliciously crafted path cannot force
 // an infinite loop. A depth of 100 comfortably exceeds any realistic
 // `%APPDATA%`/`LocalAppData` hierarchy while still guaranteeing termination.
