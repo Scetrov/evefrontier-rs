@@ -255,7 +255,10 @@ impl PartialOrd for FloatOrd {
 
 impl Ord for FloatOrd {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.0.total_cmp(&other.0)
+    // Use a total ordering for floats which also places NaN values after
+    // finite numbers. `total_cmp` provides a deterministic, IEEE-754
+    // compatible total order and avoids handling NaN specially here.
+    self.0.total_cmp(&other.0)
     }
 }
 
