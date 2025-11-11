@@ -567,10 +567,11 @@ fn table_exists(connection: &Connection, table: &str) -> Result<bool> {
 fn table_has_columns(connection: &Connection, table: &str, required: &[&str]) -> Result<bool> {
     // Validate that table name contains only alphanumeric and underscores
     if !table.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
-        return Err(Error::msg(format!(
+        return Err(rusqlite::Error::InvalidParameterName(format!(
             "Invalid table name: '{}'. Only alphanumeric and underscores are allowed.",
             table
-        )));
+        ))
+        .into());
     }
     let pragma = format!("PRAGMA table_info('{table}')");
     let mut stmt = connection.prepare(&pragma)?;
