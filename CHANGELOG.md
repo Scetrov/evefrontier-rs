@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- 2025-11-09 - auto-llm - [auto-llm] - Bounded Windows dataset path normalization with helper
+  functions and tests, centered the CLI banner layout, and documented the early-return coding
+  guideline.
 - 2025-11-09 - auto-llm - [auto-llm] - Switched the dataset downloader to the
   `Scetrov/evefrontier_datasets` repository, added release tag selection (for
   example `e6c2`/`e6c3`), exposed the capability through the library and CLI,

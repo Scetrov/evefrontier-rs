@@ -322,12 +322,19 @@ fn init_tracing() {
 }
 
 fn print_logo() {
-    const LOGO: &str = concat!(
-        "\x1b[38;5;208m",
-        "╭──────────────────────────────╮\n",
-        "│       EveFrontier CLI       │\n",
-        "╰──────────────────────────────╯",
-        "\x1b[0m",
+    const ORANGE: &str = "\x1b[38;5;208m";
+    const RESET: &str = "\x1b[0m";
+    const TITLE: &str = "EveFrontier CLI";
+    const WIDTH: usize = 30;
+
+    let horizontal = "─".repeat(WIDTH);
+    let centered = format!("{:^width$}", TITLE, width = WIDTH);
+
+    println!(
+        "{color}╭{line}╮\n│{text}│\n╰{line}╯{reset}",
+        color = ORANGE,
+        line = horizontal.as_str(),
+        text = centered.as_str(),
+        reset = RESET
     );
-    println!("{}", LOGO);
 }
