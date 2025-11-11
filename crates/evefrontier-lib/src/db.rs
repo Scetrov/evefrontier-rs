@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::path::Path;
 use std::sync::Arc;
@@ -369,7 +369,7 @@ fn load_adjacency(
 
     let mut adjacency: HashMap<SystemId, Vec<SystemId>> = HashMap::new();
     let mut skipped_edges = 0usize;
-    let mut invalid_system_ids: Vec<SystemId> = Vec::new();
+    let mut invalid_system_ids: HashSet<SystemId> = HashSet::new();
     for row in rows {
         let (from, to): (SystemId, SystemId) = row?;
         // Skip edges referencing systems not in the dataset (may occur due to schema
@@ -378,11 +378,11 @@ fn load_adjacency(
             skipped_edges += 1;
             // Collect a few examples for troubleshooting (limit to 5 to avoid excessive logging)
             if invalid_system_ids.len() < 5 {
-                if !systems.contains_key(&from) && !invalid_system_ids.contains(&from) {
-                    invalid_system_ids.push(from);
+                if !systems.contains_key(&from) {
+                    invalid_system_ids.insert(from);
                 }
-                if !systems.contains_key(&to) && !invalid_system_ids.contains(&to) {
-                    invalid_system_ids.push(to);
+                if !systems.contains_key(&to) {
+                    invalid_system_ids.insert(to);
                 }
             }
             continue;
