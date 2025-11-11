@@ -10,10 +10,24 @@ use crate::db::{Starmap, SystemId, SystemPosition};
 /// where most systems have up to 12 nearby candidates for spatial jumps. This limit
 /// balances pathfinding accuracy with performance, as higher values increase graph
 /// density and computational cost. Adjust if game mechanics or performance requirements change.
-/// Cap the spatial graph fan-out so each system only links to its closest
-/// neighbours. Twelve mirrors the maximum number of bidirectional stargate
-/// connections observed in the production dataset, which keeps spatial routing
-/// performant without starving dense areas of nearby candidates.
+/// Cap the spatial graph fan-out so each system only links to its closest neighbours.
+///
+/// The limit of 12 was chosen because it matches the maximum number of bidirectional stargate
+/// connections observed in the production dataset. This ensures that, in the densest regions,
+/// spatial routing does not exclude any system that could be reached via gates, preserving
+/// route quality and completeness.
+///
+/// Trade-offs:
+/// - **Performance**: Limiting the number of spatial neighbors reduces the number of edges
+///   considered during graph construction and pathfinding, keeping memory usage and search
+///   times manageable, especially in large or dense areas.
+/// - **Route Quality**: Setting the limit too low could cause the graph to miss nearby systems,
+///   potentially resulting in suboptimal routes. Setting it too high increases computational
+///   cost with diminishing returns, as most systems do not have more than 12 meaningful
+///   spatial neighbors.
+///
+/// The value 12 strikes a balance: it is high enough to avoid starving dense areas of candidate
+/// neighbors, but low enough to keep spatial graph operations performant.
 /// Maximum number of nearest neighbours to consider for spatial edges.
 ///
 /// This limits the fan-out per node when constructing spatial graphs. The
