@@ -37,7 +37,7 @@ and the accepted ADRs under [`docs/adrs/`](docs/adrs/).
 
    ```bash
    cargo run -p evefrontier-cli -- download
-  cargo run -p evefrontier-cli -- route --from "Y:170N" --to "BetaTest"
+   cargo run -p evefrontier-cli -- route --from "Y:170N" --to "BetaTest"
   ```
 
   The `--data-dir` flag accepts either a directory (the dataset filename will be appended) or a path
