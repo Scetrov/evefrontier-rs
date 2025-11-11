@@ -30,6 +30,13 @@ fn normalize_data_dir(path: &Path) -> PathBuf {
     }
 }
 
+// Test-only accessor to allow unit tests to verify normalization behavior
+// without exposing the implementation in public API.
+#[cfg(test)]
+pub fn test_normalize_data_dir(path: &Path) -> PathBuf {
+    normalize_data_dir(path)
+}
+
 #[cfg(windows)]
 // Cap duplicate-directory collapsing so a maliciously crafted path cannot force
 // an infinite loop. A depth of 100 comfortably exceeds any realistic

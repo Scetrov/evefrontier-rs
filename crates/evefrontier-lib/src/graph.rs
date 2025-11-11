@@ -8,6 +8,12 @@ use crate::db::{Starmap, SystemId, SystemPosition};
 /// neighbours. Twelve mirrors the maximum number of bidirectional stargate
 /// connections observed in the production dataset, which keeps spatial routing
 /// performant without starving dense areas of nearby candidates.
+/// Maximum number of nearest neighbours to consider for spatial edges.
+///
+/// This limits the fan-out per node when constructing spatial graphs. The
+/// value 12 is chosen as a pragmatic balance between route quality and
+/// performance; it keeps adjacency lists bounded in dense regions while
+/// retaining nearby candidates for pathfinding.
 const MAX_SPATIAL_NEIGHBORS: usize = 12;
 
 /// Routing graph variants supported by the planner.
@@ -192,5 +198,7 @@ fn merge_adjacency(
 }
 
 fn compare_distance(a: f64, b: f64) -> Ordering {
+    // Treat NaN as greater so systems with invalid coordinates (if any
+    // slipped through) appear at the end of neighbour lists.
     a.partial_cmp(&b).unwrap_or(Ordering::Greater)
 }
