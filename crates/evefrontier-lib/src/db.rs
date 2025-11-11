@@ -389,7 +389,9 @@ fn load_adjacency(
         }
         adjacency.entry(from).or_default().push(to);
         adjacency.entry(to).or_default().push(from);
-    }
+            "ignored jump edges referencing unknown systems. \
+This may indicate a schema mismatch or incomplete dataset export. \
+If this persists, verify the dataset integrity.",
 
     for neighbours in adjacency.values_mut() {
         neighbours.sort_unstable();
