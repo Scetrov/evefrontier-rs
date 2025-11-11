@@ -336,8 +336,27 @@ fn init_tracing() {
 }
 
 fn print_logo() {
-    const ORANGE: &str = "\x1b[38;5;208m";
-    const RESET: &str = "\x1b[0m";
+    const ORANGE_RAW: &str = "\x1b[38;5;208m";
+    const RESET_RAW: &str = "\x1b[0m";
+    // Respect environment conventions to avoid emitting ANSI escapes in
+    // non-capable environments. Honor the NO_COLOR env var and `TERM=dumb`.
+    fn supports_color() -> bool {
+        if std::env::var_os("NO_COLOR").is_some() {
+            return false;
+        }
+        if let Ok(term) = std::env::var("TERM") {
+            if term.eq_ignore_ascii_case("dumb") {
+                return false;
+            }
+        }
+        true
+    }
+
+    let (orange, reset) = if supports_color() {
+        (ORANGE_RAW, RESET_RAW)
+    } else {
+        ("", "")
+    };
     const TITLE: &str = "EveFrontier CLI";
     const WIDTH: usize = 30;
 
@@ -346,9 +365,9 @@ fn print_logo() {
 
     println!(
         "{color}╭{line}╮\n│{text}│\n╰{line}╯{reset}",
-        color = ORANGE,
+        color = orange,
         line = horizontal.as_str(),
         text = centered.as_str(),
-        reset = RESET
+        reset = reset
     );
 }
