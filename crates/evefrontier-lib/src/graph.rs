@@ -173,6 +173,12 @@ fn build_spatial_adjacency(starmap: &Starmap) -> HashMap<SystemId, Vec<Edge>> {
     adjacency
 }
 
+/// Merge spatial edges into gate adjacency for hybrid routing.
+///
+/// This function preserves both gate and spatial edges to the same target system,
+/// as they represent different routing options. A "duplicate" is only an edge with
+/// both the same target AND the same kind (e.g., two spatial edges to the same system).
+/// When duplicates exist, we keep the edge with the shorter distance.
 fn merge_adjacency(
     starmap: &Starmap,
     mut gate: HashMap<SystemId, Vec<Edge>>,
@@ -181,6 +187,8 @@ fn merge_adjacency(
     for (system_id, spatial_edges) in spatial {
         let entry = gate.entry(system_id).or_default();
         for edge in spatial_edges {
+            // Check for duplicate: same target AND same kind
+            // Note: A spatial edge to X is NOT considered duplicate of a gate edge to X
             if let Some(existing) = entry
                 .iter_mut()
                 .find(|existing| existing.target == edge.target && existing.kind == edge.kind)
