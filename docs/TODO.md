@@ -26,17 +26,17 @@ Tasks are grouped by domain; checkboxes track completion status.
       extract `.zip` archives ([ADR 0003](adrs/0003-downloader-caching.md)).
 - [x] Support injecting a pre-existing dataset path (for tests) and allow callers to override the
       cache location.
-- [ ] Implement `load_starmap` with runtime schema detection ([ADR 0004](adrs/0004-schema-detection.md)) for both `SolarSystems` / `Jumps`
+- [x] Implement `load_starmap` with runtime schema detection ([ADR 0004](adrs/0004-schema-detection.md)) for both `SolarSystems` / `Jumps`
       and legacy `mapSolarSystems` datasets.
-- [ ] Define the `Starmap` data model, including system metadata, adjacency lists, and a
+- [x] Define the `Starmap` data model, including system metadata, adjacency lists, and a
       `HashMap` for name-to-ID lookups.
-- [ ] Build graph construction helpers (`graph.rs`) that transform the `Starmap` into search graphs
+- [x] Build graph construction helpers (`graph.rs`) that transform the `Starmap` into search graphs
       for gate, spatial, or hybrid routing modes.
-- [ ] Implement pathfinding algorithms in `path.rs`: breadth-first search for unweighted graphs,
+- [x] Implement pathfinding algorithms in `path.rs`: breadth-first search for unweighted graphs,
       Dijkstra for weighted routes, and A* for heuristic-guided searches. Support filters such as
       maximum jump distance, gate-only routes, spatial routes, avoided systems, and temperature
       constraints.
-- [ ] Provide serialization helpers for CLI/Lambda outputs (plain text, rich text, JSON, in-game
+- [x] Provide serialization helpers for CLI/Lambda outputs (plain text, rich text, JSON, in-game
       note format) with appropriate structs and enums.
 - [ ] Add robust error handling via a shared `Error` type (using `thiserror`) and bubble errors to
       callers with actionable messages.
@@ -46,11 +46,11 @@ Tasks are grouped by domain; checkboxes track completion status.
 
 ## CLI (`evefrontier-cli`)
 
-- [ ] Implement the CLI skeleton with Clap, including global `--data-dir`, `--format`, `--no-logo`,
+- [x] Implement the CLI skeleton with Clap, including global `--data-dir`, `--format`, `--no-logo`,
       and other shared options. Respect the data path resolution order defined in `docs/INITIAL_SETUP.md`.
 - [x] Implement the `download` subcommand that wraps `ensure_c3e6_dataset`, reports the resolved path,
       and exits with appropriate codes.
-- [ ] Implement routing subcommands (`route`, `search`, `path`) that call into the library to build
+- [x] Implement routing subcommands (`route`, `search`, `path`) that call into the library to build
       the graph and produce formatted output, including optional arguments (`--algorithm`,
       `--max-jump`, `--avoid`, `--avoid-gates`, `--max-temp`).
 - [ ] Provide friendly error messages for unknown systems and route failures.

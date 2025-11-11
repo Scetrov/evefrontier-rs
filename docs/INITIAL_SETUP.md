@@ -72,7 +72,12 @@ Implement a small, stable public surface so other tools and Lambdas can reuse be
     - `systems`: `HashMap<SystemId, System { id, name }>`
     - `adjacency`: a mapping from `SystemId` to a vector of neighbour `SystemId`s
 
-- `build_graph(starmap: &Starmap) -> Graph` — build the graph used by the pathfinder.
+- `build_gate_graph(starmap: &Starmap) -> Graph` — build the gate-only graph used by the
+  unweighted pathfinder.
+- `build_spatial_graph(starmap: &Starmap) -> Graph` — build a spatial jump graph using system
+  coordinates.
+- `build_hybrid_graph(starmap: &Starmap) -> Graph` — combine gate and spatial edges for richer
+  routing options.
 
 - `find_route(graph: &Graph, start: SystemId, goal: SystemId) -> Option<Vec<SystemId>>` — returns
   an ordered list of system IDs that forms the route or `None` when no path exists.
