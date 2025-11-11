@@ -39,6 +39,7 @@ pub fn test_normalize_data_dir(path: &Path) -> PathBuf {
 
 #[cfg(windows)]
 /// Maximum number of iterations allowed when collapsing duplicate path segments.
+///
 /// This limit prevents infinite loops in the normalization logic in case of
 /// deeply nested or maliciously crafted paths with repeated directory names.
 /// The value 100 is chosen as a conservative upper bound: in practice, no
@@ -46,17 +47,6 @@ pub fn test_normalize_data_dir(path: &Path) -> PathBuf {
 /// collapses, but this ensures we bound the work performed and avoid denial-of-service
 /// or hangs due to pathological input. If the limit is reached, normalization
 /// stops and returns the best-effort result.
-// Cap duplicate-directory collapsing so a maliciously crafted path cannot force
-// an infinite loop. The limit of 100 iterations was chosen because it
-// comfortably exceeds any realistic `%APPDATA%`/`LocalAppData` hierarchy depth
-// encountered in practice, including cases with repeated directory names due to
-// misconfiguration or edge cases in the `directories` crate. This ensures that
-// normalization will always terminate, even on maliciously crafted or
-// pathological inputs, while not being so large as to allow excessive
-// computation. In normal usage, the number of iterations is expected to be
-// very small (typically 0–2). If you find scenarios where this bound is
-// approached, it may indicate a bug or an attack. Do not change this value
-// without careful consideration of the security and performance implications.
 const MAX_NORMALIZATION_ITERATIONS: usize = 100;
 
 #[cfg(windows)]

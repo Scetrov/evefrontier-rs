@@ -352,21 +352,64 @@ fn print_logo() {
         true
     }
 
+    // Detect Unicode support by checking common environment hints. Falls back to ASCII
+    // box-drawing characters for maximum terminal compatibility.
+    fn supports_unicode() -> bool {
+        // Check for explicit Unicode support hints
+        if let Ok(lang) = std::env::var("LANG") {
+            if lang.to_uppercase().contains("UTF") {
+                return true;
+            }
+        }
+        if let Ok(lc_all) = std::env::var("LC_ALL") {
+            if lc_all.to_uppercase().contains("UTF") {
+                return true;
+            }
+        }
+        // On Windows, assume Unicode support unless TERM suggests otherwise
+        #[cfg(windows)]
+        {
+            if let Ok(term) = std::env::var("TERM") {
+                // Some legacy Windows terminals don't support Unicode
+                return !term.eq_ignore_ascii_case("dumb");
+            }
+            return true;
+        }
+        // On Unix-like systems, default to false unless explicitly set
+        #[cfg(not(windows))]
+        {
+            false
+        }
+    }
+
     let (orange, reset) = if supports_color() {
         (ORANGE_RAW, RESET_RAW)
     } else {
         ("", "")
     };
+    
+    let use_unicode = supports_unicode();
     const TITLE: &str = "EveFrontier CLI";
     const WIDTH: usize = 30;
 
-    let horizontal = "─".repeat(WIDTH);
+    let (top_left, top_right, bottom_left, bottom_right, horizontal, vertical) = if use_unicode {
+        ("╭", "╮", "╰", "╯", "─", "│")
+    } else {
+        ("+", "+", "+", "+", "-", "|")
+    };
+
+    let horizontal_line = horizontal.repeat(WIDTH);
     let centered = format!("{:^width$}", TITLE, width = WIDTH);
 
     println!(
-        "{color}╭{line}╮\n│{text}│\n╰{line}╯{reset}",
+        "{color}{tl}{line}{tr}\n{v}{text}{v}\n{bl}{line}{br}{reset}",
         color = orange,
-        line = horizontal.as_str(),
+        tl = top_left,
+        tr = top_right,
+        bl = bottom_left,
+        br = bottom_right,
+        line = horizontal_line.as_str(),
+        v = vertical,
         text = centered.as_str(),
         reset = reset
     );

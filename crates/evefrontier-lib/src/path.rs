@@ -169,6 +169,10 @@ pub fn find_route_a_star(
     queue.push(AStarEntry::new(start, 0.0, start_estimate));
 
     while let Some(entry) = queue.pop() {
+        // Check if this is the best-known cost for the current node. The first guard checks
+        // if the cost matches the stored g_score (within floating-point epsilon), the second
+        // skips stale entries where we already found a better path. The third arm handles
+        // cases where the guards don't match but we still have a valid score to process.
         let current_score = match g_score.get(&entry.node) {
             Some(score) if (*score - entry.cost.0).abs() < f64::EPSILON => *score,
             Some(score) if *score < entry.cost.0 => continue,

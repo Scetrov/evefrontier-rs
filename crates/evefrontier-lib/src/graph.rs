@@ -5,35 +5,22 @@ use std::sync::Arc;
 use crate::db::{Starmap, SystemId, SystemPosition};
 
 /// Maximum number of nearest neighbors to include in the spatial graph.
-/// 
-/// The value 12 was chosen based on expected jump range mechanics in EVE Frontier,
-/// where most systems have up to 12 nearby candidates for spatial jumps. This limit
-/// balances pathfinding accuracy with performance, as higher values increase graph
-/// density and computational cost. Adjust if game mechanics or performance requirements change.
-/// Cap the spatial graph fan-out so each system only links to its closest neighbours.
 ///
-/// The limit of 12 was chosen because it matches the maximum number of bidirectional stargate
-/// connections observed in the production dataset. This ensures that, in the densest regions,
-/// spatial routing does not exclude any system that could be reached via gates, preserving
-/// route quality and completeness.
+/// This limits the fan-out per node when constructing spatial graphs. The value 12 was chosen
+/// because it matches the maximum number of bidirectional stargate connections observed in the
+/// production dataset, ensuring that spatial routing does not exclude any system reachable via
+/// gates in the densest regions.
 ///
-/// Trade-offs:
-/// - **Performance**: Limiting the number of spatial neighbors reduces the number of edges
-///   considered during graph construction and pathfinding, keeping memory usage and search
-///   times manageable, especially in large or dense areas.
-/// - **Route Quality**: Setting the limit too low could cause the graph to miss nearby systems,
-///   potentially resulting in suboptimal routes. Setting it too high increases computational
-///   cost with diminishing returns, as most systems do not have more than 12 meaningful
-///   spatial neighbors.
+/// # Trade-offs
 ///
-/// The value 12 strikes a balance: it is high enough to avoid starving dense areas of candidate
-/// neighbors, but low enough to keep spatial graph operations performant.
-/// Maximum number of nearest neighbours to consider for spatial edges.
+/// - **Performance**: Limiting spatial neighbors reduces edges considered during graph construction
+///   and pathfinding, keeping memory usage and search times manageable in dense areas.
+/// - **Route Quality**: Setting this too low could miss nearby systems, resulting in suboptimal
+///   routes. Setting it too high increases computational cost with diminishing returns, as most
+///   systems don't have more than 12 meaningful spatial neighbors.
 ///
-/// This limits the fan-out per node when constructing spatial graphs. The
-/// value 12 is chosen as a pragmatic balance between route quality and
-/// performance; it keeps adjacency lists bounded in dense regions while
-/// retaining nearby candidates for pathfinding.
+/// This value strikes a balance: high enough to avoid missing candidates in dense regions, but
+/// low enough to keep spatial graph operations performant.
 const MAX_SPATIAL_NEIGHBORS: usize = 12;
 
 /// Routing graph variants supported by the planner.

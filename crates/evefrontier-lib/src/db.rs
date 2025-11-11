@@ -371,6 +371,8 @@ fn load_adjacency(
     let mut skipped_edges = 0usize;
     for row in rows {
         let (from, to): (SystemId, SystemId) = row?;
+        // Skip edges referencing systems not in the dataset (may occur due to schema
+        // mismatches or incomplete data exports)
         if !systems.contains_key(&from) || !systems.contains_key(&to) {
             skipped_edges += 1;
             continue;
