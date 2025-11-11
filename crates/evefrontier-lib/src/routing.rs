@@ -1,6 +1,6 @@
 use std::fmt;
 
-use std::collections::HashSet;
+use std::collections::{HashSet};
 
 use serde::Serialize;
 
