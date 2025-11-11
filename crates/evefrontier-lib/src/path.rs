@@ -19,7 +19,8 @@ pub fn find_route(graph: &Graph, start: SystemId, goal: SystemId) -> Option<Vec<
     queue.push_back(start);
 
     while let Some(current) = queue.pop_front() {
-        for &next in graph.neighbours(current) {
+        for edge in graph.neighbours(current) {
+            let next = edge.target;
             if visited.contains_key(&next) {
                 continue;
             }

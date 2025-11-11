@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- 2025-11-10 - auto-llm - [auto-llm] - Added graph builders for gate, spatial, and hybrid routing
+  modes, exposed edge metadata for upcoming pathfinders, enriched system records with optional
+  coordinates, and documented the new helpers with tests.
 - 2025-11-10 - auto-llm - [auto-llm] - Enriched the starmap data model with optional region and
   constellation metadata, tightened schema detection, and extended documentation and tests to cover
   the expanded surface.

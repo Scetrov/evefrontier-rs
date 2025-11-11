@@ -17,9 +17,12 @@ pub mod path;
 pub mod routing;
 
 pub use dataset::{default_dataset_path, ensure_c3e6_dataset, ensure_dataset};
-pub use db::{load_starmap, Starmap, System, SystemId, SystemMetadata};
+pub use db::{load_starmap, Starmap, System, SystemId, SystemMetadata, SystemPosition};
 pub use error::{Error, Result};
 pub use github::DatasetRelease;
-pub use graph::{build_graph, Graph};
+pub use graph::{
+    build_gate_graph, build_graph, build_hybrid_graph, build_spatial_graph, Edge, EdgeKind, Graph,
+    GraphMode,
+};
 pub use path::find_route;
 pub use routing::{plan_route, RouteAlgorithm, RouteConstraints, RoutePlan, RouteRequest};

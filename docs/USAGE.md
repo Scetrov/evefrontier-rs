@@ -158,8 +158,13 @@ Key library entrypoints (in `crates/evefrontier-lib`):
   `DatasetRelease::tag("e6c3")`.
 - `load_starmap(db_path: &Path)` — loads systems and jumps into memory with schema detection for the
   `SolarSystems`/`Jumps` schema. Each `System` entry includes optional metadata (region, constellation,
-  and security status when available) so callers do not need to perform additional lookups.
-- `build_graph` / `find_route` — build the adjacency graph and compute unweighted routes using BFS.
+  and security status when available) plus coordinates (when exposed by the dataset) so callers do
+  not need to perform additional lookups.
+- `build_gate_graph`, `build_spatial_graph`, and `build_hybrid_graph` — construct gate-only,
+  spatial-only, or mixed graphs from the `Starmap` depending on the routing mode. These helpers
+  return a `Graph` that tracks edge types and distances.
+- `find_route` — compute unweighted routes using BFS given a `Graph` returned by one of the
+  constructors above.
 
 ## Testing
 

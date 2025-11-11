@@ -34,6 +34,7 @@ fn load_fixture_and_find_route() -> Result<()> {
         Some("TestRegion")
     );
     assert!(start_system.metadata.security_status.is_none());
+    assert!(start_system.position.is_none());
 
     let graph = build_graph(&starmap);
     let route = find_route(&graph, start, goal).expect("route should exist");
@@ -78,6 +79,7 @@ fn load_legacy_schema() -> Result<()> {
         assert!(system.metadata.constellation_id.is_none());
         assert!(system.metadata.region_id.is_none());
         assert!(system.metadata.security_status.is_none());
+        assert!(system.position.is_none());
     }
 
     Ok(())

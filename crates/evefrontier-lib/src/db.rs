@@ -11,6 +11,24 @@ use crate::error::{Error, Result};
 /// Numeric identifier for a solar system.
 pub type SystemId = i64;
 
+/// Cartesian coordinates for a solar system.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SystemPosition {
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
+}
+
+impl SystemPosition {
+    /// Calculate the Euclidean distance to another position.
+    pub fn distance_to(&self, other: &Self) -> f64 {
+        let dx = self.x - other.x;
+        let dy = self.y - other.y;
+        let dz = self.z - other.z;
+        (dx * dx + dy * dy + dz * dz).sqrt()
+    }
+}
+
 /// Additional metadata tracked for each system.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SystemMetadata {
@@ -39,6 +57,7 @@ pub struct System {
     pub id: SystemId,
     pub name: String,
     pub metadata: SystemMetadata,
+    pub position: Option<SystemPosition>,
 }
 
 /// In-memory representation of the starmap graph.
@@ -97,6 +116,14 @@ struct SchemaDefinition {
     constellation_join: Option<MetadataJoin>,
     region_join: Option<MetadataJoin>,
     security_column: Option<&'static str>,
+    position_columns: Option<PositionColumns>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct PositionColumns {
+    x: &'static str,
+    y: &'static str,
+    z: &'static str,
 }
 
 impl SchemaVariant {
@@ -123,6 +150,11 @@ impl SchemaVariant {
                     table_name_column: "regionName",
                 }),
                 security_column: Some("security"),
+                position_columns: Some(PositionColumns {
+                    x: "centerX",
+                    y: "centerY",
+                    z: "centerZ",
+                }),
             },
             SchemaVariant::LegacyMap => SchemaDefinition {
                 variant: SchemaVariant::LegacyMap,
@@ -135,6 +167,7 @@ impl SchemaVariant {
                 constellation_join: None,
                 region_join: None,
                 security_column: None,
+                position_columns: None,
             },
         }
     }
@@ -240,6 +273,16 @@ fn load_static_systems(
         selects.push("NULL AS security_status".to_string());
     }
 
+    if let Some(columns) = schema.position_columns {
+        selects.push(format!("s.{x} AS position_x", x = columns.x));
+        selects.push(format!("s.{y} AS position_y", y = columns.y));
+        selects.push(format!("s.{z} AS position_z", z = columns.z));
+    } else {
+        selects.push("NULL AS position_x".to_string());
+        selects.push("NULL AS position_y".to_string());
+        selects.push("NULL AS position_z".to_string());
+    }
+
     let mut sql = format!(
         "SELECT {selects} FROM {table} s",
         selects = selects.join(", "),
@@ -279,6 +322,7 @@ fn load_legacy_systems(
             id: row.get(0)?,
             name: row.get(1)?,
             metadata: SystemMetadata::empty(),
+            position: None,
         })
     })?;
 
@@ -339,6 +383,15 @@ fn load_adjacency(
 }
 
 fn row_to_system(row: &Row<'_>) -> rusqlite::Result<System> {
+    let position = match (
+        row.get::<_, Option<f64>>(7)?,
+        row.get::<_, Option<f64>>(8)?,
+        row.get::<_, Option<f64>>(9)?,
+    ) {
+        (Some(x), Some(y), Some(z)) => Some(SystemPosition { x, y, z }),
+        _ => None,
+    };
+
     Ok(System {
         id: row.get(0)?,
         name: row.get(1)?,
@@ -349,6 +402,7 @@ fn row_to_system(row: &Row<'_>) -> rusqlite::Result<System> {
             region_name: row.get(5)?,
             security_status: row.get(6)?,
         },
+        position,
     })
 }
 
@@ -406,6 +460,31 @@ fn detect_static_schema(connection: &Connection) -> Result<Option<SchemaDefiniti
     if let Some(column) = schema.security_column {
         if !table_has_columns(connection, schema.systems_table, &[column])? {
             schema.security_column = None;
+        }
+    }
+
+    let position_candidates = [
+        PositionColumns {
+            x: "centerX",
+            y: "centerY",
+            z: "centerZ",
+        },
+        PositionColumns {
+            x: "x",
+            y: "y",
+            z: "z",
+        },
+    ];
+
+    schema.position_columns = None;
+    for columns in position_candidates {
+        if table_has_columns(
+            connection,
+            schema.systems_table,
+            &[columns.x, columns.y, columns.z],
+        )? {
+            schema.position_columns = Some(columns);
+            break;
         }
     }
 

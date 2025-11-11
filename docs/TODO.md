@@ -30,7 +30,7 @@ Tasks are grouped by domain; checkboxes track completion status.
       and legacy `mapSolarSystems` datasets.
 - [x] Define the `Starmap` data model, including system metadata, adjacency lists, and a
       `HashMap` for name-to-ID lookups.
-- [ ] Build graph construction helpers (`graph.rs`) that transform the `Starmap` into search graphs
+- [x] Build graph construction helpers (`graph.rs`) that transform the `Starmap` into search graphs
       for gate, spatial, or hybrid routing modes.
 - [ ] Implement pathfinding algorithms in `path.rs`: breadth-first search for unweighted graphs,
       Dijkstra for weighted routes, and A* for heuristic-guided searches. Support filters such as
