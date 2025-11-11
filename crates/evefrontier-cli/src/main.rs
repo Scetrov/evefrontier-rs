@@ -387,7 +387,6 @@ fn print_logo() {
     } else {
         ("", "")
     };
-    
     let use_unicode = supports_unicode();
     const TITLE: &str = "EveFrontier CLI";
     const WIDTH: usize = 30;
