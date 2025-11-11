@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- 2025-11-10 - auto-llm - [auto-llm] - Implemented weighted route planning with Dijkstra and A*
+  support, added pathfinding constraints for jump distance, avoided systems, gate-free travel, and
+  temperature limits, refreshed CLI/docs to reflect the new options, and extended the routing tests
+  to cover the additional algorithms.
 - 2025-11-10 - auto-llm - [auto-llm] - Added graph builders for gate, spatial, and hybrid routing
   modes, exposed edge metadata for upcoming pathfinders, enriched system records with optional
   coordinates, and documented the new helpers with tests.

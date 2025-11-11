@@ -59,8 +59,9 @@ and the accepted ADRs under [`docs/adrs/`](docs/adrs/).
   ```
 
 All routing subcommands accept `--algorithm`, `--max-jump`, `--avoid`, `--avoid-gates`, and
-`--max-temp` flags. The library currently supports the breadth-first search (`bfs`) algorithm and will
-return a clear error message for options that are not implemented yet.
+`--max-temp` flags. The library supports breadth-first search (`bfs`), Dijkstra (`dijkstra`), and
+heuristic-guided A* (`a-star`) algorithms alongside jump distance limits, system avoidance,
+gate-free traversal, and temperature caps.
 
 ## Library highlights
 
@@ -70,8 +71,9 @@ return a clear error message for options that are not implemented yet.
   for the Era 6 Cycle 3 dataset.
 - `load_starmap` — loads systems and jumps from the SQLite database with basic schema detection.
 - `plan_route` — converts system names into IDs, validates routing options, and plans a route using
-  the currently supported algorithm (breadth-first search). Lower-level helpers such as
-  `build_graph`/`find_route` remain available when needed.
+  breadth-first search, Dijkstra, or A* while applying distance, avoidance, gate, and temperature
+  constraints. Lower-level helpers such as `build_graph`/`find_route_bfs` remain available when
+  needed.
 
 See [`docs/TODO.md`](docs/TODO.md) for the comprehensive backlog covering the downloader, advanced
 pathfinding options, Lambda integration, and additional tooling.

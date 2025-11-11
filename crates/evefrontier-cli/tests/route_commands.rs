@@ -84,7 +84,7 @@ fn path_subcommand_shows_arrow_format() {
 }
 
 #[test]
-fn unsupported_algorithm_returns_error() {
+fn dijkstra_algorithm_is_supported() {
     let (mut cmd, _temp) = prepare_command();
     cmd.arg("route")
         .arg("--from")
@@ -94,7 +94,7 @@ fn unsupported_algorithm_returns_error() {
         .arg("--algorithm")
         .arg("dijkstra");
 
-    cmd.assert().failure().stderr(predicate::str::contains(
-        "route option algorithm dijkstra is not supported yet",
-    ));
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("algorithm: dijkstra"));
 }

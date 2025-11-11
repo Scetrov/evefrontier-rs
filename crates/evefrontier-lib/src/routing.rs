@@ -1,10 +1,15 @@
 use std::fmt;
 
+use std::collections::HashSet;
+
 use serde::Serialize;
 
 use crate::db::{Starmap, SystemId};
 use crate::error::{Error, Result};
-use crate::{build_graph, find_route};
+use crate::graph::{build_gate_graph, build_hybrid_graph, build_spatial_graph, Graph};
+use crate::path::{
+    find_route_a_star, find_route_bfs, find_route_dijkstra, PathConstraints as SearchConstraints,
+};
 
 /// Supported routing algorithms.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -17,12 +22,6 @@ pub enum RouteAlgorithm {
     /// A* search (heuristic guided).
     #[serde(rename = "a_star")]
     AStar,
-}
-
-impl RouteAlgorithm {
-    fn is_supported(self) -> bool {
-        matches!(self, RouteAlgorithm::Bfs)
-    }
 }
 
 impl fmt::Display for RouteAlgorithm {
@@ -46,20 +45,13 @@ pub struct RouteConstraints {
 }
 
 impl RouteConstraints {
-    fn unsupported_option(&self) -> Option<&'static str> {
-        if self.max_jump.is_some() {
-            return Some("--max-jump");
+    fn to_search_constraints(&self, avoided: HashSet<SystemId>) -> SearchConstraints {
+        SearchConstraints {
+            max_jump: self.max_jump,
+            avoid_gates: self.avoid_gates,
+            avoided_systems: avoided,
+            max_temperature: self.max_temperature,
         }
-        if !self.avoid_systems.is_empty() {
-            return Some("--avoid");
-        }
-        if self.avoid_gates {
-            return Some("--avoid-gates");
-        }
-        if self.max_temperature.is_some() {
-            return Some("--max-temp");
-        }
-        None
     }
 }
 
@@ -102,18 +94,6 @@ impl RoutePlan {
 
 /// Compute a route using the requested algorithm and constraints.
 pub fn plan_route(starmap: &Starmap, request: &RouteRequest) -> Result<RoutePlan> {
-    if let Some(option) = request.constraints.unsupported_option() {
-        return Err(Error::UnsupportedRouteOption {
-            option: option.to_string(),
-        });
-    }
-
-    if !request.algorithm.is_supported() {
-        return Err(Error::UnsupportedRouteOption {
-            option: format!("algorithm {}", request.algorithm),
-        });
-    }
-
     let start_id =
         starmap
             .system_id_by_name(&request.start)
@@ -126,8 +106,35 @@ pub fn plan_route(starmap: &Starmap, request: &RouteRequest) -> Result<RoutePlan
             name: request.goal.clone(),
         })?;
 
-    let graph = build_graph(starmap);
-    let Some(route) = find_route(&graph, start_id, goal_id) else {
+    let avoided = resolve_avoided_systems(starmap, &request.constraints.avoid_systems)?;
+    let constraints = request.constraints.to_search_constraints(avoided);
+
+    if constraints.avoided_systems.contains(&start_id)
+        || constraints.avoided_systems.contains(&goal_id)
+        || !system_meets_temperature(starmap, start_id, constraints.max_temperature)
+        || !system_meets_temperature(starmap, goal_id, constraints.max_temperature)
+    {
+        return Err(Error::RouteNotFound {
+            start: request.start.clone(),
+            goal: request.goal.clone(),
+        });
+    }
+
+    let graph = select_graph(starmap, request.algorithm, &constraints);
+
+    let route = match request.algorithm {
+        RouteAlgorithm::Bfs => {
+            find_route_bfs(&graph, Some(starmap), start_id, goal_id, &constraints)
+        }
+        RouteAlgorithm::Dijkstra => {
+            find_route_dijkstra(&graph, Some(starmap), start_id, goal_id, &constraints)
+        }
+        RouteAlgorithm::AStar => {
+            find_route_a_star(&graph, Some(starmap), start_id, goal_id, &constraints)
+        }
+    };
+
+    let Some(route) = route else {
         return Err(Error::RouteNotFound {
             start: request.start.clone(),
             goal: request.goal.clone(),
@@ -140,4 +147,43 @@ pub fn plan_route(starmap: &Starmap, request: &RouteRequest) -> Result<RoutePlan
         goal: goal_id,
         steps: route,
     })
+}
+
+fn resolve_avoided_systems(starmap: &Starmap, avoided: &[String]) -> Result<HashSet<SystemId>> {
+    let mut resolved = HashSet::new();
+    for name in avoided {
+        let id = starmap
+            .system_id_by_name(name)
+            .ok_or_else(|| Error::UnknownSystem { name: name.clone() })?;
+        resolved.insert(id);
+    }
+    Ok(resolved)
+}
+
+fn system_meets_temperature(starmap: &Starmap, system: SystemId, limit: Option<f64>) -> bool {
+    let Some(limit) = limit else {
+        return true;
+    };
+
+    starmap
+        .systems
+        .get(&system)
+        .and_then(|sys| sys.metadata.temperature)
+        .map(|temperature| temperature <= limit)
+        .unwrap_or(true)
+}
+
+fn select_graph(
+    starmap: &Starmap,
+    algorithm: RouteAlgorithm,
+    constraints: &SearchConstraints,
+) -> Graph {
+    if constraints.avoid_gates {
+        return build_spatial_graph(starmap);
+    }
+
+    match algorithm {
+        RouteAlgorithm::Bfs => build_gate_graph(starmap),
+        RouteAlgorithm::Dijkstra | RouteAlgorithm::AStar => build_hybrid_graph(starmap),
+    }
 }

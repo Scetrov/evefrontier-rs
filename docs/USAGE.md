@@ -121,19 +121,20 @@ cargo run -p evefrontier-cli -- path --from "Y:170N" --to "BetaTest" --data-dir 
 
 ### Routing options
 
-The routing subcommands accept additional flags for future functionality:
+The routing subcommands accept several flags that map directly to the library's route planner:
 
-- `--algorithm <bfs|dijkstra|a-star>` — select the pathfinding algorithm. At present only `bfs` is
-  implemented; selecting another algorithm produces a clear error message.
-- `--max-jump <LIGHT-YEARS>` — limit the jump distance when the algorithm supports it (not yet
-  available).
+- `--algorithm <bfs|dijkstra|a-star>` — select the pathfinding algorithm. `bfs` treats the graph as
+  unweighted, `dijkstra` optimises total travel distance, and `a-star` uses system coordinates (when
+  available) as a heuristic.
+- `--max-jump <LIGHT-YEARS>` — limit the maximum distance of an individual jump. Direct edges that
+  exceed the threshold are pruned, encouraging multi-hop routes when necessary.
 - `--avoid <SYSTEM>` — avoid specific systems by name. Repeat the flag to provide more than one
-  entry.
-- `--avoid-gates` — prefer non-gate traversal modes (not yet supported).
-- `--max-temp <KELVIN>` — constrain the maximum temperature of systems along the route.
-
-Unsupported options are rejected by the library so users receive immediate feedback instead of silent
-failures.
+  entry. Avoiding the start or destination results in a clear error.
+- `--avoid-gates` — restrict the search to spatial traversal. Spatial edges are derived from the
+  system coordinates stored in the dataset; if coordinates are absent the graph may not contain
+  spatial edges.
+- `--max-temp <KELVIN>` — constrain the maximum temperature of systems along the route. Systems that
+  do not expose a temperature reading are treated as safe.
 
 ## Configuration & data path resolution
 

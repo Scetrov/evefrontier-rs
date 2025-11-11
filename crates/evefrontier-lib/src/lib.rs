@@ -24,5 +24,7 @@ pub use graph::{
     build_gate_graph, build_graph, build_hybrid_graph, build_spatial_graph, Edge, EdgeKind, Graph,
     GraphMode,
 };
-pub use path::find_route;
+pub use path::{
+    find_route, find_route_a_star, find_route_bfs, find_route_dijkstra, PathConstraints,
+};
 pub use routing::{plan_route, RouteAlgorithm, RouteConstraints, RoutePlan, RouteRequest};

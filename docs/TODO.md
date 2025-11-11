@@ -32,7 +32,7 @@ Tasks are grouped by domain; checkboxes track completion status.
       `HashMap` for name-to-ID lookups.
 - [x] Build graph construction helpers (`graph.rs`) that transform the `Starmap` into search graphs
       for gate, spatial, or hybrid routing modes.
-- [ ] Implement pathfinding algorithms in `path.rs`: breadth-first search for unweighted graphs,
+- [x] Implement pathfinding algorithms in `path.rs`: breadth-first search for unweighted graphs,
       Dijkstra for weighted routes, and A* for heuristic-guided searches. Support filters such as
       maximum jump distance, gate-only routes, spatial routes, avoided systems, and temperature
       constraints.

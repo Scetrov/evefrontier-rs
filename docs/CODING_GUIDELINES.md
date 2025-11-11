@@ -21,3 +21,10 @@ EveFrontier workspace.
   mistakes.
 - Keep user-facing strings localized in a single place when practical so the CLI and Lambdas remain
   consistent.
+
+## Testing
+
+- Always finish a development session with a clean run of `cargo fmt`,
+  `cargo clippy --all-targets --all-features`, and `cargo test --workspace --locked`.
+  Document any deviations in the pull request so reviewers understand why a
+  check could not be executed locally.

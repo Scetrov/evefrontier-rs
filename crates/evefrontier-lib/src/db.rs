@@ -37,6 +37,7 @@ pub struct SystemMetadata {
     pub region_id: Option<i64>,
     pub region_name: Option<String>,
     pub security_status: Option<f64>,
+    pub temperature: Option<f64>,
 }
 
 impl SystemMetadata {
@@ -47,6 +48,7 @@ impl SystemMetadata {
             region_id: None,
             region_name: None,
             security_status: None,
+            temperature: None,
         }
     }
 }
@@ -401,6 +403,7 @@ fn row_to_system(row: &Row<'_>) -> rusqlite::Result<System> {
             region_id: row.get(4)?,
             region_name: row.get(5)?,
             security_status: row.get(6)?,
+            temperature: None,
         },
         position,
     })
