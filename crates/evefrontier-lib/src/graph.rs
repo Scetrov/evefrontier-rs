@@ -205,7 +205,5 @@ fn merge_adjacency(
 }
 
 fn compare_distance(a: f64, b: f64) -> Ordering {
-    // Treat NaN as greater so systems with invalid coordinates (if any
-    // slipped through) appear at the end of neighbour lists.
     a.partial_cmp(&b).unwrap_or(Ordering::Greater)
 }
