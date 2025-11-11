@@ -38,13 +38,33 @@ and the accepted ADRs under [`docs/adrs/`](docs/adrs/).
    ```bash
    cargo run -p evefrontier-cli -- download
    cargo run -p evefrontier-cli -- route --from "Y:170N" --to "BetaTest"
-   ```
+  ```
 
-   The `--data-dir` flag accepts either a directory (the dataset filename will be appended) or a path
-   to a `.db` file. If omitted, the CLI resolves the dataset location using the order described in
-   [`docs/INITIAL_SETUP.md`](docs/INITIAL_SETUP.md). Pass `--dataset e6c2` (for example) to download a
-   specific dataset tag; otherwise the CLI downloads the latest release from
-   [`Scetrov/evefrontier_datasets`](https://github.com/Scetrov/evefrontier_datasets).
+  The `--data-dir` flag accepts either a directory (the dataset filename will be appended) or a path
+  to a `.db` file. If omitted, the CLI resolves the dataset location using the order described in
+  [`docs/INITIAL_SETUP.md`](docs/INITIAL_SETUP.md). Pass `--dataset e6c2` (for example) to download a
+  specific dataset tag; otherwise the CLI downloads the latest release from
+  [`Scetrov/evefrontier_datasets`](https://github.com/Scetrov/evefrontier_datasets).
+
+- Use `search` to emit the same route as JSON-ready "search" output:
+
+  ```pwsh
+  cargo run -p evefrontier-cli -- search --from "Y:170N" --to "BetaTest" --format json
+  ```
+
+- Use `path` when you need an arrow-delimited sequence of systems for other tools:
+
+  ```pwsh
+  cargo run -p evefrontier-cli -- path --from "Y:170N" --to "BetaTest"
+  ```
+
+- Apply `--format rich` for Markdown-style bullet output or `--format note` to emit an in-game note
+  listing the systems in order.
+
+All routing subcommands accept `--algorithm`, `--max-jump`, `--avoid`, `--avoid-gates`, and
+`--max-temp` flags. The library supports breadth-first search (`bfs`), Dijkstra (`dijkstra`), and
+heuristic-guided A* (`a-star`) algorithms alongside jump distance limits, system avoidance,
+gate-free traversal, and temperature caps.
 
 ## Library highlights
 
@@ -53,8 +73,10 @@ and the accepted ADRs under [`docs/adrs/`](docs/adrs/).
   it under the OS cache directory. `ensure_c3e6_dataset` remains available as a convenience wrapper
   for the Era 6 Cycle 3 dataset.
 - `load_starmap` — loads systems and jumps from the SQLite database with basic schema detection.
-- `build_graph` and `find_route` — construct an adjacency graph and compute simple breadth-first
-  routes between two systems.
+- `plan_route` — converts system names into IDs, validates routing options, and plans a route using
+  breadth-first search, Dijkstra, or A* while applying distance, avoidance, gate, and temperature
+  constraints. Lower-level helpers such as `build_graph`/`find_route_bfs` remain available when
+  needed.
 
 See [`docs/TODO.md`](docs/TODO.md) for the comprehensive backlog covering the downloader, advanced
 pathfinding options, Lambda integration, and additional tooling.

@@ -1,16 +1,36 @@
+use std::fmt;
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
-use clap::{Parser, Subcommand};
+use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
+use serde::Serialize;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 use evefrontier_lib::{
-    build_graph, ensure_dataset, find_route, load_starmap, DatasetRelease, Error as LibError,
+    ensure_dataset, load_starmap, plan_route, DatasetRelease, RouteAlgorithm, RouteConstraints,
+    RouteOutputKind, RouteRenderMode, RouteRequest, RouteSummary, Starmap,
 };
 
 #[derive(Parser, Debug)]
-#[command(author, version, about = "EveFrontier dataset utilities")]
+#[command(
+    author,
+    version,
+    about = "EveFrontier dataset utilities",
+    long_about = None,
+    propagate_version = true,
+    arg_required_else_help = true
+)]
 struct Cli {
+    #[command(flatten)]
+    global: GlobalOptions,
+
+    #[command(subcommand)]
+    command: Command,
+}
+
+#[derive(Args, Debug, Clone)]
+struct GlobalOptions {
     /// Override the dataset directory or file path.
     #[arg(long)]
     data_dir: Option<PathBuf>,
@@ -19,8 +39,13 @@ struct Cli {
     #[arg(long)]
     dataset: Option<String>,
 
-    #[command(subcommand)]
-    command: Command,
+    /// Select the output format for CLI responses.
+    #[arg(long, value_enum, default_value_t = OutputFormat::default())]
+    format: OutputFormat,
+
+    /// Suppress the EveFrontier CLI logo banner.
+    #[arg(long, action = ArgAction::SetTrue)]
+    no_logo: bool,
 }
 
 #[derive(Subcommand, Debug)]
@@ -28,75 +53,277 @@ enum Command {
     /// Ensure the dataset is downloaded and report its location.
     Download,
     /// Compute a route between two system names using the loaded dataset.
-    Route {
-        /// Starting system name.
-        #[arg(long = "from")]
-        from: String,
-        /// Destination system name.
-        #[arg(long = "to")]
-        to: String,
-    },
+    Route(RouteCommandArgs),
+    /// Inspect a candidate route with additional diagnostic metadata.
+    Search(RouteCommandArgs),
+    /// Output the raw path between two systems for downstream tooling.
+    Path(RouteCommandArgs),
 }
 
-fn main() -> Result<()> {
-    init_tracing();
-    let Cli {
-        data_dir,
-        dataset,
-        command,
-    } = Cli::parse();
+#[derive(Args, Debug, Clone)]
+struct RouteCommandArgs {
+    #[command(flatten)]
+    endpoints: RouteEndpoints,
+    #[command(flatten)]
+    options: RouteOptionsArgs,
+}
 
-    match command {
-        Command::Download => handle_download(data_dir.as_deref(), dataset.as_deref()),
-        Command::Route { from, to } => {
-            handle_route(data_dir.as_deref(), dataset.as_deref(), &from, &to)
+impl RouteCommandArgs {
+    fn from(&self) -> &str {
+        &self.endpoints.from
+    }
+
+    fn to(&self) -> &str {
+        &self.endpoints.to
+    }
+
+    fn to_request(&self) -> RouteRequest {
+        RouteRequest {
+            start: self.endpoints.from.clone(),
+            goal: self.endpoints.to.clone(),
+            algorithm: self.options.algorithm.into(),
+            constraints: RouteConstraints {
+                max_jump: self.options.max_jump,
+                avoid_systems: self.options.avoid.clone(),
+                avoid_gates: self.options.avoid_gates,
+                max_temperature: self.options.max_temp,
+            },
         }
     }
 }
 
-fn handle_download(target: Option<&Path>, dataset: Option<&str>) -> Result<()> {
-    let release = dataset_release(dataset);
-    let dataset_path = ensure_dataset(target, release)
-        .context("failed to locate or download the EveFrontier dataset")?;
-    println!("Dataset available at {}", dataset_path.display());
-    Ok(())
+#[derive(Args, Debug, Clone)]
+struct RouteEndpoints {
+    /// Starting system name.
+    #[arg(long = "from")]
+    from: String,
+    /// Destination system name.
+    #[arg(long = "to")]
+    to: String,
 }
 
-fn handle_route(target: Option<&Path>, dataset: Option<&str>, from: &str, to: &str) -> Result<()> {
-    let release = dataset_release(dataset);
-    let dataset_path = ensure_dataset(target, release)
+#[derive(Args, Debug, Clone)]
+struct RouteOptionsArgs {
+    /// Algorithm to use when planning the route.
+    #[arg(long, value_enum, default_value_t = RouteAlgorithmArg::default())]
+    algorithm: RouteAlgorithmArg,
+
+    /// Maximum jump distance (light-years) when computing the route.
+    #[arg(long = "max-jump")]
+    max_jump: Option<f64>,
+
+    /// Systems to avoid when building the path. Repeat for multiple systems.
+    #[arg(long = "avoid")]
+    avoid: Vec<String>,
+
+    /// Avoid gates entirely (prefer spatial or traversal routes).
+    #[arg(long = "avoid-gates", action = ArgAction::SetTrue)]
+    avoid_gates: bool,
+
+    /// Maximum system temperature threshold in Kelvin.
+    #[arg(long = "max-temp")]
+    max_temp: Option<f64>,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum, Default)]
+enum RouteAlgorithmArg {
+    #[default]
+    Bfs,
+    Dijkstra,
+    #[value(name = "a-star")]
+    AStar,
+}
+
+impl From<RouteAlgorithmArg> for RouteAlgorithm {
+    fn from(value: RouteAlgorithmArg) -> Self {
+        match value {
+            RouteAlgorithmArg::Bfs => RouteAlgorithm::Bfs,
+            RouteAlgorithmArg::Dijkstra => RouteAlgorithm::Dijkstra,
+            RouteAlgorithmArg::AStar => RouteAlgorithm::AStar,
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum, Default)]
+enum OutputFormat {
+    #[default]
+    Text,
+    Rich,
+    Json,
+    Note,
+}
+
+impl OutputFormat {
+    fn supports_banner(self) -> bool {
+        matches!(self, OutputFormat::Text | OutputFormat::Rich)
+    }
+
+    fn render_download(self, output: &DownloadOutput) -> Result<()> {
+        match self {
+            OutputFormat::Text | OutputFormat::Rich | OutputFormat::Note => {
+                println!(
+                    "Dataset available at {} (requested release: {})",
+                    output.dataset_path, output.release
+                );
+            }
+            OutputFormat::Json => {
+                let mut stdout = io::stdout();
+                serde_json::to_writer_pretty(&mut stdout, output)?;
+                stdout.write_all(b"\n")?;
+            }
+        }
+        Ok(())
+    }
+
+    fn render_route_result(self, summary: &RouteSummary) -> Result<()> {
+        match self {
+            OutputFormat::Text => {
+                print!("{}", summary.render(RouteRenderMode::PlainText));
+            }
+            OutputFormat::Rich => {
+                print!("{}", summary.render(RouteRenderMode::RichText));
+            }
+            OutputFormat::Json => {
+                let mut stdout = io::stdout();
+                serde_json::to_writer_pretty(&mut stdout, summary)?;
+                stdout.write_all(b"\n")?;
+            }
+            OutputFormat::Note => {
+                print!("{}", summary.render(RouteRenderMode::InGameNote));
+            }
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct DownloadOutput {
+    dataset_path: String,
+    release: ReleaseRequest,
+}
+
+impl DownloadOutput {
+    fn new(dataset_path: &Path, release: &DatasetRelease) -> Self {
+        Self {
+            dataset_path: dataset_path.display().to_string(),
+            release: release.into(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+enum ReleaseRequest {
+    Latest,
+    Tag { value: String },
+}
+
+impl From<&DatasetRelease> for ReleaseRequest {
+    fn from(value: &DatasetRelease) -> Self {
+        match value {
+            DatasetRelease::Latest => ReleaseRequest::Latest,
+            DatasetRelease::Tag(tag) => ReleaseRequest::Tag { value: tag.clone() },
+        }
+    }
+}
+
+impl fmt::Display for ReleaseRequest {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ReleaseRequest::Latest => write!(f, "latest"),
+            ReleaseRequest::Tag { value } => write!(f, "tag {}", value),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct AppContext {
+    options: GlobalOptions,
+}
+
+impl AppContext {
+    fn new(options: GlobalOptions) -> Self {
+        Self { options }
+    }
+
+    fn dataset_release(&self) -> DatasetRelease {
+        self.options
+            .dataset
+            .as_deref()
+            .map(DatasetRelease::tag)
+            .unwrap_or_else(DatasetRelease::latest)
+    }
+
+    fn target_path(&self) -> Option<&Path> {
+        self.options.data_dir.as_deref()
+    }
+
+    fn output_format(&self) -> OutputFormat {
+        self.options.format
+    }
+
+    fn should_show_logo(&self) -> bool {
+        self.output_format().supports_banner() && !self.options.no_logo
+    }
+}
+
+fn main() -> Result<()> {
+    init_tracing();
+    let cli = Cli::parse();
+    let context = AppContext::new(cli.global);
+
+    if context.should_show_logo() {
+        print_logo();
+    }
+
+    match cli.command {
+        Command::Download => handle_download(&context),
+        Command::Route(route_args) => {
+            handle_route_command(&context, &route_args, RouteOutputKind::Route)
+        }
+        Command::Search(route_args) => {
+            handle_route_command(&context, &route_args, RouteOutputKind::Search)
+        }
+        Command::Path(route_args) => {
+            handle_route_command(&context, &route_args, RouteOutputKind::Path)
+        }
+    }
+}
+
+fn handle_download(context: &AppContext) -> Result<()> {
+    let release = context.dataset_release();
+    let dataset_path = ensure_dataset(context.target_path(), release.clone())
+        .context("failed to locate or download the EveFrontier dataset")?;
+    let output = DownloadOutput::new(&dataset_path, &release);
+    context.output_format().render_download(&output)
+}
+
+fn handle_route_command(
+    context: &AppContext,
+    args: &RouteCommandArgs,
+    kind: RouteOutputKind,
+) -> Result<()> {
+    let starmap = load_starmap_from_context(context)?;
+    let request = args.to_request();
+    let plan = plan_route(&starmap, &request).with_context(|| {
+        format!(
+            "failed to compute route between {} and {}",
+            args.from(),
+            args.to()
+        )
+    })?;
+
+    let summary = RouteSummary::from_plan(kind, &starmap, &plan)
+        .context("failed to build route summary for display")?;
+    context.output_format().render_route_result(&summary)
+}
+
+fn load_starmap_from_context(context: &AppContext) -> Result<Starmap> {
+    let dataset_path = ensure_dataset(context.target_path(), context.dataset_release())
         .context("failed to locate or download the EveFrontier dataset")?;
     let starmap = load_starmap(&dataset_path)
         .with_context(|| format!("failed to load dataset from {}", dataset_path.display()))?;
-    let start_id = starmap
-        .system_id_by_name(from)
-        .ok_or_else(|| LibError::UnknownSystem {
-            name: from.to_string(),
-        })?;
-    let goal_id = starmap
-        .system_id_by_name(to)
-        .ok_or_else(|| LibError::UnknownSystem {
-            name: to.to_string(),
-        })?;
-
-    let graph = build_graph(&starmap);
-    let route = find_route(&graph, start_id, goal_id).ok_or_else(|| LibError::RouteNotFound {
-        start: from.to_string(),
-        goal: to.to_string(),
-    })?;
-
-    println!("Route:");
-    for system_id in route {
-        let name = starmap.system_name(system_id).unwrap_or("<unknown>");
-        println!("- {} ({})", name, system_id);
-    }
-
-    Ok(())
-}
-
-fn dataset_release(spec: Option<&str>) -> DatasetRelease {
-    spec.map(DatasetRelease::tag)
-        .unwrap_or_else(DatasetRelease::latest)
+    Ok(starmap)
 }
 
 fn init_tracing() {
@@ -106,4 +333,83 @@ fn init_tracing() {
         .finish();
 
     let _ = tracing::subscriber::set_global_default(subscriber);
+}
+
+fn print_logo() {
+    const ORANGE_RAW: &str = "\x1b[38;5;208m";
+    const RESET_RAW: &str = "\x1b[0m";
+    // Respect environment conventions to avoid emitting ANSI escapes in
+    // non-capable environments. Honor the NO_COLOR env var and `TERM=dumb`.
+    fn supports_color() -> bool {
+        if std::env::var_os("NO_COLOR").is_some() {
+            return false;
+        }
+        if let Ok(term) = std::env::var("TERM") {
+            if term.eq_ignore_ascii_case("dumb") {
+                return false;
+            }
+        }
+        true
+    }
+
+    // Detect Unicode support by checking common environment hints. Falls back to ASCII
+    // box-drawing characters for maximum terminal compatibility.
+    fn supports_unicode() -> bool {
+        // Check for explicit Unicode support hints
+        if let Ok(lang) = std::env::var("LANG") {
+            if lang.to_uppercase().contains("UTF") {
+                return true;
+            }
+        }
+        if let Ok(lc_all) = std::env::var("LC_ALL") {
+            if lc_all.to_uppercase().contains("UTF") {
+                return true;
+            }
+        }
+        // On Windows, assume Unicode support unless TERM suggests otherwise
+        #[cfg(windows)]
+        {
+            if let Ok(term) = std::env::var("TERM") {
+                // Some legacy Windows terminals don't support Unicode
+                return !term.eq_ignore_ascii_case("dumb");
+            }
+            return true;
+        }
+        // On Unix-like systems, default to false unless explicitly set
+        #[cfg(not(windows))]
+        {
+            false
+        }
+    }
+
+    let (orange, reset) = if supports_color() {
+        (ORANGE_RAW, RESET_RAW)
+    } else {
+        ("", "")
+    };
+    let use_unicode = supports_unicode();
+    const TITLE: &str = "EveFrontier CLI";
+    const WIDTH: usize = 30;
+
+    let (top_left, top_right, bottom_left, bottom_right, horizontal, vertical) = if use_unicode {
+        ("╭", "╮", "╰", "╯", "─", "│")
+    } else {
+        ("+", "+", "+", "+", "-", "|")
+    };
+
+    let horizontal_line = horizontal.repeat(WIDTH);
+    let centered = format!("{:^width$}", TITLE, width = WIDTH);
+
+    println!(
+        "{color}{tl}{line}{tr}\n{v}{text}{v}\n{bl}{line}{br}{reset}",
+        color = orange,
+        tl = top_left,
+        tr = top_right,
+        bl = bottom_left,
+        br = bottom_right,
+        line = horizontal_line.as_str(),
+        v = vertical,
+        text = centered.as_str(),
+        reset = reset
+    );
 }

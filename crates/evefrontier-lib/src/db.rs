@@ -1,20 +1,75 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::fmt;
 use std::path::Path;
 use std::sync::Arc;
 
 use rusqlite::{Connection, Row};
-use tracing::debug;
+use tracing::{debug, warn};
 
 use crate::error::{Error, Result};
 
 /// Numeric identifier for a solar system.
 pub type SystemId = i64;
 
-/// Minimal representation of a solar system.
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// Cartesian coordinates for a solar system.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SystemPosition {
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
+}
+
+impl SystemPosition {
+    /// Construct a position from coordinates, rejecting non-finite values so
+    /// downstream graph builders can rely on well-formed distances.
+    pub fn new(x: f64, y: f64, z: f64) -> Option<Self> {
+        if x.is_finite() && y.is_finite() && z.is_finite() {
+            Some(Self { x, y, z })
+        } else {
+            None
+        }
+    }
+
+    /// Calculate the Euclidean distance to another position.
+    pub fn distance_to(&self, other: &Self) -> f64 {
+        let dx = self.x - other.x;
+        let dy = self.y - other.y;
+        let dz = self.z - other.z;
+        (dx * dx + dy * dy + dz * dz).sqrt()
+    }
+}
+
+/// Additional metadata tracked for each system.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SystemMetadata {
+    pub constellation_id: Option<i64>,
+    pub constellation_name: Option<String>,
+    pub region_id: Option<i64>,
+    pub region_name: Option<String>,
+    pub security_status: Option<f64>,
+    pub temperature: Option<f64>,
+}
+
+impl SystemMetadata {
+    fn empty() -> Self {
+        Self {
+            constellation_id: None,
+            constellation_name: None,
+            region_id: None,
+            region_name: None,
+            security_status: None,
+            temperature: None,
+        }
+    }
+}
+
+/// Representation of a solar system with optional metadata.
+#[derive(Debug, Clone, PartialEq)]
 pub struct System {
     pub id: SystemId,
     pub name: String,
+    pub metadata: SystemMetadata,
+    pub position: Option<SystemPosition>,
 }
 
 /// In-memory representation of the starmap graph.
@@ -43,14 +98,109 @@ enum SchemaVariant {
     LegacyMap,
 }
 
+impl fmt::Display for SchemaVariant {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let value = match self {
+            SchemaVariant::StaticData => "static_data",
+            SchemaVariant::LegacyMap => "legacy_map",
+        };
+        f.write_str(value)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct MetadataJoin {
+    fk_column: &'static str,
+    table: &'static str,
+    table_id_column: &'static str,
+    table_name_column: &'static str,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct SchemaDefinition {
+    variant: SchemaVariant,
+    systems_table: &'static str,
+    system_id_column: &'static str,
+    system_name_column: &'static str,
+    jumps_table: &'static str,
+    jump_from_column: &'static str,
+    jump_to_column: &'static str,
+    constellation_join: Option<MetadataJoin>,
+    region_join: Option<MetadataJoin>,
+    security_column: Option<&'static str>,
+    position_columns: Option<PositionColumns>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct PositionColumns {
+    x: &'static str,
+    y: &'static str,
+    z: &'static str,
+}
+
+impl SchemaVariant {
+    fn definition(self) -> SchemaDefinition {
+        match self {
+            SchemaVariant::StaticData => SchemaDefinition {
+                variant: SchemaVariant::StaticData,
+                systems_table: "SolarSystems",
+                system_id_column: "solarSystemId",
+                system_name_column: "name",
+                jumps_table: "Jumps",
+                jump_from_column: "fromSystemId",
+                jump_to_column: "toSystemId",
+                constellation_join: Some(MetadataJoin {
+                    fk_column: "constellationID",
+                    table: "Constellations",
+                    table_id_column: "constellationID",
+                    table_name_column: "constellationName",
+                }),
+                region_join: Some(MetadataJoin {
+                    fk_column: "regionID",
+                    table: "Regions",
+                    table_id_column: "regionID",
+                    table_name_column: "regionName",
+                }),
+                security_column: Some("security"),
+                position_columns: Some(PositionColumns {
+                    x: "centerX",
+                    y: "centerY",
+                    z: "centerZ",
+                }),
+            },
+            SchemaVariant::LegacyMap => SchemaDefinition {
+                variant: SchemaVariant::LegacyMap,
+                systems_table: "mapSolarSystems",
+                system_id_column: "solarSystemID",
+                system_name_column: "solarSystemName",
+                jumps_table: "mapSolarSystemJumps",
+                jump_from_column: "fromSolarSystemID",
+                jump_to_column: "toSolarSystemID",
+                constellation_join: None,
+                region_join: None,
+                security_column: None,
+                position_columns: None,
+            },
+        }
+    }
+}
+
 /// Load systems and jumps from a dataset into memory.
+///
+/// The loader performs runtime schema detection so both the current
+/// `SolarSystems`/`Jumps` tables and the legacy
+/// `mapSolarSystems`/`mapSolarSystemJumps` layout are supported. When metadata
+/// tables are available, systems are annotated with their region,
+/// constellation, and security status. The loader also verifies that
+/// referenced jump endpoints exist in the dataset to avoid propagating corrupt
+/// edges into the in-memory graph.
 pub fn load_starmap(db_path: &Path) -> Result<Starmap> {
     let connection = Connection::open(db_path)?;
     let schema = detect_schema(&connection)?;
-    debug!(?schema, path = %db_path.display(), "loading starmap");
+    debug!(schema = %schema.variant, path = %db_path.display(), "loading starmap");
 
-    let systems = load_systems(&connection, schema)?;
-    let adjacency = Arc::new(load_adjacency(&connection, schema)?);
+    let systems = load_systems(&connection, &schema)?;
+    let adjacency = Arc::new(load_adjacency(&connection, &schema, &systems)?);
 
     let mut name_to_id = HashMap::new();
     for system in systems.values() {
@@ -64,46 +214,129 @@ pub fn load_starmap(db_path: &Path) -> Result<Starmap> {
     })
 }
 
-fn detect_schema(connection: &Connection) -> Result<SchemaVariant> {
-    let mut stmt = connection.prepare(
-        "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('SolarSystems', 'mapSolarSystems')",
-    )?;
-    let mut rows = stmt.query([])?;
-
-    let mut found = Vec::new();
-    while let Some(row) = rows.next()? {
-        let name: String = row.get(0)?;
-        found.push(name);
+fn detect_schema(connection: &Connection) -> Result<SchemaDefinition> {
+    if let Some(schema) = detect_static_schema(connection)? {
+        return Ok(schema);
+    }
+    if let Some(schema) = detect_legacy_schema(connection)? {
+        return Ok(schema);
     }
 
-    if found.iter().any(|t| t == "SolarSystems") {
-        Ok(SchemaVariant::StaticData)
-    } else if found.iter().any(|t| t == "mapSolarSystems") {
-        Ok(SchemaVariant::LegacyMap)
-    } else {
-        Err(Error::UnsupportedSchema)
-    }
+    Err(Error::UnsupportedSchema)
 }
 
 fn load_systems(
     connection: &Connection,
-    schema: SchemaVariant,
+    schema: &SchemaDefinition,
 ) -> Result<HashMap<SystemId, System>> {
-    let (sql, id_col, name_col) = match schema {
-        SchemaVariant::StaticData => (
-            "SELECT solarSystemId, name FROM SolarSystems",
-            0usize,
-            1usize,
-        ),
-        SchemaVariant::LegacyMap => (
-            "SELECT solarSystemID, solarSystemName FROM mapSolarSystems",
-            0usize,
-            1usize,
-        ),
-    };
+    match schema.variant {
+        SchemaVariant::StaticData => load_static_systems(connection, schema),
+        SchemaVariant::LegacyMap => load_legacy_systems(connection, schema),
+    }
+}
 
-    let mut stmt = connection.prepare(sql)?;
-    let rows = stmt.query_map([], |row| row_to_system(row, id_col, name_col))?;
+fn load_static_systems(
+    connection: &Connection,
+    schema: &SchemaDefinition,
+) -> Result<HashMap<SystemId, System>> {
+    let mut selects = vec![
+        format!("s.{id} AS system_id", id = schema.system_id_column),
+        format!("s.{name} AS system_name", name = schema.system_name_column),
+    ];
+    let mut joins = Vec::new();
+
+    if let Some(join) = schema.constellation_join {
+        selects.push(format!("s.{fk} AS constellation_id", fk = join.fk_column));
+        selects.push(format!(
+            "c.{name} AS constellation_name",
+            name = join.table_name_column
+        ));
+        joins.push(format!(
+            "LEFT JOIN {table} c ON c.{id} = s.{fk}",
+            table = join.table,
+            id = join.table_id_column,
+            fk = join.fk_column
+        ));
+    } else {
+        selects.push("NULL AS constellation_id".to_string());
+        selects.push("NULL AS constellation_name".to_string());
+    }
+
+    if let Some(join) = schema.region_join {
+        selects.push(format!("s.{fk} AS region_id", fk = join.fk_column));
+        selects.push(format!(
+            "r.{name} AS region_name",
+            name = join.table_name_column
+        ));
+        joins.push(format!(
+            "LEFT JOIN {table} r ON r.{id} = s.{fk}",
+            table = join.table,
+            id = join.table_id_column,
+            fk = join.fk_column
+        ));
+    } else {
+        selects.push("NULL AS region_id".to_string());
+        selects.push("NULL AS region_name".to_string());
+    }
+
+    if let Some(column) = schema.security_column {
+        selects.push(format!("s.{column} AS security_status", column = column));
+    } else {
+        selects.push("NULL AS security_status".to_string());
+    }
+
+    if let Some(columns) = schema.position_columns {
+        selects.push(format!("s.{x} AS position_x", x = columns.x));
+        selects.push(format!("s.{y} AS position_y", y = columns.y));
+        selects.push(format!("s.{z} AS position_z", z = columns.z));
+    } else {
+        selects.push("NULL AS position_x".to_string());
+        selects.push("NULL AS position_y".to_string());
+        selects.push("NULL AS position_z".to_string());
+    }
+
+    let mut sql = format!(
+        "SELECT {selects} FROM {table} s",
+        selects = selects.join(", "),
+        table = schema.systems_table
+    );
+
+    for join in joins {
+        sql.push(' ');
+        sql.push_str(&join);
+    }
+
+    let mut stmt = connection.prepare(&sql)?;
+    let rows = stmt.query_map([], row_to_system)?;
+
+    let mut systems = HashMap::new();
+    for entry in rows {
+        let system = entry?;
+        systems.insert(system.id, system);
+    }
+    Ok(systems)
+}
+
+fn load_legacy_systems(
+    connection: &Connection,
+    schema: &SchemaDefinition,
+) -> Result<HashMap<SystemId, System>> {
+    let sql = format!(
+        "SELECT {id}, {name} FROM {table}",
+        id = schema.system_id_column,
+        name = schema.system_name_column,
+        table = schema.systems_table
+    );
+
+    let mut stmt = connection.prepare(&sql)?;
+    let rows = stmt.query_map([], |row| {
+        Ok(System {
+            id: row.get(0)?,
+            name: row.get(1)?,
+            metadata: SystemMetadata::empty(),
+            position: None,
+        })
+    })?;
 
     let mut systems = HashMap::new();
     for entry in rows {
@@ -121,21 +354,39 @@ fn load_systems(
 /// metadata to represent directionality accurately.
 fn load_adjacency(
     connection: &Connection,
-    schema: SchemaVariant,
+    schema: &SchemaDefinition,
+    systems: &HashMap<SystemId, System>,
 ) -> Result<HashMap<SystemId, Vec<SystemId>>> {
-    let sql = match schema {
-        SchemaVariant::StaticData => "SELECT fromSystemId, toSystemId FROM Jumps",
-        SchemaVariant::LegacyMap => {
-            "SELECT fromSolarSystemID, toSolarSystemID FROM mapSolarSystemJumps"
-        }
-    };
+    let sql = format!(
+        "SELECT {from}, {to} FROM {table}",
+        from = schema.jump_from_column,
+        to = schema.jump_to_column,
+        table = schema.jumps_table
+    );
 
-    let mut stmt = connection.prepare(sql)?;
+    let mut stmt = connection.prepare(&sql)?;
     let rows = stmt.query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?;
 
     let mut adjacency: HashMap<SystemId, Vec<SystemId>> = HashMap::new();
+    let mut skipped_edges = 0usize;
+    let mut invalid_system_ids: HashSet<SystemId> = HashSet::new();
     for row in rows {
         let (from, to): (SystemId, SystemId) = row?;
+        // Skip edges referencing systems not in the dataset (may occur due to schema
+        // mismatches or incomplete data exports)
+        if !systems.contains_key(&from) || !systems.contains_key(&to) {
+            skipped_edges += 1;
+            // Collect a few examples for troubleshooting (limit to 5 to avoid excessive logging)
+            if invalid_system_ids.len() < 5 {
+                if !systems.contains_key(&from) {
+                    invalid_system_ids.insert(from);
+                }
+                if !systems.contains_key(&to) {
+                    invalid_system_ids.insert(to);
+                }
+            }
+            continue;
+        }
         adjacency.entry(from).or_default().push(to);
         adjacency.entry(to).or_default().push(from);
     }
@@ -145,12 +396,196 @@ fn load_adjacency(
         neighbours.dedup();
     }
 
+    if skipped_edges > 0 {
+        warn!(
+            skipped_edges,
+            invalid_system_ids = ?invalid_system_ids,
+            "ignored jump edges referencing unknown systems",
+        );
+    }
+
     Ok(adjacency)
 }
 
-fn row_to_system(row: &Row<'_>, id_col: usize, name_col: usize) -> rusqlite::Result<System> {
+fn row_to_system(row: &Row<'_>) -> rusqlite::Result<System> {
+    // Use named column aliases produced by the SELECT in `load_static_systems`
+    const COL_ID: &str = "system_id";
+    const COL_NAME: &str = "system_name";
+    const COL_CONSTELLATION_ID: &str = "constellation_id";
+    const COL_CONSTELLATION_NAME: &str = "constellation_name";
+    const COL_REGION_ID: &str = "region_id";
+    const COL_REGION_NAME: &str = "region_name";
+    const COL_SECURITY_STATUS: &str = "security_status";
+    const COL_POSITION_X: &str = "position_x";
+    const COL_POSITION_Y: &str = "position_y";
+    const COL_POSITION_Z: &str = "position_z";
+
+    let position = match (
+        row.get::<_, Option<f64>>(COL_POSITION_X)?,
+        row.get::<_, Option<f64>>(COL_POSITION_Y)?,
+        row.get::<_, Option<f64>>(COL_POSITION_Z)?,
+    ) {
+        (Some(x), Some(y), Some(z)) => SystemPosition::new(x, y, z),
+        _ => None,
+    };
+
     Ok(System {
-        id: row.get(id_col)?,
-        name: row.get(name_col)?,
+        id: row.get::<_, SystemId>(COL_ID)?,
+        name: row.get::<_, String>(COL_NAME)?,
+        metadata: SystemMetadata {
+            constellation_id: row.get::<_, Option<i64>>(COL_CONSTELLATION_ID)?,
+            constellation_name: row.get::<_, Option<String>>(COL_CONSTELLATION_NAME)?,
+            region_id: row.get::<_, Option<i64>>(COL_REGION_ID)?,
+            region_name: row.get::<_, Option<String>>(COL_REGION_NAME)?,
+            security_status: row.get::<_, Option<f64>>(COL_SECURITY_STATUS)?,
+            temperature: None,
+        },
+        position,
     })
+}
+
+fn detect_static_schema(connection: &Connection) -> Result<Option<SchemaDefinition>> {
+    let mut schema = SchemaVariant::StaticData.definition();
+
+    if !table_exists(connection, schema.systems_table)?
+        || !table_exists(connection, schema.jumps_table)?
+    {
+        return Ok(None);
+    }
+
+    if !table_has_columns(
+        connection,
+        schema.systems_table,
+        &[schema.system_id_column, schema.system_name_column],
+    )? {
+        return Ok(None);
+    }
+
+    if !table_has_columns(
+        connection,
+        schema.jumps_table,
+        &[schema.jump_from_column, schema.jump_to_column],
+    )? {
+        return Ok(None);
+    }
+
+    if let Some(join) = schema.constellation_join {
+        if !table_has_columns(connection, schema.systems_table, &[join.fk_column])?
+            || !table_exists(connection, join.table)?
+            || !table_has_columns(
+                connection,
+                join.table,
+                &[join.table_id_column, join.table_name_column],
+            )?
+        {
+            schema.constellation_join = None;
+        }
+    }
+
+    if let Some(join) = schema.region_join {
+        if !table_has_columns(connection, schema.systems_table, &[join.fk_column])?
+            || !table_exists(connection, join.table)?
+            || !table_has_columns(
+                connection,
+                join.table,
+                &[join.table_id_column, join.table_name_column],
+            )?
+        {
+            schema.region_join = None;
+        }
+    }
+
+    if let Some(column) = schema.security_column {
+        if !table_has_columns(connection, schema.systems_table, &[column])? {
+            schema.security_column = None;
+        }
+    }
+
+    let position_candidates = [
+        PositionColumns {
+            x: "centerX",
+            y: "centerY",
+            z: "centerZ",
+        },
+        PositionColumns {
+            x: "x",
+            y: "y",
+            z: "z",
+        },
+    ];
+
+    schema.position_columns = None;
+    for columns in position_candidates {
+        if table_has_columns(
+            connection,
+            schema.systems_table,
+            &[columns.x, columns.y, columns.z],
+        )? {
+            schema.position_columns = Some(columns);
+            break;
+        }
+    }
+
+    Ok(Some(schema))
+}
+
+fn detect_legacy_schema(connection: &Connection) -> Result<Option<SchemaDefinition>> {
+    let schema = SchemaVariant::LegacyMap.definition();
+
+    if !table_exists(connection, schema.systems_table)?
+        || !table_exists(connection, schema.jumps_table)?
+    {
+        return Ok(None);
+    }
+
+    if !table_has_columns(
+        connection,
+        schema.systems_table,
+        &[schema.system_id_column, schema.system_name_column],
+    )? {
+        return Ok(None);
+    }
+
+    if !table_has_columns(
+        connection,
+        schema.jumps_table,
+        &[schema.jump_from_column, schema.jump_to_column],
+    )? {
+        return Ok(None);
+    }
+
+    Ok(Some(schema))
+}
+
+fn table_exists(connection: &Connection, table: &str) -> Result<bool> {
+    let mut stmt = connection
+        .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?1 LIMIT 1")?;
+    let mut rows = stmt.query([table])?;
+    Ok(rows.next()?.is_some())
+}
+
+fn table_has_columns(connection: &Connection, table: &str, required: &[&str]) -> Result<bool> {
+    // Validate that table name contains only alphanumeric and underscores
+    if !table.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
+        return Err(rusqlite::Error::InvalidParameterName(format!(
+            "Invalid table name: '{}'. Only alphanumeric and underscores are allowed.",
+            table
+        ))
+        .into());
+    }
+    let pragma = format!("PRAGMA table_info('{table}')");
+    let mut stmt = connection.prepare(&pragma)?;
+    let mut rows = stmt.query([])?;
+
+    let mut columns = Vec::new();
+    while let Some(row) = rows.next()? {
+        let name: String = row.get(1)?;
+        columns.push(name);
+    }
+
+    Ok(required.iter().all(|required| {
+        columns
+            .iter()
+            .any(|column| column.eq_ignore_ascii_case(required))
+    }))
 }

@@ -13,11 +13,20 @@ pub mod db;
 pub mod error;
 pub mod github;
 pub mod graph;
+pub mod output;
 pub mod path;
+pub mod routing;
 
 pub use dataset::{default_dataset_path, ensure_c3e6_dataset, ensure_dataset};
-pub use db::{load_starmap, Starmap, System, SystemId};
+pub use db::{load_starmap, Starmap, System, SystemId, SystemMetadata, SystemPosition};
 pub use error::{Error, Result};
 pub use github::DatasetRelease;
-pub use graph::{build_graph, Graph};
-pub use path::find_route;
+pub use graph::{
+    build_gate_graph, build_graph, build_hybrid_graph, build_spatial_graph, Edge, EdgeKind, Graph,
+    GraphMode,
+};
+pub use output::{RouteEndpoint, RouteOutputKind, RouteRenderMode, RouteStep, RouteSummary};
+pub use path::{
+    find_route, find_route_a_star, find_route_bfs, find_route_dijkstra, PathConstraints,
+};
+pub use routing::{plan_route, RouteAlgorithm, RouteConstraints, RoutePlan, RouteRequest};
