@@ -20,8 +20,8 @@ This document describes how to build and use the `evefrontier-cli` workspace and
 
 ## Run the CLI
 
-The CLI currently exposes two subcommands (`download` and `route`) while the richer surface outlined
-in ADR 0005 is implemented.
+The CLI currently exposes four subcommands (`download`, `route`, `search`, and `path`) while the
+richer surface outlined in ADR 0005 is implemented.
 
 Preferred invocation for end users and scripts:
 
@@ -100,6 +100,40 @@ dataset is not already present, the CLI will download it automatically before co
 ```pwsh
 cargo run -p evefrontier-cli -- route --from "Y:170N" --to "BetaTest" --data-dir docs/fixtures/minimal_static_data.db
 ```
+
+### `search`
+
+Runs the same breadth-first algorithm but labels the output as a search result, which is helpful when
+debugging routing options or consuming the JSON response in tooling.
+
+```pwsh
+cargo run -p evefrontier-cli -- search --from "Y:170N" --to "BetaTest" --format json --data-dir docs/fixtures/minimal_static_data.db
+```
+
+### `path`
+
+Outputs the raw path between two systems using an arrow-delimited format that is easier to pipe into
+scripts.
+
+```pwsh
+cargo run -p evefrontier-cli -- path --from "Y:170N" --to "BetaTest" --data-dir docs/fixtures/minimal_static_data.db
+```
+
+### Routing options
+
+The routing subcommands accept additional flags for future functionality:
+
+- `--algorithm <bfs|dijkstra|a-star>` — select the pathfinding algorithm. At present only `bfs` is
+  implemented; selecting another algorithm produces a clear error message.
+- `--max-jump <LIGHT-YEARS>` — limit the jump distance when the algorithm supports it (not yet
+  available).
+- `--avoid <SYSTEM>` — avoid specific systems by name. Repeat the flag to provide more than one
+  entry.
+- `--avoid-gates` — prefer non-gate traversal modes (not yet supported).
+- `--max-temp <KELVIN>` — constrain the maximum temperature of systems along the route.
+
+Unsupported options are rejected by the library so users receive immediate feedback instead of silent
+failures.
 
 ## Configuration & data path resolution
 

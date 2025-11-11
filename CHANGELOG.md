@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- 2025-11-10 - auto-llm - [auto-llm] - Expanded the CLI with `search`/`path` routing subcommands,
+  introduced a library route planner with option validation, added integration and unit tests, and
+  documented the new flags and usage examples.
 - 2025-11-09 - auto-llm - [auto-llm] - Bounded Windows dataset path normalization with helper
   functions and tests, centered the CLI banner layout, and documented the early-return coding
   guideline.

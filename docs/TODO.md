@@ -50,7 +50,7 @@ Tasks are grouped by domain; checkboxes track completion status.
       and other shared options. Respect the data path resolution order defined in `docs/INITIAL_SETUP.md`.
 - [x] Implement the `download` subcommand that wraps `ensure_c3e6_dataset`, reports the resolved path,
       and exits with appropriate codes.
-- [ ] Implement routing subcommands (`route`, `search`, `path`) that call into the library to build
+- [x] Implement routing subcommands (`route`, `search`, `path`) that call into the library to build
       the graph and produce formatted output, including optional arguments (`--algorithm`,
       `--max-jump`, `--avoid`, `--avoid-gates`, `--max-temp`).
 - [ ] Provide friendly error messages for unknown systems and route failures.

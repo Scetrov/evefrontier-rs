@@ -8,8 +8,8 @@ use serde::Serialize;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 use evefrontier_lib::{
-    build_graph, ensure_dataset, find_route, load_starmap, DatasetRelease, Error as LibError,
-    Starmap, SystemId,
+    ensure_dataset, load_starmap, plan_route, DatasetRelease, RouteAlgorithm, RouteConstraints,
+    RoutePlan, RouteRequest, Starmap, SystemId,
 };
 
 #[derive(Parser, Debug)]
@@ -53,17 +53,95 @@ enum Command {
     /// Ensure the dataset is downloaded and report its location.
     Download,
     /// Compute a route between two system names using the loaded dataset.
-    Route(RouteArgs),
+    Route(RouteCommandArgs),
+    /// Inspect a candidate route with additional diagnostic metadata.
+    Search(RouteCommandArgs),
+    /// Output the raw path between two systems for downstream tooling.
+    Path(RouteCommandArgs),
 }
 
 #[derive(Args, Debug, Clone)]
-struct RouteArgs {
+struct RouteCommandArgs {
+    #[command(flatten)]
+    endpoints: RouteEndpoints,
+    #[command(flatten)]
+    options: RouteOptionsArgs,
+}
+
+impl RouteCommandArgs {
+    fn from(&self) -> &str {
+        &self.endpoints.from
+    }
+
+    fn to(&self) -> &str {
+        &self.endpoints.to
+    }
+
+    fn to_request(&self) -> RouteRequest {
+        RouteRequest {
+            start: self.endpoints.from.clone(),
+            goal: self.endpoints.to.clone(),
+            algorithm: self.options.algorithm.into(),
+            constraints: RouteConstraints {
+                max_jump: self.options.max_jump,
+                avoid_systems: self.options.avoid.clone(),
+                avoid_gates: self.options.avoid_gates,
+                max_temperature: self.options.max_temp,
+            },
+        }
+    }
+}
+
+#[derive(Args, Debug, Clone)]
+struct RouteEndpoints {
     /// Starting system name.
     #[arg(long = "from")]
     from: String,
     /// Destination system name.
     #[arg(long = "to")]
     to: String,
+}
+
+#[derive(Args, Debug, Clone)]
+struct RouteOptionsArgs {
+    /// Algorithm to use when planning the route.
+    #[arg(long, value_enum, default_value_t = RouteAlgorithmArg::default())]
+    algorithm: RouteAlgorithmArg,
+
+    /// Maximum jump distance (light-years) when computing the route.
+    #[arg(long = "max-jump")]
+    max_jump: Option<f64>,
+
+    /// Systems to avoid when building the path. Repeat for multiple systems.
+    #[arg(long = "avoid")]
+    avoid: Vec<String>,
+
+    /// Avoid gates entirely (prefer spatial or traversal routes).
+    #[arg(long = "avoid-gates", action = ArgAction::SetTrue)]
+    avoid_gates: bool,
+
+    /// Maximum system temperature threshold in Kelvin.
+    #[arg(long = "max-temp")]
+    max_temp: Option<f64>,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum, Default)]
+enum RouteAlgorithmArg {
+    #[default]
+    Bfs,
+    Dijkstra,
+    #[value(name = "a-star")]
+    AStar,
+}
+
+impl From<RouteAlgorithmArg> for RouteAlgorithm {
+    fn from(value: RouteAlgorithmArg) -> Self {
+        match value {
+            RouteAlgorithmArg::Bfs => RouteAlgorithm::Bfs,
+            RouteAlgorithmArg::Dijkstra => RouteAlgorithm::Dijkstra,
+            RouteAlgorithmArg::AStar => RouteAlgorithm::AStar,
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum, Default)]
@@ -95,7 +173,7 @@ impl OutputFormat {
         Ok(())
     }
 
-    fn render_route(self, summary: &RouteSummary) -> Result<()> {
+    fn render_route_result(self, summary: &RouteSummary) -> Result<()> {
         match self {
             OutputFormat::Text => render_route_text(summary),
             OutputFormat::Json => {
@@ -181,14 +259,46 @@ impl AppContext {
 
 #[derive(Debug, Clone, Serialize)]
 struct RouteSummary {
+    kind: RouteOutputKind,
+    algorithm: RouteAlgorithm,
+    hops: usize,
     start: RouteEndpoint,
     goal: RouteEndpoint,
     steps: Vec<RouteStep>,
 }
 
-impl RouteSummary {
-    fn hop_count(&self) -> usize {
-        self.steps.len().saturating_sub(1)
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "snake_case")]
+enum RouteOutputKind {
+    Route,
+    Search,
+    Path,
+}
+
+impl RouteOutputKind {
+    fn label(self) -> &'static str {
+        match self {
+            RouteOutputKind::Route => "Route",
+            RouteOutputKind::Search => "Search",
+            RouteOutputKind::Path => "Path",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum RouteMode {
+    Route,
+    Search,
+    Path,
+}
+
+impl RouteMode {
+    fn kind(self) -> RouteOutputKind {
+        match self {
+            RouteMode::Route => RouteOutputKind::Route,
+            RouteMode::Search => RouteOutputKind::Search,
+            RouteMode::Path => RouteOutputKind::Path,
+        }
     }
 }
 
@@ -237,7 +347,11 @@ fn main() -> Result<()> {
 
     match cli.command {
         Command::Download => handle_download(&context),
-        Command::Route(route_args) => handle_route(&context, &route_args),
+        Command::Route(route_args) => handle_route_command(&context, &route_args, RouteMode::Route),
+        Command::Search(route_args) => {
+            handle_route_command(&context, &route_args, RouteMode::Search)
+        }
+        Command::Path(route_args) => handle_route_command(&context, &route_args, RouteMode::Path),
     }
 }
 
@@ -249,41 +363,55 @@ fn handle_download(context: &AppContext) -> Result<()> {
     context.output_format().render_download(&output)
 }
 
-fn handle_route(context: &AppContext, args: &RouteArgs) -> Result<()> {
-    let release = context.dataset_release();
-    let dataset_path = ensure_dataset(context.target_path(), release)
+fn handle_route_command(
+    context: &AppContext,
+    args: &RouteCommandArgs,
+    mode: RouteMode,
+) -> Result<()> {
+    let dataset = load_dataset_state(context)?;
+    let request = args.to_request();
+    let plan = plan_route(dataset.starmap(), &request).with_context(|| {
+        format!(
+            "failed to compute route between {} and {}",
+            args.from(),
+            args.to()
+        )
+    })?;
+
+    let summary = build_route_summary(mode.kind(), dataset.starmap(), &plan)
+        .context("failed to build route summary for display")?;
+    context.output_format().render_route_result(&summary)
+}
+
+struct DatasetState {
+    starmap: Starmap,
+}
+
+impl DatasetState {
+    fn starmap(&self) -> &Starmap {
+        &self.starmap
+    }
+}
+
+fn load_dataset_state(context: &AppContext) -> Result<DatasetState> {
+    let dataset_path = ensure_dataset(context.target_path(), context.dataset_release())
         .context("failed to locate or download the EveFrontier dataset")?;
     let starmap = load_starmap(&dataset_path)
         .with_context(|| format!("failed to load dataset from {}", dataset_path.display()))?;
-    let start_id =
-        starmap
-            .system_id_by_name(&args.from)
-            .ok_or_else(|| LibError::UnknownSystem {
-                name: args.from.clone(),
-            })?;
-    let goal_id = starmap
-        .system_id_by_name(&args.to)
-        .ok_or_else(|| LibError::UnknownSystem {
-            name: args.to.clone(),
-        })?;
-
-    let graph = build_graph(&starmap);
-    let route = find_route(&graph, start_id, goal_id).ok_or_else(|| LibError::RouteNotFound {
-        start: args.from.clone(),
-        goal: args.to.clone(),
-    })?;
-
-    let summary = build_route_summary(&starmap, &route)
-        .context("failed to build route summary for display")?;
-    context.output_format().render_route(&summary)
+    Ok(DatasetState { starmap })
 }
 
-fn build_route_summary(starmap: &Starmap, route: &[SystemId]) -> Result<RouteSummary> {
-    if route.is_empty() {
+fn build_route_summary(
+    kind: RouteOutputKind,
+    starmap: &Starmap,
+    plan: &RoutePlan,
+) -> Result<RouteSummary> {
+    if plan.steps.is_empty() {
         return Err(anyhow!("route contained no systems"));
     }
 
-    let steps = route
+    let steps = plan
+        .steps
         .iter()
         .enumerate()
         .map(|(index, system_id)| RouteStep {
@@ -296,19 +424,41 @@ fn build_route_summary(starmap: &Starmap, route: &[SystemId]) -> Result<RouteSum
     let start = RouteEndpoint::from_step(steps.first().expect("validated non-empty route"));
     let goal = RouteEndpoint::from_step(steps.last().expect("validated non-empty route"));
 
-    Ok(RouteSummary { start, goal, steps })
+    Ok(RouteSummary {
+        kind,
+        algorithm: plan.algorithm,
+        hops: plan.hop_count(),
+        start,
+        goal,
+        steps,
+    })
 }
 
 fn render_route_text(summary: &RouteSummary) {
     println!(
-        "Route: {} -> {} ({} hops)",
+        "{}: {} -> {} ({} hops, algorithm: {})",
+        summary.kind.label(),
         summary.start.display_name(),
         summary.goal.display_name(),
-        summary.hop_count()
+        summary.hops,
+        summary.algorithm
     );
 
-    for step in &summary.steps {
-        println!("{:>3}: {} ({})", step.index, step.display_name(), step.id);
+    match summary.kind {
+        RouteOutputKind::Path => {
+            let joined = summary
+                .steps
+                .iter()
+                .map(|step| format!("{} ({})", step.display_name(), step.id))
+                .collect::<Vec<_>>()
+                .join(" -> ");
+            println!("{joined}");
+        }
+        _ => {
+            for step in &summary.steps {
+                println!("{:>3}: {} ({})", step.index, step.display_name(), step.id);
+            }
+        }
     }
 }
 
