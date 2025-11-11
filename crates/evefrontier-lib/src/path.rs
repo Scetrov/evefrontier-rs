@@ -255,7 +255,7 @@ impl PartialOrd for FloatOrd {
 
 impl Ord for FloatOrd {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.0.partial_cmp(&other.0).unwrap_or(Ordering::Equal)
+        self.0.total_cmp(&other.0)
     }
 }
 
