@@ -26,9 +26,9 @@ Tasks are grouped by domain; checkboxes track completion status.
       extract `.zip` archives ([ADR 0003](adrs/0003-downloader-caching.md)).
 - [x] Support injecting a pre-existing dataset path (for tests) and allow callers to override the
       cache location.
-- [ ] Implement `load_starmap` with runtime schema detection ([ADR 0004](adrs/0004-schema-detection.md)) for both `SolarSystems` / `Jumps`
+- [x] Implement `load_starmap` with runtime schema detection ([ADR 0004](adrs/0004-schema-detection.md)) for both `SolarSystems` / `Jumps`
       and legacy `mapSolarSystems` datasets.
-- [ ] Define the `Starmap` data model, including system metadata, adjacency lists, and a
+- [x] Define the `Starmap` data model, including system metadata, adjacency lists, and a
       `HashMap` for name-to-ID lookups.
 - [ ] Build graph construction helpers (`graph.rs`) that transform the `Starmap` into search graphs
       for gate, spatial, or hybrid routing modes.

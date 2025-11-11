@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- 2025-11-10 - auto-llm - [auto-llm] - Enriched the starmap data model with optional region and
+  constellation metadata, tightened schema detection, and extended documentation and tests to cover
+  the expanded surface.
 - 2025-11-10 - auto-llm - [auto-llm] - Hardened the starmap loader with explicit schema validation,
   filtered invalid jump edges, and added integration tests covering the legacy dataset layout.
 - 2025-11-10 - auto-llm - [auto-llm] - Expanded the CLI with `search`/`path` routing subcommands,

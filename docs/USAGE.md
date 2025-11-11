@@ -157,7 +157,8 @@ Key library entrypoints (in `crates/evefrontier-lib`):
   fixture data or custom paths. `ensure_c3e6_dataset` is still available as a shorthand for
   `DatasetRelease::tag("e6c3")`.
 - `load_starmap(db_path: &Path)` — loads systems and jumps into memory with schema detection for the
-  `SolarSystems`/`Jumps` schema.
+  `SolarSystems`/`Jumps` schema. Each `System` entry includes optional metadata (region, constellation,
+  and security status when available) so callers do not need to perform additional lookups.
 - `build_graph` / `find_route` — build the adjacency graph and compute unweighted routes using BFS.
 
 ## Testing

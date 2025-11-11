@@ -19,6 +19,22 @@ fn load_fixture_and_find_route() -> Result<()> {
     let start = starmap.system_id_by_name("Y:170N").expect("start exists");
     let goal = starmap.system_id_by_name("BetaTest").expect("goal exists");
 
+    let start_system = starmap
+        .systems
+        .get(&start)
+        .expect("system metadata available");
+    assert_eq!(start_system.metadata.constellation_id, Some(10));
+    assert_eq!(
+        start_system.metadata.constellation_name.as_deref(),
+        Some("TestConstellation")
+    );
+    assert_eq!(start_system.metadata.region_id, Some(1));
+    assert_eq!(
+        start_system.metadata.region_name.as_deref(),
+        Some("TestRegion")
+    );
+    assert!(start_system.metadata.security_status.is_none());
+
     let graph = build_graph(&starmap);
     let route = find_route(&graph, start, goal).expect("route should exist");
 
@@ -57,6 +73,12 @@ fn load_legacy_schema() -> Result<()> {
     let starmap = load_starmap(file.path())?;
     assert_eq!(starmap.systems.len(), 3);
     assert_eq!(starmap.adjacency.len(), 3);
+
+    for system in starmap.systems.values() {
+        assert!(system.metadata.constellation_id.is_none());
+        assert!(system.metadata.region_id.is_none());
+        assert!(system.metadata.security_status.is_none());
+    }
 
     Ok(())
 }

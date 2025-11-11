@@ -17,7 +17,7 @@ pub mod path;
 pub mod routing;
 
 pub use dataset::{default_dataset_path, ensure_c3e6_dataset, ensure_dataset};
-pub use db::{load_starmap, Starmap, System, SystemId};
+pub use db::{load_starmap, Starmap, System, SystemId, SystemMetadata};
 pub use error::{Error, Result};
 pub use github::DatasetRelease;
 pub use graph::{build_graph, Graph};
