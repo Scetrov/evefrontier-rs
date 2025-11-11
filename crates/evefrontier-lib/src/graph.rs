@@ -4,6 +4,12 @@ use std::sync::Arc;
 
 use crate::db::{Starmap, SystemId, SystemPosition};
 
+/// Maximum number of nearest neighbors to include in the spatial graph.
+/// 
+/// The value 12 was chosen based on expected jump range mechanics in EVE Frontier,
+/// where most systems have up to 12 nearby candidates for spatial jumps. This limit
+/// balances pathfinding accuracy with performance, as higher values increase graph
+/// density and computational cost. Adjust if game mechanics or performance requirements change.
 /// Cap the spatial graph fan-out so each system only links to its closest
 /// neighbours. Twelve mirrors the maximum number of bidirectional stargate
 /// connections observed in the production dataset, which keeps spatial routing
