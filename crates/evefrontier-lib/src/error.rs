@@ -44,6 +44,10 @@ pub enum Error {
     #[error("no route found between {start} and {goal}")]
     RouteNotFound { start: String, goal: String },
 
+    /// Raised when a computed route plan lacks any systems.
+    #[error("route plan was empty")]
+    EmptyRoutePlan,
+
     /// Raised when a requested routing option is not yet supported.
     #[error("route option {option} is not supported yet")]
     UnsupportedRouteOption { option: String },

@@ -2,14 +2,14 @@ use std::fmt;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
 use serde::Serialize;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 use evefrontier_lib::{
     ensure_dataset, load_starmap, plan_route, DatasetRelease, RouteAlgorithm, RouteConstraints,
-    RoutePlan, RouteRequest, Starmap, SystemId,
+    RouteOutputKind, RouteRenderMode, RouteRequest, RouteSummary, Starmap,
 };
 
 #[derive(Parser, Debug)]
@@ -148,17 +148,19 @@ impl From<RouteAlgorithmArg> for RouteAlgorithm {
 enum OutputFormat {
     #[default]
     Text,
+    Rich,
     Json,
+    Note,
 }
 
 impl OutputFormat {
-    fn is_text(self) -> bool {
-        matches!(self, OutputFormat::Text)
+    fn supports_banner(self) -> bool {
+        matches!(self, OutputFormat::Text | OutputFormat::Rich)
     }
 
     fn render_download(self, output: &DownloadOutput) -> Result<()> {
         match self {
-            OutputFormat::Text => {
+            OutputFormat::Text | OutputFormat::Rich | OutputFormat::Note => {
                 println!(
                     "Dataset available at {} (requested release: {})",
                     output.dataset_path, output.release
@@ -175,11 +177,19 @@ impl OutputFormat {
 
     fn render_route_result(self, summary: &RouteSummary) -> Result<()> {
         match self {
-            OutputFormat::Text => render_route_text(summary),
+            OutputFormat::Text => {
+                print!("{}", summary.render(RouteRenderMode::PlainText));
+            }
+            OutputFormat::Rich => {
+                print!("{}", summary.render(RouteRenderMode::RichText));
+            }
             OutputFormat::Json => {
                 let mut stdout = io::stdout();
                 serde_json::to_writer_pretty(&mut stdout, summary)?;
                 stdout.write_all(b"\n")?;
+            }
+            OutputFormat::Note => {
+                print!("{}", summary.render(RouteRenderMode::InGameNote));
             }
         }
         Ok(())
@@ -253,86 +263,7 @@ impl AppContext {
     }
 
     fn should_show_logo(&self) -> bool {
-        self.output_format().is_text() && !self.options.no_logo
-    }
-}
-
-#[derive(Debug, Clone, Serialize)]
-struct RouteSummary {
-    kind: RouteOutputKind,
-    algorithm: RouteAlgorithm,
-    hops: usize,
-    start: RouteEndpoint,
-    goal: RouteEndpoint,
-    steps: Vec<RouteStep>,
-}
-
-#[derive(Debug, Clone, Copy, Serialize)]
-#[serde(rename_all = "snake_case")]
-enum RouteOutputKind {
-    Route,
-    Search,
-    Path,
-}
-
-impl RouteOutputKind {
-    fn label(self) -> &'static str {
-        match self {
-            RouteOutputKind::Route => "Route",
-            RouteOutputKind::Search => "Search",
-            RouteOutputKind::Path => "Path",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-enum RouteMode {
-    Route,
-    Search,
-    Path,
-}
-
-impl RouteMode {
-    fn kind(self) -> RouteOutputKind {
-        match self {
-            RouteMode::Route => RouteOutputKind::Route,
-            RouteMode::Search => RouteOutputKind::Search,
-            RouteMode::Path => RouteOutputKind::Path,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize)]
-struct RouteEndpoint {
-    id: SystemId,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    name: Option<String>,
-}
-
-impl RouteEndpoint {
-    fn from_step(step: &RouteStep) -> Self {
-        Self {
-            id: step.id,
-            name: step.name.clone(),
-        }
-    }
-
-    fn display_name(&self) -> &str {
-        self.name.as_deref().unwrap_or("<unknown>")
-    }
-}
-
-#[derive(Debug, Clone, Serialize)]
-struct RouteStep {
-    index: usize,
-    id: SystemId,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    name: Option<String>,
-}
-
-impl RouteStep {
-    fn display_name(&self) -> &str {
-        self.name.as_deref().unwrap_or("<unknown>")
+        self.output_format().supports_banner() && !self.options.no_logo
     }
 }
 
@@ -347,11 +278,15 @@ fn main() -> Result<()> {
 
     match cli.command {
         Command::Download => handle_download(&context),
-        Command::Route(route_args) => handle_route_command(&context, &route_args, RouteMode::Route),
-        Command::Search(route_args) => {
-            handle_route_command(&context, &route_args, RouteMode::Search)
+        Command::Route(route_args) => {
+            handle_route_command(&context, &route_args, RouteOutputKind::Route)
         }
-        Command::Path(route_args) => handle_route_command(&context, &route_args, RouteMode::Path),
+        Command::Search(route_args) => {
+            handle_route_command(&context, &route_args, RouteOutputKind::Search)
+        }
+        Command::Path(route_args) => {
+            handle_route_command(&context, &route_args, RouteOutputKind::Path)
+        }
     }
 }
 
@@ -366,11 +301,11 @@ fn handle_download(context: &AppContext) -> Result<()> {
 fn handle_route_command(
     context: &AppContext,
     args: &RouteCommandArgs,
-    mode: RouteMode,
+    kind: RouteOutputKind,
 ) -> Result<()> {
-    let dataset = load_dataset_state(context)?;
+    let starmap = load_starmap_from_context(context)?;
     let request = args.to_request();
-    let plan = plan_route(dataset.starmap(), &request).with_context(|| {
+    let plan = plan_route(&starmap, &request).with_context(|| {
         format!(
             "failed to compute route between {} and {}",
             args.from(),
@@ -378,88 +313,17 @@ fn handle_route_command(
         )
     })?;
 
-    let summary = build_route_summary(mode.kind(), dataset.starmap(), &plan)
+    let summary = RouteSummary::from_plan(kind, &starmap, &plan)
         .context("failed to build route summary for display")?;
     context.output_format().render_route_result(&summary)
 }
 
-struct DatasetState {
-    starmap: Starmap,
-}
-
-impl DatasetState {
-    fn starmap(&self) -> &Starmap {
-        &self.starmap
-    }
-}
-
-fn load_dataset_state(context: &AppContext) -> Result<DatasetState> {
+fn load_starmap_from_context(context: &AppContext) -> Result<Starmap> {
     let dataset_path = ensure_dataset(context.target_path(), context.dataset_release())
         .context("failed to locate or download the EveFrontier dataset")?;
     let starmap = load_starmap(&dataset_path)
         .with_context(|| format!("failed to load dataset from {}", dataset_path.display()))?;
-    Ok(DatasetState { starmap })
-}
-
-fn build_route_summary(
-    kind: RouteOutputKind,
-    starmap: &Starmap,
-    plan: &RoutePlan,
-) -> Result<RouteSummary> {
-    if plan.steps.is_empty() {
-        return Err(anyhow!("route contained no systems"));
-    }
-
-    let steps = plan
-        .steps
-        .iter()
-        .enumerate()
-        .map(|(index, system_id)| RouteStep {
-            index,
-            id: *system_id,
-            name: starmap.system_name(*system_id).map(|name| name.to_string()),
-        })
-        .collect::<Vec<_>>();
-
-    let start = RouteEndpoint::from_step(steps.first().expect("validated non-empty route"));
-    let goal = RouteEndpoint::from_step(steps.last().expect("validated non-empty route"));
-
-    Ok(RouteSummary {
-        kind,
-        algorithm: plan.algorithm,
-        hops: plan.hop_count(),
-        start,
-        goal,
-        steps,
-    })
-}
-
-fn render_route_text(summary: &RouteSummary) {
-    println!(
-        "{}: {} -> {} ({} hops, algorithm: {})",
-        summary.kind.label(),
-        summary.start.display_name(),
-        summary.goal.display_name(),
-        summary.hops,
-        summary.algorithm
-    );
-
-    match summary.kind {
-        RouteOutputKind::Path => {
-            let joined = summary
-                .steps
-                .iter()
-                .map(|step| format!("{} ({})", step.display_name(), step.id))
-                .collect::<Vec<_>>()
-                .join(" -> ");
-            println!("{joined}");
-        }
-        _ => {
-            for step in &summary.steps {
-                println!("{:>3}: {} ({})", step.index, step.display_name(), step.id);
-            }
-        }
-    }
+    Ok(starmap)
 }
 
 fn init_tracing() {

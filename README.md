@@ -58,6 +58,9 @@ and the accepted ADRs under [`docs/adrs/`](docs/adrs/).
   cargo run -p evefrontier-cli -- path --from "Y:170N" --to "BetaTest"
   ```
 
+- Apply `--format rich` for Markdown-style bullet output or `--format note` to emit an in-game note
+  listing the systems in order.
+
 All routing subcommands accept `--algorithm`, `--max-jump`, `--avoid`, `--avoid-gates`, and
 `--max-temp` flags. The library supports breadth-first search (`bfs`), Dijkstra (`dijkstra`), and
 heuristic-guided A* (`a-star`) algorithms alongside jump distance limits, system avoidance,

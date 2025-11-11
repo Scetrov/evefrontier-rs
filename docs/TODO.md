@@ -36,7 +36,7 @@ Tasks are grouped by domain; checkboxes track completion status.
       Dijkstra for weighted routes, and A* for heuristic-guided searches. Support filters such as
       maximum jump distance, gate-only routes, spatial routes, avoided systems, and temperature
       constraints.
-- [ ] Provide serialization helpers for CLI/Lambda outputs (plain text, rich text, JSON, in-game
+- [x] Provide serialization helpers for CLI/Lambda outputs (plain text, rich text, JSON, in-game
       note format) with appropriate structs and enums.
 - [ ] Add robust error handling via a shared `Error` type (using `thiserror`) and bubble errors to
       callers with actionable messages.

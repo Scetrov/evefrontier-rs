@@ -13,6 +13,7 @@ pub mod db;
 pub mod error;
 pub mod github;
 pub mod graph;
+pub mod output;
 pub mod path;
 pub mod routing;
 
@@ -24,6 +25,7 @@ pub use graph::{
     build_gate_graph, build_graph, build_hybrid_graph, build_spatial_graph, Edge, EdgeKind, Graph,
     GraphMode,
 };
+pub use output::{RouteEndpoint, RouteOutputKind, RouteRenderMode, RouteStep, RouteSummary};
 pub use path::{
     find_route, find_route_a_star, find_route_bfs, find_route_dijkstra, PathConstraints,
 };

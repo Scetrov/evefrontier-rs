@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- 2025-11-10 - auto-llm - [auto-llm] - Added shared route serialization helpers with plain, rich,
+  and in-game note renderers, exposed them through the library, expanded the CLI with matching
+  output formats, documented the new options, and tightened graph/path utilities with clarified
+  constants and NaN-safe position handling.
 - 2025-11-10 - auto-llm - [auto-llm] - Implemented weighted route planning with Dijkstra and A*
   support, added pathfinding constraints for jump distance, avoided systems, gate-free travel, and
   temperature limits, refreshed CLI/docs to reflect the new options, and extended the routing tests

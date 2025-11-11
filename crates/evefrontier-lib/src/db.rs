@@ -20,6 +20,16 @@ pub struct SystemPosition {
 }
 
 impl SystemPosition {
+    /// Construct a position from coordinates, rejecting non-finite values so
+    /// downstream graph builders can rely on well-formed distances.
+    pub fn new(x: f64, y: f64, z: f64) -> Option<Self> {
+        if x.is_finite() && y.is_finite() && z.is_finite() {
+            Some(Self { x, y, z })
+        } else {
+            None
+        }
+    }
+
     /// Calculate the Euclidean distance to another position.
     pub fn distance_to(&self, other: &Self) -> f64 {
         let dx = self.x - other.x;
@@ -390,7 +400,7 @@ fn row_to_system(row: &Row<'_>) -> rusqlite::Result<System> {
         row.get::<_, Option<f64>>(8)?,
         row.get::<_, Option<f64>>(9)?,
     ) {
-        (Some(x), Some(y), Some(z)) => Some(SystemPosition { x, y, z }),
+        (Some(x), Some(y), Some(z)) => SystemPosition::new(x, y, z),
         _ => None,
     };
 

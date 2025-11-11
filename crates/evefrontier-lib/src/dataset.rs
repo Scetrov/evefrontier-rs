@@ -31,6 +31,9 @@ fn normalize_data_dir(path: &Path) -> PathBuf {
 }
 
 #[cfg(windows)]
+// Cap duplicate-directory collapsing so a maliciously crafted path cannot force
+// an infinite loop. A depth of 100 comfortably exceeds any realistic
+// `%APPDATA%`/`LocalAppData` hierarchy while still guaranteeing termination.
 const MAX_NORMALIZATION_ITERATIONS: usize = 100;
 
 #[cfg(windows)]

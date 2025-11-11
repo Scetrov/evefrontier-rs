@@ -20,7 +20,7 @@ pub enum RouteAlgorithm {
     /// Dijkstra's algorithm (weighted graph).
     Dijkstra,
     /// A* search (heuristic guided).
-    #[serde(rename = "a_star")]
+    #[serde(rename = "a-star")]
     AStar,
 }
 
@@ -29,7 +29,7 @@ impl fmt::Display for RouteAlgorithm {
         let value = match self {
             RouteAlgorithm::Bfs => "bfs",
             RouteAlgorithm::Dijkstra => "dijkstra",
-            RouteAlgorithm::AStar => "a_star",
+            RouteAlgorithm::AStar => "a-star",
         };
         f.write_str(value)
     }

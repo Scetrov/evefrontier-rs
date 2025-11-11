@@ -39,7 +39,7 @@ Global options accepted by every subcommand:
 
 - `--data-dir <PATH>` — override the dataset directory or file.
 - `--dataset <TAG>` — request a specific dataset release.
-- `--format <text|json>` — control the command output format (`text` by default).
+- `--format <text|rich|json|note>` — control the command output format (`text` by default).
 - `--no-logo` — suppress the ASCII banner (automatically implied for JSON output).
 
 ### Examples
@@ -72,6 +72,12 @@ Global options accepted by every subcommand:
 
   ```pwsh
   evefrontier-cli route --from "Y:170N" --to "BetaTest" --format json
+  ```
+
+- Generate an in-game note with arrow-delimited stops:
+
+  ```pwsh
+  evefrontier-cli path --from "Y:170N" --to "BetaTest" --format note
   ```
 
 - Calculate a route after pre-setting the dataset path via environment variable:
@@ -166,6 +172,9 @@ Key library entrypoints (in `crates/evefrontier-lib`):
   return a `Graph` that tracks edge types and distances.
 - `find_route` — compute unweighted routes using BFS given a `Graph` returned by one of the
   constructors above.
+- `RouteSummary::from_plan` — convert a `RoutePlan` into rich structs suitable for CLI or Lambda
+  responses. Use `RouteSummary::render` with `RouteRenderMode::{PlainText, RichText, InGameNote}` to
+  obtain ready-to-emit text while JSON is handled via `serde`.
 
 ## Testing
 

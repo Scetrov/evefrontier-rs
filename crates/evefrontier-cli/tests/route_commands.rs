@@ -98,3 +98,21 @@ fn dijkstra_algorithm_is_supported() {
         .success()
         .stdout(predicate::str::contains("algorithm: dijkstra"));
 }
+
+#[test]
+fn note_format_outputs_in_game_layout() {
+    let (mut cmd, _temp) = prepare_command();
+    cmd.arg("--format")
+        .arg("note")
+        .arg("path")
+        .arg("--from")
+        .arg("Y:170N")
+        .arg("--to")
+        .arg("BetaTest");
+
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("Path:"))
+        .stdout(predicate::str::contains("Y:170N"))
+        .stdout(predicate::str::contains("BetaTest"));
+}

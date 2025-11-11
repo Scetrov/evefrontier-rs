@@ -4,6 +4,10 @@ use std::sync::Arc;
 
 use crate::db::{Starmap, SystemId, SystemPosition};
 
+/// Cap the spatial graph fan-out so each system only links to its closest
+/// neighbours. Twelve mirrors the maximum number of bidirectional stargate
+/// connections observed in the production dataset, which keeps spatial routing
+/// performant without starving dense areas of nearby candidates.
 const MAX_SPATIAL_NEIGHBORS: usize = 12;
 
 /// Routing graph variants supported by the planner.
@@ -188,5 +192,5 @@ fn merge_adjacency(
 }
 
 fn compare_distance(a: f64, b: f64) -> Ordering {
-    a.partial_cmp(&b).unwrap_or(Ordering::Equal)
+    a.partial_cmp(&b).unwrap_or(Ordering::Greater)
 }
