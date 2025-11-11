@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- 2025-11-10 - auto-llm - [auto-llm] - Hardened the starmap loader with explicit schema validation,
+  filtered invalid jump edges, and added integration tests covering the legacy dataset layout.
 - 2025-11-10 - auto-llm - [auto-llm] - Expanded the CLI with `search`/`path` routing subcommands,
   introduced a library route planner with option validation, added integration and unit tests, and
   documented the new flags and usage examples.
