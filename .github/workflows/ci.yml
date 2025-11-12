@@ -94,7 +94,7 @@ jobs:
         run: |
           ./target/release/evefrontier-cli --data-dir docs/fixtures/minimal_static_data.db --dataset fixture path --from "Y:170N" --to "BetaTest"
 
-      - name: Test algorithm selection (README example)
+      - name: Test algorithm selection
         run: |
           ./target/release/evefrontier-cli --data-dir docs/fixtures/minimal_static_data.db --dataset fixture route --from "Y:170N" --to "BetaTest" --algorithm dijkstra
 
