@@ -80,7 +80,7 @@ This script creates:
 ## Files
 
 - `minimal_static_data.db` — SQLite database (committed to git)
-- `minimal_static_data.db.release` — Ephemeral marker file created by the dataset download/caching mechanism (gitignored). This file only appears if a download command is accidentally run targeting this directory; it is not part of the committed fixture.
+- `minimal_static_data.db.release` — Release marker file (gitignored). In CI, this file is explicitly created by the workflow to prevent dataset re-downloads and ensure offline testing. Locally, it would only appear if a download command is accidentally run targeting this directory; it should not be committed.
 
 ## Test Usage
 
