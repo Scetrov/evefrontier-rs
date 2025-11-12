@@ -25,6 +25,29 @@ This provides:
 - Multi-hop route: `Y:170N → AlphaTest → BetaTest` (2 hops)
 - Tests for route avoidance, algorithm selection, etc.
 
+## Fixture Generation
+
+### CI Usage
+
+The CI workflow generates the fixture fresh for each test run using `scripts/create_minimal_db.py`. This ensures:
+- The fixture is never stale or accidentally overwritten
+- Tests are reproducible and isolated
+- No dependency on git LFS or large binary files in CI
+
+### Local Testing
+
+The git-tracked `minimal_static_data.db` is provided for convenience during local development. To regenerate it:
+
+```bash
+python3 scripts/create_minimal_db.py
+```
+
+**Important:** Do not replace it by running download commands with `--data-dir docs/fixtures/`. Use the `--dataset fixture` flag when testing with this fixture to prevent re-downloads.
+
+### For Local Testing with Real Data
+
+```
+
 ## ⚠️ Important: Do Not Overwrite
 
 **This fixture is tracked in git and used by CI.** Do not replace it by running download commands with `--data-dir docs/fixtures/`.

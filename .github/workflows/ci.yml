@@ -71,14 +71,15 @@ jobs:
       - name: Build CLI
         run: cargo build --release -p evefrontier-cli
 
+      - name: Generate minimal fixture database for testing
+        run: |
+          python3 scripts/create_minimal_db.py
+          echo -e "requested=tag\nresolved=fixture" > docs/fixtures/minimal_static_data.db.release
+
       - name: Test download command (README example)
         run: |
           ./target/release/evefrontier-cli download --data-dir /tmp/test-download
           test -f /tmp/test-download/static_data.db || (echo "Download failed" && exit 1)
-
-      - name: Create release marker for fixture to prevent re-download
-        run: |
-          echo -e "requested=tag\nresolved=fixture" > docs/fixtures/minimal_static_data.db.release
 
       - name: Test route command with fixture (README example)
         run: |
