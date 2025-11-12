@@ -9,7 +9,7 @@ Tasks are grouped by domain; checkboxes track completion status.
 - [ ] **CRITICAL**: Restore test isolation by ensuring the synthetic 3-system fixture (AlphaTest, BetaTest, etc.) is used for tests, as documented in `docs/fixtures/README.md`
   - Update all tests in `crates/evefrontier-lib/tests/routing.rs` to use the synthetic fixture systems (AlphaTest, BetaTest, etc.) unless intentionally testing against real data
   - Update all tests in `crates/evefrontier-cli/tests/route_commands.rs` to use the correct fixture system names
-  - The test fixture has been accidentally overwritten locally with the real e6c3 dataset; tests pass in CI with the original 3-system fixture but may fail locally if the fixture is replaced
+  - The test fixture has been accidentally overwritten locally with the real c3e6 dataset; tests pass in CI with the original 3-system fixture but may fail locally if the fixture is replaced
 - [ ] **CRITICAL**: Update all documentation examples to use the correct fixture systems
   - Fix `README.md` examples (currently reference "BetaTest" which is present in the fixture, but clarify usage if switching to real data)
   - Fix `docs/USAGE.md` examples to use actual connected systems from the committed fixture
