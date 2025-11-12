@@ -1,0 +1,10 @@
+{
+    "recommendations": [
+        "tamasfe.even-better-toml",
+        "github.vscode-github-actions",
+        "hashicorp.terraform",
+        "nrwl.angular-console",
+        "rust-lang.rust-analyzer",
+        "1yib.rust-bundle"
+    ]
+}
