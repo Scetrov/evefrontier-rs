@@ -41,3 +41,60 @@ jobs:
 
       - name: Test workspace
         run: cargo test --workspace --locked
+
+  validate-docs-examples:
+    name: Validate documentation examples
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: 1.90.0
+
+      - name: Install jq for JSON validation
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Cache cargo directories
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-
+
+      - name: Build CLI
+        run: cargo build --release -p evefrontier-cli
+
+      - name: Generate minimal fixture database for testing
+        run: |
+          python3 scripts/create_minimal_db.py
+          echo -e "requested=tag\nresolved=fixture" > docs/fixtures/minimal_static_data.db.release
+
+      - name: Test download command (README example)
+        run: |
+          ./target/release/evefrontier-cli --data-dir /tmp/test-download download
+          test -f /tmp/test-download/static_data.db || (echo "Download failed" && exit 1)
+
+      - name: Test route command with fixture (README example)
+        run: |
+          ./target/release/evefrontier-cli --data-dir docs/fixtures/minimal_static_data.db --dataset fixture route --from "Y:170N" --to "BetaTest"
+
+      - name: Test search command with JSON output (README example)
+        run: |
+          output=$(./target/release/evefrontier-cli --data-dir docs/fixtures/minimal_static_data.db --dataset fixture --format json search --from "Y:170N" --to "BetaTest")
+          echo "$output" | jq -e '.kind == "search"' || (echo "JSON output validation failed" && exit 1)
+
+      - name: Test path command (README example)
+        run: |
+          ./target/release/evefrontier-cli --data-dir docs/fixtures/minimal_static_data.db --dataset fixture path --from "Y:170N" --to "BetaTest"
+
+      - name: Test algorithm selection
+        run: |
+          ./target/release/evefrontier-cli --data-dir docs/fixtures/minimal_static_data.db --dataset fixture route --from "Y:170N" --to "BetaTest" --algorithm dijkstra
+

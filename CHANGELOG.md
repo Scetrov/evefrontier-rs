@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- 2025-11-12 - auto-llm - [auto-llm] - CI now generates minimal fixture fresh for each test run using `scripts/create_minimal_db.py`, eliminating dependency on git-tracked binary and preventing accidental overwrites.
+- 2025-11-12 - auto-llm - [auto-llm] - Fixed CI fixture tests to use `--dataset fixture` flag with generated fixture, ensuring tests run entirely offline without hitting external dataset sources.
+- 2025-11-12 - auto-llm - [auto-llm] - Fixed README `--format json` example to place global flag before subcommand (global flags must precede subcommands).
+- 2025-11-12 - auto-llm - [auto-llm] - Added CI validation job that tests documentation examples from README to ensure they remain functional and accurate.
 - 2025-11-12 - auto-llm - [auto-llm] - Documented `.vscode/mcp.json` GitHub Copilot MCP
   configuration in CONTRIBUTING.md, clarifying it is optional for developers and explaining
   its purpose for enhanced AI-assisted features.
