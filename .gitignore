@@ -123,7 +123,6 @@ $RECYCLE.BIN/
 .cache
 
 # IDE/editor folders
-.vscode/
 .idea/
 
 # Environment files
@@ -142,6 +141,9 @@ logs/
 # SQLite temporary files
 *.db-journal
 *.db-wal
+
+# Dataset download markers (ephemeral metadata)
+*.db.release
 
 # Temporary/test artifacts
 .tmp/
