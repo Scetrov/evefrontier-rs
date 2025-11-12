@@ -143,6 +143,9 @@ logs/
 *.db-journal
 *.db-wal
 
+# Dataset download markers (ephemeral metadata)
+*.db.release
+
 # Temporary/test artifacts
 .tmp/
 *.tmp
