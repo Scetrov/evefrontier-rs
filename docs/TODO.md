@@ -4,6 +4,20 @@ This TODO list captures the remaining work required to implement the EveFrontier
 AWS Lambda functions, and supporting infrastructure described throughout the documentation and ADRs.
 Tasks are grouped by domain; checkboxes track completion status.
 
+## 🔥 High Priority - Test & Documentation Fixes
+
+- [ ] **CRITICAL**: Ensure test fixture protection is maintained
+  - The 3-system synthetic fixture (Y:170N, AlphaTest, BetaTest) must not be overwritten by CLI downloads
+  - Tests currently use these synthetic systems and pass in CI; local overwrites with production data (e6c3) cause failures
+  - All tests in `crates/evefrontier-lib/tests/routing.rs` and `crates/evefrontier-cli/tests/route_commands.rs` correctly reference the fixture systems
+  - Documentation examples in `README.md` and `docs/USAGE.md` already use the correct fixture system names (Y:170N, BetaTest)
+- [x] Add `.gitignore` entry for `*.db.release` marker files (ephemeral download metadata; implemented as a global pattern)
+- [ ] Add fixture protection to prevent accidental overwrites:
+  - [x] Document in `docs/fixtures/README.md` that fixture should not be replaced with downloads
+  - Consider adding `docs/fixtures/.gitattributes` to lock the minimal fixture
+  - OR: Decide to use real dataset as canonical fixture and update create_minimal_db.py accordingly
+- [ ] Document `.vscode/mcp.json` in README or CONTRIBUTING guide (GitHub Copilot MCP server config; clarify if required or optional for developers)
+- [ ] Add CI validation step that runs example commands from README/USAGE docs to ensure they continue working
 ## Workspace & Tooling
 
 - [ ] Establish the Cargo workspace layout with `crates/evefrontier-lib`, `crates/evefrontier-cli`,
@@ -12,8 +26,12 @@ Tasks are grouped by domain; checkboxes track completion status.
 - [ ] Configure Nx to orchestrate Rust, lint, and security tasks (align with [ADR 0006](adrs/0006-software-components.md) and
       `.github/copilot-instructions.md`). Define tasks for `build`, `test`, `lint`, `clippy`,
       `audit`, and dependency update reporting.
+- [ ] Scaffold Node/Nx workspace: add `package.json`, `pnpm-lock.yaml`, `nx.json`, and project
+      targets for Rust crates and scripts (ADR 0006 & 0007 alignment).
 - [ ] Add `package.json`, `pnpm-lock.yaml`, and Nx project configuration. Document developer
       commands in `CONTRIBUTING.md` and `docs/USAGE.md`.
+- [ ] Add CI workflow enforcing ADR filename pattern (`^\\d{4}-.+\\.md$`) and immutability (reject
+      edits to historical ADRs except via explicit override label).
 - [ ] Create reproducible toolchain pins for Node (`.nvmrc` or Volta config) and confirm
       `.rust-toolchain` matches the intended compiler release.
 - [ ] Introduce automation scripts under `scripts/` (e.g., dataset fixture sync, release helpers)
@@ -43,6 +61,10 @@ Tasks are grouped by domain; checkboxes track completion status.
 - [ ] Write unit tests covering schema detection, dataset loading, graph construction, and routing
       behavior using fixtures in `docs/fixtures/`.
 - [ ] Document the public API in `docs/USAGE.md` and Rustdoc comments.
+- [ ] Implement KD-tree spatial index module (per ADR 0009): build, serialize (e.g., postcard +
+      zstd), load, query nearest systems.
+- [ ] Integrate KD-tree spatial index into spatial/hybrid routing path selection logic.
+- [ ] Provide tests/benchmarks for KD-tree build and query performance.
 
 ## CLI (`evefrontier-cli`)
 
@@ -56,6 +78,8 @@ Tasks are grouped by domain; checkboxes track completion status.
 - [ ] Provide friendly error messages for unknown systems and route failures.
 - [ ] Add integration tests for CLI behavior (using `assert_cmd` or similar) with the fixture dataset.
 - [ ] Update `README.md` and `docs/USAGE.md` with CLI examples that match the implemented behavior.
+- [ ] Add `index-build` (or `build-index`) subcommand to precompute KD-tree spatial index artifact.
+- [ ] Surface friendly errors when spatial index missing but requested.
 
 ## AWS Lambda crates
 
@@ -69,6 +93,7 @@ Tasks are grouped by domain; checkboxes track completion status.
       return results with structured errors.
 - [ ] Provide infrastructure notes or SAM/CDK templates (if required) for deployment under `docs/`.
 - [ ] Add Lambda-focused tests (unit tests and, if possible, integration tests using `lambda_runtime::run` mocks).
+- [ ] Integrate KD-tree spatial index loading at cold start if artifact bundled.
 
 ## Testing & Quality
 
@@ -77,6 +102,8 @@ Tasks are grouped by domain; checkboxes track completion status.
 - [ ] Add dataset fixture management helpers to keep fixtures synchronized and documented in
       `docs/fixtures/README.md`.
 - [ ] Integrate `cargo audit` and Node SCA checks into CI and document remediation workflows.
+- [ ] Add CI guard requiring `CHANGELOG.md` modification for non-doc code changes (ADR 0010).
+- [ ] Schedule nightly dependency outdated report (Rust & Node) and publish artifact.
 - [ ] Establish benchmarking or profiling harnesses for pathfinding performance (optional but
       recommended).
 
@@ -93,6 +120,9 @@ Tasks are grouped by domain; checkboxes track completion status.
       loader, graph, CLI, and Lambda components.
 - [ ] Provide onboarding steps in `docs/INITIAL_SETUP.md` once the workspace scaffolding stabilizes
       (update as tasks complete).
+- [ ] Extend `docs/USAGE.md` with KD-tree index usage and build instructions.
+- [ ] Add ADR for any deviations from original KD-tree design if implementation adjustments occur.
+- [ ] Add `docs/RELEASE.md` section describing inclusion of spatial index artifact.
 
 ## Security & Operations
 
@@ -103,6 +133,8 @@ Tasks are grouped by domain; checkboxes track completion status.
 - [ ] Add metrics or usage telemetry (if desired) with opt-in controls and documentation.
 - [ ] Plan for dataset update automation (scheduled job or manual release) and document operational
       runbooks.
+- [ ] Add CI to verify spatial index artifact freshness against dataset version.
+- [ ] Document operational procedure for regenerating spatial index after dataset updates.
 
 ---
 
