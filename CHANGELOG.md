@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- 2025-11-12 - auto-llm - [auto-llm] - Fixed CI fixture tests to use `--dataset fixture` flag, preventing dataset re-downloads. The release marker alone is insufficient when CLI defaults to `Latest` release.
 - 2025-11-12 - auto-llm - [auto-llm] - Fixed README `--format json` example to place global flag before subcommand. Added `.release` marker creation in CI to prevent fixture re-downloads, ensuring tests run offline.
 - 2025-11-12 - auto-llm - [auto-llm] - Added CI validation job that tests documentation examples from README to ensure they remain functional and accurate.
 - 2025-11-12 - auto-llm - [auto-llm] - Documented `.vscode/mcp.json` GitHub Copilot MCP
