@@ -78,7 +78,7 @@ jobs:
 
       - name: Test download command (README example)
         run: |
-          ./target/release/evefrontier-cli download --data-dir /tmp/test-download
+          ./target/release/evefrontier-cli --data-dir /tmp/test-download download
           test -f /tmp/test-download/static_data.db || (echo "Download failed" && exit 1)
 
       - name: Test route command with fixture (README example)
