@@ -59,7 +59,7 @@ This script creates:
 ## Files
 
 - `minimal_static_data.db` — SQLite database (committed to git)
-- `minimal_static_data.db.release` — Download metadata marker (gitignored, ephemeral)
+- `minimal_static_data.db.release` — Ephemeral marker file created by the dataset download/caching mechanism (gitignored). This file only appears if a download command is accidentally run targeting this directory; it is not part of the committed fixture.
 
 ## Test Usage
 
