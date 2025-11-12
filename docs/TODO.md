@@ -16,8 +16,8 @@ Tasks are grouped by domain; checkboxes track completion status.
   - [x] Document in `docs/fixtures/README.md` that fixture should not be replaced with downloads
   - Consider adding `docs/fixtures/.gitattributes` to lock the minimal fixture
   - OR: Decide to use real dataset as canonical fixture and update create_minimal_db.py accordingly
-- [ ] Document `.vscode/mcp.json` in README or CONTRIBUTING guide (GitHub Copilot MCP server config; clarify if required or optional for developers)
-- [ ] Add CI validation step that runs example commands from README/USAGE docs to ensure they continue working
+- [x] Document `.vscode/mcp.json` in README or CONTRIBUTING guide (GitHub Copilot MCP server config; clarify if required or optional for developers)
+- [x] Add CI validation step that runs example commands from README/USAGE docs to ensure they continue working
 ## Workspace & Tooling
 
 - [ ] Establish the Cargo workspace layout with `crates/evefrontier-lib`, `crates/evefrontier-cli`,
