@@ -100,6 +100,23 @@ Environment
 
   cargo install cargo-audit
 
+4. VS Code MCP Configuration (Optional)
+
+The repository includes `.vscode/mcp.json` which configures the GitHub Copilot Model Context
+Protocol (MCP) server. This enables enhanced GitHub integration features within VS Code when using
+GitHub Copilot.
+
+**This configuration is optional.** The MCP setup is not required to build, test, or contribute to
+the project. It provides additional AI-assisted features for developers using GitHub Copilot in VS
+Code, such as:
+
+- Enhanced repository context awareness
+- GitHub API integration for PR/issue management
+- Improved code suggestions based on repository patterns
+
+If you're not using GitHub Copilot or prefer not to use MCP features, you can safely ignore this
+configuration. The repository will work normally without it.
+
 Local checks
 
 - Build the Rust workspace:
