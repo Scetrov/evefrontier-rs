@@ -5,6 +5,9 @@ All notable changes to this project will be documented in this file.
 ## Unreleased
 
 - 2025-11-12 - auto-llm - [auto-llm] - Added CI validation job that tests documentation examples from README to ensure they remain functional and accurate.
+- 2025-11-12 - auto-llm - [auto-llm] - Documented `.vscode/mcp.json` GitHub Copilot MCP
+  configuration in CONTRIBUTING.md, clarifying it is optional for developers and explaining
+  its purpose for enhanced AI-assisted features.
 - 2025-11-11 - auto-llm - [auto-llm] - Added shared route serialization helpers with plain, rich,
   and in-game note renderers, exposed them through the library, expanded the CLI with matching
   output formats, documented the new options, and tightened graph/path utilities with clarified
