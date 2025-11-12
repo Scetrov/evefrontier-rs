@@ -25,9 +25,30 @@ This provides:
 - Multi-hop route: `Y:170N → AlphaTest → BetaTest` (2 hops)
 - Tests for route avoidance, algorithm selection, etc.
 
+## Fixture Generation
+
+### CI Usage
+
+The CI workflow generates the fixture fresh for each test run using `scripts/create_minimal_db.py`. This ensures:
+- The fixture is never stale or accidentally overwritten
+- Tests are reproducible and isolated
+- No dependency on git LFS or large binary files in CI
+
+### Local Testing
+
+The git-tracked `minimal_static_data.db` is provided for convenience during local development. To regenerate it:
+
+```bash
+python3 scripts/create_minimal_db.py
+```
+
+**Important:** Do not replace it by running download commands with `--data-dir docs/fixtures/`. Use the `--dataset fixture` flag when testing with this fixture to prevent re-downloads.
+
 ## ⚠️ Important: Do Not Overwrite
 
 **This fixture is tracked in git and used by CI.** Do not replace it by running download commands with `--data-dir docs/fixtures/`.
+
+The fixture includes a `.release` marker file (`minimal_static_data.db.release`) that prevents the CLI from attempting to re-download the dataset when using `--data-dir docs/fixtures/minimal_static_data.db`. This marker is created automatically by the CI workflow to ensure tests run entirely offline without hitting external dataset sources.
 
 ### For Local Testing with Real Data
 
@@ -59,7 +80,7 @@ This script creates:
 ## Files
 
 - `minimal_static_data.db` — SQLite database (committed to git)
-- `minimal_static_data.db.release` — Ephemeral marker file created by the dataset download/caching mechanism (gitignored). This file only appears if a download command is accidentally run targeting this directory; it is not part of the committed fixture.
+- `minimal_static_data.db.release` — Release marker file (gitignored). In CI, this file is explicitly created by the workflow to prevent dataset re-downloads and ensure offline testing. Locally, it would only appear if a download command is accidentally run targeting this directory; it should not be committed.
 
 ## Test Usage
 
