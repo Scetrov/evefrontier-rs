@@ -6,22 +6,20 @@ Tasks are grouped by domain; checkboxes track completion status.
 
 ## 🔥 High Priority - Test & Documentation Fixes
 
-- [ ] **CRITICAL**: Replace test fixture systems (AlphaTest, BetaTest) with real systems from actual dataset
-  - Update all tests in `crates/evefrontier-lib/tests/routing.rs` to use systems that exist in production data (e.g., O3H-1FN, UFC-3FN, OR7-5FN, D:2NAS, Nod, J:35IA)
-  - Update all tests in `crates/evefrontier-cli/tests/route_commands.rs` to use real system names
-  - Current fixture has been overwritten locally with real e6c3 dataset; tests pass in CI with original 3-system fixture but fail locally
-- [ ] **CRITICAL**: Update all documentation examples to use real systems
-  - Fix `README.md` examples (currently reference non-existent "BetaTest")
-  - Fix `docs/USAGE.md` examples to use actual connected systems from fixture
+- [ ] **CRITICAL**: Restore test isolation by ensuring the synthetic 3-system fixture (AlphaTest, BetaTest, etc.) is used for tests, as documented in `docs/fixtures/README.md`
+  - Update all tests in `crates/evefrontier-lib/tests/routing.rs` to use the synthetic fixture systems (AlphaTest, BetaTest, etc.) unless intentionally testing against real data
+  - Update all tests in `crates/evefrontier-cli/tests/route_commands.rs` to use the correct fixture system names
+  - The test fixture has been accidentally overwritten locally with the real e6c3 dataset; tests pass in CI with the original 3-system fixture but may fail locally if the fixture is replaced
+- [ ] **CRITICAL**: Update all documentation examples to use the correct fixture systems
+  - Fix `README.md` examples (currently reference "BetaTest" which is present in the fixture, but clarify usage if switching to real data)
+  - Fix `docs/USAGE.md` examples to use actual connected systems from the committed fixture
   - Verify all example commands actually work against the committed fixture
-- [ ] Add `.gitignore` entry for `docs/fixtures/*.db.release` marker files (ephemeral download metadata)
+- [x] Add `.gitignore` entry for `*.db.release` marker files (ephemeral download metadata; implemented as a global pattern)
 - [ ] Add fixture protection to prevent accidental overwrites:
-  - Document in `docs/fixtures/README.md` that fixture should not be replaced with downloads
+  - [x] Document in `docs/fixtures/README.md` that fixture should not be replaced with downloads
   - Consider adding `docs/fixtures/.gitattributes` to lock the minimal fixture
   - OR: Decide to use real dataset as canonical fixture and update create_minimal_db.py accordingly
 - [ ] Add CI validation step that runs example commands from README/USAGE docs to ensure they work
-- [ ] Document available test systems and routes in `docs/fixtures/README.md` for developers
-
 ## Workspace & Tooling
 
 - [ ] Establish the Cargo workspace layout with `crates/evefrontier-lib`, `crates/evefrontier-cli`,
