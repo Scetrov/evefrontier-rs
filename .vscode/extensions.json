@@ -5,6 +5,8 @@
         "hashicorp.terraform",
         "nrwl.angular-console",
         "rust-lang.rust-analyzer",
-        "1yib.rust-bundle"
+        "1yib.rust-bundle",
+        "yzhang.markdown-all-in-one",
+        "esbenp.prettier-vscode"
     ]
 }
