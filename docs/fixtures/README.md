@@ -44,10 +44,6 @@ python3 scripts/create_minimal_db.py
 
 **Important:** Do not replace it by running download commands with `--data-dir docs/fixtures/`. Use the `--dataset fixture` flag when testing with this fixture to prevent re-downloads.
 
-### For Local Testing with Real Data
-
-```
-
 ## ⚠️ Important: Do Not Overwrite
 
 **This fixture is tracked in git and used by CI.** Do not replace it by running download commands with `--data-dir docs/fixtures/`.
