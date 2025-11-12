@@ -76,6 +76,10 @@ jobs:
           ./target/release/evefrontier-cli download --data-dir /tmp/test-download
           test -f /tmp/test-download/static_data.db || (echo "Download failed" && exit 1)
 
+      - name: Create release marker for fixture to prevent re-download
+        run: |
+          echo -e "requested=tag\nresolved=fixture" > docs/fixtures/minimal_static_data.db.release
+
       - name: Test route command with fixture (README example)
         run: |
           ./target/release/evefrontier-cli --data-dir docs/fixtures/minimal_static_data.db route --from "Y:170N" --to "BetaTest"

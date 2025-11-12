@@ -49,7 +49,7 @@ and the accepted ADRs under [`docs/adrs/`](docs/adrs/).
 - Use `search` to emit the same route as JSON-ready "search" output:
 
   ```pwsh
-  cargo run -p evefrontier-cli -- search --from "Y:170N" --to "BetaTest" --format json
+  cargo run -p evefrontier-cli -- --format json search --from "Y:170N" --to "BetaTest"
   ```
 
 - Use `path` when you need an arrow-delimited sequence of systems for other tools:

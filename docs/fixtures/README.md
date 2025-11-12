@@ -29,6 +29,8 @@ This provides:
 
 **This fixture is tracked in git and used by CI.** Do not replace it by running download commands with `--data-dir docs/fixtures/`.
 
+The fixture includes a `.release` marker file (`minimal_static_data.db.release`) that prevents the CLI from attempting to re-download the dataset when using `--data-dir docs/fixtures/minimal_static_data.db`. This marker is created automatically by the CI workflow to ensure tests run entirely offline without hitting external dataset sources.
+
 ### For Local Testing with Real Data
 
 If you need to test with production EVE Frontier data:
