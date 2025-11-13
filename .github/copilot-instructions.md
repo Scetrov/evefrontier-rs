@@ -51,8 +51,9 @@ Ensure that you follow a Boyd Loop style of development:
 - Build entire workspace: `cargo build --workspace` or
   `cargo build -p evefrontier-lib -p evefrontier-cli`.
 - Run CLI: from repo root:
-  - Download dataset (places DB at resolved path): `cargo run -p evefrontier-cli -- download`
-  - Compute a route starting at a system name: `cargo run -p evefrontier-cli -- route "P:STK3"`
+  - Download dataset (places DB at resolved path): `evefrontier-cli download`
+  - Compute a route starting at a system name: `evefrontier-cli route "P:STK3"`
+  - For development/testing use: `cargo run -p evefrontier-cli -- <subcommand>`
 - Running tests: `cargo test --workspace` (there are currently no heavy tests; consider adding unit
   tests under `crates/evefrontier-lib/tests` or `crates/evefrontier-lib/src/lib.rs` test modules).
 
@@ -127,7 +128,7 @@ testing, call `ensure_c3e6_dataset(Some(path))` to control where the DB is place
 
 - If a runtime error says "no such table", inspect the DB with `sqlite3` or write a tiny example
   (see `examples/print_schema.rs` that was added) to list tables and column names.
-- Use `cargo run -p evefrontier-cli -- route "SYSTEM"` to reproduce route logic quickly.
+- Use `evefrontier-cli route "SYSTEM"` to reproduce route logic quickly (or `cargo run -p evefrontier-cli -- route "SYSTEM"` during development).
 
 ## When editing, follow these rules
 

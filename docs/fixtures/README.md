@@ -56,10 +56,10 @@ If you need to test with production EVE Frontier data:
 
 ```bash
 # Use a different directory for downloads
-cargo run -p evefrontier-cli -- download --data-dir /tmp/test-data
+evefrontier-cli download --data-dir /tmp/test-data
 
 # Or let it use the default cache location
-cargo run -p evefrontier-cli -- download
+evefrontier-cli download
 ```
 
 ### Regenerating the Fixture
