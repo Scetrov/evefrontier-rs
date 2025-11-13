@@ -30,6 +30,10 @@ CREATE TABLE SolarSystems(
   constellationID INTEGER NOT NULL,
   regionID INTEGER NOT NULL,
   name TEXT NOT NULL,
+  -- include coordinates so spatial routing works by default
+  x REAL NOT NULL,
+  y REAL NOT NULL,
+  z REAL NOT NULL,
   FOREIGN KEY(constellationID) REFERENCES Constellations(constellationID),
   FOREIGN KEY(regionID) REFERENCES Regions(regionID)
 );
@@ -66,11 +70,11 @@ cur.execute('INSERT INTO Constellations(constellationID, regionID, constellation
 
 # Insert systems: include Y:170N in this constellation
 systems = [
-    (100, 10, 1, 'Y:170N'),
-    (101, 10, 1, 'AlphaTest'),
-    (102, 10, 1, 'BetaTest')
+  (100, 10, 1, 'Y:170N', 0.0, 0.0, 0.0),
+  (101, 10, 1, 'AlphaTest', 10.0, 0.0, 0.0),
+  (102, 10, 1, 'BetaTest', 20.0, 0.0, 0.0)
 ]
-cur.executemany('INSERT INTO SolarSystems(solarSystemId, constellationID, regionID, name) VALUES (?,?,?,?)', systems)
+cur.executemany('INSERT INTO SolarSystems(solarSystemId, constellationID, regionID, name, x, y, z) VALUES (?,?,?,?,?,?,?)', systems)
 # also populate legacy table
 cur.executemany('INSERT INTO mapSolarSystems(solarSystemID, name) VALUES (?,?)', [(s[0], s[3]) for s in systems])
 

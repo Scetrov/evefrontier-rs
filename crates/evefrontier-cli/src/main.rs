@@ -54,9 +54,11 @@ enum Command {
     Download,
     /// Compute a route between two system names using the loaded dataset.
     Route(RouteCommandArgs),
-    /// Inspect a candidate route with additional diagnostic metadata.
+    /// Inspect a candidate route with additional diagnostic metadata. (Deprecated alias for `route --view search`)
+    #[command(hide = true)]
     Search(RouteCommandArgs),
-    /// Output the raw path between two systems for downstream tooling.
+    /// Output the raw path between two systems for downstream tooling. (Deprecated alias for `route --view path`)
+    #[command(hide = true)]
     Path(RouteCommandArgs),
 }
 
@@ -123,6 +125,11 @@ struct RouteOptionsArgs {
     /// Maximum system temperature threshold in Kelvin.
     #[arg(long = "max-temp")]
     max_temp: Option<f64>,
+
+    /// Select the high-level view for the result (affects JSON label and textual header).
+    /// Use `route` for normal output, `search` for diagnostic labeling, or `path` to emphasize the path.
+    #[arg(long = "view", value_enum, default_value_t = RouteViewArg::default(), alias = "kind")]
+    view: RouteViewArg,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum, Default)]
@@ -145,11 +152,32 @@ impl From<RouteAlgorithmArg> for RouteAlgorithm {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum, Default)]
+enum RouteViewArg {
+    #[default]
+    Route,
+    Search,
+    Path,
+}
+
+impl From<RouteViewArg> for RouteOutputKind {
+    fn from(value: RouteViewArg) -> Self {
+        match value {
+            RouteViewArg::Route => RouteOutputKind::Route,
+            RouteViewArg::Search => RouteOutputKind::Search,
+            RouteViewArg::Path => RouteOutputKind::Path,
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum, Default)]
 enum OutputFormat {
     #[default]
     Text,
     Rich,
     Json,
+    /// Minimal path-only output with +/|/- prefixes.
+    Basic,
+    #[value(alias = "notepad")]
     Note,
 }
 
@@ -160,7 +188,7 @@ impl OutputFormat {
 
     fn render_download(self, output: &DownloadOutput) -> Result<()> {
         match self {
-            OutputFormat::Text | OutputFormat::Rich | OutputFormat::Note => {
+            OutputFormat::Text | OutputFormat::Rich | OutputFormat::Note | OutputFormat::Basic => {
                 println!(
                     "Dataset available at {} (requested release: {})",
                     output.dataset_path, output.release
@@ -187,6 +215,18 @@ impl OutputFormat {
                 let mut stdout = io::stdout();
                 serde_json::to_writer_pretty(&mut stdout, summary)?;
                 stdout.write_all(b"\n")?;
+            }
+            OutputFormat::Basic => {
+                // Render a minimal path: first line with '+', middle lines with '|', last with '-'
+                let len = summary.steps.len();
+                if len == 0 {
+                    return Ok(());
+                }
+                for (i, step) in summary.steps.iter().enumerate() {
+                    let prefix = if i == 0 { '+' } else if i + 1 == len { '-' } else { '|' };
+                    let name = step.name.as_deref().unwrap_or("<unknown>");
+                    println!("{} {}", prefix, name);
+                }
             }
             OutputFormat::Note => {
                 print!("{}", summary.render(RouteRenderMode::InGameNote));
@@ -279,14 +319,11 @@ fn main() -> Result<()> {
     match cli.command {
         Command::Download => handle_download(&context),
         Command::Route(route_args) => {
-            handle_route_command(&context, &route_args, RouteOutputKind::Route)
+            let kind: RouteOutputKind = route_args.options.view.into();
+            handle_route_command(&context, &route_args, kind)
         }
-        Command::Search(route_args) => {
-            handle_route_command(&context, &route_args, RouteOutputKind::Search)
-        }
-        Command::Path(route_args) => {
-            handle_route_command(&context, &route_args, RouteOutputKind::Path)
-        }
+        Command::Search(route_args) => handle_route_command(&context, &route_args, RouteOutputKind::Search),
+        Command::Path(route_args) => handle_route_command(&context, &route_args, RouteOutputKind::Path),
     }
 }
 
