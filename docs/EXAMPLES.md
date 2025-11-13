@@ -1,4 +1,4 @@
-## Example 1
+## Route Example
 
 ```
 $ evefrontier-cli route --from "Y:170N" --to "Z:46SO"
@@ -12,3 +12,10 @@ Total distance: 135ly
 Total ly jumped: 60ly
 ```
 
+## Route with Notepad Example
+
+```
+$ evefrontier-cli route --from "Y:170N" --to "Z:46SO" --format note
+St <a href="showinfo:5//30000635">Y:170N</a>
+SD <a href="showinfo:5//30000639">B:4OV6</a>
+En <a href="showinfo:5//30007664">Z:46S0</a>

@@ -54,12 +54,6 @@ enum Command {
     Download,
     /// Compute a route between two system names using the loaded dataset.
     Route(RouteCommandArgs),
-    /// Inspect a candidate route with additional diagnostic metadata. (Deprecated alias for `route --view search`)
-    #[command(hide = true)]
-    Search(RouteCommandArgs),
-    /// Output the raw path between two systems for downstream tooling. (Deprecated alias for `route --view path`)
-    #[command(hide = true)]
-    Path(RouteCommandArgs),
 }
 
 #[derive(Args, Debug, Clone)]
@@ -125,11 +119,6 @@ struct RouteOptionsArgs {
     /// Maximum system temperature threshold in Kelvin.
     #[arg(long = "max-temp")]
     max_temp: Option<f64>,
-
-    /// Select the high-level view for the result (affects JSON label and textual header).
-    /// Use `route` for normal output, `search` for diagnostic labeling, or `path` to emphasize the path.
-    #[arg(long = "view", value_enum, default_value_t = RouteViewArg::default(), alias = "kind")]
-    view: RouteViewArg,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum, Default)]
@@ -151,23 +140,7 @@ impl From<RouteAlgorithmArg> for RouteAlgorithm {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum, Default)]
-enum RouteViewArg {
-    #[default]
-    Route,
-    Search,
-    Path,
-}
-
-impl From<RouteViewArg> for RouteOutputKind {
-    fn from(value: RouteViewArg) -> Self {
-        match value {
-            RouteViewArg::Route => RouteOutputKind::Route,
-            RouteViewArg::Search => RouteOutputKind::Search,
-            RouteViewArg::Path => RouteOutputKind::Path,
-        }
-    }
-}
+// Views removed; CLI always uses RouteOutputKind::Route.
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum, Default)]
 enum OutputFormat {
@@ -319,11 +292,8 @@ fn main() -> Result<()> {
     match cli.command {
         Command::Download => handle_download(&context),
         Command::Route(route_args) => {
-            let kind: RouteOutputKind = route_args.options.view.into();
-            handle_route_command(&context, &route_args, kind)
+            handle_route_command(&context, &route_args, RouteOutputKind::Route)
         }
-        Command::Search(route_args) => handle_route_command(&context, &route_args, RouteOutputKind::Search),
-        Command::Path(route_args) => handle_route_command(&context, &route_args, RouteOutputKind::Path),
     }
 }
 
