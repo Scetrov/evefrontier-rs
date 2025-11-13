@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- 2025-11-13 - auto-llm - [auto-llm] - Updated documentation examples to use direct `evefrontier-cli` binary invocation instead of `cargo run -p evefrontier-cli --`, improved README with release build and install instructions.
 - 2025-11-12 - auto-llm - [auto-llm] - CI now generates minimal fixture fresh for each test run using `scripts/create_minimal_db.py`, eliminating dependency on git-tracked binary and preventing accidental overwrites.
 - 2025-11-12 - auto-llm - [auto-llm] - Fixed CI fixture tests to use `--dataset fixture` flag with generated fixture, ensuring tests run entirely offline without hitting external dataset sources.
 - 2025-11-12 - auto-llm - [auto-llm] - Fixed README `--format json` example to place global flag before subcommand (global flags must precede subcommands).

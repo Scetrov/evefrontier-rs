@@ -163,8 +163,9 @@ impl SpatialIndex {
 1. Prototype: implement a small index builder in `crates/evefrontier-lib/examples` that reads the
   checked-in fixture `minimal_static_data.db`, converts coordinates, builds a `kiddo` tree,
   serializes with `postcard`, compresses with `zstd`, and writes `spatial_index.bin`.
-2. Add a `cargo run -p evefrontier-cli -- index-build` subcommand that runs the builder locally
-  and writes the index into the cache dir used by `ensure_c3e6_dataset`.
+2. Add an `evefrontier-cli index-build` subcommand that runs the builder locally and writes the
+  index into the cache dir used by `ensure_c3e6_dataset`. (For development, invoke as
+  `cargo run -p evefrontier-cli -- index-build`.)
 2b. Release packaging: extend the release (GitHub Actions) pipeline to run `index-build` during
    artifact preparation and attach `spatial_index.bin` and a `spatial_index.meta` JSON (version,
    precision, compression, checksum) to the GitHub release. CI should also publish or cache the

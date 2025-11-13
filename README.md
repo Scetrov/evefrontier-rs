@@ -27,6 +27,15 @@ and the accepted ADRs under [`docs/adrs/`](docs/adrs/).
    cargo build --workspace
    ```
 
+   Optional: build a release binary for faster startup:
+
+   ```bash
+   cargo build -p evefrontier-cli --release
+   # Binary: target/release/evefrontier-cli
+   # Or install globally:
+   cargo install --path crates/evefrontier-cli
+   ```
+
 3. Run tests:
 
    ```bash
@@ -36,8 +45,8 @@ and the accepted ADRs under [`docs/adrs/`](docs/adrs/).
 4. Run the CLI (it will download the dataset automatically on first use):
 
    ```bash
-   cargo run -p evefrontier-cli -- download
-   cargo run -p evefrontier-cli -- route --from "Y:170N" --to "BetaTest"
+   evefrontier-cli download
+   evefrontier-cli route --from "Y:170N" --to "BetaTest"
    ```
 
   The `--data-dir` flag accepts either a directory (the dataset filename will be appended) or a path
@@ -49,13 +58,13 @@ and the accepted ADRs under [`docs/adrs/`](docs/adrs/).
 - Use `search` to emit the same route as JSON-ready "search" output:
 
   ```pwsh
-  cargo run -p evefrontier-cli -- --format json search --from "Y:170N" --to "BetaTest"
+  evefrontier-cli --format json search --from "Y:170N" --to "BetaTest"
   ```
 
 - Use `path` when you need an arrow-delimited sequence of systems for other tools:
 
   ```pwsh
-  cargo run -p evefrontier-cli -- path --from "Y:170N" --to "BetaTest"
+  evefrontier-cli path --from "Y:170N" --to "BetaTest"
   ```
 
 - Apply `--format rich` for Markdown-style bullet output or `--format note` to emit an in-game note

@@ -35,6 +35,8 @@ Developer invocation (build-and-run via cargo):
 cargo run -p evefrontier-cli -- <subcommand> [args]
 ```
 
+Note: The examples below use the installed/release binary invocation. For development, prefix commands with `cargo run -p evefrontier-cli --`.
+
 Global options accepted by every subcommand:
 
 - `--data-dir <PATH>` — override the dataset directory or file.
@@ -95,7 +97,7 @@ the specified dataset release (or reuses the cached copy) and writes it to the r
 [`Scetrov/evefrontier_datasets`](https://github.com/Scetrov/evefrontier_datasets).
 
 ```pwsh
-cargo run -p evefrontier-cli -- download --data-dir docs/fixtures
+evefrontier-cli download --data-dir docs/fixtures
 ```
 
 ### `route`
@@ -104,7 +106,7 @@ Computes a simple breadth-first route between two system names using the loaded 
 dataset is not already present, the CLI will download it automatically before computing the route.
 
 ```pwsh
-cargo run -p evefrontier-cli -- route --from "Y:170N" --to "BetaTest" --data-dir docs/fixtures/minimal_static_data.db
+evefrontier-cli route --from "Y:170N" --to "BetaTest" --data-dir docs/fixtures/minimal_static_data.db
 ```
 
 ### `search`
@@ -113,7 +115,7 @@ Runs the same breadth-first algorithm but labels the output as a search result, 
 debugging routing options or consuming the JSON response in tooling.
 
 ```pwsh
-cargo run -p evefrontier-cli -- search --from "Y:170N" --to "BetaTest" --format json --data-dir docs/fixtures/minimal_static_data.db
+evefrontier-cli --format json search --from "Y:170N" --to "BetaTest" --data-dir docs/fixtures/minimal_static_data.db
 ```
 
 ### `path`
@@ -122,7 +124,7 @@ Outputs the raw path between two systems using an arrow-delimited format that is
 scripts.
 
 ```pwsh
-cargo run -p evefrontier-cli -- path --from "Y:170N" --to "BetaTest" --data-dir docs/fixtures/minimal_static_data.db
+evefrontier-cli path --from "Y:170N" --to "BetaTest" --data-dir docs/fixtures/minimal_static_data.db
 ```
 
 ### Routing options
@@ -196,5 +198,5 @@ wrappers like `ensure_c3e6_dataset`) copy or extract the local file instead of c
 
 ```pwsh
 $env:EVEFRONTIER_DATASET_SOURCE = "docs/fixtures/minimal_static_data.db"
-cargo run -p evefrontier-cli -- download --data-dir target/fixtures
+evefrontier-cli download --data-dir target/fixtures
 ```
