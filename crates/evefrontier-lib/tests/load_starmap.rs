@@ -34,7 +34,7 @@ fn load_fixture_and_find_route() -> Result<()> {
         Some("TestRegion")
     );
     assert!(start_system.metadata.security_status.is_none());
-    assert!(start_system.position.is_none());
+    assert!(start_system.position.is_some());
 
     let graph = build_graph(&starmap);
     let route = find_route(&graph, start, goal).expect("route should exist");

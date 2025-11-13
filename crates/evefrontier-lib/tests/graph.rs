@@ -125,13 +125,16 @@ fn hybrid_graph_combines_edges() {
 }
 
 #[test]
-fn spatial_graph_is_empty_without_positions() {
+fn spatial_graph_has_edges_with_positions_in_fixture() {
     let starmap = load_starmap(&fixture_path()).expect("load fixture");
     let graph = build_spatial_graph(&starmap);
 
-    assert!(graph
-        .neighbours(starmap.system_id_by_name("Y:170N").unwrap())
-        .is_empty());
+    let start = starmap.system_id_by_name("Y:170N").unwrap();
+    let neighbours = graph.neighbours(start);
+    assert!(
+        !neighbours.is_empty(),
+        "fixture now includes coordinates; spatial graph should have edges"
+    );
 }
 
 fn fixture_path() -> std::path::PathBuf {
