@@ -94,17 +94,20 @@ impl RoutePlan {
 
 /// Compute a route using the requested algorithm and constraints.
 pub fn plan_route(starmap: &Starmap, request: &RouteRequest) -> Result<RoutePlan> {
-    let start_id =
-        starmap
-            .system_id_by_name(&request.start)
-            .ok_or_else(|| Error::UnknownSystem {
-                name: request.start.clone(),
-            })?;
-    let goal_id = starmap
-        .system_id_by_name(&request.goal)
-        .ok_or_else(|| Error::UnknownSystem {
+    let start_id = starmap.system_id_by_name(&request.start).ok_or_else(|| {
+        let suggestions = starmap.fuzzy_system_matches(&request.start, 3);
+        Error::UnknownSystem {
+            name: request.start.clone(),
+            suggestions,
+        }
+    })?;
+    let goal_id = starmap.system_id_by_name(&request.goal).ok_or_else(|| {
+        let suggestions = starmap.fuzzy_system_matches(&request.goal, 3);
+        Error::UnknownSystem {
             name: request.goal.clone(),
-        })?;
+            suggestions,
+        }
+    })?;
 
     let avoided = resolve_avoided_systems(starmap, &request.constraints.avoid_systems)?;
     let constraints = request.constraints.to_search_constraints(avoided);
@@ -152,9 +155,13 @@ pub fn plan_route(starmap: &Starmap, request: &RouteRequest) -> Result<RoutePlan
 fn resolve_avoided_systems(starmap: &Starmap, avoided: &[String]) -> Result<HashSet<SystemId>> {
     let mut resolved = HashSet::new();
     for name in avoided {
-        let id = starmap
-            .system_id_by_name(name)
-            .ok_or_else(|| Error::UnknownSystem { name: name.clone() })?;
+        let id = starmap.system_id_by_name(name).ok_or_else(|| {
+            let suggestions = starmap.fuzzy_system_matches(name, 3);
+            Error::UnknownSystem {
+                name: name.clone(),
+                suggestions,
+            }
+        })?;
         resolved.insert(id);
     }
     Ok(resolved)

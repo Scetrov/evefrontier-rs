@@ -37,8 +37,11 @@ pub enum Error {
     UnsupportedSchema,
 
     /// Raised when a system name could not be found in the dataset.
-    #[error("unknown system name: {name}")]
-    UnknownSystem { name: String },
+    #[error("unknown system name: {name}{}", format_suggestions(.suggestions))]
+    UnknownSystem {
+        name: String,
+        suggestions: Vec<String>,
+    },
 
     /// Raised when no route could be found between two systems.
     #[error("no route found between {start} and {goal}")]
@@ -67,4 +70,21 @@ pub enum Error {
     /// Wrapper for ZIP archive parsing errors.
     #[error(transparent)]
     Zip(#[from] zip::result::ZipError),
+}
+
+fn format_suggestions(suggestions: &[String]) -> String {
+    if suggestions.is_empty() {
+        String::new()
+    } else if suggestions.len() == 1 {
+        format!(". Did you mean '{}'?", suggestions[0])
+    } else {
+        format!(
+            ". Did you mean one of: {}?",
+            suggestions
+                .iter()
+                .map(|s| format!("'{}'", s))
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+    }
 }
