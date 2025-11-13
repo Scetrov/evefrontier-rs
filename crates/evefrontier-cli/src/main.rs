@@ -150,6 +150,8 @@ enum OutputFormat {
     Json,
     /// Minimal path-only output with +/|/- prefixes.
     Basic,
+    /// Emoji-enhanced readable output per EXAMPLES.md.
+    Emoji,
     #[value(alias = "notepad")]
     Note,
 }
@@ -161,7 +163,11 @@ impl OutputFormat {
 
     fn render_download(self, output: &DownloadOutput) -> Result<()> {
         match self {
-            OutputFormat::Text | OutputFormat::Rich | OutputFormat::Note | OutputFormat::Basic => {
+            OutputFormat::Text
+            | OutputFormat::Rich
+            | OutputFormat::Note
+            | OutputFormat::Basic
+            | OutputFormat::Emoji => {
                 println!(
                     "Dataset available at {} (requested release: {})",
                     output.dataset_path, output.release
@@ -201,8 +207,37 @@ impl OutputFormat {
                     println!("{} {}", prefix, name);
                 }
             }
+            OutputFormat::Emoji => {
+                // Header: "Route from A to B (N jumps):"
+                let hops = summary.hops;
+                let start = summary.start.name.as_deref().unwrap_or("<unknown>");
+                let goal = summary.goal.name.as_deref().unwrap_or("<unknown>");
+                println!("Route from {} to {} ({} jumps):", start, goal, hops);
+                let len = summary.steps.len();
+                for (i, step) in summary.steps.iter().enumerate() {
+                    let name = step.name.as_deref().unwrap_or("<unknown>");
+                    let icon = if i == 0 { "🚥" } else if i + 1 == len { "🚀️" } else { "📍" };
+                    println!(" {} {}", icon, name);
+                }
+            }
             OutputFormat::Note => {
-                print!("{}", summary.render(RouteRenderMode::InGameNote));
+                // Strict notepad format per EXAMPLES.md using Sta/Dst/Jmp lines with showinfo anchors.
+                // Sta: first, Dst: second (if present and there are >=3 steps), Jmp: last (if there are >=2 steps)
+                let first = summary.steps.first();
+                if let Some(step) = first {
+                    let name = step.name.as_deref().unwrap_or("<unknown>");
+                    println!("Sta <a href=\"showinfo:5//{}\">{}</a>", step.id, name);
+                }
+                if summary.steps.len() >= 3 {
+                    let step = &summary.steps[1];
+                    let name = step.name.as_deref().unwrap_or("<unknown>");
+                    println!("Dst <a href=\"showinfo:5//{}\">{}</a>", step.id, name);
+                }
+                if summary.steps.len() >= 2 {
+                    let step = summary.steps.last().expect("len>=2 has last");
+                    let name = step.name.as_deref().unwrap_or("<unknown>");
+                    println!("Jmp <a href=\"showinfo:5//{}\">{}</a>", step.id, name);
+                }
             }
         }
         Ok(())
