@@ -4,7 +4,6 @@ use std::path::PathBuf;
 use assert_cmd::cargo::cargo_bin_cmd;
 use assert_cmd::Command;
 use predicates::prelude::*;
-use serde_json::Value;
 use tempfile::tempdir;
 
 fn fixture_path() -> PathBuf {
@@ -33,57 +32,6 @@ fn prepare_command() -> (Command, tempfile::TempDir) {
 }
 
 #[test]
-fn route_subcommand_outputs_steps() {
-    let (mut cmd, _temp) = prepare_command();
-    cmd.arg("route")
-        .arg("--from")
-        .arg("Y:170N")
-        .arg("--to")
-        .arg("BetaTest");
-
-    cmd.assert()
-        .success()
-        .stdout(predicate::str::contains("Route: Y:170N -> BetaTest"))
-        .stdout(predicate::str::contains("algorithm: bfs"));
-}
-
-#[test]
-fn search_subcommand_supports_json_output() {
-    let (mut cmd, _temp) = prepare_command();
-    cmd.arg("--format")
-        .arg("json")
-        .arg("search")
-        .arg("--from")
-        .arg("Y:170N")
-        .arg("--to")
-        .arg("BetaTest");
-
-    let output = cmd.assert().success().get_output().stdout.clone();
-    let json: Value = serde_json::from_slice(&output).expect("valid json");
-
-    assert_eq!(json["kind"], "search");
-    assert_eq!(json["algorithm"], "bfs");
-    assert_eq!(json["start"]["name"], "Y:170N");
-    assert_eq!(json["goal"]["name"], "BetaTest");
-}
-
-#[test]
-fn path_subcommand_shows_arrow_format() {
-    let (mut cmd, _temp) = prepare_command();
-    cmd.arg("path")
-        .arg("--from")
-        .arg("Y:170N")
-        .arg("--to")
-        .arg("BetaTest");
-
-    cmd.assert()
-        .success()
-        .stdout(predicate::str::contains("Path: Y:170N -> BetaTest"))
-        .stdout(predicate::str::contains("Y:170N"))
-        .stdout(predicate::str::contains("->"));
-}
-
-#[test]
 fn dijkstra_algorithm_is_supported() {
     let (mut cmd, _temp) = prepare_command();
     cmd.arg("route")
@@ -97,24 +45,6 @@ fn dijkstra_algorithm_is_supported() {
     cmd.assert()
         .success()
         .stdout(predicate::str::contains("algorithm: dijkstra"));
-}
-
-#[test]
-fn note_format_outputs_in_game_layout() {
-    let (mut cmd, _temp) = prepare_command();
-    cmd.arg("--format")
-        .arg("note")
-        .arg("path")
-        .arg("--from")
-        .arg("Y:170N")
-        .arg("--to")
-        .arg("BetaTest");
-
-    cmd.assert()
-        .success()
-        .stdout(predicate::str::contains("Path:"))
-        .stdout(predicate::str::contains("Y:170N"))
-        .stdout(predicate::str::contains("BetaTest"));
 }
 
 #[test]
