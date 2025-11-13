@@ -90,6 +90,32 @@ impl Starmap {
     pub fn system_name(&self, id: SystemId) -> Option<&str> {
         self.systems.get(&id).map(|sys| sys.name.as_str())
     }
+
+    /// Find system names similar to the query using fuzzy matching.
+    ///
+    /// Returns up to `limit` system names sorted by similarity (most similar first).
+    /// Uses Jaro-Winkler similarity with a minimum threshold of 0.7.
+    pub fn fuzzy_system_matches(&self, query: &str, limit: usize) -> Vec<String> {
+        use strsim::jaro_winkler;
+
+        const MIN_SIMILARITY: f64 = 0.7;
+
+        let mut candidates: Vec<(f64, String)> = self
+            .name_to_id
+            .keys()
+            .filter_map(|name| {
+                let similarity = jaro_winkler(query, name);
+                if similarity >= MIN_SIMILARITY {
+                    Some((similarity, name.clone()))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        candidates.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
+        candidates.into_iter().take(limit).map(|(_, name)| name).collect()
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
