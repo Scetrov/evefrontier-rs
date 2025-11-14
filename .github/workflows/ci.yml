@@ -83,18 +83,18 @@ jobs:
 
       - name: Test route command with fixture (README example)
         run: |
-          ./target/release/evefrontier-cli --data-dir docs/fixtures/minimal_static_data.db --dataset fixture route --from "Y:170N" --to "BetaTest"
+          EVEFRONTIER_DATASET_SOURCE="$(pwd)/docs/fixtures/minimal_static_data.db" ./target/release/evefrontier-cli --data-dir /tmp/test-route route --from "Y:170N" --to "BetaTest"
 
       - name: Test route command with JSON output (README example)
         run: |
-          output=$(./target/release/evefrontier-cli --data-dir docs/fixtures/minimal_static_data.db --dataset fixture --format json route --from "Y:170N" --to "BetaTest")
-          echo "$output" | jq -e '.kind == "route"' || (echo "JSON output validation failed" && exit 1)
+          EVEFRONTIER_DATASET_SOURCE="$(pwd)/docs/fixtures/minimal_static_data.db" ./target/release/evefrontier-cli --data-dir /tmp/test-json --format json route --from "Y:170N" --to "BetaTest" > /tmp/output.json
+          jq -e '.kind == "route"' /tmp/output.json || (echo "JSON output validation failed" && exit 1)
 
       - name: Test basic format path-style output (README example)
         run: |
-          ./target/release/evefrontier-cli --data-dir docs/fixtures/minimal_static_data.db --dataset fixture --format basic route --from "Y:170N" --to "BetaTest"
+          EVEFRONTIER_DATASET_SOURCE="$(pwd)/docs/fixtures/minimal_static_data.db" ./target/release/evefrontier-cli --data-dir /tmp/test-basic --format basic route --from "Y:170N" --to "BetaTest"
 
       - name: Test algorithm selection
         run: |
-          ./target/release/evefrontier-cli --data-dir docs/fixtures/minimal_static_data.db --dataset fixture route --from "Y:170N" --to "BetaTest" --algorithm dijkstra
+          EVEFRONTIER_DATASET_SOURCE="$(pwd)/docs/fixtures/minimal_static_data.db" ./target/release/evefrontier-cli --data-dir /tmp/test-algo route --from "Y:170N" --to "BetaTest" --algorithm dijkstra
 
