@@ -8,8 +8,8 @@ use serde::Serialize;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 use evefrontier_lib::{
-    ensure_dataset, load_starmap, plan_route, DatasetRelease, RouteAlgorithm, RouteConstraints,
-    RouteOutputKind, RouteRenderMode, RouteRequest, RouteSummary, Starmap,
+    ensure_dataset, load_starmap, plan_route, DatasetRelease, Error as RouteError, RouteAlgorithm,
+    RouteConstraints, RouteOutputKind, RouteRenderMode, RouteRequest, RouteSummary, Starmap,
 };
 
 #[derive(Parser, Debug)]
@@ -69,14 +69,6 @@ struct RouteCommandArgs {
 }
 
 impl RouteCommandArgs {
-    fn from(&self) -> &str {
-        &self.endpoints.from
-    }
-
-    fn to(&self) -> &str {
-        &self.endpoints.to
-    }
-
     fn to_request(&self) -> RouteRequest {
         RouteRequest {
             start: self.endpoints.from.clone(),
@@ -389,17 +381,77 @@ fn handle_route_command(
 ) -> Result<()> {
     let starmap = load_starmap_from_context(context)?;
     let request = args.to_request();
-    let plan = plan_route(&starmap, &request).with_context(|| {
-        format!(
-            "failed to compute route between {} and {}",
-            args.from(),
-            args.to()
-        )
-    })?;
+    let plan = match plan_route(&starmap, &request) {
+        Ok(plan) => plan,
+        Err(err) => return Err(handle_route_failure(&request, err)),
+    };
 
     let summary = RouteSummary::from_plan(kind, &starmap, &plan)
         .context("failed to build route summary for display")?;
     context.output_format().render_route_result(&summary)
+}
+
+fn handle_route_failure(request: &RouteRequest, err: RouteError) -> anyhow::Error {
+    match err {
+        RouteError::UnknownSystem { name, suggestions } => {
+            anyhow::anyhow!(format_unknown_system_message(&name, &suggestions))
+        }
+        RouteError::RouteNotFound { start, goal } => {
+            anyhow::anyhow!(format_route_not_found_message(
+                &start,
+                &goal,
+                &request.constraints
+            ))
+        }
+        other => anyhow::Error::new(other),
+    }
+}
+
+fn format_unknown_system_message(name: &str, suggestions: &[String]) -> String {
+    let mut message = format!("Unknown system '{}'.", name);
+    if !suggestions.is_empty() {
+        let formatted = if suggestions.len() == 1 {
+            let suggestion = suggestions.first().expect("len checked above");
+            format!("Did you mean '{suggestion}'?")
+        } else {
+            let joined = suggestions
+                .iter()
+                .map(|s| format!("'{}'", s))
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("Did you mean one of: {}?", joined)
+        };
+        message.push(' ');
+        message.push_str(&formatted);
+    }
+    message
+}
+
+fn format_route_not_found_message(
+    start: &str,
+    goal: &str,
+    constraints: &RouteConstraints,
+) -> String {
+    let mut message = format!("No route found between {} and {}.", start, goal);
+    let mut tips = Vec::new();
+    if constraints.max_jump.is_some() {
+        tips.push("increase --max-jump");
+    }
+    if constraints.avoid_gates {
+        tips.push("allow gates (omit --avoid-gates)");
+    }
+    if constraints.max_temperature.is_some() {
+        tips.push("raise --max-temp");
+    }
+    if tips.is_empty() {
+        message.push_str(
+            " Try a different algorithm (for example, --algorithm dijkstra) or relax constraints.",
+        );
+    } else {
+        message.push(' ');
+        message.push_str(&format!("Try {}.", tips.join(", ")));
+    }
+    message
 }
 
 fn load_starmap_from_context(context: &AppContext) -> Result<Starmap> {
