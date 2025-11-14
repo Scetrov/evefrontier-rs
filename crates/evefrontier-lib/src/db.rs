@@ -11,6 +11,10 @@ use crate::error::{Error, Result};
 /// Numeric identifier for a solar system.
 pub type SystemId = i64;
 
+/// Conversion factor from meters to light-years.
+/// 1 light-year ≈ 9.4607304725808 × 10^15 meters
+const METERS_TO_LIGHT_YEARS: f64 = 1.0 / 9.4607304725808e15;
+
 /// Cartesian coordinates for a solar system.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SystemPosition {
@@ -451,7 +455,14 @@ fn row_to_system(row: &Row<'_>) -> rusqlite::Result<System> {
         row.get::<_, Option<f64>>(COL_POSITION_Y)?,
         row.get::<_, Option<f64>>(COL_POSITION_Z)?,
     ) {
-        (Some(x), Some(y), Some(z)) => SystemPosition::new(x, y, z),
+        (Some(x), Some(y), Some(z)) => {
+            // Convert from meters (database storage) to light-years (routing calculations)
+            SystemPosition::new(
+                x * METERS_TO_LIGHT_YEARS,
+                y * METERS_TO_LIGHT_YEARS,
+                z * METERS_TO_LIGHT_YEARS,
+            )
+        }
         _ => None,
     };
 

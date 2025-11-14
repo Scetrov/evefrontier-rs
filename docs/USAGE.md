@@ -20,8 +20,10 @@ This document describes how to build and use the `evefrontier-cli` workspace and
 
 ## Run the CLI
 
-The CLI currently exposes four subcommands (`download`, `route`, `search`, and `path`) while the
-richer surface outlined in ADR 0005 is implemented.
+The CLI currently exposes two user-facing subcommands: `download` and `route`. Earlier
+exploratory subcommands (`search`, `path`) have been consolidated into the single `route`
+command which now covers algorithm selection, spatial routing, output formatting and
+display variants.
 
 Preferred invocation for end users and scripts:
 
@@ -37,12 +39,16 @@ cargo run -p evefrontier-cli -- <subcommand> [args]
 
 Note: The examples below use the installed/release binary invocation. For development, prefix commands with `cargo run -p evefrontier-cli --`.
 
-Global options accepted by every subcommand:
+Global options accepted by all subcommands:
 
 - `--data-dir <PATH>` — override the dataset directory or file.
 - `--dataset <TAG>` — request a specific dataset release.
-- `--format <text|rich|json|note>` — control the command output format (`text` by default).
-- `--no-logo` — suppress the ASCII banner (automatically implied for JSON output).
+- `--no-logo` — suppress the ASCII banner.
+- `--no-footer` — suppress the completion timing footer.
+
+Route-only options (ignored by other subcommands):
+
+- `--format <text|rich|json|basic|emoji|note>` — control route display (defaults to `text`).
 
 ### Examples
 
@@ -58,11 +64,7 @@ Global options accepted by every subcommand:
   evefrontier-cli download --data-dir docs/fixtures --dataset e6c3
   ```
 
-- Retrieve dataset metadata as JSON for scripting workflows:
-
-  ```pwsh
-  evefrontier-cli download --format json
-  ```
+> Note: The `download` subcommand always emits plain text regardless of `--format`.
 
 - Calculate a route between two systems using an existing dataset path:
 
@@ -76,11 +78,8 @@ Global options accepted by every subcommand:
   evefrontier-cli route --from "Y:170N" --to "BetaTest" --format json
   ```
 
-- Generate an in-game note with arrow-delimited stops:
-
-  ```pwsh
-  evefrontier-cli path --from "Y:170N" --to "BetaTest" --format note
-  ```
+> Legacy `search` / `path` examples have been replaced by `route` with the appropriate
+> `--format` choice (e.g. `--format note`).
 
 - Calculate a route after pre-setting the dataset path via environment variable:
 
@@ -102,45 +101,27 @@ evefrontier-cli download --data-dir docs/fixtures
 
 ### `route`
 
-Computes a simple breadth-first route between two system names using the loaded dataset. If the
-dataset is not already present, the CLI will download it automatically before computing the route.
+Computes a route between two system names using the selected algorithm (default: A* hybrid
+graph combining gates + spatial jumps). If the dataset is not already present, the CLI
+downloads it automatically before computing the route.
 
 ```pwsh
 evefrontier-cli route --from "Y:170N" --to "BetaTest" --data-dir docs/fixtures/minimal_static_data.db
-```
-
-### `search`
-
-Runs the same breadth-first algorithm but labels the output as a search result, which is helpful when
-debugging routing options or consuming the JSON response in tooling.
-
-```pwsh
-evefrontier-cli --format json search --from "Y:170N" --to "BetaTest" --data-dir docs/fixtures/minimal_static_data.db
-```
-
-### `path`
-
-Outputs the raw path between two systems using an arrow-delimited format that is easier to pipe into
-scripts.
-
-```pwsh
-evefrontier-cli path --from "Y:170N" --to "BetaTest" --data-dir docs/fixtures/minimal_static_data.db
 ```
 
 ### Routing options
 
 The routing subcommands accept several flags that map directly to the library's route planner:
 
-- `--algorithm <bfs|dijkstra|a-star>` — select the pathfinding algorithm. `bfs` treats the graph as
-  unweighted, `dijkstra` optimises total travel distance, and `a-star` uses system coordinates (when
-  available) as a heuristic.
+- `--algorithm <bfs|dijkstra|a-star>` — select the pathfinding algorithm. `a-star` (default)
+  uses coordinates as a heuristic over a hybrid graph. `dijkstra` optimises weighted distance.
+  `bfs` performs an unweighted gate-only traversal.
 - `--max-jump <LIGHT-YEARS>` — limit the maximum distance of an individual jump. Direct edges that
   exceed the threshold are pruned, encouraging multi-hop routes when necessary.
 - `--avoid <SYSTEM>` — avoid specific systems by name. Repeat the flag to provide more than one
   entry. Avoiding the start or destination results in a clear error.
-- `--avoid-gates` — restrict the search to spatial traversal. Spatial edges are derived from the
-  system coordinates stored in the dataset; if coordinates are absent the graph may not contain
-  spatial edges.
+- `--avoid-gates` — restrict the search to spatial traversal only (omit gate edges). If
+  system coordinates are absent the spatial graph may be sparse.
 - `--max-temp <KELVIN>` — constrain the maximum temperature of systems along the route. Systems that
   do not expose a temperature reading are treated as safe.
 

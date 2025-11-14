@@ -32,20 +32,24 @@ struct Cli {
 #[derive(Args, Debug, Clone)]
 struct GlobalOptions {
     /// Override the dataset directory or file path.
-    #[arg(long)]
+    #[arg(long, global = true)]
     data_dir: Option<PathBuf>,
 
     /// Dataset release tag to download (defaults to the latest release when omitted).
-    #[arg(long)]
+    #[arg(long, global = true)]
     dataset: Option<String>,
 
     /// Select the output format for CLI responses.
-    #[arg(long, value_enum, default_value_t = OutputFormat::default())]
+    #[arg(long, value_enum, default_value_t = OutputFormat::default(), global = true)]
     format: OutputFormat,
 
     /// Suppress the EveFrontier CLI logo banner.
-    #[arg(long, action = ArgAction::SetTrue)]
+    #[arg(long, action = ArgAction::SetTrue, global = true)]
     no_logo: bool,
+
+    /// Suppress the footer with timing information.
+    #[arg(long, action = ArgAction::SetTrue, global = true)]
+    no_footer: bool,
 }
 
 #[derive(Subcommand, Debug)]
@@ -123,9 +127,9 @@ struct RouteOptionsArgs {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum, Default)]
 enum RouteAlgorithmArg {
-    #[default]
     Bfs,
     Dijkstra,
+    #[default]
     #[value(name = "a-star")]
     AStar,
 }
@@ -161,31 +165,47 @@ impl OutputFormat {
         matches!(self, OutputFormat::Text | OutputFormat::Rich)
     }
 
+    fn supports_footer(self) -> bool {
+        matches!(
+            self,
+            OutputFormat::Text | OutputFormat::Rich | OutputFormat::Emoji | OutputFormat::Basic
+        )
+    }
+
     fn render_download(self, output: &DownloadOutput) -> Result<()> {
-        match self {
-            OutputFormat::Text
-            | OutputFormat::Rich
-            | OutputFormat::Note
-            | OutputFormat::Basic
-            | OutputFormat::Emoji => {
-                println!(
-                    "Dataset available at {} (requested release: {})",
-                    output.dataset_path, output.release
-                );
-            }
-            OutputFormat::Json => {
-                let mut stdout = io::stdout();
-                serde_json::to_writer_pretty(&mut stdout, output)?;
-                stdout.write_all(b"\n")?;
-            }
-        }
+        // Download output is always plain text regardless of selected format.
+        println!(
+            "Dataset available at {} (requested release: {})",
+            output.dataset_path, output.release
+        );
         Ok(())
     }
 
     fn render_route_result(self, summary: &RouteSummary) -> Result<()> {
         match self {
             OutputFormat::Text => {
-                print!("{}", summary.render(RouteRenderMode::PlainText));
+                // Human-friendly route view per docs/EXAMPLES.md
+                let hops = summary.hops;
+                let start = summary.start.name.as_deref().unwrap_or("<unknown>");
+                let goal = summary.goal.name.as_deref().unwrap_or("<unknown>");
+                // Include algorithm hint to keep tests informative
+                println!(
+                    "Route from {} to {} ({} jumps; algorithm: {}):",
+                    start, goal, hops, summary.algorithm
+                );
+                for step in &summary.steps {
+                    let name = step.name.as_deref().unwrap_or("<unknown>");
+                    if let (Some(distance), Some(method)) = (step.distance, step.method.as_deref()) {
+                        println!(" - {} ({:.0}ly via {})", name, distance, method);
+                    } else {
+                        println!(" - {}", name);
+                    }
+                }
+                println!(
+                    "\nTotal distance: {:.0}ly",
+                    summary.total_distance
+                );
+                println!("Total ly jumped: {:.0}ly", summary.jump_distance);
             }
             OutputFormat::Rich => {
                 print!("{}", summary.render(RouteRenderMode::RichText));
@@ -218,9 +238,17 @@ impl OutputFormat {
                 for (i, step) in summary.steps.iter().enumerate() {
                     let name = step.name.as_deref().unwrap_or("<unknown>");
                     let icon = if i == 0 { "🚥" } else if i + 1 == len { "🚀️" } else { "📍" };
-                    println!(" {} {}", icon, name);
+                    if let (Some(distance), Some(method)) = (step.distance, step.method.as_deref()) {
+                        println!(" {} {} ({:.0}ly via {})", icon, name, distance, method);
+                    } else {
+                        println!(" {} {}", icon, name);
+                    }
                 }
-                println!("via {} gates / {} jump drive", summary.gates, summary.jumps);
+                println!(
+                    "\nTotal distance: {:.0}ly",
+                    summary.total_distance
+                );
+                println!("Total ly jumped: {:.0}ly", summary.jump_distance);
             }
             OutputFormat::Note => {
                 // Strict notepad format per EXAMPLES.md using Sta/Dst/Jmp lines with showinfo anchors.
@@ -240,7 +268,6 @@ impl OutputFormat {
                     let name = step.name.as_deref().unwrap_or("<unknown>");
                     println!("Jmp <a href=\"showinfo:5//{}\">{}</a>", step.id, name);
                 }
-                println!("via {} gates / {} jump drive", summary.gates, summary.jumps);
             }
         }
         Ok(())
@@ -316,23 +343,35 @@ impl AppContext {
     fn should_show_logo(&self) -> bool {
         self.output_format().supports_banner() && !self.options.no_logo
     }
+
+    fn should_show_footer(&self) -> bool {
+        self.output_format().supports_footer() && !self.options.no_footer
+    }
 }
 
 fn main() -> Result<()> {
     init_tracing();
     let cli = Cli::parse();
     let context = AppContext::new(cli.global);
+    let start = std::time::Instant::now();
 
     if context.should_show_logo() {
         print_logo();
     }
 
-    match cli.command {
+    let result = match cli.command {
         Command::Download => handle_download(&context),
         Command::Route(route_args) => {
             handle_route_command(&context, &route_args, RouteOutputKind::Route)
         }
+    };
+
+    if result.is_ok() && context.should_show_footer() {
+        let elapsed = start.elapsed();
+        print_footer(elapsed);
     }
+
+    result
 }
 
 fn handle_download(context: &AppContext) -> Result<()> {
@@ -457,4 +496,36 @@ fn print_logo() {
         text = centered.as_str(),
         reset = reset
     );
+}
+
+fn print_footer(elapsed: std::time::Duration) {
+    const GRAY_RAW: &str = "\x1b[90m";
+    const RESET_RAW: &str = "\x1b[0m";
+
+    fn supports_color() -> bool {
+        if std::env::var_os("NO_COLOR").is_some() {
+            return false;
+        }
+        if let Ok(term) = std::env::var("TERM") {
+            if term.eq_ignore_ascii_case("dumb") {
+                return false;
+            }
+        }
+        true
+    }
+
+    let (gray, reset) = if supports_color() {
+        (GRAY_RAW, RESET_RAW)
+    } else {
+        ("", "")
+    };
+
+    let elapsed_ms = elapsed.as_millis();
+    let time_str = if elapsed_ms < 1000 {
+        format!("{}ms", elapsed_ms)
+    } else {
+        format!("{:.2}s", elapsed.as_secs_f64())
+    };
+
+    println!("\n{gray}Completed in {}{reset}", time_str);
 }

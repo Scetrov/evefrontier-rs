@@ -1,23 +1,27 @@
 ## Route Example
 
 ```
-$ evefrontier-cli route --from "Y:170N" --to "Z:46SO"
+$ evefrontier-cli route --from "Y:170N" --to "Z:46S0" --algorithm a-star
 
-Route from Y:170N to Z:46SO (3 jumps):
+Route from Y:170N to Z:46S0 (3 jumps; algorithm: a-star):
  - Y:170N
- - B:40V6 (75ly via 4 gates)
- - Z:46SO (60ly via jump drive)
+ - M:4R8T (66ly via gate)
+ - Y:1NV0 (23ly via jump)
+ - Z:46S0 (48ly via jump)
 
-Total distance: 135ly
-Total ly jumped: 60ly
+Total distance: 137ly
+Total ly jumped: 71ly
 ```
+
+**Note:** Spatial jumps (jump drive) are only available with `--algorithm dijkstra` or `--algorithm a-star`. 
+The default `bfs` algorithm only uses stargate connections.
 
 ## Route with Notepad Example
 
 ```
-$ evefrontier-cli route --from "Y:170N" --to "Z:46SO" --format note
+$ evefrontier-cli route --from "Y:170N" --to "Z:46S0" --algorithm a-star --format note
 Sta <a href="showinfo:5//30000635">Y:170N</a>
-Dst <a href="showinfo:5//30000639">B:4OV6</a>
+Dst <a href="showinfo:5//30000639">M:4R8T</a>
 Jmp <a href="showinfo:5//30007664">Z:46S0</a>
 ```
 
@@ -25,13 +29,14 @@ Jmp <a href="showinfo:5//30007664">Z:46S0</a>
 
 
 ```
-$ evefrontier-cli route --from "Y:170N" --to "Z:46SO" --format emoji
+$ evefrontier-cli route --from "Y:170N" --to "Z:46S0" --algorithm a-star --format emoji
 
-Route from Y:170N to Z:46SO (3 jumps):
+Route from Y:170N to Z:46S0 (3 jumps):
  🚥 Y:170N
- 📍 B:40V6 (75ly via 4 gates)
- 🚀️ Z:46SO (60ly via jump drive)
+ 📍 M:4R8T (66ly via gate)
+ 📍 Y:1NV0 (23ly via jump)
+ 🚀️ Z:46S0 (48ly via jump)
 
-Total distance: 135ly
-Total ly jumped: 60ly
+Total distance: 137ly
+Total ly jumped: 71ly
 ```
