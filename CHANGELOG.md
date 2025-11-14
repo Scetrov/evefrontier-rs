@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- 2025-11-14 - auto-llm - [auto-llm] - Fixed race condition in dataset download tests by changing `download_from_source_with_cache` to require explicit `resolved_tag` parameter instead of reading from environment variables. Removed unused test helpers (`env_lock`, `with_latest_tag_override`, `LatestTagGuard`). All 28 workspace tests now pass consistently.
 - 2025-11-14 - auto-llm - [auto-llm] - Consolidated the CLI around a single `route` command, moved `--format` to apply only to route output, added a footer with elapsed time and units, defaulted pathfinding to the A* planner, and ensured downloads ignore formatting flags while still honoring the global dataset/data-dir options.
 - 2025-11-14 - auto-llm - [auto-llm] - Refreshed docs (README, `docs/USAGE.md`, `docs/EXAMPLES.md`, `docs/TODO.md`, ADR 0005) to describe the new CLI surface, routing formats, footer behavior, and Makefile-assisted workflow, and updated instructions to call `evefrontier-cli` directly after the release build.
 - 2025-11-14 - auto-llm - [auto-llm] - Added a `Makefile` with `make test-smoke` tied to `cargo test --workspace` plus download/route smoke runs, and documented the skeletal test harness as part of the release guidance.
