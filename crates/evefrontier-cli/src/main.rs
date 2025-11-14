@@ -187,16 +187,14 @@ impl OutputFormat {
                 );
                 for step in &summary.steps {
                     let name = step.name.as_deref().unwrap_or("<unknown>");
-                    if let (Some(distance), Some(method)) = (step.distance, step.method.as_deref()) {
+                    if let (Some(distance), Some(method)) = (step.distance, step.method.as_deref())
+                    {
                         println!(" - {} ({:.0}ly via {})", name, distance, method);
                     } else {
                         println!(" - {}", name);
                     }
                 }
-                println!(
-                    "\nTotal distance: {:.0}ly",
-                    summary.total_distance
-                );
+                println!("\nTotal distance: {:.0}ly", summary.total_distance);
                 println!("Total ly jumped: {:.0}ly", summary.jump_distance);
             }
             OutputFormat::Rich => {
@@ -214,7 +212,13 @@ impl OutputFormat {
                     return Ok(());
                 }
                 for (i, step) in summary.steps.iter().enumerate() {
-                    let prefix = if i == 0 { '+' } else if i + 1 == len { '-' } else { '|' };
+                    let prefix = if i == 0 {
+                        '+'
+                    } else if i + 1 == len {
+                        '-'
+                    } else {
+                        '|'
+                    };
                     let name = step.name.as_deref().unwrap_or("<unknown>");
                     println!("{} {}", prefix, name);
                 }
@@ -229,17 +233,21 @@ impl OutputFormat {
                 let len = summary.steps.len();
                 for (i, step) in summary.steps.iter().enumerate() {
                     let name = step.name.as_deref().unwrap_or("<unknown>");
-                    let icon = if i == 0 { "🚥" } else if i + 1 == len { "🚀️" } else { "📍" };
-                    if let (Some(distance), Some(method)) = (step.distance, step.method.as_deref()) {
+                    let icon = if i == 0 {
+                        "🚥"
+                    } else if i + 1 == len {
+                        "🚀️"
+                    } else {
+                        "📍"
+                    };
+                    if let (Some(distance), Some(method)) = (step.distance, step.method.as_deref())
+                    {
                         println!(" {} {} ({:.0}ly via {})", icon, name, distance, method);
                     } else {
                         println!(" {} {}", icon, name);
                     }
                 }
-                println!(
-                    "\nTotal distance: {:.0}ly",
-                    summary.total_distance
-                );
+                println!("\nTotal distance: {:.0}ly", summary.total_distance);
                 println!("Total ly jumped: {:.0}ly", summary.jump_distance);
             }
             OutputFormat::Note => {

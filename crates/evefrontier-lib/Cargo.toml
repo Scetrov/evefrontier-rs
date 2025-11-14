@@ -18,3 +18,4 @@ reqwest.workspace = true
 tempfile.workspace = true
 zip.workspace = true
 strsim = "0.11"
+once_cell.workspace = true

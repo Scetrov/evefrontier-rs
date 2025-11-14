@@ -1,12 +1,14 @@
 use std::fmt;
 
-use std::collections::{HashSet};
+use std::collections::HashSet;
 
 use serde::Serialize;
 
 use crate::db::{Starmap, SystemId};
 use crate::error::{Error, Result};
-use crate::graph::{build_gate_graph, build_hybrid_graph, build_spatial_graph, EdgeKind, Graph, GraphMode};
+use crate::graph::{
+    build_gate_graph, build_hybrid_graph, build_spatial_graph, EdgeKind, Graph, GraphMode,
+};
 use crate::path::{
     find_route_a_star, find_route_bfs, find_route_dijkstra, PathConstraints as SearchConstraints,
 };

@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use directories::ProjectDirs;
+use once_cell::sync::Lazy;
 use tracing::{debug, info};
 
 use crate::error::{Error, Result};
@@ -11,6 +12,13 @@ use crate::github::{download_dataset_with_tag, resolve_release_tag, DatasetRelea
 
 /// Default filename for the cached dataset.
 const DATASET_FILENAME: &str = "static_data.db";
+
+/// Absolute path to the checked-in minimal fixture database, when available.
+static PROTECTED_FIXTURE_DATASET: Lazy<Option<PathBuf>> = Lazy::new(|| {
+    let path =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/fixtures/minimal_static_data.db");
+    path.canonicalize().ok()
+});
 
 /// Resolve the default dataset location using platform-specific project directories.
 pub fn default_dataset_path() -> Result<PathBuf> {
@@ -129,6 +137,8 @@ pub fn ensure_c3e6_dataset(target: Option<&Path>) -> Result<PathBuf> {
 }
 
 fn ensure_or_download(path: &Path, release: &DatasetRelease) -> Result<PathBuf> {
+    guard_protected_dataset(path)?;
+
     if path.exists() {
         match evaluate_cache_state(path, release)? {
             CacheState::Fresh => return Ok(path.to_path_buf()),
@@ -158,6 +168,31 @@ fn canonical_dataset_path(path: &Path) -> PathBuf {
     }
 
     path.join(DATASET_FILENAME)
+}
+
+fn guard_protected_dataset(path: &Path) -> Result<()> {
+    let Some(fixture) = PROTECTED_FIXTURE_DATASET.as_ref() else {
+        return Ok(());
+    };
+
+    if is_same_path(path, fixture) {
+        return Err(Error::ProtectedFixturePath {
+            path: fixture.clone(),
+        });
+    }
+
+    Ok(())
+}
+
+fn is_same_path(candidate: &Path, protected: &Path) -> bool {
+    if candidate == protected {
+        return true;
+    }
+
+    match candidate.canonicalize() {
+        Ok(resolved) => resolved == *protected,
+        Err(_) => false,
+    }
 }
 
 fn evaluate_cache_state(path: &Path, release: &DatasetRelease) -> Result<CacheState> {
