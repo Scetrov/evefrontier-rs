@@ -3,7 +3,7 @@
     {
       "id": "NVDAPIKey",
       "type": "promptString",
-      "description": "API key for accessing the NVD vulnerability database.",
+      "description": "API key for accessing the NVD vulnerability database (get one from https://nvd.nist.gov/developers/request-an-api-key).",
       "password": true
     }
   ],
