@@ -350,9 +350,14 @@ impl AppContext {
 }
 
 fn main() -> Result<()> {
-    init_tracing();
     let cli = Cli::parse();
     let context = AppContext::new(cli.global);
+    
+    // For JSON output, suppress tracing to keep stdout clean
+    if context.output_format() != OutputFormat::Json {
+        init_tracing();
+    }
+    
     let start = std::time::Instant::now();
 
     if context.should_show_logo() {
@@ -474,6 +479,7 @@ fn init_tracing() {
     let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
     let subscriber = FmtSubscriber::builder()
         .with_env_filter(env_filter)
+        .with_writer(std::io::stderr)
         .finish();
 
     let _ = tracing::subscriber::set_global_default(subscriber);
