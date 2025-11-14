@@ -19,10 +19,10 @@ editing the original single-file binary in `src/`.
 > [!IMPORTANT] This repository is predominantly rust code, and uses NX to manage the workspace, see
 > https://nx.dev/docs/guides/nx-release/publish-rust-crates for further information.
 
-Note: Before starting any change, read this file (`.github/copilot-instructions.md`) and then
-check the `docs/` and `docs/adrs/` folders for relevant documentation or ADRs that could affect
-your design, implementation, or release packaging choices. These documents often contain
-conventions, schema notes, and CI guidance that should be considered before making changes.
+Note: Before starting any change, read this file (`.github/copilot-instructions.md`) and then check
+the `docs/` and `docs/adrs/` folders for relevant documentation or ADRs that could affect your
+design, implementation, or release packaging choices. These documents often contain conventions,
+schema notes, and CI guidance that should be considered before making changes.
 
 ## Overview of development loop
 
@@ -40,6 +40,10 @@ Ensure that you follow a Boyd Loop style of development:
 4. **Act**: Implement the changes in small, incremental steps. After each change, run tests and
    build the project to ensure that everything works as expected, continue to iterate through the
    Boyd Loop as necessary until all tasks on the todo list are complete.
+
+> [!IMPORTANT] At any point during the loop it may be nessecary to add a new TODO item to
+> #file:../docs/TODO.md to allow the current session to focus on on a fixed scope of work deffering
+> a task to a later time.
 
 > [!NOTE] If the context window does not contain sufficient information to complete your task, you
 > may request additional information about specific files or areas of the codebase; if the context
@@ -128,7 +132,8 @@ testing, call `ensure_c3e6_dataset(Some(path))` to control where the DB is place
 
 - If a runtime error says "no such table", inspect the DB with `sqlite3` or write a tiny example
   (see `examples/print_schema.rs` that was added) to list tables and column names.
-- Use `evefrontier-cli route "SYSTEM"` to reproduce route logic quickly (or `cargo run -p evefrontier-cli -- route "SYSTEM"` during development).
+- Use `evefrontier-cli route "SYSTEM"` to reproduce route logic quickly (or
+  `cargo run -p evefrontier-cli -- route "SYSTEM"` during development).
 
 ## When editing, follow these rules
 
