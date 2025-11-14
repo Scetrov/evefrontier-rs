@@ -119,7 +119,7 @@ pub fn find_route_dijkstra(
     while let Some(entry) = queue.pop() {
         if distances
             .get(&entry.node)
-            .map_or(true, |&d| d < entry.cost.0)
+            .is_none_or(|&d| d < entry.cost.0)
         {
             continue;
         }
