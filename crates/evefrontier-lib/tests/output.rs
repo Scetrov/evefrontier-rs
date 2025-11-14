@@ -78,17 +78,17 @@ fn render_modes_include_expected_tokens() {
     };
 
     let summary =
-        RouteSummary::from_plan(RouteOutputKind::Search, &starmap, &plan).expect("summary builds");
+        RouteSummary::from_plan(RouteOutputKind::Route, &starmap, &plan).expect("summary builds");
 
     let plain = summary.render(RouteRenderMode::PlainText);
-    assert!(plain.contains("Search: Y:170N -> BetaTest"));
+    assert!(plain.contains("Route: Y:170N -> BetaTest"));
     assert!(plain.contains("algorithm: a-star"));
 
     let rich = summary.render(RouteRenderMode::RichText);
-    assert!(rich.contains("**Search**"));
+    assert!(rich.contains("**Route**"));
     assert!(rich.contains("`a-star`"));
 
     let note = summary.render(RouteRenderMode::InGameNote);
-    assert!(note.contains("Search:"));
+    assert!(note.contains("Route:"));
     assert!(note.contains("Y:170N"));
 }

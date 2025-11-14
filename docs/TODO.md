@@ -72,9 +72,9 @@ Tasks are grouped by domain; checkboxes track completion status.
       and other shared options. Respect the data path resolution order defined in `docs/INITIAL_SETUP.md`.
 - [x] Implement the `download` subcommand that wraps `ensure_c3e6_dataset`, reports the resolved path,
       and exits with appropriate codes.
-- [x] Implement routing subcommands (`route`, `search`, `path`) that call into the library to build
-      the graph and produce formatted output, including optional arguments (`--algorithm`,
-      `--max-jump`, `--avoid`, `--avoid-gates`, `--max-temp`).
+- [x] Implement unified `route` subcommand (replacing earlier `search` / `path`) exposing all
+      routing functionality via flags: `--algorithm`, `--format`, `--max-jump`, `--avoid`,
+      `--avoid-gates`, `--max-temp`.
 - [ ] Provide friendly error messages for unknown systems and route failures.
 - [ ] Add integration tests for CLI behavior (using `assert_cmd` or similar) with the fixture dataset.
 - [ ] Update `README.md` and `docs/USAGE.md` with CLI examples that match the implemented behavior.
