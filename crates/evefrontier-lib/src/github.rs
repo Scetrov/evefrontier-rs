@@ -98,43 +98,37 @@ pub fn download_latest_from_source_with_cache(
     source: &Path,
     cache_dir: &Path,
 ) -> Result<()> {
-    download_from_source_with_cache(target_path, DatasetRelease::Latest, source, cache_dir)
-        .map(|_| ())
+    download_from_source_with_cache(
+        target_path,
+        DatasetRelease::Latest,
+        source,
+        cache_dir,
+        "latest",
+    )
+    .map(|_| ())
 }
 
-/// Test helper: same as `download_from_source` but uses an explicit
-/// `cache_dir` provided by the caller. Returns the resolved tag.
+/// Test helper: same as `download_from_source` but use the provided `cache_dir`
+/// instead of the global cache directory. This allows tests to avoid races when
+/// multiple tests run in parallel.
+///
+/// The `resolved_tag` parameter explicitly specifies what tag should be written
+/// to the marker file. For `DatasetRelease::Latest`, pass \"latest\" unless you
+/// want to simulate a specific resolved tag. For `DatasetRelease::Tag`, this
+/// should match the tag value.
 pub fn download_from_source_with_cache(
     target_path: &Path,
     release: DatasetRelease,
     source: &Path,
     cache_dir: &Path,
+    resolved_tag: &str,
 ) -> Result<String> {
     copy_from_override_with_cache(source, target_path, cache_dir)?;
 
-    // Determine the resolved tag. For local overrides we want to mimic the
-    // behavior of the env-var path used in the main downloader: if a
-    // LATEST_TAG_OVERRIDE_ENV is set, honor it; otherwise, when a local
-    // `source` is provided and the request is for `Latest`, return the
-    // literal string "latest" so release markers reflect that an unpinned
-    // (local) source was used.
-    let resolved = match &release {
-        DatasetRelease::Latest => {
-            if let Ok(override_tag) = env::var(LATEST_TAG_OVERRIDE_ENV) {
-                let tag = override_tag.trim().to_string();
-                if !tag.is_empty() {
-                    tag
-                } else {
-                    "latest".to_string()
-                }
-            } else if source.exists() {
-                "latest".to_string()
-            } else {
-                resolve_release_tag(&release)?
-            }
-        }
-        DatasetRelease::Tag(t) => t.clone(),
-    };
+    // Use the explicitly provided resolved tag instead of trying to infer it
+    // from environment variables or GitHub API, which can cause race conditions
+    // in tests.
+    let resolved = resolved_tag.to_string();
 
     // Write a simple release marker adjacent to the target to match
     // `write_release_marker`'s format so tests can assert on it.
