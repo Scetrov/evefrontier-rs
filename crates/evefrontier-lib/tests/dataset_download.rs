@@ -251,7 +251,7 @@ fn create_zip_with_file(archive_path: &Path, source: &Path) -> evefrontier_lib::
     let data = fs::read(source)?;
     let file = fs::File::create(archive_path)?;
     let mut writer = ZipWriter::new(file);
-    writer.start_file("c3e6-static_data.db", FileOptions::default())?;
+    writer.start_file("c3e6-static_data.db", FileOptions::<()>::default())?;
     writer.write_all(&data)?;
     writer.finish()?;
     Ok(())
