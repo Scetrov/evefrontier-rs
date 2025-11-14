@@ -97,3 +97,170 @@ fn route_not_found_error_suggests_next_steps() {
         ))
         .stderr(predicate::str::contains("Try a different algorithm"));
 }
+
+#[test]
+fn download_subcommand_succeeds() {
+    let (mut cmd, _temp) = prepare_command();
+    cmd.arg("download");
+
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("Dataset available at"));
+}
+
+#[test]
+fn json_format_outputs_valid_json() {
+    let (mut cmd, _temp) = prepare_command();
+    cmd.arg("--format")
+        .arg("json")
+        .arg("route")
+        .arg("--from")
+        .arg("Y:170N")
+        .arg("--to")
+        .arg("BetaTest");
+
+    let output = cmd.assert().success();
+    let stdout = String::from_utf8(output.get_output().stdout.clone()).unwrap();
+    
+    // Verify it's valid JSON
+    let _: serde_json::Value = serde_json::from_str(&stdout).expect("valid JSON");
+}
+
+#[test]
+fn ingame_format_for_copy_paste() {
+    let (mut cmd, _temp) = prepare_command();
+    cmd.arg("--format")
+        .arg("note")
+        .arg("route")
+        .arg("--from")
+        .arg("Y:170N")
+        .arg("--to")
+        .arg("BetaTest");
+
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("<a href="));
+}
+
+#[test]
+fn bfs_algorithm_works() {
+    let (mut cmd, _temp) = prepare_command();
+    cmd.arg("route")
+        .arg("--from")
+        .arg("Y:170N")
+        .arg("--to")
+        .arg("BetaTest")
+        .arg("--algorithm")
+        .arg("bfs");
+
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("algorithm: bfs"));
+}
+
+#[test]
+fn astar_algorithm_works() {
+    let (mut cmd, _temp) = prepare_command();
+    cmd.arg("route")
+        .arg("--from")
+        .arg("Y:170N")
+        .arg("--to")
+        .arg("BetaTest")
+        .arg("--algorithm")
+        .arg("a-star");
+
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("algorithm: a-star"));
+}
+
+#[test]
+fn max_jump_option_works() {
+    let (mut cmd, _temp) = prepare_command();
+    cmd.arg("route")
+        .arg("--from")
+        .arg("Y:170N")
+        .arg("--to")
+        .arg("BetaTest")
+        .arg("--max-jump")
+        .arg("5.0");
+
+    cmd.assert().success();
+}
+
+#[test]
+fn avoid_gates_option_works() {
+    let (mut cmd, _temp) = prepare_command();
+    cmd.arg("route")
+        .arg("--from")
+        .arg("Y:170N")
+        .arg("--to")
+        .arg("BetaTest")
+        .arg("--avoid-gates");
+
+    cmd.assert().success();
+}
+
+#[test]
+fn max_temp_option_works() {
+    let (mut cmd, _temp) = prepare_command();
+    cmd.arg("route")
+        .arg("--from")
+        .arg("Y:170N")
+        .arg("--to")
+        .arg("BetaTest")
+        .arg("--max-temp")
+        .arg("100.0");
+
+    cmd.assert().success();
+}
+
+#[test]
+fn multiple_avoid_systems_work() {
+    let (mut cmd, _temp) = prepare_command();
+    cmd.arg("route")
+        .arg("--from")
+        .arg("Y:170N")
+        .arg("--to")
+        .arg("BetaTest")
+        .arg("--avoid")
+        .arg("AlphaTest");
+
+    cmd.assert().success();
+}
+
+#[test]
+fn invalid_algorithm_shows_error() {
+    let (mut cmd, _temp) = prepare_command();
+    cmd.arg("route")
+        .arg("--from")
+        .arg("Y:170N")
+        .arg("--to")
+        .arg("BetaTest")
+        .arg("--algorithm")
+        .arg("invalid");
+
+    cmd.assert()
+        .failure()
+        .stderr(predicate::str::contains("invalid value 'invalid'"));
+}
+
+#[test]
+fn missing_from_argument_shows_error() {
+    let (mut cmd, _temp) = prepare_command();
+    cmd.arg("route").arg("--to").arg("BetaTest");
+
+    cmd.assert()
+        .failure()
+        .stderr(predicate::str::contains("--from"));
+}
+
+#[test]
+fn missing_to_argument_shows_error() {
+    let (mut cmd, _temp) = prepare_command();
+    cmd.arg("route").arg("--from").arg("Y:170N");
+
+    cmd.assert()
+        .failure()
+        .stderr(predicate::str::contains("--to"));
+}

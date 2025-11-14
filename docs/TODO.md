@@ -75,7 +75,7 @@ Tasks are grouped by domain; checkboxes track completion status.
       routing functionality via flags: `--algorithm`, `--format`, `--max-jump`, `--avoid`,
       `--avoid-gates`, `--max-temp`.
 - [x] Provide friendly error messages for unknown systems and route failures.
-- [ ] Add integration tests for CLI behavior (using `assert_cmd` or similar) with the fixture dataset.
+- [x] Add integration tests for CLI behavior (using `assert_cmd` or similar) with the fixture dataset.
 - [ ] Update `README.md` and `docs/USAGE.md` with CLI examples that match the implemented behavior.
 - [ ] Add `index-build` (or `build-index`) subcommand to precompute KD-tree spatial index artifact.
 - [ ] Surface friendly errors when spatial index missing but requested.
