@@ -12,7 +12,7 @@
       "type": "http",
       "url": "https://api.githubcopilot.com/mcp/"
     },
-    "mcp-nvd": {
+    "nvd": {
       "command": "uvx",
       "args": ["mcp-nvd"],
       "env": {
