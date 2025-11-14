@@ -13,11 +13,12 @@ Follow this EXACT workflow:
 ## 1. DISCOVER – Identify what needs updating
 
 1. Inspect `Cargo.toml`, `Cargo.lock`, and all crates in the workspace.
-2. Using the `crates` MCP Server in #file:../../.vscode/mcp.json Determine:
+2. Check the #file:../../.rust-toolchain is using the latest stable version of rust, update the file and toolchain if required.
+3. Using the `crates` MCP Server in #file:../../.vscode/mcp.json Determine:
    - Which dependencies are outdated.
    - Which can be updated patch-only, minor, or major.
    - Which updates are safe (semver-compatible) and which require manual code changes.
-3. Report:
+4. Report:
    - A clear list of dependencies and their current → latest versions.
    - Group them into: • Patch updates (safe)  
      • Minor updates (usually safe)  
