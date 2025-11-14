@@ -93,14 +93,14 @@ impl RouteSummary {
                 let prev_id = plan.steps[index - 1];
                 let dist = compute_distance(starmap, prev_id, system_id);
                 let edge_method = classify_edge_method(starmap, prev_id, system_id);
-                
+
                 if let Some(d) = dist {
                     total_distance += d;
                     if edge_method.as_deref() == Some("jump") {
                         jump_distance += d;
                     }
                 }
-                
+
                 (dist, edge_method)
             };
 
@@ -172,8 +172,7 @@ impl RouteSummary {
             );
         }
 
-        buffer
-            + &format!("via {} gates / {} jump drive\n", self.gates, self.jumps)
+        buffer + &format!("via {} gates / {} jump drive\n", self.gates, self.jumps)
     }
 
     fn render_rich(&self) -> String {
@@ -233,7 +232,7 @@ fn classify_edge_method(starmap: &Starmap, from: SystemId, to: SystemId) -> Opti
         .get(&from)
         .map(|neighbors| neighbors.contains(&to))
         .unwrap_or(false);
-    
+
     if has_gate {
         Some("gate".to_string())
     } else {

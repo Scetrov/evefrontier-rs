@@ -12,6 +12,10 @@ pub enum Error {
     #[error("dataset not found at {path}")]
     DatasetNotFound { path: PathBuf },
 
+    /// Raised when attempting to overwrite the checked-in dataset fixture.
+    #[error("refusing to overwrite protected fixture dataset at {path}")]
+    ProtectedFixturePath { path: PathBuf },
+
     /// No suitable project directories could be resolved for this platform.
     #[error("failed to resolve project directories for dataset cache")]
     ProjectDirsUnavailable,

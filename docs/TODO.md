@@ -12,10 +12,9 @@ Tasks are grouped by domain; checkboxes track completion status.
   - All tests in `crates/evefrontier-lib/tests/routing.rs` and `crates/evefrontier-cli/tests/route_commands.rs` correctly reference the fixture systems
   - Documentation examples in `README.md` and `docs/USAGE.md` already use the correct fixture system names (Y:170N, BetaTest)
 - [x] Add `.gitignore` entry for `*.db.release` marker files (ephemeral download metadata; implemented as a global pattern)
-- [ ] Add fixture protection to prevent accidental overwrites:
+- [x] Add fixture protection to prevent accidental overwrites:
   - [x] Document in `docs/fixtures/README.md` that fixture should not be replaced with downloads
-  - Consider adding `docs/fixtures/.gitattributes` to lock the minimal fixture
-  - OR: Decide to use real dataset as canonical fixture and update create_minimal_db.py accordingly
+      - [x] Library guard rejects download targets that resolve to `docs/fixtures/minimal_static_data.db`
 - [x] Document `.vscode/mcp.json` in README or CONTRIBUTING guide (GitHub Copilot MCP server config; clarify if required or optional for developers)
 - [x] Add CI validation step that runs example commands from README/USAGE docs to ensure they continue working
 ## Workspace & Tooling
