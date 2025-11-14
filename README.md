@@ -51,30 +51,69 @@ and the accepted ADRs under [`docs/adrs/`](docs/adrs/).
 
   The `--data-dir` flag accepts either a directory (the dataset filename will be appended) or a path
   to a `.db` file. If omitted, the CLI resolves the dataset location using the order described in
-  [`docs/INITIAL_SETUP.md`](docs/INITIAL_SETUP.md). Pass `--dataset e6c2` (for example) to download a
+  [`docs/INITIAL_SETUP.md`](docs/INITIAL_SETUP.md). Pass `--dataset e6c3` (for example) to download a
   specific dataset tag; otherwise the CLI downloads the latest release from
   [`Scetrov/evefrontier_datasets`](https://github.com/Scetrov/evefrontier_datasets).
 
-- Use `--format json` with `route` to emit machine-readable output for integrations:
+### Output formats
 
-  ```pwsh
+The CLI supports multiple output formats for the `route` subcommand via the `--format` flag:
+
+- **JSON** for machine-readable output and integrations:
+
+  ```bash
   evefrontier-cli --format json route --from "Y:170N" --to "BetaTest"
   ```
 
-- Use `--format basic` (or `--format note`) when you need a minimal path listing for pasting into
-  other tools:
+- **Basic** for minimal path-only output with +/|/- prefixes:
 
-  ```pwsh
+  ```bash
   evefrontier-cli --format basic route --from "Y:170N" --to "BetaTest"
   ```
 
-- Apply `--format rich` for Markdown-style bullet output or `--format note` to emit an in-game note
-  listing the systems in order.
+- **Note** for in-game EVE notes with clickable system links:
 
-All routing subcommands accept `--algorithm`, `--max-jump`, `--avoid`, `--avoid-gates`, and
-`--max-temp` flags. The library supports breadth-first search (`bfs`), Dijkstra (`dijkstra`), and
-heuristic-guided A* (`a-star`) algorithms alongside jump distance limits, system avoidance,
-gate-free traversal, and temperature caps.
+  ```bash
+  evefrontier-cli --format note route --from "Y:170N" --to "BetaTest"
+  ```
+
+- **Text** (default) for human-readable output, or **Rich** for Markdown-style formatting
+
+### Routing options
+
+The `route` subcommand supports advanced pathfinding options:
+
+- **Algorithm selection** (`--algorithm <bfs|dijkstra|a-star>`):
+
+  ```bash
+  evefrontier-cli route --from "Y:170N" --to "BetaTest" --algorithm dijkstra
+  ```
+
+- **Maximum jump distance** (`--max-jump <LIGHT-YEARS>`):
+
+  ```bash
+  evefrontier-cli route --from "Y:170N" --to "BetaTest" --max-jump 5.0
+  ```
+
+- **System avoidance** (`--avoid <SYSTEM>`, repeatable):
+
+  ```bash
+  evefrontier-cli route --from "Y:170N" --to "BetaTest" --avoid "AlphaTest"
+  ```
+
+- **Gate-free routing** (`--avoid-gates`):
+
+  ```bash
+  evefrontier-cli route --from "Y:170N" --to "BetaTest" --avoid-gates
+  ```
+
+- **Temperature limit** (`--max-temp <KELVIN>`):
+
+  ```bash
+  evefrontier-cli route --from "Y:170N" --to "BetaTest" --max-temp 300.0
+  ```
+
+See [`docs/USAGE.md`](docs/USAGE.md) for comprehensive documentation and additional examples.
 
 ## Library highlights
 

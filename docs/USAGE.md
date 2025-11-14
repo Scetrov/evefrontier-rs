@@ -20,20 +20,20 @@ This document describes how to build and use the `evefrontier-cli` workspace and
 
 ## Run the CLI
 
-The CLI currently exposes two user-facing subcommands: `download` and `route`. Earlier
-exploratory subcommands (`search`, `path`) have been consolidated into the single `route`
-command which now covers algorithm selection, spatial routing, output formatting and
-display variants.
+The CLI provides two primary subcommands:
+
+- **`download`** — Ensures the dataset is downloaded and reports its location
+- **`route`** — Computes a route between two systems using various algorithms and options
 
 Preferred invocation for end users and scripts:
 
-```pwsh
+```bash
 evefrontier-cli <subcommand> [args]
 ```
 
 Developer invocation (build-and-run via cargo):
 
-```pwsh
+```bash
 cargo run -p evefrontier-cli -- <subcommand> [args]
 ```
 
@@ -72,19 +72,53 @@ Route-only options (ignored by other subcommands):
   evefrontier-cli route --from "Y:170N" --to "BetaTest" --data-dir docs/fixtures/minimal_static_data.db
   ```
 
-- Request structured route output suitable for downstream tooling:
+- Request structured JSON output suitable for downstream tooling:
 
-  ```pwsh
+  ```bash
   evefrontier-cli route --from "Y:170N" --to "BetaTest" --format json
   ```
 
-> Legacy `search` / `path` examples have been replaced by `route` with the appropriate
-> `--format` choice (e.g. `--format note`).
+- Get in-game note format with clickable system links:
 
-- Calculate a route after pre-setting the dataset path via environment variable:
+  ```bash
+  evefrontier-cli route --from "Y:170N" --to "BetaTest" --format note
+  ```
 
-  ```pwsh
-  $env:EVEFRONTIER_DATA_DIR = (Resolve-Path docs/fixtures/minimal_static_data.db).Path
+- Use different pathfinding algorithms:
+
+  ```bash
+  # Breadth-first search (unweighted, gate-only)
+  evefrontier-cli route --from "Y:170N" --to "BetaTest" --algorithm bfs
+
+  # Dijkstra (weighted distance optimization)
+  evefrontier-cli route --from "Y:170N" --to "BetaTest" --algorithm dijkstra
+
+  # A* (default, uses coordinates as heuristic)
+  evefrontier-cli route --from "Y:170N" --to "BetaTest" --algorithm a-star
+  ```
+
+- Limit jump distance and avoid specific systems:
+
+  ```bash
+  evefrontier-cli route --from "Y:170N" --to "BetaTest" --max-jump 5.0 --avoid "AlphaTest"
+  ```
+
+- Use spatial-only routing (no gates):
+
+  ```bash
+  evefrontier-cli route --from "Y:170N" --to "BetaTest" --avoid-gates
+  ```
+
+- Filter by maximum system temperature:
+
+  ```bash
+  evefrontier-cli route --from "Y:170N" --to "BetaTest" --max-temp 300.0
+  ```
+
+- Calculate a route using environment variable for dataset path:
+
+  ```bash
+  export EVEFRONTIER_DATA_DIR="$HOME/.local/share/evefrontier"
   evefrontier-cli route --from "Y:170N" --to "BetaTest"
   ```
 
