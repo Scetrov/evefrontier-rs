@@ -206,6 +206,7 @@ impl OutputFormat {
                     let name = step.name.as_deref().unwrap_or("<unknown>");
                     println!("{} {}", prefix, name);
                 }
+                println!("via {} gates / {} jump drive", summary.gates, summary.jumps);
             }
             OutputFormat::Emoji => {
                 // Header: "Route from A to B (N jumps):"
@@ -219,6 +220,7 @@ impl OutputFormat {
                     let icon = if i == 0 { "🚥" } else if i + 1 == len { "🚀️" } else { "📍" };
                     println!(" {} {}", icon, name);
                 }
+                println!("via {} gates / {} jump drive", summary.gates, summary.jumps);
             }
             OutputFormat::Note => {
                 // Strict notepad format per EXAMPLES.md using Sta/Dst/Jmp lines with showinfo anchors.
@@ -238,6 +240,7 @@ impl OutputFormat {
                     let name = step.name.as_deref().unwrap_or("<unknown>");
                     println!("Jmp <a href=\"showinfo:5//{}\">{}</a>", step.id, name);
                 }
+                println!("via {} gates / {} jump drive", summary.gates, summary.jumps);
             }
         }
         Ok(())
