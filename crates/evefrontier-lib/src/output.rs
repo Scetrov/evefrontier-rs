@@ -70,6 +70,8 @@ pub struct RouteSummary {
     pub kind: RouteOutputKind,
     pub algorithm: RouteAlgorithm,
     pub hops: usize,
+    pub gates: usize,
+    pub jumps: usize,
     pub start: RouteEndpoint,
     pub goal: RouteEndpoint,
     pub steps: Vec<RouteStep>,
@@ -112,6 +114,8 @@ impl RouteSummary {
             kind,
             algorithm: plan.algorithm,
             hops: plan.hop_count(),
+            gates: plan.gates,
+            jumps: plan.jumps,
             start,
             goal,
             steps,
@@ -163,6 +167,7 @@ impl RouteSummary {
         }
 
         buffer
+            + &format!("via {} gates / {} jump drive\n", self.gates, self.jumps)
     }
 
     fn render_rich(&self) -> String {
@@ -185,7 +190,7 @@ impl RouteSummary {
                 step.id
             );
         }
-        buffer
+        buffer + &format!("via {} gates / {} jump drive\n", self.gates, self.jumps)
     }
 
     fn render_note(&self) -> String {
@@ -202,6 +207,6 @@ impl RouteSummary {
         for step in &self.steps {
             let _ = writeln!(buffer, "{}", step.display_name());
         }
-        buffer
+        buffer + &format!("via {} gates / {} jump drive\n", self.gates, self.jumps)
     }
 }

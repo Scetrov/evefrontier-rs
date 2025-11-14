@@ -6,7 +6,7 @@ use serde::Serialize;
 
 use crate::db::{Starmap, SystemId};
 use crate::error::{Error, Result};
-use crate::graph::{build_gate_graph, build_hybrid_graph, build_spatial_graph, Graph};
+use crate::graph::{build_gate_graph, build_hybrid_graph, build_spatial_graph, EdgeKind, Graph, GraphMode};
 use crate::path::{
     find_route_a_star, find_route_bfs, find_route_dijkstra, PathConstraints as SearchConstraints,
 };
@@ -83,6 +83,8 @@ pub struct RoutePlan {
     pub start: SystemId,
     pub goal: SystemId,
     pub steps: Vec<SystemId>,
+    pub gates: usize,
+    pub jumps: usize,
 }
 
 impl RoutePlan {
@@ -144,11 +146,15 @@ pub fn plan_route(starmap: &Starmap, request: &RouteRequest) -> Result<RoutePlan
         });
     };
 
+    let (gates, jumps) = classify_edges(&graph, &route);
+
     Ok(RoutePlan {
         algorithm: request.algorithm,
         start: start_id,
         goal: goal_id,
         steps: route,
+        gates,
+        jumps,
     })
 }
 
@@ -192,5 +198,46 @@ fn select_graph(
     match algorithm {
         RouteAlgorithm::Bfs => build_gate_graph(starmap),
         RouteAlgorithm::Dijkstra | RouteAlgorithm::AStar => build_hybrid_graph(starmap),
+    }
+}
+
+fn classify_edges(graph: &Graph, steps: &[SystemId]) -> (usize, usize) {
+    if steps.len() < 2 {
+        return (0, 0);
+    }
+
+    match graph.mode() {
+        GraphMode::Gate => (steps.len() - 1, 0),
+        GraphMode::Spatial => (0, steps.len() - 1),
+        GraphMode::Hybrid => {
+            let mut gates = 0usize;
+            let mut jumps = 0usize;
+            for pair in steps.windows(2) {
+                let u = pair[0];
+                let v = pair[1];
+                let mut chosen: Option<(EdgeKind, f64)> = None;
+                for edge in graph.neighbours(u) {
+                    if edge.target == v {
+                        match chosen {
+                            None => chosen = Some((edge.kind, edge.distance)),
+                            Some((_, d)) => {
+                                if edge.distance < d {
+                                    chosen = Some((edge.kind, edge.distance));
+                                }
+                            }
+                        }
+                    }
+                }
+                match chosen.map(|(k, _)| k) {
+                    Some(EdgeKind::Gate) => gates += 1,
+                    Some(EdgeKind::Spatial) => jumps += 1,
+                    None => {
+                        // Fallback: if no direct edge found (shouldn't happen), assume gate.
+                        gates += 1;
+                    }
+                }
+            }
+            (gates, jumps)
+        }
     }
 }
