@@ -55,16 +55,17 @@ and the accepted ADRs under [`docs/adrs/`](docs/adrs/).
   specific dataset tag; otherwise the CLI downloads the latest release from
   [`Scetrov/evefrontier_datasets`](https://github.com/Scetrov/evefrontier_datasets).
 
-- Use `search` to emit the same route as JSON-ready "search" output:
+- Use `--format json` with `route` to emit machine-readable output for integrations:
 
   ```pwsh
-  evefrontier-cli --format json search --from "Y:170N" --to "BetaTest"
+  evefrontier-cli --format json route --from "Y:170N" --to "BetaTest"
   ```
 
-- Use `path` when you need an arrow-delimited sequence of systems for other tools:
+- Use `--format basic` (or `--format note`) when you need a minimal path listing for pasting into
+  other tools:
 
   ```pwsh
-  evefrontier-cli path --from "Y:170N" --to "BetaTest"
+  evefrontier-cli --format basic route --from "Y:170N" --to "BetaTest"
   ```
 
 - Apply `--format rich` for Markdown-style bullet output or `--format note` to emit an in-game note
