@@ -1,8 +1,23 @@
 {
+  "inputs": [
+    {
+      "id": "NVDAPIKey",
+      "type": "promptString",
+      "description": "API key for accessing the NVD vulnerability database.",
+      "password": true
+    }
+  ],
   "servers": {
     "github": {
       "type": "http",
       "url": "https://api.githubcopilot.com/mcp/"
+    },
+    "mcp-nvd": {
+      "command": "uvx",
+      "args": ["mcp-nvd"],
+      "env": {
+        "NVD_API_KEY": "${input:NVDAPIKey}"
+      }
     }
   }
 }
