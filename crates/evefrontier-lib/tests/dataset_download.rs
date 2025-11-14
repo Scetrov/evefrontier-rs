@@ -1,22 +1,14 @@
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, OnceLock};
 
 use evefrontier_lib::github::DatasetRelease;
 use tempfile::tempdir;
 use zip::write::FileOptions;
 use zip::ZipWriter;
 
-const LATEST_TAG_ENV: &str = "EVEFRONTIER_DATASET_LATEST_TAG";
-
 fn fixture_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/fixtures/minimal_static_data.db")
-}
-
-fn env_lock() -> &'static Mutex<()> {
-    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-    LOCK.get_or_init(|| Mutex::new(()))
 }
 
 fn with_cache_dir<F>(f: F)
@@ -27,28 +19,6 @@ where
     let cache_path = dir.path().to_path_buf();
     // pass cache path into the closure and keep `dir` alive until it finishes
     f(&cache_path);
-}
-
-fn with_latest_tag_override<F>(tag: &str, f: F)
-where
-    F: FnOnce(),
-{
-    let _guard = env_lock().lock().expect("acquire env lock");
-    std::env::set_var(LATEST_TAG_ENV, tag);
-    let guard = LatestTagGuard;
-    f();
-    drop(guard);
-}
-
-// Note: tests use explicit cache-path helpers, so the old global
-// EVEFRONTIER_DATASET_SOURCE override helpers were removed.
-
-struct LatestTagGuard;
-
-impl Drop for LatestTagGuard {
-    fn drop(&mut self) {
-        std::env::remove_var(LATEST_TAG_ENV);
-    }
 }
 
 #[test]
@@ -121,6 +91,7 @@ fn download_specific_release_from_override() -> evefrontier_lib::Result<()> {
             DatasetRelease::tag("e6c2"),
             &fixture_copy,
             cache,
+            "e6c2",
         )
         .expect("download succeeds with override");
 
@@ -149,6 +120,7 @@ fn ensure_dataset_redownloads_when_tag_changes() -> evefrontier_lib::Result<()> 
             DatasetRelease::tag("e6c3"),
             &source_one,
             cache,
+            "e6c3",
         )
         .expect("initial download succeeds");
 
@@ -163,6 +135,7 @@ fn ensure_dataset_redownloads_when_tag_changes() -> evefrontier_lib::Result<()> 
             DatasetRelease::tag("e6c2"),
             &source_two,
             cache,
+            "e6c2",
         )
         .expect("tag change triggers re-download");
 
@@ -191,6 +164,7 @@ fn ensure_dataset_redownloads_when_switching_back_to_latest() -> evefrontier_lib
             DatasetRelease::tag("e6c2"),
             &source_one,
             cache,
+            "e6c2",
         )
         .expect("initial tagged download succeeds");
 
@@ -229,14 +203,15 @@ fn ensure_dataset_redownloads_when_latest_release_changes() -> evefrontier_lib::
         let source_path = temp_dir.path().join("source-new.db");
         fs::write(&source_path, b"fresh").unwrap();
 
-        with_latest_tag_override("e6c3", || {
-            evefrontier_lib::github::download_latest_from_source_with_cache(
-                &dataset_path,
-                &source_path,
-                cache,
-            )
-            .expect("latest change triggers re-download");
-        });
+        // Simulate a new latest release by explicitly passing e6c3 as resolved tag
+        evefrontier_lib::github::download_from_source_with_cache(
+            &dataset_path,
+            DatasetRelease::Latest,
+            &source_path,
+            cache,
+            "e6c3",
+        )
+        .expect("latest change triggers re-download");
 
         assert_eq!(fs::read(&dataset_path).unwrap(), b"fresh");
         let marker = fs::read_to_string(&marker_path).unwrap();
