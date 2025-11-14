@@ -63,3 +63,37 @@ fn basic_format_outputs_minimal_path() {
         .stdout(predicate::str::contains("+ Y:170N"))
         .stdout(predicate::str::contains("- BetaTest"));
 }
+
+#[test]
+fn unknown_system_error_is_friendly() {
+    let (mut cmd, _temp) = prepare_command();
+    cmd.arg("route")
+        .arg("--from")
+        .arg("Y:170N")
+        .arg("--to")
+        .arg("GammaTest");
+
+    cmd.assert()
+        .failure()
+        .stderr(predicate::str::contains("Unknown system 'GammaTest'"))
+        .stderr(predicate::str::contains("Did you mean"));
+}
+
+#[test]
+fn route_not_found_error_suggests_next_steps() {
+    let (mut cmd, _temp) = prepare_command();
+    cmd.arg("route")
+        .arg("--from")
+        .arg("Y:170N")
+        .arg("--to")
+        .arg("AlphaTest")
+        .arg("--avoid")
+        .arg("AlphaTest");
+
+    cmd.assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "No route found between Y:170N and AlphaTest.",
+        ))
+        .stderr(predicate::str::contains("Try a different algorithm"));
+}
