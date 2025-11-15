@@ -40,6 +40,15 @@ cargo test --workspace || {
 echo "   ✅ Tests OK"
 echo ""
 
+# 5. Security audit
+echo "5️⃣  Running security audit..."
+cargo audit --deny warnings || {
+    echo "❌ Security vulnerabilities detected"
+    exit 1
+}
+echo "   ✅ Audit OK"
+echo ""
+
 echo "✅ All pre-commit checks passed!"
 """
 

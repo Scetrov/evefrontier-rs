@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- 2025-11-15 - auto-llm - [security] - Integrated cargo-audit into CI pipeline with dedicated `security-audit` job that fails on vulnerabilities
+- 2025-11-15 - auto-llm - [security] - Added cargo audit to pre-commit hook (step 5) to block commits with vulnerable dependencies
+- 2025-11-15 - auto-llm - [security] - Added `make audit` target for manual security scans with `--deny warnings`
+- 2025-11-15 - auto-llm - [docs] - Created comprehensive security audit guide in `docs/SECURITY_AUDIT.md` documenting remediation workflows
 - 2025-11-14 - auto-llm - [auto-llm] - Fixed JSON output format being polluted by tracing logs on stdout. Tracing is now suppressed when `--format json` is used, keeping stdout clean for machine-readable output.
 - 2025-11-14 - auto-llm - [auto-llm] - Fixed race condition in dataset download tests by changing `download_from_source_with_cache` to require explicit `resolved_tag` parameter instead of reading from environment variables. Removed unused test helpers (`env_lock`, `with_latest_tag_override`, `LatestTagGuard`). All 28 workspace tests now pass consistently.
 - 2025-11-14 - auto-llm - [auto-llm] - Consolidated the CLI around a single `route` command, moved `--format` to apply only to route output, added a footer with elapsed time and units, defaulted pathfinding to the A* planner, and ensured downloads ignore formatting flags while still honoring the global dataset/data-dir options.

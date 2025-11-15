@@ -1,4 +1,4 @@
-.PHONY: help build build-release test test-smoke test-all clean install check fmt lint ci
+.PHONY: help build build-release test test-smoke test-all clean install check fmt lint ci audit
 
 # Default target
 help:
@@ -9,6 +9,7 @@ help:
 	@echo "  make test-smoke     - Quick CLI smoke test with release binary"
 	@echo "  make test-all       - Run tests + smoke tests (comprehensive)"
 	@echo "  make ci             - Run full CI checks locally (fmt, clippy, build, test)"
+	@echo "  make audit          - Run security audit with cargo-audit"
 	@echo "  make check          - Run clippy lints"
 	@echo "  make fmt            - Format code with rustfmt"
 	@echo "  make lint           - Run clippy with warnings as errors"
@@ -94,3 +95,7 @@ ci:
 # Clean target
 clean:
 	cargo clean
+
+# Security audit
+audit:
+	cargo audit --deny warnings
