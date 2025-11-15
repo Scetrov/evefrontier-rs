@@ -83,13 +83,18 @@ Environment
 
 - Install `rustup` from the official site: <https://rustup.rs>
 
-- Pin a stable toolchain for the repository (example):
+- The repository uses Rust 1.91.1 (pinned in `.rust-toolchain`). When you enter the repository
+  directory, rustup will automatically use this version. To verify:
 
-  rustup toolchain install stable rustup override set stable
+  rustc --version # should show 1.91.1
 
 2. Install Node.js and pnpm (for developer tooling)
 
 - Use a tool like `volta` or `nvm` to manage Node versions.
+- The repository pins Node 20 (LTS) in `.nvmrc`. If using nvm:
+
+  nvm use # automatically uses version from .nvmrc
+
 - Install `pnpm` (recommended):
 
   npm install -g pnpm
