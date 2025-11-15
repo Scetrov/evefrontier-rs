@@ -134,6 +134,7 @@ testing, call `ensure_c3e6_dataset(Some(path))` to control where the DB is place
   (see `examples/print_schema.rs` that was added) to list tables and column names.
 - Use `evefrontier-cli route "SYSTEM"` to reproduce route logic quickly (or
   `cargo run -p evefrontier-cli -- route "SYSTEM"` during development).
+- When running Python commands use the PyLance MCP server as this will provide better use of a venv and fast feedback. 
 
 ## When editing, follow these rules
 

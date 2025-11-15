@@ -36,9 +36,9 @@ fn dijkstra_algorithm_is_supported() {
     let (mut cmd, _temp) = prepare_command();
     cmd.arg("route")
         .arg("--from")
-        .arg("Y:170N")
+        .arg("Nod")
         .arg("--to")
-        .arg("BetaTest")
+        .arg("Brana")
         .arg("--algorithm")
         .arg("dijkstra");
 
@@ -54,14 +54,14 @@ fn basic_format_outputs_minimal_path() {
         .arg("basic")
         .arg("route")
         .arg("--from")
-        .arg("Y:170N")
+        .arg("Nod")
         .arg("--to")
-        .arg("BetaTest");
+        .arg("Brana");
 
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains("+ Y:170N"))
-        .stdout(predicate::str::contains("- BetaTest"));
+        .stdout(predicate::str::contains("+ Nod"))
+        .stdout(predicate::str::contains("- Brana"));
 }
 
 #[test]
@@ -69,13 +69,13 @@ fn unknown_system_error_is_friendly() {
     let (mut cmd, _temp) = prepare_command();
     cmd.arg("route")
         .arg("--from")
-        .arg("Y:170N")
+        .arg("Nod")
         .arg("--to")
-        .arg("GammaTest");
+        .arg("Brand"); // Typo: Brand instead of Brana
 
     cmd.assert()
         .failure()
-        .stderr(predicate::str::contains("Unknown system 'GammaTest'"))
+        .stderr(predicate::str::contains("Unknown system 'Brand'"))
         .stderr(predicate::str::contains("Did you mean"));
 }
 
@@ -84,16 +84,16 @@ fn route_not_found_error_suggests_next_steps() {
     let (mut cmd, _temp) = prepare_command();
     cmd.arg("route")
         .arg("--from")
-        .arg("Y:170N")
+        .arg("Nod")
         .arg("--to")
-        .arg("AlphaTest")
+        .arg("H:2L2S")
         .arg("--avoid")
-        .arg("AlphaTest");
+        .arg("H:2L2S");
 
     cmd.assert()
         .failure()
         .stderr(predicate::str::contains(
-            "No route found between Y:170N and AlphaTest.",
+            "No route found between Nod and H:2L2S.",
         ))
         .stderr(predicate::str::contains("Try a different algorithm"));
 }
@@ -115,9 +115,9 @@ fn json_format_outputs_valid_json() {
         .arg("json")
         .arg("route")
         .arg("--from")
-        .arg("Y:170N")
+        .arg("Nod")
         .arg("--to")
-        .arg("BetaTest");
+        .arg("Brana");
 
     let output = cmd.assert().success();
     let stdout = String::from_utf8(output.get_output().stdout.clone()).unwrap();
@@ -133,9 +133,9 @@ fn ingame_format_for_copy_paste() {
         .arg("note")
         .arg("route")
         .arg("--from")
-        .arg("Y:170N")
+        .arg("Nod")
         .arg("--to")
-        .arg("BetaTest");
+        .arg("Brana");
 
     cmd.assert()
         .success()
@@ -147,9 +147,9 @@ fn bfs_algorithm_works() {
     let (mut cmd, _temp) = prepare_command();
     cmd.arg("route")
         .arg("--from")
-        .arg("Y:170N")
+        .arg("Nod")
         .arg("--to")
-        .arg("BetaTest")
+        .arg("Brana")
         .arg("--algorithm")
         .arg("bfs");
 
@@ -163,9 +163,9 @@ fn astar_algorithm_works() {
     let (mut cmd, _temp) = prepare_command();
     cmd.arg("route")
         .arg("--from")
-        .arg("Y:170N")
+        .arg("Nod")
         .arg("--to")
-        .arg("BetaTest")
+        .arg("Brana")
         .arg("--algorithm")
         .arg("a-star");
 
@@ -179,11 +179,11 @@ fn max_jump_option_works() {
     let (mut cmd, _temp) = prepare_command();
     cmd.arg("route")
         .arg("--from")
-        .arg("Y:170N")
+        .arg("Nod")
         .arg("--to")
-        .arg("BetaTest")
+        .arg("Brana")
         .arg("--max-jump")
-        .arg("5.0");
+        .arg("100.0");
 
     cmd.assert().success();
 }
@@ -193,9 +193,9 @@ fn avoid_gates_option_works() {
     let (mut cmd, _temp) = prepare_command();
     cmd.arg("route")
         .arg("--from")
-        .arg("Y:170N")
+        .arg("Nod")
         .arg("--to")
-        .arg("BetaTest")
+        .arg("Brana")
         .arg("--avoid-gates");
 
     cmd.assert().success();
@@ -206,11 +206,11 @@ fn max_temp_option_works() {
     let (mut cmd, _temp) = prepare_command();
     cmd.arg("route")
         .arg("--from")
-        .arg("Y:170N")
+        .arg("Nod")
         .arg("--to")
-        .arg("BetaTest")
+        .arg("Brana")
         .arg("--max-temp")
-        .arg("100.0");
+        .arg("100000.0");
 
     cmd.assert().success();
 }
@@ -220,11 +220,11 @@ fn multiple_avoid_systems_work() {
     let (mut cmd, _temp) = prepare_command();
     cmd.arg("route")
         .arg("--from")
-        .arg("Y:170N")
+        .arg("Nod")
         .arg("--to")
-        .arg("BetaTest")
+        .arg("Brana")
         .arg("--avoid")
-        .arg("AlphaTest");
+        .arg("G:3OA0");
 
     cmd.assert().success();
 }
@@ -234,9 +234,9 @@ fn invalid_algorithm_shows_error() {
     let (mut cmd, _temp) = prepare_command();
     cmd.arg("route")
         .arg("--from")
-        .arg("Y:170N")
+        .arg("Nod")
         .arg("--to")
-        .arg("BetaTest")
+        .arg("Brana")
         .arg("--algorithm")
         .arg("invalid");
 
@@ -248,7 +248,7 @@ fn invalid_algorithm_shows_error() {
 #[test]
 fn missing_from_argument_shows_error() {
     let (mut cmd, _temp) = prepare_command();
-    cmd.arg("route").arg("--to").arg("BetaTest");
+    cmd.arg("route").arg("--to").arg("Brana");
 
     cmd.assert()
         .failure()
@@ -258,7 +258,7 @@ fn missing_from_argument_shows_error() {
 #[test]
 fn missing_to_argument_shows_error() {
     let (mut cmd, _temp) = prepare_command();
-    cmd.arg("route").arg("--from").arg("Y:170N");
+    cmd.arg("route").arg("--from").arg("Nod");
 
     cmd.assert()
         .failure()

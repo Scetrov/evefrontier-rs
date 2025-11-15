@@ -129,7 +129,7 @@ fn spatial_graph_has_edges_with_positions_in_fixture() {
     let starmap = load_starmap(&fixture_path()).expect("load fixture");
     let graph = build_spatial_graph(&starmap);
 
-    let start = starmap.system_id_by_name("Y:170N").unwrap();
+    let start = starmap.system_id_by_name("Nod").unwrap();
     let neighbours = graph.neighbours(start);
     assert!(
         !neighbours.is_empty(),

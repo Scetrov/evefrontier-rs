@@ -6,12 +6,15 @@ Tasks are grouped by domain; checkboxes track completion status.
 
 ## 🔥 High Priority - Test & Documentation Fixes
 
-- [ ] **CRITICAL**: Ensure test fixture protection is maintained
-  - The 3-system synthetic fixture (Y:170N, AlphaTest, BetaTest) must not be overwritten by CLI downloads
-  - Tests currently use these synthetic systems and pass in CI; local overwrites with production data (e6c3) cause failures
-  - All tests in `crates/evefrontier-lib/tests/routing.rs` and `crates/evefrontier-cli/tests/route_commands.rs` correctly reference the fixture systems
-  - Documentation examples in `README.md` and `docs/USAGE.md` already use the correct fixture system names (Y:170N, BetaTest)
-- [ ] Rebuild test fixture database using updated `create_minimal_db.py` script to ensure it is representative of the current dataset, suggest using the latest e6c3 but only including `Nod` plus `Brana` and all systems either connected by gates or within 80 ly of Brana. 
+- [x] **CRITICAL**: Ensure test fixture protection is maintained
+  - The test fixture now uses 8 real systems from e6c3 (Nod, Brana, D:2NAS, G:3OA0, H:2L2S, J:35IA, Y:3R7E, E1J-M5G)
+  - Tests use real system names and pass in CI with actual production data structure
+  - All tests updated to reference real systems: Nod, Brana, H:2L2S, etc.
+  - Documentation updated in `README.md` and `docs/USAGE.md` to use real system names
+- [x] Rebuild test fixture database using real e6c3 dataset (completed with `extract_fixture_from_dataset.py`)
+  - Fixture includes Nod, Brana, and all systems connected by gates or within 80 ly of Brana
+  - 8 systems, 12 jump gates, 26 planets, 43 moons extracted from real e6c3 data
+  - Schema bug fixed: loader now correctly handles `constellationId`/`regionId` (camelCase) from e6c3 
 - [x] Add `.gitignore` entry for `*.db.release` marker files (ephemeral download metadata; implemented as a global pattern)
 - [x] Add fixture protection to prevent accidental overwrites:
   - [x] Document in `docs/fixtures/README.md` that fixture should not be replaced with downloads

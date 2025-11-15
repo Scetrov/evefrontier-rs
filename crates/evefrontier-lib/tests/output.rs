@@ -18,7 +18,7 @@ fn load_fixture_starmap() -> evefrontier_lib::Starmap {
 #[test]
 fn summary_rejects_empty_plans() {
     let starmap = load_fixture_starmap();
-    let system = starmap.system_id_by_name("Y:170N").expect("system exists");
+    let system = starmap.system_id_by_name("Nod").expect("system exists");
     let plan = RoutePlan {
         algorithm: RouteAlgorithm::Bfs,
         start: system,
@@ -37,10 +37,10 @@ fn summary_rejects_empty_plans() {
 fn summary_from_plan_populates_names() {
     let starmap = load_fixture_starmap();
     let start = starmap
-        .system_id_by_name("Y:170N")
+        .system_id_by_name("Nod")
         .expect("start system exists");
     let goal = starmap
-        .system_id_by_name("BetaTest")
+        .system_id_by_name("Brana")
         .expect("goal system exists");
     let plan = RoutePlan {
         algorithm: RouteAlgorithm::Bfs,
@@ -54,8 +54,8 @@ fn summary_from_plan_populates_names() {
     let summary =
         RouteSummary::from_plan(RouteOutputKind::Route, &starmap, &plan).expect("summary builds");
 
-    assert_eq!(summary.start.name.as_deref(), Some("Y:170N"));
-    assert_eq!(summary.goal.name.as_deref(), Some("BetaTest"));
+    assert_eq!(summary.start.name.as_deref(), Some("Nod"));
+    assert_eq!(summary.goal.name.as_deref(), Some("Brana"));
     assert_eq!(summary.hops, 1);
 }
 
@@ -63,10 +63,10 @@ fn summary_from_plan_populates_names() {
 fn render_modes_include_expected_tokens() {
     let starmap = load_fixture_starmap();
     let start = starmap
-        .system_id_by_name("Y:170N")
+        .system_id_by_name("Nod")
         .expect("start system exists");
     let goal = starmap
-        .system_id_by_name("BetaTest")
+        .system_id_by_name("Brana")
         .expect("goal system exists");
     let plan = RoutePlan {
         algorithm: RouteAlgorithm::AStar,
@@ -81,7 +81,7 @@ fn render_modes_include_expected_tokens() {
         RouteSummary::from_plan(RouteOutputKind::Route, &starmap, &plan).expect("summary builds");
 
     let plain = summary.render(RouteRenderMode::PlainText);
-    assert!(plain.contains("Route: Y:170N -> BetaTest"));
+    assert!(plain.contains("Route: Nod -> Brana"));
     assert!(plain.contains("algorithm: a-star"));
 
     let rich = summary.render(RouteRenderMode::RichText);
@@ -90,5 +90,5 @@ fn render_modes_include_expected_tokens() {
 
     let note = summary.render(RouteRenderMode::InGameNote);
     assert!(note.contains("Route:"));
-    assert!(note.contains("Y:170N"));
+    assert!(note.contains("Nod"));
 }
