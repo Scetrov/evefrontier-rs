@@ -209,16 +209,14 @@ impl OutputFormat {
                         } else {
                             println!(" - {} ({:.0}ly via {})", name, distance, method);
                         }
-                    } else {
-                        if show_temps {
-                            if let Some(t) = step.min_external_temp {
-                                println!(" - {} [min {:.2}K]", name, t);
-                            } else {
-                                println!(" - {}", name);
-                            }
+                    } else if show_temps {
+                        if let Some(t) = step.min_external_temp {
+                            println!(" - {} [min {:.2}K]", name, t);
                         } else {
                             println!(" - {}", name);
                         }
+                    } else {
+                        println!(" - {}", name);
                     }
                 }
                 println!("\nTotal distance: {:.0}ly", summary.total_distance);
@@ -292,16 +290,14 @@ impl OutputFormat {
                         } else {
                             println!(" {} {} ({:.0}ly via {})", icon, name, distance, method);
                         }
-                    } else {
-                        if show_temps {
-                            if let Some(t) = step.min_external_temp {
-                                println!(" {} {} [min {:.2}K]", icon, name, t);
-                            } else {
-                                println!(" {} {}", icon, name);
-                            }
+                    } else if show_temps {
+                        if let Some(t) = step.min_external_temp {
+                            println!(" {} {} [min {:.2}K]", icon, name, t);
                         } else {
                             println!(" {} {}", icon, name);
                         }
+                    } else {
+                        println!(" {} {}", icon, name);
                     }
                 }
                 println!("\nTotal distance: {:.0}ly", summary.total_distance);
