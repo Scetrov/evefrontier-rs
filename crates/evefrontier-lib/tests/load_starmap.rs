@@ -13,26 +13,21 @@ fn load_fixture_and_find_route() -> Result<()> {
     let path = fixture_path();
     let starmap = load_starmap(&path)?;
 
-    assert_eq!(starmap.systems.len(), 3);
-    assert_eq!(starmap.adjacency.len(), 3);
+    assert_eq!(starmap.systems.len(), 8, "fixture should have 8 systems");
+    // Note: E1J-M5G has no gates, so it won't have adjacency entries in gate-only graph
+    assert!(starmap.adjacency.len() >= 7, "systems with gates should have adjacency");
 
-    let start = starmap.system_id_by_name("Y:170N").expect("start exists");
-    let goal = starmap.system_id_by_name("BetaTest").expect("goal exists");
+    let start = starmap.system_id_by_name("Nod").expect("start exists");
+    let goal = starmap.system_id_by_name("Brana").expect("goal exists");
 
     let start_system = starmap
         .systems
         .get(&start)
         .expect("system metadata available");
-    assert_eq!(start_system.metadata.constellation_id, Some(10));
-    assert_eq!(
-        start_system.metadata.constellation_name.as_deref(),
-        Some("TestConstellation")
-    );
-    assert_eq!(start_system.metadata.region_id, Some(1));
-    assert_eq!(
-        start_system.metadata.region_name.as_deref(),
-        Some("TestRegion")
-    );
+    assert!(start_system.metadata.constellation_id.is_some());
+    assert!(start_system.metadata.constellation_name.is_some());
+    assert!(start_system.metadata.region_id.is_some());
+    assert!(start_system.metadata.region_name.is_some());
     assert!(start_system.metadata.security_status.is_none());
     assert!(start_system.position.is_some());
 

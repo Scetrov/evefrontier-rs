@@ -11,22 +11,22 @@ fn fuzzy_matches_returns_similar_names() {
     let starmap = load_starmap(&fixture_path()).expect("fixture loads");
 
     // Test exact match doesn't use fuzzy
-    let exact = starmap.fuzzy_system_matches("Y:170N", 3);
-    assert!(exact.contains(&"Y:170N".to_string()));
+    let exact = starmap.fuzzy_system_matches("Nod", 3);
+    assert!(exact.contains(&"Nod".to_string()));
 
-    // Test typo: O instead of 0
-    let typo = starmap.fuzzy_system_matches("Y:17ON", 3);
+    // Test typo: Bran instead of Brana
+    let typo = starmap.fuzzy_system_matches("Bran", 3);
     assert!(!typo.is_empty(), "should find similar systems");
     assert!(
-        typo.contains(&"Y:170N".to_string()),
-        "should suggest Y:170N for Y:17ON"
+        typo.contains(&"Brana".to_string()),
+        "should suggest Brana for Bran"
     );
 
     // Test partial match
-    let partial = starmap.fuzzy_system_matches("AlphaTst", 3);
+    let partial = starmap.fuzzy_system_matches("2L2", 3);
     assert!(
-        partial.contains(&"AlphaTest".to_string()),
-        "should suggest AlphaTest"
+        partial.contains(&"H:2L2S".to_string()),
+        "should suggest H:2L2S"
     );
 }
 
@@ -34,7 +34,7 @@ fn fuzzy_matches_returns_similar_names() {
 fn unknown_system_includes_suggestions() {
     let starmap = load_starmap(&fixture_path()).expect("fixture loads");
 
-    let request = RouteRequest::bfs("Y:17ON", "BetaTest"); // Typo: O instead of 0
+    let request = RouteRequest::bfs("Bran", "Brana"); // Typo: missing 'a'
     let err = plan_route(&starmap, &request).expect_err("should fail with unknown system");
 
     let error_message = format!("{}", err);
@@ -47,8 +47,8 @@ fn unknown_system_includes_suggestions() {
         "error should include suggestions"
     );
     assert!(
-        error_message.contains("Y:170N"),
-        "error should suggest Y:170N"
+        error_message.contains("Brana"),
+        "error should suggest Brana"
     );
 }
 
@@ -67,7 +67,7 @@ fn fuzzy_matches_filters_low_similarity() {
     // Very different name should return no matches
     let no_match = starmap.fuzzy_system_matches("CompletlyWrongXYZ", 3);
     assert!(
-        no_match.is_empty() || !no_match.iter().any(|s| s == "Y:170N"),
+        no_match.is_empty() || !no_match.iter().any(|s| s == "Nod"),
         "should not match very different names"
     );
 }
@@ -77,11 +77,11 @@ fn avoided_system_typo_includes_suggestions() {
     let starmap = load_starmap(&fixture_path()).expect("fixture loads");
 
     let request = RouteRequest {
-        start: "Y:170N".to_string(),
-        goal: "BetaTest".to_string(),
+        start: "Nod".to_string(),
+        goal: "Brana".to_string(),
         algorithm: evefrontier_lib::RouteAlgorithm::Bfs,
         constraints: evefrontier_lib::RouteConstraints {
-            avoid_systems: vec!["AlphaTst".to_string()], // Typo
+            avoid_systems: vec!["2L2".to_string()], // Partial system name
             ..Default::default()
         },
     };
@@ -89,7 +89,7 @@ fn avoided_system_typo_includes_suggestions() {
     let err = plan_route(&starmap, &request).expect_err("should fail with unknown avoided system");
     let error_message = format!("{}", err);
     assert!(
-        error_message.contains("AlphaTst"),
+        error_message.contains("2L2"),
         "error should mention the typo"
     );
     assert!(

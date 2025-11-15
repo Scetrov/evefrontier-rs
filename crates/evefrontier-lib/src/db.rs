@@ -184,16 +184,16 @@ impl SchemaVariant {
                 jump_from_column: "fromSystemId",
                 jump_to_column: "toSystemId",
                 constellation_join: Some(MetadataJoin {
-                    fk_column: "constellationID",
+                    fk_column: "constellationId",
                     table: "Constellations",
-                    table_id_column: "constellationID",
-                    table_name_column: "constellationName",
+                    table_id_column: "constellationId",
+                    table_name_column: "name",
                 }),
                 region_join: Some(MetadataJoin {
-                    fk_column: "regionID",
+                    fk_column: "regionId",
                     table: "Regions",
-                    table_id_column: "regionID",
-                    table_name_column: "regionName",
+                    table_id_column: "regionId",
+                    table_name_column: "name",
                 }),
                 security_column: Some("security"),
                 position_columns: Some(PositionColumns {
