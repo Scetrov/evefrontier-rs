@@ -26,7 +26,7 @@ fn query_h123k_planet6(db_path: &std::path::Path) -> rusqlite::Result<(f64, f64)
 fn solve_k_for_observation(
     distance_m: f64,
     luminosity_watts: f64,
-    observed_k: f64,
+    _observed_k: f64,
     observed_b: f64,
     t_min: f64,
     t_max: f64,
