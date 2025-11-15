@@ -11,6 +11,7 @@ Tasks are grouped by domain; checkboxes track completion status.
   - Tests currently use these synthetic systems and pass in CI; local overwrites with production data (e6c3) cause failures
   - All tests in `crates/evefrontier-lib/tests/routing.rs` and `crates/evefrontier-cli/tests/route_commands.rs` correctly reference the fixture systems
   - Documentation examples in `README.md` and `docs/USAGE.md` already use the correct fixture system names (Y:170N, BetaTest)
+- [ ] Rebuild test fixture database using updated `create_minimal_db.py` script to ensure it is representative of the current dataset, suggest using the latest e6c3 but only including `Nod` plus `Brana` and all systems either connected by gates or within 80 ly of Brana. 
 - [x] Add `.gitignore` entry for `*.db.release` marker files (ephemeral download metadata; implemented as a global pattern)
 - [x] Add fixture protection to prevent accidental overwrites:
   - [x] Document in `docs/fixtures/README.md` that fixture should not be replaced with downloads
