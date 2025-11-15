@@ -5,6 +5,46 @@ members = [
 ]
 resolver = "2"
 
+# Root package for workspace-level tooling (pre-commit hooks, etc.)
+[package]
+name = "evefrontier-workspace"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+
+[dev-dependencies]
+rusty-hook = "0.11.2"
+
+# Pre-commit hooks configuration
+[package.metadata.rusty-hook]
+version = "1"
+
+[package.metadata.rusty-hook.hooks]
+pre-commit = """
+    set -e
+    echo "🔍 Running pre-commit checks..."
+    
+    # 1. Format check
+    echo "  → Checking code formatting..."
+    cargo fmt --all -- --check
+    
+    # 2. Clippy
+    echo "  → Running clippy..."
+    cargo clippy --workspace --all-targets -- -D warnings
+    
+    # 3. Build
+    echo "  → Building workspace..."
+    cargo build --workspace --all-targets
+    
+    # 4. Tests
+    echo "  → Running tests..."
+    cargo test --workspace
+    
+    echo "✅ All pre-commit checks passed!"
+"""
+
 [workspace.package]
 edition = "2021"
 authors = ["EveFrontier Contributors"]
@@ -28,3 +68,4 @@ zip = { version = "6.0.0", default-features = false, features = ["deflate"] }
 assert_cmd = "2.1.1"
 predicates = "3.1.3"
 once_cell = "1.20.3"
+rusty-hook = "0.11.2"
