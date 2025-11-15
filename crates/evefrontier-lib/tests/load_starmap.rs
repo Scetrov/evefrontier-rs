@@ -15,7 +15,10 @@ fn load_fixture_and_find_route() -> Result<()> {
 
     assert_eq!(starmap.systems.len(), 8, "fixture should have 8 systems");
     // Note: E1J-M5G has no gates, so it won't have adjacency entries in gate-only graph
-    assert!(starmap.adjacency.len() >= 7, "systems with gates should have adjacency");
+    assert!(
+        starmap.adjacency.len() >= 7,
+        "systems with gates should have adjacency"
+    );
 
     let start = starmap.system_id_by_name("Nod").expect("start exists");
     let goal = starmap.system_id_by_name("Brana").expect("goal exists");

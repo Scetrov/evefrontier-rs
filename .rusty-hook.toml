@@ -1,5 +1,47 @@
 [hooks]
-pre-commit = "cargo test"
+pre-commit = """
+set -e
+echo "🔍 Running pre-commit checks (mirroring CI)..."
+echo ""
+
+# 1. Format check
+echo "1️⃣  Checking code formatting..."
+cargo fmt --all -- --check || {
+    echo "❌ Format check failed. Run: cargo fmt --all"
+    exit 1
+}
+echo "   ✅ Format OK"
+echo ""
+
+# 2. Clippy
+echo "2️⃣  Running clippy..."
+cargo clippy --workspace --all-targets -- -D warnings || {
+    echo "❌ Clippy failed. Fix warnings above."
+    exit 1
+}
+echo "   ✅ Clippy OK"
+echo ""
+
+# 3. Build
+echo "3️⃣  Building workspace..."
+cargo build --workspace --all-targets || {
+    echo "❌ Build failed"
+    exit 1
+}
+echo "   ✅ Build OK"
+echo ""
+
+# 4. Tests
+echo "4️⃣  Running tests..."
+cargo test --workspace || {
+    echo "❌ Tests failed"
+    exit 1
+}
+echo "   ✅ Tests OK"
+echo ""
+
+echo "✅ All pre-commit checks passed!"
+"""
 
 [logging]
 verbose = true

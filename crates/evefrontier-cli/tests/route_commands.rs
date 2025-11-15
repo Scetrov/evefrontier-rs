@@ -121,7 +121,7 @@ fn json_format_outputs_valid_json() {
 
     let output = cmd.assert().success();
     let stdout = String::from_utf8(output.get_output().stdout.clone()).unwrap();
-    
+
     // Verify it's valid JSON
     let _: serde_json::Value = serde_json::from_str(&stdout).expect("valid JSON");
 }

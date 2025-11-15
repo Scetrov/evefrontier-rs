@@ -19,9 +19,6 @@ fn refuses_to_overwrite_fixture_dataset() {
         Error::ProtectedFixturePath { path } => {
             assert_eq!(path, fixture);
         }
-        other => panic!(
-            "expected ProtectedFixturePath error, received: {:?}",
-            other
-        ),
+        other => panic!("expected ProtectedFixturePath error, received: {:?}", other),
     }
 }

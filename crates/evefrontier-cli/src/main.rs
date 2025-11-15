@@ -352,12 +352,12 @@ impl AppContext {
 fn main() -> Result<()> {
     let cli = Cli::parse();
     let context = AppContext::new(cli.global);
-    
+
     // For JSON output, suppress tracing to keep stdout clean
     if context.output_format() != OutputFormat::Json {
         init_tracing();
     }
-    
+
     let start = std::time::Instant::now();
 
     if context.should_show_logo() {
