@@ -113,6 +113,14 @@ The `route` subcommand supports advanced pathfinding options:
   evefrontier-cli route --from "Y:170N" --to "BetaTest" --max-temp 300.0
   ```
 
+- **Minimum external temperature** (`--min-temp <KELVIN>`):
+
+  ```bash
+  evefrontier-cli route --from "Y:170N" --to "BetaTest" --min-temp 200.0
+  ```
+  Excludes systems whose computed minimum external temperature (at the furthest celestial) is
+  below the threshold. Systems without this value are treated as allowed.
+
 See [`docs/USAGE.md`](docs/USAGE.md) for comprehensive documentation and additional examples.
 
 ## Library highlights

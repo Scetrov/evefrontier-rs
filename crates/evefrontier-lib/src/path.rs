@@ -13,8 +13,10 @@ pub struct PathConstraints {
     pub avoid_gates: bool,
     /// Set of system identifiers that must not appear in the resulting path.
     pub avoided_systems: HashSet<SystemId>,
-    /// Maximum allowed system temperature in Kelvin.
+    /// Maximum allowed stellar surface temperature in Kelvin.
     pub max_temperature: Option<f64>,
+    /// Minimum allowed external temperature in Kelvin (at outermost celestial body).
+    pub min_temperature: Option<f64>,
 }
 
 impl PathConstraints {
@@ -36,8 +38,20 @@ impl PathConstraints {
         if let Some(limit) = self.max_temperature {
             if let Some(map) = starmap {
                 if let Some(system) = map.systems.get(&target) {
-                    if let Some(temperature) = system.metadata.temperature {
+                    if let Some(temperature) = system.metadata.star_temperature {
                         if temperature > limit {
+                            if let Some(limit) = self.min_temperature {
+                                if let Some(map) = starmap {
+                                    if let Some(system) = map.systems.get(&target) {
+                                        if let Some(temperature) = system.metadata.min_external_temp
+                                        {
+                                            if temperature < limit {
+                                                return false;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                             return false;
                         }
                     }

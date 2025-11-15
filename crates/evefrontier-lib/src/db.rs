@@ -51,7 +51,9 @@ pub struct SystemMetadata {
     pub region_id: Option<i64>,
     pub region_name: Option<String>,
     pub security_status: Option<f64>,
-    pub temperature: Option<f64>,
+    pub star_temperature: Option<f64>,
+    pub star_luminosity: Option<f64>,
+    pub min_external_temp: Option<f64>,
 }
 
 impl SystemMetadata {
@@ -62,7 +64,9 @@ impl SystemMetadata {
             region_id: None,
             region_name: None,
             security_status: None,
-            temperature: None,
+            star_temperature: None,
+            star_luminosity: None,
+            min_external_temp: None,
         }
     }
 }
@@ -233,8 +237,11 @@ pub fn load_starmap(db_path: &Path) -> Result<Starmap> {
     let schema = detect_schema(&connection)?;
     debug!(schema = %schema.variant, path = %db_path.display(), "loading starmap");
 
-    let systems = load_systems(&connection, &schema)?;
+    let mut systems = load_systems(&connection, &schema)?;
     let adjacency = Arc::new(load_adjacency(&connection, &schema, &systems)?);
+
+    // Calculate minimum external temperatures for systems (if celestial data available)
+    calculate_min_external_temps(&connection, &mut systems)?;
 
     let mut name_to_id = HashMap::new();
     for system in systems.values() {
@@ -327,6 +334,10 @@ fn load_static_systems(
         selects.push("NULL AS position_x".to_string());
         selects.push("NULL AS position_y".to_string());
         selects.push("NULL AS position_z".to_string());
+
+        // Add star_temperature and star_luminosity if columns exist
+        selects.push("s.star_temperature AS star_temperature".to_string());
+        selects.push("s.star_luminosity AS star_luminosity".to_string());
     }
 
     let mut sql = format!(
@@ -441,6 +452,135 @@ fn load_adjacency(
     Ok(adjacency)
 }
 
+/// Calculate minimum external temperatures for all systems.
+///
+/// For each system, find the outermost celestial body (planet or moon) and
+/// calculate the external temperature at that orbital distance using the
+/// custom temperature model.
+fn calculate_min_external_temps(
+    connection: &Connection,
+    systems: &mut HashMap<SystemId, System>,
+) -> Result<()> {
+    use crate::temperature::{compute_temperature_meters, TemperatureModelParams};
+
+    // Check if Planets and Moons tables exist
+    if !table_exists(connection, "Planets")? {
+        debug!("Planets table not found; skipping minimum temperature calculation");
+        return Ok(());
+    }
+
+    let params = TemperatureModelParams::default();
+
+    // Query all planets with their orbital radii
+    let planet_query = "
+        SELECT solarSystemId, orbitRadius, planetId
+        FROM Planets
+        WHERE orbitRadius IS NOT NULL
+    ";
+
+    let mut planet_stmt = connection.prepare(planet_query)?;
+    let mut planet_orbits: HashMap<SystemId, Vec<(f64, Option<i64>)>> = HashMap::new();
+
+    let planet_rows = planet_stmt.query_map([], |row| {
+        Ok((
+            row.get::<_, SystemId>(0)?,
+            row.get::<_, f64>(1)?,
+            row.get::<_, Option<i64>>(2)?,
+        ))
+    })?;
+
+    for row in planet_rows {
+        let (system_id, orbit_radius, planet_id) = row?;
+        planet_orbits
+            .entry(system_id)
+            .or_default()
+            .push((orbit_radius, planet_id));
+    }
+
+    // Query moons if table exists
+    let moon_orbits: HashMap<i64, Vec<f64>> = if table_exists(connection, "Moons")? {
+        let moon_query = "
+            SELECT planetId, orbitRadius
+            FROM Moons
+            WHERE orbitRadius IS NOT NULL
+        ";
+
+        let mut moon_stmt = connection.prepare(moon_query)?;
+        let mut moons: HashMap<i64, Vec<f64>> = HashMap::new();
+
+        let moon_rows =
+            moon_stmt.query_map([], |row| Ok((row.get::<_, i64>(0)?, row.get::<_, f64>(1)?)))?;
+
+        for row in moon_rows {
+            let (planet_id, orbit_radius) = row?;
+            moons.entry(planet_id).or_default().push(orbit_radius);
+        }
+
+        moons
+    } else {
+        HashMap::new()
+    };
+
+    // For each system, calculate minimum external temperature
+    for (system_id, system) in systems.iter_mut() {
+        let Some(luminosity) = system.metadata.star_luminosity else {
+            continue; // Skip systems without luminosity data
+        };
+
+        if luminosity <= 0.0 {
+            warn!(
+                system_id,
+                system_name = %system.name,
+                luminosity,
+                "invalid star luminosity; skipping temperature calculation"
+            );
+            continue;
+        }
+
+        // Find the maximum orbital distance in this system
+        let mut max_distance = 0.0f64;
+
+        if let Some(planets) = planet_orbits.get(system_id) {
+            for (planet_orbit, planet_id) in planets {
+                // Check if this planet has moons
+                let planet_max_moon_orbit = planet_id
+                    .and_then(|pid| moon_orbits.get(&pid))
+                    .and_then(|moon_radii| {
+                        moon_radii
+                            .iter()
+                            .copied()
+                            .fold(None, |acc, r| Some(acc.map_or(r, |a: f64| a.max(r))))
+                    })
+                    .unwrap_or(0.0);
+
+                // Total orbital distance for the outermost moon of this planet
+                let total_orbit = planet_orbit + planet_max_moon_orbit;
+                max_distance = max_distance.max(total_orbit);
+            }
+        }
+
+        if max_distance > 0.0 {
+            match compute_temperature_meters(max_distance, luminosity, &params) {
+                Ok(temp) => {
+                    system.metadata.min_external_temp = Some(temp);
+                }
+                Err(e) => {
+                    warn!(
+                        system_id,
+                        system_name = %system.name,
+                        max_distance,
+                        luminosity,
+                        error = %e,
+                        "failed to calculate minimum external temperature"
+                    );
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
 fn row_to_system(row: &Row<'_>) -> rusqlite::Result<System> {
     // Use named column aliases produced by the SELECT in `load_static_systems`
     const COL_ID: &str = "system_id";
@@ -453,6 +593,8 @@ fn row_to_system(row: &Row<'_>) -> rusqlite::Result<System> {
     const COL_POSITION_X: &str = "position_x";
     const COL_POSITION_Y: &str = "position_y";
     const COL_POSITION_Z: &str = "position_z";
+    const COL_STAR_TEMPERATURE: &str = "star_temperature";
+    const COL_STAR_LUMINOSITY: &str = "star_luminosity";
 
     let position = match (
         row.get::<_, Option<f64>>(COL_POSITION_X)?,
@@ -479,7 +621,15 @@ fn row_to_system(row: &Row<'_>) -> rusqlite::Result<System> {
             region_id: row.get::<_, Option<i64>>(COL_REGION_ID)?,
             region_name: row.get::<_, Option<String>>(COL_REGION_NAME)?,
             security_status: row.get::<_, Option<f64>>(COL_SECURITY_STATUS)?,
-            temperature: None,
+            star_temperature: row
+                .get::<_, Option<f64>>(COL_STAR_TEMPERATURE)
+                .ok()
+                .flatten(),
+            star_luminosity: row
+                .get::<_, Option<f64>>(COL_STAR_LUMINOSITY)
+                .ok()
+                .flatten(),
+            min_external_temp: None, // Calculated in a separate pass
         },
         position,
     })

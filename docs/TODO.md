@@ -84,6 +84,13 @@ Tasks are grouped by domain; checkboxes track completion status.
       zstd), load, query nearest systems.
 - [ ] Integrate KD-tree spatial index into spatial/hybrid routing path selection logic.
 - [ ] Provide tests/benchmarks for KD-tree build and query performance.
+- [ ] Make KD-tree temperature-aware for neighbor queries
+      - Support predicates on `min_external_temp` (e.g., only return neighbors with
+            `min_external_temp >= --min-temp` preference)
+      - Consider precomputing per-node temperature metadata alongside KD-tree nodes to avoid
+            DB lookups during queries
+      - Optionally maintain temperature buckets or a secondary index for very fast filtering
+            before/while traversing the KD-tree
 
 ## CLI (`evefrontier-cli`)
 

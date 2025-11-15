@@ -79,6 +79,7 @@ impl RouteCommandArgs {
                 avoid_systems: self.options.avoid.clone(),
                 avoid_gates: self.options.avoid_gates,
                 max_temperature: self.options.max_temp,
+                min_temperature: self.options.min_temp,
             },
         }
     }
@@ -115,6 +116,14 @@ struct RouteOptionsArgs {
     /// Maximum system temperature threshold in Kelvin.
     #[arg(long = "max-temp")]
     max_temp: Option<f64>,
+
+    /// Minimum external temperature threshold in Kelvin.
+    ///
+    /// Excludes systems where the minimum external temperature (calculated at the
+    /// outermost celestial body) is below this value. Use this to avoid extremely
+    /// cold systems.
+    #[arg(long = "min-temp")]
+    min_temp: Option<f64>,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum, Default)]
@@ -455,6 +464,9 @@ fn format_route_not_found_message(
     }
     if constraints.max_temperature.is_some() {
         tips.push("raise --max-temp");
+        if constraints.min_temperature.is_some() {
+            tips.push("lower --min-temp");
+        }
     }
     if tips.is_empty() {
         message.push_str(

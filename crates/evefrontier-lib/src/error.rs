@@ -59,6 +59,10 @@ pub enum Error {
     #[error("route option {option} is not supported yet")]
     UnsupportedRouteOption { option: String },
 
+    /// Raised when temperature calculation fails due to invalid parameters.
+    #[error("temperature calculation failed: {0}")]
+    TemperatureCalculation(String),
+
     /// Wrapper for SQLite errors.
     #[error(transparent)]
     Sqlite(#[from] rusqlite::Error),

@@ -50,6 +50,8 @@ Key points:
    - Each indexed point stores: system id (integer), x, y, z (f32 by default), and optionally
      a name index for quick debugging. f32 is chosen for compactness; support f64 as an opt-in
      only when necessary.
+   - Environmental metadata: store `min_external_temp` (Kelvin) per system to enable
+     temperature-aware queries (see Temperature-Aware Queries).
 
 2. Index structure
    - Use a K‑D Tree (k = 2 or 3 depending on available coordinates). The index must support:
@@ -63,8 +65,10 @@ Key points:
      - compression: `zstd` for good ratio and fast decompression in Lambda
      - header: include magic, version, compression flag, uncompressed size and SHA-256 checksum
      - coordinate precision recorded in header (f32 by default)
-   - Use a compact, fast deserialization strategy (minimize heap allocations) so loading is fast
-     in constrained environments.
+  - Use a compact, fast deserialization strategy (minimize heap allocations) so loading is fast
+    in constrained environments.
+  - Include feature flags in the header (e.g., `has_min_external_temp`) and bump the index format
+    version when adding/removing environmental fields.
 
 4. Integration points
    - Add an index builder CLI subcommand (or a separate small tool) that reads the DB, builds the
@@ -72,6 +76,49 @@ Key points:
      `minimal_static_data.db` fixture) in the release bundle or cache.
    - Extend `ensure_c3e6_dataset` to look for and return the index path together with the DB
      path, or provide a `load_spatial_index` function in `evefrontier-lib`.
+   - Route planning: when `--min-temp` is specified, pass a temperature predicate to KD-tree queries
+     to filter neighbours rather than post-filtering only.
+
+## Temperature-Aware Queries
+
+Many searches need to avoid extremely cold systems. We will make the spatial index temperature-aware so
+neighbour queries can enforce a minimum external temperature threshold without an additional DB lookup.
+
+Design decisions:
+
+- Store `min_external_temp: Option<f32>` per node. This value represents the computed minimum
+  external temperature (Kelvin) at the outermost celestial (planet + furthest moon) of the system.
+- During index build, compute `min_external_temp` from the dataset using the same logic as the
+  runtime loader, or reuse a library routine invoked by the builder. When unavailable, store `None`.
+- Augment tree nodes with an aggregated range (subtree `min`/`max` of `min_external_temp`) to enable
+  pruning entire branches when a `--min-temp` threshold is provided. If aggregation is omitted in the
+  first iteration, we can still apply a fast post-check on candidate points.
+
+API impact:
+
+```rust
+pub struct NeighbourQuery {
+    pub k: usize,
+    pub radius: Option<f64>,
+    pub min_external_temp: Option<f32>, // Kelvin (apply as system >= threshold)
+}
+
+impl SpatialIndex {
+    fn nearest_filtered(&self, point: [f64; 3], q: NeighbourQuery) -> Vec<(SystemId, f64)>;
+}
+```
+
+Filtering rules:
+- If `min_external_temp` is set, exclude systems where stored `min_external_temp` is present and
+  below the threshold.
+- If a system lacks a stored `min_external_temp` (None), default policy is fail-open (treat as
+  allowed) to avoid over-pruning; this matches current routing semantics.
+
+Performance notes:
+- With subtree aggregates, apply branch-and-bound: if `subtree_max_temp < threshold`, prune; if
+  `subtree_min_temp >= threshold`, accept children without per-point checks.
+- Without aggregates, perform predicate checks on candidate points only; still better than a
+  second pass over all neighbours.
    - Lambda initializer should attempt to load the index via `load_spatial_index` and fall back
      as described above.
 
@@ -118,8 +165,11 @@ Client-side (Lambda / CLI)
 fn load_spatial_index(path: &Path) -> Result<SpatialIndex>
 
 impl SpatialIndex {
-    fn nearest(&self, point: [f64; 3], k: usize) -> Vec<(SystemId, f64)>; // id and distance
-    fn within_radius(&self, point: [f64; 3], r: f64) -> Vec<(SystemId, f64)>;
+  fn nearest(&self, point: [f64; 3], k: usize) -> Vec<(SystemId, f64)>; // id and distance
+  fn within_radius(&self, point: [f64; 3], r: f64) -> Vec<(SystemId, f64)>;
+
+  // Temperature-aware variant
+  fn nearest_filtered(&self, point: [f64; 3], q: NeighbourQuery) -> Vec<(SystemId, f64)>;
 }
 ```
 
@@ -172,10 +222,14 @@ impl SpatialIndex {
    artifact for downstream jobs and provide a checksum verification step in the release workflow.
 3. Update `ensure_c3e6_dataset` to prefer the index alongside the DB and add `load_spatial_index`
   to the public API.
+3b. Temperature-aware build: compute and embed `min_external_temp` for each system in the index;
+    include a header flag to indicate presence and a simple version bump.
 4. Add unit tests using `minimal_static_data.db` to validate nearest-neighbour and radius queries
   and to assert round-trip integrity (checksum) of the serialized index.
 5. Measure performance (build time, cold-start load time and query latency) and tune defaults
   (coordinate precision, serialization, compression level).
+5b. Benchmark temperature-predicate pruning effectiveness with and without subtree aggregates;
+    adopt aggregates if the win justifies added memory.
 
 ## Status and next steps
 
