@@ -75,7 +75,11 @@ Tasks are grouped by domain; checkboxes track completion status.
       - Tests cover: dataset_download, dataset_fixture_guard, dataset_normalize, fuzzy_matching, graph, load_starmap, output, routing
       - All tests use minimal_static_data.db fixture from docs/fixtures/
       - Comprehensive edge case and error path coverage
-- [ ] Document the public API in `docs/USAGE.md` and Rustdoc comments.
+- [x] Document the public API in `docs/USAGE.md` and Rustdoc comments.
+      - Enhanced lib.rs with comprehensive module documentation and usage examples
+      - Added "Library API" section to docs/USAGE.md with code examples
+      - Covers common patterns: dataset loading, routing, error handling, output formatting
+      - Includes examples for all three routing algorithms and constraint usage
 - [ ] Implement KD-tree spatial index module (per ADR 0009): build, serialize (e.g., postcard +
       zstd), load, query nearest systems.
 - [ ] Integrate KD-tree spatial index into spatial/hybrid routing path selection logic.

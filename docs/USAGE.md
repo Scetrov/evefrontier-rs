@@ -215,3 +215,172 @@ wrappers like `ensure_c3e6_dataset`) copy or extract the local file instead of c
 $env:EVEFRONTIER_DATASET_SOURCE = "docs/fixtures/minimal_static_data.db"
 evefrontier-cli download --data-dir target/fixtures
 ```
+
+## Library API
+
+The `evefrontier-lib` crate provides a programmatic API for integrating EVE Frontier routing into
+your own applications. This section demonstrates common usage patterns.
+
+### Basic Usage
+
+The typical workflow involves three steps: ensuring the dataset, loading the starmap, and planning
+routes.
+
+```rust
+use evefrontier_lib::{
+    ensure_c3e6_dataset, load_starmap, plan_route,
+    RouteRequest, RouteAlgorithm, RouteConstraints,
+};
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // 1. Ensure dataset is available (downloads if needed)
+    let dataset_path = ensure_c3e6_dataset(None)?;
+
+    // 2. Load starmap into memory
+    let starmap = load_starmap(&dataset_path)?;
+
+    // 3. Plan a route
+    let request = RouteRequest {
+        start: "Nod".to_string(),
+        goal: "Brana".to_string(),
+        algorithm: RouteAlgorithm::AStar,
+        constraints: RouteConstraints::default(),
+    };
+
+    let plan = plan_route(&starmap, &request)?;
+
+    println!("Found route with {} hops", plan.hop_count());
+    println!("Total gates: {}, spatial jumps: {}", plan.gates, plan.jumps);
+
+    Ok(())
+}
+```
+
+### Using Different Algorithms
+
+Three routing algorithms are available:
+
+```rust
+use evefrontier_lib::{RouteRequest, RouteAlgorithm};
+
+// Breadth-first search (shortest hop count, unweighted)
+let request_bfs = RouteRequest {
+    start: "Nod".to_string(),
+    goal: "Brana".to_string(),
+    algorithm: RouteAlgorithm::Bfs,
+    constraints: Default::default(),
+};
+
+// Dijkstra (shortest distance in light-years)
+let request_dijkstra = RouteRequest {
+    start: "Nod".to_string(),
+    goal: "Brana".to_string(),
+    algorithm: RouteAlgorithm::Dijkstra,
+    constraints: Default::default(),
+};
+
+// A* with heuristic (default, usually fastest)
+let request_astar = RouteRequest {
+    start: "Nod".to_string(),
+    goal: "Brana".to_string(),
+    algorithm: RouteAlgorithm::AStar,
+    constraints: Default::default(),
+};
+```
+
+### Applying Route Constraints
+
+You can constrain routes by maximum jump distance, avoided systems, or temperature:
+
+```rust
+use evefrontier_lib::{RouteRequest, RouteAlgorithm, RouteConstraints};
+
+let request = RouteRequest {
+    start: "Nod".to_string(),
+    goal: "Brana".to_string(),
+    algorithm: RouteAlgorithm::AStar,
+    constraints: RouteConstraints {
+        max_jump: Some(80.0),  // Max 80 ly per jump
+        avoid_systems: vec!["H:2L2S".to_string()],  // Avoid this system
+        avoid_gates: false,  // Allow gate usage
+        max_temperature: Some(50.0),  // Exclude hot systems
+    },
+};
+```
+
+### Error Handling
+
+The library provides detailed error types with context:
+
+```rust
+use evefrontier_lib::{plan_route, Error};
+
+match plan_route(&starmap, &request) {
+    Ok(plan) => {
+        println!("Route found!");
+    }
+    Err(Error::UnknownSystem { name, suggestions }) => {
+        eprintln!("Unknown system: {}", name);
+        if !suggestions.is_empty() {
+            eprintln!("Did you mean: {:?}", suggestions);
+        }
+    }
+    Err(Error::RouteNotFound { start, goal }) => {
+        eprintln!("No route found between {} and {}", start, goal);
+    }
+    Err(e) => {
+        eprintln!("Error: {}", e);
+    }
+}
+```
+
+### Formatting Output
+
+Convert route plans to various output formats:
+
+```rust
+use evefrontier_lib::{RouteSummary, RouteRenderMode};
+
+let plan = plan_route(&starmap, &request)?;
+
+// Convert to summary with system names
+let summary = RouteSummary::from_plan(&plan, &starmap)?;
+
+// Render as plain text
+let text = summary.render(RouteRenderMode::PlainText);
+println!("{}", text);
+
+// Or serialize to JSON
+let json = serde_json::to_string_pretty(&summary)?;
+println!("{}", json);
+```
+
+### Using Custom Dataset Paths
+
+For testing or using alternative datasets:
+
+```rust
+use evefrontier_lib::{ensure_dataset, DatasetRelease, load_starmap};
+use std::path::Path;
+
+// Use a specific dataset tag
+let path = ensure_dataset(None, DatasetRelease::tag("e6c3"))?;
+
+// Or point to a local fixture
+let fixture_path = Path::new("docs/fixtures/minimal_static_data.db");
+let starmap = load_starmap(fixture_path)?;
+```
+
+### Performance Considerations
+
+- **Starmap Loading**: Loading the dataset into memory (`load_starmap`) is a one-time cost.
+  Reuse the `Starmap` instance for multiple route computations.
+
+- **Algorithm Selection**:
+  - BFS: Fastest for short routes, unweighted
+  - Dijkstra: Accurate distance optimization, slightly slower
+  - A*: Best balance of speed and accuracy for most use cases
+
+- **Constraint Impact**: Each constraint (avoided systems, max jump, etc.) may increase route
+  computation time. Use sparingly for best performance.
+
