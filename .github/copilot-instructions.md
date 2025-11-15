@@ -24,6 +24,11 @@ the `docs/` and `docs/adrs/` folders for relevant documentation or ADRs that cou
 design, implementation, or release packaging choices. These documents often contain conventions,
 schema notes, and CI guidance that should be considered before making changes.
 
+> [!IMPORTANT]
+> Security and compliance requirements are mandatory. Before making any change, you MUST also read and follow
+> the GitHub Copilot Security and Compliance Instructions: #file:./copilot-security-instructions.md
+> In particular, do not bypass GPG signing, branch protections, or other repository security controls.
+
 ## Overview of development loop
 
 Ensure that you follow a Boyd Loop style of development:
