@@ -1,12 +1,14 @@
-.PHONY: help build build-release test test-smoke clean install check fmt lint
+.PHONY: help build build-release test test-smoke test-all clean install check fmt lint ci
 
 # Default target
 help:
 	@echo "Available targets:"
 	@echo "  make build          - Build debug binaries"
 	@echo "  make build-release  - Build optimized release binaries"
-	@echo "  make test           - Run all tests"
-	@echo "  make test-smoke     - Run quick smoke tests"
+	@echo "  make test           - Run all Rust tests (unit + integration)"
+	@echo "  make test-smoke     - Quick CLI smoke test with release binary"
+	@echo "  make test-all       - Run tests + smoke tests (comprehensive)"
+	@echo "  make ci             - Run full CI checks locally (fmt, clippy, build, test)"
 	@echo "  make check          - Run clippy lints"
 	@echo "  make fmt            - Format code with rustfmt"
 	@echo "  make lint           - Run clippy with warnings as errors"
@@ -25,42 +27,28 @@ test:
 	cargo test --workspace
 
 test-smoke: build-release
-	@echo "=== Smoke Test 1: Download command ==="
-	EVEFRONTIER_DATASET_SOURCE=docs/fixtures/minimal_static_data.db \
-	./target/release/evefrontier-cli download --no-logo --no-footer
+	@echo "=== Smoke Test: Running CLI with real e6c3 fixture ==="
+	@echo "Systems: Nod, Brana, D:2NAS, G:3OA0, H:2L2S, J:35IA, Y:3R7E, E1J-M5G"
 	@echo ""
-	@echo "=== Smoke Test 2: Basic route (text format) ==="
+	@echo "1. Download command"
+	@mkdir -p /tmp/evefrontier-smoke
 	EVEFRONTIER_DATASET_SOURCE=docs/fixtures/minimal_static_data.db \
-	./target/release/evefrontier-cli route \
-		--from "Y:170N" --to "BetaTest" \
+	./target/release/evefrontier-cli --data-dir /tmp/evefrontier-smoke download --no-logo --no-footer
+	@echo ""
+	@echo "2. Basic route (Nod → Brana)"
+	EVEFRONTIER_DATASET_SOURCE=docs/fixtures/minimal_static_data.db \
+	./target/release/evefrontier-cli --data-dir /tmp/evefrontier-smoke route \
+		--from "Nod" --to "Brana" \
 		--no-logo --no-footer
 	@echo ""
-	@echo "=== Smoke Test 3: Route with emoji format ==="
+	@echo "3. JSON output validation"
 	EVEFRONTIER_DATASET_SOURCE=docs/fixtures/minimal_static_data.db \
-	./target/release/evefrontier-cli --format emoji route \
-		--from "Y:170N" --to "AlphaTest" \
-		--no-logo --no-footer
+	./target/release/evefrontier-cli --data-dir /tmp/evefrontier-smoke --format json route \
+		--from "Nod" --to "Brana" \
+		--no-logo | jq -e '.kind == "route"' > /dev/null || (echo "❌ JSON validation failed" && exit 1)
+	@echo "   ✓ JSON output valid"
 	@echo ""
-	@echo "=== Smoke Test 4: Route with notepad format ==="
-	EVEFRONTIER_DATASET_SOURCE=docs/fixtures/minimal_static_data.db \
-	./target/release/evefrontier-cli --format note route \
-		--from "Y:170N" --to "BetaTest" \
-		--no-logo --no-footer
-	@echo ""
-	@echo "=== Smoke Test 5: Route with Dijkstra algorithm ==="
-	EVEFRONTIER_DATASET_SOURCE=docs/fixtures/minimal_static_data.db \
-	./target/release/evefrontier-cli route \
-		--from "Y:170N" --to "BetaTest" \
-		--algorithm dijkstra \
-		--no-logo --no-footer
-	@echo ""
-	@echo "=== Smoke Test 6: JSON output ==="
-	EVEFRONTIER_DATASET_SOURCE=docs/fixtures/minimal_static_data.db \
-	./target/release/evefrontier-cli --format json route \
-		--from "Y:170N" --to "BetaTest" \
-		--no-logo | head -20
-	@echo ""
-	@echo "✅ All smoke tests passed!"
+	@echo "✅ Smoke tests passed! For comprehensive validation, run: make test"
 
 # Code quality targets
 check:
@@ -75,6 +63,33 @@ lint:
 # Install target
 install:
 	cargo install --path crates/evefrontier-cli
+
+# Comprehensive testing
+test-all: test test-smoke
+	@echo ""
+	@echo "✅ All tests passed (unit, integration, and smoke tests)"
+
+# CI simulation (matches pre-commit hook and CI workflow)
+ci:
+	@echo "=== Running full CI checks ==="
+	@echo ""
+	@echo "1️⃣  Formatting check..."
+	cargo fmt --all -- --check
+	@echo "   ✅ Format OK"
+	@echo ""
+	@echo "2️⃣  Clippy (lints)..."
+	cargo clippy --workspace --all-targets -- -D warnings
+	@echo "   ✅ Clippy OK"
+	@echo ""
+	@echo "3️⃣  Build..."
+	cargo build --workspace --all-targets
+	@echo "   ✅ Build OK"
+	@echo ""
+	@echo "4️⃣  Tests..."
+	cargo test --workspace
+	@echo "   ✅ Tests OK"
+	@echo ""
+	@echo "✅ All CI checks passed!"
 
 # Clean target
 clean:

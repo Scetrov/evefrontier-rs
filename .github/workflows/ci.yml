@@ -71,25 +71,24 @@ jobs:
       - name: Build CLI
         run: cargo build --release -p evefrontier-cli
 
-      - name: Generate minimal fixture database for testing
+      - name: Prepare fixture database
         run: |
-          python3 scripts/create_minimal_db.py
           echo -e "requested=tag\nresolved=fixture" > docs/fixtures/minimal_static_data.db.release
 
-      - name: Test route command with fixture (README example)
+      - name: Test route command (README example - Nod to Brana)
         run: |
-          EVEFRONTIER_DATASET_SOURCE="$(pwd)/docs/fixtures/minimal_static_data.db" ./target/release/evefrontier-cli --data-dir /tmp/test-route route --from "Y:170N" --to "BetaTest"
+          EVEFRONTIER_DATASET_SOURCE="$(pwd)/docs/fixtures/minimal_static_data.db" ./target/release/evefrontier-cli --data-dir /tmp/test-route route --from "Nod" --to "Brana"
 
       - name: Test route command with JSON output (README example)
         run: |
-          EVEFRONTIER_DATASET_SOURCE="$(pwd)/docs/fixtures/minimal_static_data.db" ./target/release/evefrontier-cli --data-dir /tmp/test-json --format json route --from "Y:170N" --to "BetaTest" > /tmp/output.json
+          EVEFRONTIER_DATASET_SOURCE="$(pwd)/docs/fixtures/minimal_static_data.db" ./target/release/evefrontier-cli --data-dir /tmp/test-json --format json route --from "Nod" --to "Brana" > /tmp/output.json
           jq -e '.kind == "route"' /tmp/output.json || (echo "JSON output validation failed" && exit 1)
 
       - name: Test basic format path-style output (README example)
         run: |
-          EVEFRONTIER_DATASET_SOURCE="$(pwd)/docs/fixtures/minimal_static_data.db" ./target/release/evefrontier-cli --data-dir /tmp/test-basic --format basic route --from "Y:170N" --to "BetaTest"
+          EVEFRONTIER_DATASET_SOURCE="$(pwd)/docs/fixtures/minimal_static_data.db" ./target/release/evefrontier-cli --data-dir /tmp/test-basic --format basic route --from "Nod" --to "Brana"
 
       - name: Test algorithm selection
         run: |
-          EVEFRONTIER_DATASET_SOURCE="$(pwd)/docs/fixtures/minimal_static_data.db" ./target/release/evefrontier-cli --data-dir /tmp/test-algo route --from "Y:170N" --to "BetaTest" --algorithm dijkstra
+          EVEFRONTIER_DATASET_SOURCE="$(pwd)/docs/fixtures/minimal_static_data.db" ./target/release/evefrontier-cli --data-dir /tmp/test-algo route --from "Nod" --to "Brana" --algorithm dijkstra
 
