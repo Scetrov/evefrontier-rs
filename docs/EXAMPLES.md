@@ -13,8 +13,8 @@ Total distance: 137ly
 Total ly jumped: 71ly
 ```
 
-**Note:** Spatial jumps (jump drive) are only available with `--algorithm dijkstra` or `--algorithm a-star`. 
-The default `bfs` algorithm only uses stargate connections.
+**Note:** Spatial jumps (jump drive) are only available with `--algorithm dijkstra` or
+`--algorithm a-star`. The default `bfs` algorithm only uses stargate connections.
 
 ## Route with Notepad Example
 
@@ -26,7 +26,6 @@ Jmp <a href="showinfo:5//30007664">Z:46S0</a>
 ```
 
 ## Route with Emoji
-
 
 ```
 $ evefrontier-cli route --from "Y:170N" --to "Z:46S0" --algorithm a-star --format emoji
@@ -40,3 +39,31 @@ Route from Y:170N to Z:46S0 (3 jumps):
 Total distance: 137ly
 Total ly jumped: 71ly
 ```
+
+## Scout Examples
+
+### Scout within range in lightyears from a starting point
+
+This generates an optimized route to scout all systems within the specified range using the minimum
+amount of fuel. Ensure that duplicate systems are clearly marked.
+
+```
+$ evefrontier-cli scout --from "Strym" --range 50 --format note
+Scout from Strym within 50ly:
+ <a href="showinfo:5//30000143">Onga</a> (20ly via gate)
+ <a href="showinfo:5//30000144">Niarja</a> (30ly via jump)
+ <a href="showinfo:5//30000145">Halaima</a> (45ly via gate)
+```
+
+### Scout showing only stargate connections
+
+Same as above but only using stargate connections,again should optimize for minimum fuel usage /
+jumps to cover all stars and return to the start.
+
+```$ evefrontier-cli scout --from "Strym" --gates-only
+Scout from Strym within 50ly (gates only):
+ - Onga (20ly via gate)
+ - Halaima (45ly via gate)
+```
+
+> [!NOTE] Other formats such as `emoji` and `table` are also supported for the `scout` command.
