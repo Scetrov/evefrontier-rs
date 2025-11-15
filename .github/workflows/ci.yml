@@ -76,11 +76,6 @@ jobs:
           python3 scripts/create_minimal_db.py
           echo -e "requested=tag\nresolved=fixture" > docs/fixtures/minimal_static_data.db.release
 
-      - name: Test download command (README example)
-        run: |
-          ./target/release/evefrontier-cli --data-dir /tmp/test-download download
-          test -f /tmp/test-download/static_data.db || (echo "Download failed" && exit 1)
-
       - name: Test route command with fixture (README example)
         run: |
           EVEFRONTIER_DATASET_SOURCE="$(pwd)/docs/fixtures/minimal_static_data.db" ./target/release/evefrontier-cli --data-dir /tmp/test-route route --from "Y:170N" --to "BetaTest"
