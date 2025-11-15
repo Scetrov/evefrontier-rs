@@ -44,7 +44,6 @@ pub struct RouteConstraints {
     pub avoid_systems: Vec<String>,
     pub avoid_gates: bool,
     pub max_temperature: Option<f64>,
-    pub min_temperature: Option<f64>,
 }
 
 impl RouteConstraints {
@@ -54,7 +53,6 @@ impl RouteConstraints {
             avoid_gates: self.avoid_gates,
             avoided_systems: avoided,
             max_temperature: self.max_temperature,
-            min_temperature: self.min_temperature,
         }
     }
 }
@@ -122,8 +120,6 @@ pub fn plan_route(starmap: &Starmap, request: &RouteRequest) -> Result<RoutePlan
         || constraints.avoided_systems.contains(&goal_id)
         || !system_meets_temperature(starmap, start_id, constraints.max_temperature)
         || !system_meets_temperature(starmap, goal_id, constraints.max_temperature)
-        || !system_meets_min_temperature(starmap, start_id, constraints.min_temperature)
-        || !system_meets_min_temperature(starmap, goal_id, constraints.min_temperature)
     {
         return Err(Error::RouteNotFound {
             start: request.start.clone(),
@@ -190,19 +186,6 @@ fn system_meets_temperature(starmap: &Starmap, system: SystemId, limit: Option<f
         .and_then(|sys| sys.metadata.star_temperature)
         .map(|temperature| temperature <= limit)
         .unwrap_or(true)
-}
-
-fn system_meets_min_temperature(starmap: &Starmap, system: SystemId, limit: Option<f64>) -> bool {
-    let Some(limit) = limit else {
-        return true;
-    };
-
-    starmap
-        .systems
-        .get(&system)
-        .and_then(|sys| sys.metadata.min_external_temp)
-        .map(|temperature| temperature >= limit)
-        .unwrap_or(true) // Systems without min_external_temp data are allowed
 }
 
 fn select_graph(

@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- 2025-11-15 - GitHub Copilot - [fix] - Corrected b parameter from 1.125 to 1.25 (transcription error) - now matches expected values exactly
+- 2025-11-15 - GitHub Copilot - [docs] - Documented exact EVE Frontier temperature formula with test cases in ADR 0012 and temperature module
+- 2025-11-15 - GitHub Copilot - [docs] - Added comprehensive formula documentation: T(d) = 0.1 + 99.8/(1+(d/(3.215e-11*√L))^1.25)
+- 2025-11-15 - GitHub Copilot - [docs] - Documented validated test cases: Nod (15.74K at 541.4 ls), Brana (0.32K at 9255.2 ls)
+- 2025-11-15 - GitHub Copilot - [fix] - **BREAKING**: Removed nonsensical `--min-temp` flag - only `--max-temp` matters (prevents spatial jumps to hot systems)
+- 2025-11-15 - GitHub Copilot - [fix] - Temperature constraint now correctly applies **only to spatial jumps** (EdgeKind::Spatial), not gate jumps
+- 2025-11-15 - GitHub Copilot - [docs] - Updated ADR 0012, README.md, and USAGE.md to reflect correct temperature constraint semantics
+- 2025-11-15 - GitHub Copilot - [tests] - Removed min_temperature tests and updated temperature logic validation
+- 2025-11-15 - GitHub Copilot - [fix] - Fixed temperature calculation bug: star_luminosity and star_temperature columns now loaded correctly from e6c3 datasets
+- 2025-11-15 - GitHub Copilot - [fix] - Updated temperature calculation to use Euclidean distance from centerX/Y/Z coordinates instead of orbitRadius
+- 2025-11-15 - GitHub Copilot - [config] - Updated TemperatureModelParams defaults to match EVE Frontier formula: T_min=0.1K, T_max=99.9K, b=1.25, k=3.215e-11
+- 2025-11-15 - GitHub Copilot - [fixture] - Regenerated test fixture with full e6c3 celestial data including coordinates, luminosity, and orbital parameters
+- 2025-11-15 - GitHub Copilot - [tests] - All temperature tests now passing with real e6c3 data: Nod ~18.09K, Brana ~0.51K
+- 2025-11-15 - GitHub Copilot - [tests] - Updated test_custom_model_near_star expectations to match EVE Frontier temperature model (max 99.9K)
 - 2025-11-15 - GitHub Copilot - [bench] - Added Criterion-based pathfinding benchmarks, Makefile target, and documentation updates for running `cargo bench`
 - 2025-11-15 - GitHub Copilot - [tests] - Added fixture metadata helper script, Makefile targets, docs, and integration test to keep `minimal_static_data.db` synchronized
 

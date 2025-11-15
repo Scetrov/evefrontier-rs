@@ -49,6 +49,9 @@ pub struct RouteStep {
     /// How this step was reached: "gate" or "jump".
     #[serde(skip_serializing_if = "Option::is_none")]
     pub method: Option<String>,
+    /// Minimum external temperature for the system (Kelvin), if available.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub min_external_temp: Option<f64>,
 }
 
 impl RouteStep {
@@ -104,12 +107,18 @@ impl RouteSummary {
                 (dist, edge_method)
             };
 
+            let min_external_temp = starmap
+                .systems
+                .get(&system_id)
+                .and_then(|s| s.metadata.min_external_temp);
+
             steps.push(RouteStep {
                 index,
                 id: system_id,
                 name: starmap.system_name(system_id).map(|name| name.to_string()),
                 distance,
                 method,
+                min_external_temp,
             });
         }
 
@@ -144,14 +153,19 @@ impl RouteSummary {
 
     /// Render the summary using the requested textual mode.
     pub fn render(&self, mode: RouteRenderMode) -> String {
+        self.render_with(mode, true)
+    }
+
+    /// Render with control over temperature annotations.
+    pub fn render_with(&self, mode: RouteRenderMode, show_temps: bool) -> String {
         match mode {
-            RouteRenderMode::PlainText => self.render_plain(),
-            RouteRenderMode::RichText => self.render_rich(),
-            RouteRenderMode::InGameNote => self.render_note(),
+            RouteRenderMode::PlainText => self.render_plain(show_temps),
+            RouteRenderMode::RichText => self.render_rich(show_temps),
+            RouteRenderMode::InGameNote => self.render_note(show_temps),
         }
     }
 
-    fn render_plain(&self) -> String {
+    fn render_plain(&self, show_temps: bool) -> String {
         let mut buffer = String::new();
         let _ = writeln!(
             buffer,
@@ -163,19 +177,27 @@ impl RouteSummary {
         );
 
         for step in &self.steps {
+            let bracket = if show_temps {
+                match step.min_external_temp {
+                    Some(t) => format!("{}; min {:.2}K", step.id, t),
+                    None => format!("{}", step.id),
+                }
+            } else {
+                format!("{}", step.id)
+            };
             let _ = writeln!(
                 buffer,
                 "{:>3}: {} ({})",
                 step.index,
                 step.display_name(),
-                step.id
+                bracket
             );
         }
 
         buffer + &format!("via {} gates / {} jump drive\n", self.gates, self.jumps)
     }
 
-    fn render_rich(&self) -> String {
+    fn render_rich(&self, show_temps: bool) -> String {
         let mut buffer = String::new();
         let _ = writeln!(
             buffer,
@@ -186,18 +208,26 @@ impl RouteSummary {
             self.algorithm
         );
         for step in &self.steps {
+            let bracket = if show_temps {
+                match step.min_external_temp {
+                    Some(t) => format!("`{}` (min {:.2}K)", step.id, t),
+                    None => format!("`{}`", step.id),
+                }
+            } else {
+                format!("`{}`", step.id)
+            };
             let _ = writeln!(
                 buffer,
-                "* {:>2}. **{}** (`{}`)",
+                "* {:>2}. **{}** ({})",
                 step.index,
                 step.display_name(),
-                step.id
+                bracket
             );
         }
         buffer + &format!("via {} gates / {} jump drive\n", self.gates, self.jumps)
     }
 
-    fn render_note(&self) -> String {
+    fn render_note(&self, show_temps: bool) -> String {
         let mut buffer = String::new();
         let _ = writeln!(buffer, "Route:");
         let _ = writeln!(
@@ -209,7 +239,18 @@ impl RouteSummary {
             self.algorithm
         );
         for step in &self.steps {
-            let _ = writeln!(buffer, "{}", step.display_name());
+            if show_temps {
+                match step.min_external_temp {
+                    Some(t) => {
+                        let _ = writeln!(buffer, "{} (min {:.2}K)", step.display_name(), t);
+                    }
+                    None => {
+                        let _ = writeln!(buffer, "{}", step.display_name());
+                    }
+                }
+            } else {
+                let _ = writeln!(buffer, "{}", step.display_name());
+            }
         }
         buffer + &format!("via {} gates / {} jump drive\n", self.gates, self.jumps)
     }

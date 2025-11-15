@@ -334,11 +334,11 @@ fn load_static_systems(
         selects.push("NULL AS position_x".to_string());
         selects.push("NULL AS position_y".to_string());
         selects.push("NULL AS position_z".to_string());
-
-        // Add star_temperature and star_luminosity if columns exist
-        selects.push("s.star_temperature AS star_temperature".to_string());
-        selects.push("s.star_luminosity AS star_luminosity".to_string());
     }
+
+    // Add star_temperature and star_luminosity if columns exist
+    selects.push("s.star_temperature AS star_temperature".to_string());
+    selects.push("s.star_luminosity AS star_luminosity".to_string());
 
     let mut sql = format!(
         "SELECT {selects} FROM {table} s",
@@ -461,7 +461,10 @@ fn calculate_min_external_temps(
     connection: &Connection,
     systems: &mut HashMap<SystemId, System>,
 ) -> Result<()> {
-    use crate::temperature::{compute_temperature_meters, TemperatureModelParams};
+    use crate::temperature::{
+        compute_temperature_light_seconds, constants::METERS_IN_LIGHT_SECOND,
+        TemperatureModelParams,
+    };
 
     // Check if Planets and Moons tables exist
     if !table_exists(connection, "Planets")? {
@@ -471,55 +474,55 @@ fn calculate_min_external_temps(
 
     let params = TemperatureModelParams::default();
 
-    // Query all planets with their orbital radii
+    // Query all planets with their 3D coordinates
     let planet_query = "
-        SELECT solarSystemId, orbitRadius, planetId
+        SELECT solarSystemId, centerX, centerY, centerZ
         FROM Planets
-        WHERE orbitRadius IS NOT NULL
+        WHERE centerX IS NOT NULL AND centerY IS NOT NULL AND centerZ IS NOT NULL
     ";
 
     let mut planet_stmt = connection.prepare(planet_query)?;
-    let mut planet_orbits: HashMap<SystemId, Vec<(f64, Option<i64>)>> = HashMap::new();
+    let mut planet_coords: HashMap<SystemId, Vec<(f64, f64, f64)>> = HashMap::new();
 
     let planet_rows = planet_stmt.query_map([], |row| {
         Ok((
             row.get::<_, SystemId>(0)?,
             row.get::<_, f64>(1)?,
-            row.get::<_, Option<i64>>(2)?,
+            row.get::<_, f64>(2)?,
+            row.get::<_, f64>(3)?,
         ))
     })?;
 
     for row in planet_rows {
-        let (system_id, orbit_radius, planet_id) = row?;
-        planet_orbits
-            .entry(system_id)
-            .or_default()
-            .push((orbit_radius, planet_id));
+        let (system_id, x, y, z) = row?;
+        planet_coords.entry(system_id).or_default().push((x, y, z));
     }
 
     // Query moons if table exists
-    let moon_orbits: HashMap<i64, Vec<f64>> = if table_exists(connection, "Moons")? {
+    let mut moon_coords: HashMap<SystemId, Vec<(f64, f64, f64)>> = HashMap::new();
+    if table_exists(connection, "Moons")? {
         let moon_query = "
-            SELECT planetId, orbitRadius
+            SELECT solarSystemId, centerX, centerY, centerZ
             FROM Moons
-            WHERE orbitRadius IS NOT NULL
+            WHERE centerX IS NOT NULL AND centerY IS NOT NULL AND centerZ IS NOT NULL
         ";
 
         let mut moon_stmt = connection.prepare(moon_query)?;
-        let mut moons: HashMap<i64, Vec<f64>> = HashMap::new();
 
-        let moon_rows =
-            moon_stmt.query_map([], |row| Ok((row.get::<_, i64>(0)?, row.get::<_, f64>(1)?)))?;
+        let moon_rows = moon_stmt.query_map([], |row| {
+            Ok((
+                row.get::<_, SystemId>(0)?,
+                row.get::<_, f64>(1)?,
+                row.get::<_, f64>(2)?,
+                row.get::<_, f64>(3)?,
+            ))
+        })?;
 
         for row in moon_rows {
-            let (planet_id, orbit_radius) = row?;
-            moons.entry(planet_id).or_default().push(orbit_radius);
+            let (system_id, x, y, z) = row?;
+            moon_coords.entry(system_id).or_default().push((x, y, z));
         }
-
-        moons
-    } else {
-        HashMap::new()
-    };
+    }
 
     // For each system, calculate minimum external temperature
     for (system_id, system) in systems.iter_mut() {
@@ -537,30 +540,30 @@ fn calculate_min_external_temps(
             continue;
         }
 
-        // Find the maximum orbital distance in this system
-        let mut max_distance = 0.0f64;
+        // Find the maximum Euclidean distance from star (at origin) to any celestial
+        let mut max_distance_meters = 0.0f64;
 
-        if let Some(planets) = planet_orbits.get(system_id) {
-            for (planet_orbit, planet_id) in planets {
-                // Check if this planet has moons
-                let planet_max_moon_orbit = planet_id
-                    .and_then(|pid| moon_orbits.get(&pid))
-                    .and_then(|moon_radii| {
-                        moon_radii
-                            .iter()
-                            .copied()
-                            .fold(None, |acc, r| Some(acc.map_or(r, |a: f64| a.max(r))))
-                    })
-                    .unwrap_or(0.0);
-
-                // Total orbital distance for the outermost moon of this planet
-                let total_orbit = planet_orbit + planet_max_moon_orbit;
-                max_distance = max_distance.max(total_orbit);
+        // Check planets
+        if let Some(planets) = planet_coords.get(system_id) {
+            for (x, y, z) in planets {
+                let dist = (x * x + y * y + z * z).sqrt();
+                max_distance_meters = max_distance_meters.max(dist);
             }
         }
 
-        if max_distance > 0.0 {
-            match compute_temperature_meters(max_distance, luminosity, &params) {
+        // Check moons
+        if let Some(moons) = moon_coords.get(system_id) {
+            for (x, y, z) in moons {
+                let dist = (x * x + y * y + z * z).sqrt();
+                max_distance_meters = max_distance_meters.max(dist);
+            }
+        }
+
+        if max_distance_meters > 0.0 {
+            // Convert meters to light-seconds
+            let max_distance_ls = max_distance_meters / METERS_IN_LIGHT_SECOND;
+
+            match compute_temperature_light_seconds(max_distance_ls, luminosity, &params) {
                 Ok(temp) => {
                     system.metadata.min_external_temp = Some(temp);
                 }
@@ -568,7 +571,8 @@ fn calculate_min_external_temps(
                     warn!(
                         system_id,
                         system_name = %system.name,
-                        max_distance,
+                        max_distance_meters,
+                        max_distance_ls,
                         luminosity,
                         error = %e,
                         "failed to calculate minimum external temperature"

@@ -79,7 +79,6 @@ impl RouteCommandArgs {
                 avoid_systems: self.options.avoid.clone(),
                 avoid_gates: self.options.avoid_gates,
                 max_temperature: self.options.max_temp,
-                min_temperature: self.options.min_temp,
             },
         }
     }
@@ -114,16 +113,16 @@ struct RouteOptionsArgs {
     avoid_gates: bool,
 
     /// Maximum system temperature threshold in Kelvin.
+    ///
+    /// Only applies to spatial jumps - systems with star temperature above this
+    /// threshold cannot be reached via spatial jumps (ships would overheat).
+    /// Gate jumps are unaffected by temperature.
     #[arg(long = "max-temp")]
     max_temp: Option<f64>,
 
-    /// Minimum external temperature threshold in Kelvin.
-    ///
-    /// Excludes systems where the minimum external temperature (calculated at the
-    /// outermost celestial body) is below this value. Use this to avoid extremely
-    /// cold systems.
-    #[arg(long = "min-temp")]
-    min_temp: Option<f64>,
+    /// Suppress minimum external temperature annotations in route output.
+    #[arg(long = "no-temp", action = ArgAction::SetTrue)]
+    no_temp: bool,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum, Default)]
@@ -182,7 +181,7 @@ impl OutputFormat {
         Ok(())
     }
 
-    fn render_route_result(self, summary: &RouteSummary) -> Result<()> {
+    fn render_route_result(self, summary: &RouteSummary, show_temps: bool) -> Result<()> {
         match self {
             OutputFormat::Text => {
                 // Human-friendly route view per docs/EXAMPLES.md
@@ -198,16 +197,38 @@ impl OutputFormat {
                     let name = step.name.as_deref().unwrap_or("<unknown>");
                     if let (Some(distance), Some(method)) = (step.distance, step.method.as_deref())
                     {
-                        println!(" - {} ({:.0}ly via {})", name, distance, method);
+                        if show_temps {
+                            if let Some(t) = step.min_external_temp {
+                                println!(
+                                    " - {} [min {:.2}K] ({:.0}ly via {})",
+                                    name, t, distance, method
+                                );
+                            } else {
+                                println!(" - {} ({:.0}ly via {})", name, distance, method);
+                            }
+                        } else {
+                            println!(" - {} ({:.0}ly via {})", name, distance, method);
+                        }
                     } else {
-                        println!(" - {}", name);
+                        if show_temps {
+                            if let Some(t) = step.min_external_temp {
+                                println!(" - {} [min {:.2}K]", name, t);
+                            } else {
+                                println!(" - {}", name);
+                            }
+                        } else {
+                            println!(" - {}", name);
+                        }
                     }
                 }
                 println!("\nTotal distance: {:.0}ly", summary.total_distance);
                 println!("Total ly jumped: {:.0}ly", summary.jump_distance);
             }
             OutputFormat::Rich => {
-                print!("{}", summary.render(RouteRenderMode::RichText));
+                print!(
+                    "{}",
+                    summary.render_with(RouteRenderMode::RichText, show_temps)
+                );
             }
             OutputFormat::Json => {
                 let mut stdout = io::stdout();
@@ -229,7 +250,15 @@ impl OutputFormat {
                         '|'
                     };
                     let name = step.name.as_deref().unwrap_or("<unknown>");
-                    println!("{} {}", prefix, name);
+                    if show_temps {
+                        if let Some(t) = step.min_external_temp {
+                            println!("{} {} [min {:.2}K]", prefix, name, t);
+                        } else {
+                            println!("{} {}", prefix, name);
+                        }
+                    } else {
+                        println!("{} {}", prefix, name);
+                    }
                 }
                 println!("via {} gates / {} jump drive", summary.gates, summary.jumps);
             }
@@ -251,9 +280,28 @@ impl OutputFormat {
                     };
                     if let (Some(distance), Some(method)) = (step.distance, step.method.as_deref())
                     {
-                        println!(" {} {} ({:.0}ly via {})", icon, name, distance, method);
+                        if show_temps {
+                            if let Some(t) = step.min_external_temp {
+                                println!(
+                                    " {} {} [min {:.2}K] ({:.0}ly via {})",
+                                    icon, name, t, distance, method
+                                );
+                            } else {
+                                println!(" {} {} ({:.0}ly via {})", icon, name, distance, method);
+                            }
+                        } else {
+                            println!(" {} {} ({:.0}ly via {})", icon, name, distance, method);
+                        }
                     } else {
-                        println!(" {} {}", icon, name);
+                        if show_temps {
+                            if let Some(t) = step.min_external_temp {
+                                println!(" {} {} [min {:.2}K]", icon, name, t);
+                            } else {
+                                println!(" {} {}", icon, name);
+                            }
+                        } else {
+                            println!(" {} {}", icon, name);
+                        }
                     }
                 }
                 println!("\nTotal distance: {:.0}ly", summary.total_distance);
@@ -410,7 +458,10 @@ fn handle_route_command(
 
     let summary = RouteSummary::from_plan(kind, &starmap, &plan)
         .context("failed to build route summary for display")?;
-    context.output_format().render_route_result(&summary)
+    let show_temps = !args.options.no_temp;
+    context
+        .output_format()
+        .render_route_result(&summary, show_temps)
 }
 
 fn handle_route_failure(request: &RouteRequest, err: RouteError) -> anyhow::Error {
@@ -464,9 +515,6 @@ fn format_route_not_found_message(
     }
     if constraints.max_temperature.is_some() {
         tips.push("raise --max-temp");
-        if constraints.min_temperature.is_some() {
-            tips.push("lower --min-temp");
-        }
     }
     if tips.is_empty() {
         message.push_str(

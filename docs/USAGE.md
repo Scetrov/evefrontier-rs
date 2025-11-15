@@ -109,19 +109,14 @@ Route-only options (ignored by other subcommands):
   evefrontier-cli route --from "Y:170N" --to "BetaTest" --avoid-gates
   ```
 
-- Filter by maximum system temperature:
+- Filter by maximum system temperature for spatial jumps:
 
   ```bash
-  evefrontier-cli route --from "Y:170N" --to "BetaTest" --max-temp 300.0
+  evefrontier-cli route --from "Y:170N" --to "BetaTest" --max-temp 5000.0
   ```
 
-- Filter by minimum external temperature (at the outermost celestial body):
-
-  ```bash
-  evefrontier-cli route --from "Y:170N" --to "BetaTest" --min-temp 200.0
-  ```
-  Systems with computed `min_external_temp` below the threshold are excluded. Systems that
-  do not expose this value are treated as allowed to avoid over-pruning.
+  Prevents routing through systems with star temperature above the threshold via spatial jumps
+  (ships would overheat). Gate jumps bypass this constraint entirely.
 
 - Calculate a route using environment variable for dataset path:
 
@@ -164,10 +159,10 @@ The routing subcommands accept several flags that map directly to the library's 
   entry. Avoiding the start or destination results in a clear error.
 - `--avoid-gates` — restrict the search to spatial traversal only (omit gate edges). If
   system coordinates are absent the spatial graph may be sparse.
-- `--max-temp <KELVIN>` — constrain the maximum temperature of systems along the route. Systems that
-  do not expose a temperature reading are treated as safe.
-- `--min-temp <KELVIN>` — constrain the minimum external temperature (Kelvin) at the outermost
-  celestial body in each system. Systems without a computed value are treated as allowed.
+- `--max-temp <KELVIN>` — constrain the maximum star temperature for **spatial jumps only**. 
+  Spatial jumps to systems with star temperature exceeding this threshold are blocked (ships 
+  would overheat). Gate jumps are unaffected by temperature. Systems without temperature data 
+  are treated as safe.
 
 ## Configuration & data path resolution
 
