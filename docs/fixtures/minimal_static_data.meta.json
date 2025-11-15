@@ -1,0 +1,13 @@
+{
+  "fixture": "docs/fixtures/minimal_static_data.db",
+  "release": "e6c3",
+  "sha256": "aa21f7284309ccffe154edf318ebfd2aa47ade5b6bcf57520379c49b67c2baad",
+  "tables": {
+    "Constellations": 4,
+    "Jumps": 12,
+    "Moons": 43,
+    "Planets": 26,
+    "Regions": 2,
+    "SolarSystems": 8
+  }
+}

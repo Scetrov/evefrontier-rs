@@ -138,6 +138,23 @@ make test-smoke
 
 The pre-commit hook will catch most issues, but running `make ci` gives you detailed output.
 
+### Benchmarks
+
+Pathfinding performance can be measured with Criterion benchmarks located under
+`crates/evefrontier-lib/benches/`.
+
+```bash
+# Run all benchmarks (compiles release artifacts)
+make bench
+
+# Or directly via Cargo
+cargo bench -p evefrontier-lib
+```
+
+Benchmarks run against the same pinned fixture (Nod ↔ Brana) and cover BFS, Dijkstra,
+and A* (hybrid and spatial) planners. Use them when tuning graph/pathfinding code to
+catch regressions early.
+
 ### Before Pushing
 
 ```bash
