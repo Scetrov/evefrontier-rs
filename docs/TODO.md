@@ -111,7 +111,12 @@ Tasks are grouped by domain; checkboxes track completion status.
       - `make audit` target added to Makefile
       - Comprehensive remediation guide created in `docs/SECURITY_AUDIT.md`
 - [x] Add CI guard requiring `CHANGELOG.md` modification for non-doc code changes (ADR 0010).
-- [ ] Schedule nightly dependency outdated report (Rust & Node) and publish artifact.
+- [x] Schedule nightly dependency outdated report (Rust & Node) and publish artifact.
+      - Created `.github/workflows/dependency-check.yml` with nightly schedule (2 AM UTC)
+      - Separate jobs for Rust (`cargo outdated`) and Node (`pnpm outdated`)
+      - Artifacts published with 30-day retention: `rust-outdated-report`, `node-outdated-report`
+      - Manual trigger via `workflow_dispatch` also supported
+      - Documented in `CONTRIBUTING.md` under "Dependency Management" section
 - [ ] Establish benchmarking or profiling harnesses for pathfinding performance (optional but
       recommended).
 

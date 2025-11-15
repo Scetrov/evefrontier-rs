@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- 2025-11-15 - auto-llm - [ci] - Added nightly dependency check workflow that runs at 2 AM UTC daily
+- 2025-11-15 - auto-llm - [ci] - Workflow checks Rust (cargo-outdated) and Node (pnpm outdated) dependencies
+- 2025-11-15 - auto-llm - [ci] - Publishes rust-outdated-report and node-outdated-report artifacts with 30-day retention
+- 2025-11-15 - auto-llm - [ci] - Workflow supports manual triggers via workflow_dispatch
+- 2025-11-15 - auto-llm - [docs] - Documented dependency check workflow in CONTRIBUTING.md
 - 2025-11-15 - auto-llm - [security] - Integrated cargo-audit into CI pipeline with dedicated `security-audit` job that fails on vulnerabilities
 - 2025-11-15 - auto-llm - [security] - Added cargo audit to pre-commit hook (step 5) to block commits with vulnerable dependencies
 - 2025-11-15 - auto-llm - [security] - Added `make audit` target for manual security scans with `--deny warnings`
