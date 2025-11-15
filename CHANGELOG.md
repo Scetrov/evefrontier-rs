@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- 2025-11-15 - auto-llm - [feature] - Compute per-system minimum external temperature at load from furthest celestial using a calibrated model and Stefan–Boltzmann; enforce via routing constraint; expose `--min-temp` in CLI
+- 2025-11-15 - auto-llm - [cli] - Added `--min-temp` flag to `route` command and improved no-route suggestions to mention lowering `--min-temp`
+- 2025-11-15 - auto-llm - [tests] - Added library and CLI tests for min-temperature behavior; removed a brittle failure case relying on fixture-specific data
+- 2025-11-15 - auto-llm - [docs] - Created ADR 0012 documenting minimum external temperature calculation and load-time computation strategy
+- 2025-11-15 - auto-llm - [docs] - Updated ADR 0009 with temperature-aware KD-tree neighbor query requirements and API shape
+- 2025-11-15 - auto-llm - [docs] - Updated README and `docs/USAGE.md` with `--min-temp` examples and guidance
+
 - 2025-11-15 - auto-llm - [docs] - Enhanced lib.rs with comprehensive module documentation and usage examples
 - 2025-11-15 - auto-llm - [docs] - Added Library API section to docs/USAGE.md with code examples for common patterns
 - 2025-11-15 - auto-llm - [docs] - Documented all three routing algorithms, constraint usage, error handling, and output formatting

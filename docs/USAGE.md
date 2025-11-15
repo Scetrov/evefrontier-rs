@@ -115,6 +115,14 @@ Route-only options (ignored by other subcommands):
   evefrontier-cli route --from "Y:170N" --to "BetaTest" --max-temp 300.0
   ```
 
+- Filter by minimum external temperature (at the outermost celestial body):
+
+  ```bash
+  evefrontier-cli route --from "Y:170N" --to "BetaTest" --min-temp 200.0
+  ```
+  Systems with computed `min_external_temp` below the threshold are excluded. Systems that
+  do not expose this value are treated as allowed to avoid over-pruning.
+
 - Calculate a route using environment variable for dataset path:
 
   ```bash
@@ -158,6 +166,8 @@ The routing subcommands accept several flags that map directly to the library's 
   system coordinates are absent the spatial graph may be sparse.
 - `--max-temp <KELVIN>` — constrain the maximum temperature of systems along the route. Systems that
   do not expose a temperature reading are treated as safe.
+- `--min-temp <KELVIN>` — constrain the minimum external temperature (Kelvin) at the outermost
+  celestial body in each system. Systems without a computed value are treated as allowed.
 
 ## Configuration & data path resolution
 

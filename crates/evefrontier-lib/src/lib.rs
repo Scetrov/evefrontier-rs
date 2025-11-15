@@ -83,6 +83,7 @@ pub mod graph;
 pub mod output;
 pub mod path;
 pub mod routing;
+pub mod temperature;
 
 pub use dataset::{default_dataset_path, ensure_c3e6_dataset, ensure_dataset};
 pub use db::{load_starmap, Starmap, System, SystemId, SystemMetadata, SystemPosition};

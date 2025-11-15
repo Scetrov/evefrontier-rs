@@ -82,7 +82,7 @@ fn temperature_limit_blocks_hot_systems() {
         .get_mut(&brana_id)
         .unwrap()
         .metadata
-        .temperature = Some(5_000.0);
+        .star_temperature = Some(5_000.0);
 
     let request = RouteRequest {
         start: "Nod".to_string(),
@@ -95,6 +95,31 @@ fn temperature_limit_blocks_hot_systems() {
     };
 
     let error = plan_route(&starmap, &request).expect_err("temperature filtered");
+    assert!(format!("{error}").contains("no route found"));
+}
+
+#[test]
+fn min_temperature_blocks_cold_systems() {
+    let mut starmap = load_starmap(&fixture_path()).expect("fixture loads");
+    let brana_id = starmap.system_id_by_name("Brana").unwrap();
+    starmap
+        .systems
+        .get_mut(&brana_id)
+        .unwrap()
+        .metadata
+        .min_external_temp = Some(150.0);
+
+    let request = RouteRequest {
+        start: "Nod".to_string(),
+        goal: "Brana".to_string(),
+        algorithm: RouteAlgorithm::Dijkstra,
+        constraints: RouteConstraints {
+            min_temperature: Some(200.0),
+            ..RouteConstraints::default()
+        },
+    };
+
+    let error = plan_route(&starmap, &request).expect_err("min temp filtered");
     assert!(format!("{error}").contains("no route found"));
 }
 

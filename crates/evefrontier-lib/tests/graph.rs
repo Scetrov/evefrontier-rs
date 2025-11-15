@@ -65,7 +65,9 @@ fn empty_metadata() -> SystemMetadata {
         region_id: None,
         region_name: None,
         security_status: None,
-        temperature: None,
+        star_temperature: None,
+        star_luminosity: None,
+        min_external_temp: None,
     }
 }
 
