@@ -63,10 +63,18 @@ Tasks are grouped by domain; checkboxes track completion status.
       constraints.
 - [x] Provide serialization helpers for CLI/Lambda outputs (plain text, rich text, JSON, in-game
       note format) with appropriate structs and enums.
-- [ ] Add robust error handling via a shared `Error` type (using `thiserror`) and bubble errors to
+- [x] Add robust error handling via a shared `Error` type (using `thiserror`) and bubble errors to
       callers with actionable messages.
-- [ ] Write unit tests covering schema detection, dataset loading, graph construction, and routing
+      - Comprehensive `Error` enum in `error.rs` with thiserror derive
+      - All error variants have descriptive messages and context (paths, tags, system names)
+      - Transparent wrapping of underlying errors (SQLite, IO, HTTP, ZIP)
+      - Helper functions for formatted error suggestions
+- [x] Write unit tests covering schema detection, dataset loading, graph construction, and routing
       behavior using fixtures in `docs/fixtures/`.
+      - 8 test files with 43+ integration tests
+      - Tests cover: dataset_download, dataset_fixture_guard, dataset_normalize, fuzzy_matching, graph, load_starmap, output, routing
+      - All tests use minimal_static_data.db fixture from docs/fixtures/
+      - Comprehensive edge case and error path coverage
 - [ ] Document the public API in `docs/USAGE.md` and Rustdoc comments.
 - [ ] Implement KD-tree spatial index module (per ADR 0009): build, serialize (e.g., postcard +
       zstd), load, query nearest systems.
@@ -126,8 +134,12 @@ Tasks are grouped by domain; checkboxes track completion status.
 
 ## Documentation & Communication
 
-- [ ] Create `CHANGELOG.md` with an `Unreleased` section and update it for each change (per
+- [x] Create `CHANGELOG.md` with an `Unreleased` section and update it for each change (per
       `CONTRIBUTING.md`).
+      - CHANGELOG.md exists at repository root
+      - Unreleased section actively maintained
+      - Follows format: date - author - [category] - description
+      - Integrated into pre-commit workflow via CONTRIBUTING.md guidance
 - [ ] Align `README.md` with the new workspace layout, CLI commands, Lambda crates, and development
       workflow.
 - [ ] Expand `docs/USAGE.md` with Lambda invocation examples and dataset caching behavior.
