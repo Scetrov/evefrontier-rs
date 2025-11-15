@@ -117,10 +117,13 @@ pub fn find_route_dijkstra(
     queue.push(QueueEntry::new(start, 0.0));
 
     while let Some(entry) = queue.pop() {
-        if distances.get(&entry.node).is_none_or(|&d| d < entry.cost.0) {
+        // Skip stale queue entries where we've already found a better path
+        let Some(&current_distance) = distances.get(&entry.node) else {
+            continue;
+        };
+        if current_distance < entry.cost.0 {
             continue;
         }
-        let current_distance = *distances.get(&entry.node).unwrap();
 
         if entry.node == goal {
             return Some(reconstruct_path(&parents, start, goal));
