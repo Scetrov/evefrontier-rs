@@ -1,4 +1,4 @@
-.PHONY: help build build-release test test-smoke test-all clean install check fmt lint ci audit
+.PHONY: help build build-release test test-smoke test-all clean install check fmt lint ci audit bench fixture-status fixture-verify fixture-record
 
 # Default target
 help:
@@ -8,6 +8,7 @@ help:
 	@echo "  make test           - Run all Rust tests (unit + integration)"
 	@echo "  make test-smoke     - Quick CLI smoke test with release binary"
 	@echo "  make test-all       - Run tests + smoke tests (comprehensive)"
+	@echo "  make bench          - Run Criterion benchmarks"
 	@echo "  make ci             - Run full CI checks locally (fmt, clippy, build, test)"
 	@echo "  make audit          - Run security audit with cargo-audit"
 	@echo "  make check          - Run clippy lints"
@@ -50,6 +51,19 @@ test-smoke: build-release
 	@echo "   ✓ JSON output valid"
 	@echo ""
 	@echo "✅ Smoke tests passed! For comprehensive validation, run: make test"
+
+bench:
+	cargo bench -p evefrontier-lib
+
+# Fixture helpers
+fixture-status:
+	python3 scripts/fixture_status.py status
+
+fixture-verify:
+	python3 scripts/fixture_status.py verify
+
+fixture-record:
+	python3 scripts/fixture_status.py record
 
 # Code quality targets
 check:

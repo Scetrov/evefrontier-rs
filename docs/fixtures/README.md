@@ -55,6 +55,32 @@ Or use the wrapper script:
 python3 scripts/create_minimal_db.py /tmp/e6c3_source/static_data.db
 ```
 
+### Fixture Management Helpers
+
+The repository ships with helper commands that keep the pinned fixture in sync:
+
+```bash
+# Show current release, hash, and table counts
+make fixture-status
+
+# Recompute metadata and ensure it matches the committed values
+make fixture-verify
+
+# After regenerating the fixture, refresh the metadata JSON
+make fixture-record
+```
+
+The helpers wrap `scripts/fixture_status.py`, which records the following in
+`docs/fixtures/minimal_static_data.meta.json`:
+
+- `release`: should match `static_data.db.release` (currently `e6c3`).
+- `sha256`: cryptographic hash of `minimal_static_data.db`.
+- `tables`: row counts for Regions, Constellations, SolarSystems, Jumps, Planets, and Moons.
+
+CI runs a Rust integration test (`dataset_fixture_metadata.rs`) that validates the
+fixture against this metadata. If the database changes without updating the metadata,
+the test fails, preventing accidental drift.
+
 ### CI Usage
 
 The CI workflow generates the fixture fresh for each test run to ensure:

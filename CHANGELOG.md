@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- 2025-11-15 - GitHub Copilot - [bench] - Added Criterion-based pathfinding benchmarks, Makefile target, and documentation updates for running `cargo bench`
+- 2025-11-15 - GitHub Copilot - [tests] - Added fixture metadata helper script, Makefile targets, docs, and integration test to keep `minimal_static_data.db` synchronized
+
 - 2025-11-15 - auto-llm - [feature] - Compute per-system minimum external temperature at load from furthest celestial using a calibrated model and Stefan–Boltzmann; enforce via routing constraint; expose `--min-temp` in CLI
 - 2025-11-15 - auto-llm - [cli] - Added `--min-temp` flag to `route` command and improved no-route suggestions to mention lowering `--min-temp`
 - 2025-11-15 - auto-llm - [tests] - Added library and CLI tests for min-temperature behavior; removed a brittle failure case relying on fixture-specific data
