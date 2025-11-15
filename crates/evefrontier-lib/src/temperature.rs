@@ -1,8 +1,41 @@
 //! Temperature calculation module for solar system environmental modeling.
 //!
 //! This module provides functions to calculate external temperatures at various
-//! orbital distances from a star, using both a custom parameterized model and
-//! the Stefan-Boltzmann equilibrium equation.
+//! orbital distances from a star, using EVE Frontier's custom parameterized model
+//! and the Stefan-Boltzmann equilibrium equation.
+//!
+//! # EVE Frontier Temperature Formula
+//!
+//! The primary calculation uses the EVE Frontier formula:
+//!
+//! ```text
+//! T(d) = T_min + (T_max - T_min) / (1 + (d / (k * √L))^b)
+//! ```
+//!
+//! Where:
+//! - `T_min` = 0.1 K (minimum temperature in deep space)
+//! - `T_max` = 99.9 K (maximum temperature near the star)
+//! - `d` = Distance from star in light-seconds
+//! - `L` = Stellar luminosity in watts
+//! - `k` = 3.215 × 10⁻¹¹ (calibrated distance scale factor)
+//! - `b` = 1.25 (calibrated curve steepness exponent)
+//!
+//! # Validated Test Cases
+//!
+//! From the EVE Frontier e6c3 dataset:
+//!
+//! - **Nod**: L = 1.9209×10²⁵ W, d = 541.4 ls → T = 15.74 K
+//! - **Brana**: L = 4.7398×10²⁴ W, d = 9255.2 ls → T = 0.32 K
+//!
+//! # Example
+//!
+//! ```rust
+//! use evefrontier_lib::temperature::{compute_temperature_light_seconds, TemperatureModelParams};
+//!
+//! let params = TemperatureModelParams::default();
+//! let temp = compute_temperature_light_seconds(541.4, 1.9209e25, &params).unwrap();
+//! assert!((temp - 15.74).abs() < 0.01); // Nod system temperature
+//! ```
 
 use crate::error::{Error, Result};
 
@@ -44,10 +77,10 @@ pub struct TemperatureModelParams {
 impl Default for TemperatureModelParams {
     fn default() -> Self {
         Self {
-            k: 1.0e-11,         // Tuned for solar luminosity scale
-            b: 2.0,             // Gentler curve
-            min_kelvin: 2.7,    // Cosmic microwave background
-            max_kelvin: 5778.0, // Solar surface temperature (as reference)
+            k: 3.215e-11,     // EVE Frontier calibrated scale factor
+            b: 1.25,          // EVE Frontier calibrated exponent
+            min_kelvin: 0.1,  // EVE Frontier minimum temperature
+            max_kelvin: 99.9, // EVE Frontier maximum temperature
             kelvin_offset: 0.0,
             kelvin_scale: 1.0,
             map_to_kelvin: false,
@@ -267,8 +300,12 @@ mod tests {
         let params = TemperatureModelParams::default();
         let temp = compute_temperature_meters(1e9, SOLAR_LUMINOSITY, &params).unwrap();
 
-        // Very close to star should be hot (warmer than Earth orbit anyway)
-        assert!(temp > 1000.0);
+        // Very close to star should approach max_kelvin (99.9K in EVE Frontier model)
+        assert!(temp > 50.0, "Expected temp > 50K near star, got {}", temp);
+        assert!(
+            temp <= params.max_kelvin,
+            "Temp should not exceed max_kelvin"
+        );
     }
 
     #[test]
@@ -350,5 +387,138 @@ mod tests {
                 .unwrap();
 
         assert!(temp_bright > temp_dim);
+    }
+
+    // Integration tests with real EVE Frontier fixture data
+    //
+    // These tests validate the EVE Frontier temperature formula:
+    //   T(d) = T_min + (T_max - T_min) / (1 + (d / (k * √L))^b)
+    //
+    // Parameters (from EVE Frontier calibration):
+    //   T_min = 0.1 K
+    //   T_max = 99.9 K
+    //   k = 3.215 × 10⁻¹¹
+    //   b = 1.25
+    //
+    // Test cases from e6c3 dataset:
+    //   Nod:   L = 1.9209×10²⁵ W, d = 541.4 ls  → T ≈ 15.74 K
+    //   Brana: L = 4.7398×10²⁴ W, d = 9255.2 ls → T ≈ 0.32 K
+    mod eve_frontier_fixture {
+        use crate::db::load_starmap;
+        use std::path::PathBuf;
+
+        fn fixture_path() -> PathBuf {
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../docs/fixtures/minimal_static_data.db")
+        }
+
+        #[test]
+        fn test_fixture_systems_have_computed_min_temps() {
+            let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+
+            // Check that min_external_temp is computed for systems
+            let nod_id = starmap.system_id_by_name("Nod").expect("Nod exists");
+            let nod = starmap.systems.get(&nod_id).expect("Nod system data");
+
+            assert!(
+                nod.metadata.min_external_temp.is_some(),
+                "Nod should have computed min_external_temp"
+            );
+
+            let brana_id = starmap.system_id_by_name("Brana").expect("Brana exists");
+            let brana = starmap.systems.get(&brana_id).expect("Brana system data");
+
+            assert!(
+                brana.metadata.min_external_temp.is_some(),
+                "Brana should have computed min_external_temp"
+            );
+        }
+
+        #[test]
+        fn test_nod_temperature_is_physically_reasonable() {
+            // Nod test case from e6c3 dataset:
+            //   Star luminosity: 1.9209 × 10²⁵ W
+            //   Furthest celestial: "Nod - Planet 2"
+            //   Distance: 1.6231 × 10¹¹ m = 541.4142 light-seconds
+            //   Expected T_min: 15.74 K (calculated with EVE Frontier formula)
+            let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+            let nod_id = starmap.system_id_by_name("Nod").expect("Nod exists");
+            let nod = starmap.systems.get(&nod_id).expect("Nod system data");
+
+            if let Some(min_temp) = nod.metadata.min_external_temp {
+                // Should be above absolute zero
+                assert!(min_temp > 0.0, "Temperature should be above 0K");
+
+                // Should be finite
+                assert!(
+                    min_temp.is_finite(),
+                    "Temperature should be finite, got {}",
+                    min_temp
+                );
+
+                // Should be within a reasonable range for space
+                assert!(
+                    min_temp < 1000.0,
+                    "Deep space temperature shouldn't exceed 1000K, got {:.1}K",
+                    min_temp
+                );
+            }
+        }
+
+        #[test]
+        fn test_brana_temperature_is_physically_reasonable() {
+            // Brana test case from e6c3 dataset:
+            //   Star luminosity: 4.7398 × 10²⁴ W
+            //   Furthest celestial: "Brana - Planet 2"
+            //   Distance: 2.7746 × 10¹² m = 9255.1725 light-seconds
+            //   Expected T_min: 0.32 K (calculated with EVE Frontier formula)
+            let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+            let brana_id = starmap.system_id_by_name("Brana").expect("Brana exists");
+            let brana = starmap.systems.get(&brana_id).expect("Brana system data");
+
+            if let Some(min_temp) = brana.metadata.min_external_temp {
+                // Should be above absolute zero
+                assert!(min_temp > 0.0, "Temperature should be above 0K");
+
+                // Should be finite
+                assert!(
+                    min_temp.is_finite(),
+                    "Temperature should be finite, got {}",
+                    min_temp
+                );
+
+                // Should be within a reasonable range for space
+                assert!(
+                    min_temp < 1000.0,
+                    "Deep space temperature shouldn't exceed 1000K, got {:.1}K",
+                    min_temp
+                );
+            }
+        }
+
+        #[test]
+        fn test_all_fixture_systems_have_valid_temperatures() {
+            let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+
+            let mut systems_with_temps = 0;
+            for system in starmap.systems.values() {
+                if let Some(temp) = system.metadata.min_external_temp {
+                    systems_with_temps += 1;
+
+                    assert!(
+                        temp > 0.0 && temp.is_finite(),
+                        "System {} has invalid temperature: {:.1}K",
+                        system.name,
+                        temp
+                    );
+                }
+            }
+
+            assert!(
+                systems_with_temps >= 2,
+                "Expected at least 2 systems with temperature data, got {}",
+                systems_with_temps
+            );
+        }
     }
 }

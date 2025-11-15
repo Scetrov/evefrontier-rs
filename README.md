@@ -107,19 +107,14 @@ The `route` subcommand supports advanced pathfinding options:
   evefrontier-cli route --from "Y:170N" --to "BetaTest" --avoid-gates
   ```
 
-- **Temperature limit** (`--max-temp <KELVIN>`):
+- **Temperature limit for spatial jumps** (`--max-temp <KELVIN>`):
 
   ```bash
-  evefrontier-cli route --from "Y:170N" --to "BetaTest" --max-temp 300.0
+  evefrontier-cli route --from "Y:170N" --to "BetaTest" --max-temp 5000.0
   ```
 
-- **Minimum external temperature** (`--min-temp <KELVIN>`):
-
-  ```bash
-  evefrontier-cli route --from "Y:170N" --to "BetaTest" --min-temp 200.0
-  ```
-  Excludes systems whose computed minimum external temperature (at the furthest celestial) is
-  below the threshold. Systems without this value are treated as allowed.
+  Prevents spatial jumps to systems with star temperature above the threshold (ships would overheat).
+  Gate jumps are unaffected by temperature constraints.
 
 See [`docs/USAGE.md`](docs/USAGE.md) for comprehensive documentation and additional examples.
 

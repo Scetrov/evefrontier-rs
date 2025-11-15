@@ -216,19 +216,6 @@ fn max_temp_option_works() {
 }
 
 #[test]
-fn min_temp_option_works() {
-    let (mut cmd, _temp) = prepare_command();
-    cmd.arg("route")
-        .arg("--from")
-        .arg("Nod")
-        .arg("--to")
-        .arg("Brana")
-        .arg("--min-temp")
-        .arg("1.0");
-
-    cmd.assert().success();
-}
-#[test]
 fn multiple_avoid_systems_work() {
     let (mut cmd, _temp) = prepare_command();
     cmd.arg("route")
