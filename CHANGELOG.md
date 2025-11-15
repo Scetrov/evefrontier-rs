@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- 2025-11-15 - auto-llm - [tooling] - Created .nvmrc file pinning Node 20 (LTS) for reproducible development
+- 2025-11-15 - auto-llm - [tooling] - Updated CI workflows to use Rust 1.91.1 (matching .rust-toolchain file)
+- 2025-11-15 - auto-llm - [docs] - Documented version pinning (.nvmrc, .rust-toolchain) in CONTRIBUTING.md
 - 2025-11-15 - auto-llm - [ci] - Added nightly dependency check workflow that runs at 2 AM UTC daily
 - 2025-11-15 - auto-llm - [ci] - Workflow checks Rust (cargo-outdated) and Node (pnpm outdated) dependencies
 - 2025-11-15 - auto-llm - [ci] - Publishes rust-outdated-report and node-outdated-report artifacts with 30-day retention

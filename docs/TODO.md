@@ -35,8 +35,12 @@ Tasks are grouped by domain; checkboxes track completion status.
       commands in `CONTRIBUTING.md` and `docs/USAGE.md`.
 - [ ] Add CI workflow enforcing ADR filename pattern (`^\\d{4}-.+\\.md$`) and immutability (reject
       edits to historical ADRs except via explicit override label).
-- [ ] Create reproducible toolchain pins for Node (`.nvmrc` or Volta config) and confirm
+- [x] Create reproducible toolchain pins for Node (`.nvmrc` or Volta config) and confirm
       `.rust-toolchain` matches the intended compiler release.
+      - Created `.nvmrc` with Node 20 (LTS)
+      - Confirmed `.rust-toolchain` specifies Rust 1.91.1
+      - Updated all CI workflows to use Rust 1.91.1 (matching `.rust-toolchain`)
+      - Documented version pinning in `CONTRIBUTING.md`
 - [ ] Introduce automation scripts under `scripts/` (e.g., dataset fixture sync, release helpers)
       and register them as Nx tasks if applicable.
 
