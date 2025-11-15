@@ -146,6 +146,20 @@ Pre-commit and CI
 - CI should run the full matrix: `cargo test`, `clippy`, `cargo audit` (or nightly),
   `pnpm run lint:md`, and any additional integration tests.
 
+Dependency Management
+
+- **Nightly Dependency Checks**: A GitHub Actions workflow runs nightly to check for outdated Rust
+  and Node dependencies. The workflow publishes artifacts containing reports you can review:
+  - `rust-outdated-report`: JSON and text reports from `cargo outdated`
+  - `node-outdated-report`: JSON and text reports from `pnpm outdated`
+  - Find these under the "Dependency Check" workflow runs in the Actions tab
+  - Reports are kept for 30 days
+- **Manual Dependency Updates**: To update dependencies locally:
+  - Rust: `cargo update` (patch versions) or edit `Cargo.toml` for minor/major updates
+  - Node: `pnpm update` or edit `package.json`
+  - Always run tests after updating dependencies
+  - Update `CHANGELOG.md` when making dependency changes
+
 Signing and releases
 
 - For release artifacts, prefer signing binaries or release archives using a dedicated signing
