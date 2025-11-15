@@ -100,8 +100,9 @@ Tasks are grouped by domain; checkboxes track completion status.
 
 ## Testing & Quality
 
-- [ ] Ensure `cargo fmt`, `cargo clippy --all-targets --all-features`, and `cargo test --workspace`
+- [x] Ensure `cargo fmt`, `cargo clippy --all-targets --all-features`, and `cargo test --workspace`
       run cleanly; hook them into Nx and CI ([ADR 0007](adrs/0007-devsecops-practices.md)).
+      - Pre-commit hooks configured with rusty-hook to run all CI checks locally
 - [ ] Add dataset fixture management helpers to keep fixtures synchronized and documented in
       `docs/fixtures/README.md`.
 - [ ] Integrate `cargo audit` and Node SCA checks into CI and document remediation workflows.
