@@ -105,8 +105,12 @@ Tasks are grouped by domain; checkboxes track completion status.
       - Pre-commit hooks configured with rusty-hook to run all CI checks locally
 - [ ] Add dataset fixture management helpers to keep fixtures synchronized and documented in
       `docs/fixtures/README.md`.
-- [ ] Integrate `cargo audit` and Node SCA checks into CI and document remediation workflows.
-- [ ] Add CI guard requiring `CHANGELOG.md` modification for non-doc code changes (ADR 0010).
+- [x] Integrate `cargo audit` and Node SCA checks into CI and document remediation workflows.
+      - cargo-audit integrated into CI (`security-audit` job in `.github/workflows/ci.yml`)
+      - Pre-commit hook updated to run cargo audit (step 5 in `.rusty-hook.toml`)
+      - `make audit` target added to Makefile
+      - Comprehensive remediation guide created in `docs/SECURITY_AUDIT.md`
+- [x] Add CI guard requiring `CHANGELOG.md` modification for non-doc code changes (ADR 0010).
 - [ ] Schedule nightly dependency outdated report (Rust & Node) and publish artifact.
 - [ ] Establish benchmarking or profiling harnesses for pathfinding performance (optional but
       recommended).
