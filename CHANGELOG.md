@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- 2025-11-15 - auto-llm - [docs] - Enhanced lib.rs with comprehensive module documentation and usage examples
+- 2025-11-15 - auto-llm - [docs] - Added Library API section to docs/USAGE.md with code examples for common patterns
+- 2025-11-15 - auto-llm - [docs] - Documented all three routing algorithms, constraint usage, error handling, and output formatting
 - 2025-11-15 - auto-llm - [docs] - Marked three completed TODOs as done in TODO.md (error handling, unit tests, CHANGELOG)
 - 2025-11-15 - auto-llm - [tooling] - Created .nvmrc file pinning Node 20 (LTS) for reproducible development
 - 2025-11-15 - auto-llm - [tooling] - Updated CI workflows to use Rust 1.91.1 (matching .rust-toolchain file)
