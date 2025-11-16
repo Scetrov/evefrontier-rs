@@ -1,7 +1,7 @@
 use std::env;
 use std::fmt;
 use std::fs::{self, File};
-use std::io::{self, Write};
+use std::io::{self, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -24,9 +24,15 @@ const DATASET_SOURCE_ENV: &str = "EVEFRONTIER_DATASET_SOURCE";
 const LATEST_TAG_OVERRIDE_ENV: &str = "EVEFRONTIER_DATASET_LATEST_TAG";
 
 // Retry policy for transient HTTP failures (timeouts, 5xx, connection resets).
+// Note: uses blocking std::thread::sleep because this codepath relies on the
+// blocking reqwest client. If/when the codebase moves to async I/O, replace
+// sleeps with `tokio::time::sleep` and switch to the async client.
 // Keep conservative defaults to avoid long delays while improving robustness.
 const HTTP_MAX_RETRIES: usize = 3;
 const HTTP_INITIAL_BACKOFF_MS: u64 = 300;
+// With exponential backoff (300ms → 600ms → 1200ms; capped at 5s) and 3 retries,
+// the maximum added delay is ~1.8s, in addition to the base client timeout of
+// 30s. Worst-case wall time per request context ≈ 31.8s.
 
 /// Identifier for a GitHub dataset release to download.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -316,7 +322,7 @@ fn fetch_release(client: &Client, release: &DatasetRelease) -> Result<ReleaseRes
         DatasetRelease::Tag(tag) => format!("{}/tags/{}", RELEASES_API_BASE, tag),
     };
 
-    // Retry on transient failures but do not retry on a definitive 404 for a tag.
+    // Retry on transient failures; do not retry on a definitive 404 for a tag.
     let mut last_err: Option<reqwest::Error> = None;
     let mut backoff = HTTP_INITIAL_BACKOFF_MS;
     for attempt in 0..=HTTP_MAX_RETRIES {
@@ -326,25 +332,33 @@ fn fetch_release(client: &Client, release: &DatasetRelease) -> Result<ReleaseRes
             .send();
 
         match resp {
-            Ok(response) => {
-                if response.status() == StatusCode::NOT_FOUND {
-                    if let DatasetRelease::Tag(tag) = release {
-                        return Err(Error::DatasetReleaseNotFound { tag: tag.clone() });
-                    }
-                }
-                match response.error_for_status() {
-                    Ok(ok) => return Ok(ok.json::<ReleaseResponse>()?),
-                    Err(err) => {
-                        // Only retry on server errors (5xx); client errors (4xx) are terminal.
-                        if let Some(status) = err.status() {
-                            if !status.is_server_error() {
-                                return Err(Error::Http(err));
-                            }
+            Ok(response) => match response.error_for_status() {
+                Ok(ok) => {
+                    // If JSON/body parsing fails (e.g., mid-transfer), treat as transient and retry.
+                    match ok.json::<ReleaseResponse>() {
+                        Ok(parsed) => return Ok(parsed),
+                        Err(err) => {
+                            last_err = Some(err);
                         }
-                        last_err = Some(err);
                     }
                 }
-            }
+                Err(err) => {
+                    if let Some(status) = err.status() {
+                        if status == StatusCode::NOT_FOUND {
+                            // For tagged releases, map to a domain error; for latest, return HTTP error.
+                            if let DatasetRelease::Tag(tag) = release {
+                                return Err(Error::DatasetReleaseNotFound { tag: tag.clone() });
+                            }
+                            return Err(Error::Http(err));
+                        }
+                        // Only retry on server errors (5xx); client errors (other 4xx) are terminal.
+                        if !status.is_server_error() {
+                            return Err(Error::Http(err));
+                        }
+                    }
+                    last_err = Some(err);
+                }
+            },
             Err(err) => {
                 // Network/timeout errors: retry.
                 last_err = Some(err);
@@ -462,6 +476,9 @@ fn download_to_file(client: &Client, url: &str, file: &mut File) -> Result<()> {
     let mut last_err: Option<reqwest::Error> = None;
     let mut backoff = HTTP_INITIAL_BACKOFF_MS;
     for attempt in 0..=HTTP_MAX_RETRIES {
+        // Ensure no partial data remains from a previous failed attempt.
+        file.set_len(0)?;
+        file.seek(SeekFrom::Start(0))?;
         match client.get(url).send() {
             Ok(response) => match response.error_for_status() {
                 Ok(mut ok) => {
