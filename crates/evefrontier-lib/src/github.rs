@@ -1,7 +1,7 @@
 use std::env;
 use std::fmt;
 use std::fs::{self, File};
-use std::io::{self, Write};
+use std::io::{self, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -22,6 +22,45 @@ const CACHE_DIR_NAME: &str = "evefrontier_datasets";
 const CACHE_DIR_ENV: &str = "EVEFRONTIER_DATASET_CACHE_DIR";
 const DATASET_SOURCE_ENV: &str = "EVEFRONTIER_DATASET_SOURCE";
 const LATEST_TAG_OVERRIDE_ENV: &str = "EVEFRONTIER_DATASET_LATEST_TAG";
+
+// Retry/backoff policy for transient failures (timeouts, connection resets, 5xx).
+// Blocking implementation (std::thread::sleep) because we use the blocking reqwest client.
+// If migrating to async, swap for `tokio::time::sleep` and async reqwest.
+//
+// Semantics:
+// - HTTP_MAX_RETRIES counts *additional* retries after the initial attempt.
+// - Total attempts = 1 + HTTP_MAX_RETRIES.
+// - Backoff sequence (per failure before next attempt): 300ms → 600ms → 1200ms (capped growth).
+//   For 3 retries this is 300 + 600 + 1200 = 2100ms maximum added delay.
+// - Combined with 30s client timeout worst-case wall time ≈ 32.1s for a single request context.
+const HTTP_MAX_RETRIES: usize = 3; // initial + 3 retries = 4 attempts total
+const HTTP_INITIAL_BACKOFF_MS: u64 = 300;
+
+// Generic retry loop helper. Attempts the operation up to (1 + HTTP_MAX_RETRIES) times.
+// `should_retry` returns true if the error is transient and the loop should continue.
+fn retry_loop<T, E, Op, ShouldRetry>(
+    mut op: Op,
+    mut should_retry: ShouldRetry,
+) -> std::result::Result<T, E>
+where
+    Op: FnMut() -> std::result::Result<T, E>,
+    ShouldRetry: FnMut(&E) -> bool,
+{
+    let mut backoff = HTTP_INITIAL_BACKOFF_MS;
+    for attempt in 0..=HTTP_MAX_RETRIES {
+        match op() {
+            Ok(val) => return Ok(val),
+            Err(err) => {
+                if attempt == HTTP_MAX_RETRIES || !should_retry(&err) {
+                    return Err(err);
+                }
+                std::thread::sleep(Duration::from_millis(backoff));
+                backoff = (backoff.saturating_mul(2)).min(5_000);
+            }
+        }
+    }
+    unreachable!("loop exits via return on success or final failure")
+}
 
 /// Identifier for a GitHub dataset release to download.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -311,19 +350,45 @@ fn fetch_release(client: &Client, release: &DatasetRelease) -> Result<ReleaseRes
         DatasetRelease::Tag(tag) => format!("{}/tags/{}", RELEASES_API_BASE, tag),
     };
 
-    let response = client
-        .get(&url)
-        .header(ACCEPT, "application/vnd.github+json")
-        .send()?;
+    let result = retry_loop(
+        || {
+            let response = client
+                .get(&url)
+                .header(ACCEPT, "application/vnd.github+json")
+                .send()?;
+            let checked = response.error_for_status();
+            match checked {
+                Ok(ok) => ok.json::<ReleaseResponse>(),
+                Err(err) => Err(err),
+            }
+        },
+        |err: &reqwest::Error| {
+            // Decide if we should retry this reqwest error.
+            if let Some(status) = err.status() {
+                if status == StatusCode::NOT_FOUND {
+                    // 404 is terminal; convert later for tagged releases.
+                    return false;
+                }
+                return status.is_server_error();
+            }
+            // Network/timeout: retry.
+            true
+        },
+    );
 
-    if response.status() == StatusCode::NOT_FOUND {
-        if let DatasetRelease::Tag(tag) = release {
-            return Err(Error::DatasetReleaseNotFound { tag: tag.clone() });
+    match result {
+        Ok(parsed) => Ok(parsed),
+        Err(err) => {
+            if let Some(status) = err.status() {
+                if status == StatusCode::NOT_FOUND {
+                    if let DatasetRelease::Tag(tag) = release {
+                        return Err(Error::DatasetReleaseNotFound { tag: tag.clone() });
+                    }
+                }
+            }
+            Err(Error::Http(err))
         }
     }
-
-    let response = response.error_for_status()?;
-    Ok(response.json::<ReleaseResponse>()?)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -425,9 +490,55 @@ fn download_archive_asset(client: &Client, url: &str, destination: &Path) -> Res
 }
 
 fn download_to_file(client: &Client, url: &str, file: &mut File) -> Result<()> {
-    let mut response = client.get(url).send()?.error_for_status()?;
-    io::copy(&mut response, file)?;
-    Ok(())
+    // We treat both HTTP server/network errors and IO streaming errors as transient.
+    #[derive(Debug)]
+    enum DownloadError {
+        Http(reqwest::Error),
+        Io(io::Error),
+    }
+
+    impl std::fmt::Display for DownloadError {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            match self {
+                DownloadError::Http(e) => write!(f, "{}", e),
+                DownloadError::Io(e) => write!(f, "{}", e),
+            }
+        }
+    }
+    impl std::error::Error for DownloadError {}
+
+    let result = retry_loop(
+        || {
+            // Reset file to avoid appending partial data from previous attempt.
+            file.set_len(0).map_err(DownloadError::Io)?;
+            file.seek(SeekFrom::Start(0)).map_err(DownloadError::Io)?;
+            let response = client.get(url).send().map_err(DownloadError::Http)?;
+            let mut response = response.error_for_status().map_err(DownloadError::Http)?;
+            io::copy(&mut response, file).map_err(DownloadError::Io)?;
+            file.flush().map_err(DownloadError::Io)?;
+            Ok(())
+        },
+        |err: &DownloadError| match err {
+            DownloadError::Http(e) => {
+                if let Some(status) = e.status() {
+                    if status.is_server_error() {
+                        return true; // retry 5xx
+                    }
+                    // Client errors (4xx) are terminal.
+                    return false;
+                }
+                // Network/timeouts: retry.
+                true
+            }
+            DownloadError::Io(_) => true, // treat streaming IO errors as transient
+        },
+    );
+
+    match result {
+        Ok(()) => Ok(()),
+        Err(DownloadError::Http(err)) => Err(Error::Http(err)),
+        Err(DownloadError::Io(err)) => Err(Error::Io(err)),
+    }
 }
 
 fn extract_archive(archive_path: &Path, destination: &Path) -> Result<()> {
