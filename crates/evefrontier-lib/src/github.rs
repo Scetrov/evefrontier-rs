@@ -483,6 +483,7 @@ fn download_to_file(client: &Client, url: &str, file: &mut File) -> Result<()> {
             Ok(response) => match response.error_for_status() {
                 Ok(mut ok) => {
                     io::copy(&mut ok, file)?;
+                    file.flush()?; // Ensure all buffered data is written to disk
                     return Ok(());
                 }
                 Err(err) => {
