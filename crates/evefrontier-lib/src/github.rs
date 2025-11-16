@@ -23,6 +23,11 @@ const CACHE_DIR_ENV: &str = "EVEFRONTIER_DATASET_CACHE_DIR";
 const DATASET_SOURCE_ENV: &str = "EVEFRONTIER_DATASET_SOURCE";
 const LATEST_TAG_OVERRIDE_ENV: &str = "EVEFRONTIER_DATASET_LATEST_TAG";
 
+// Retry policy for transient HTTP failures (timeouts, 5xx, connection resets).
+// Keep conservative defaults to avoid long delays while improving robustness.
+const HTTP_MAX_RETRIES: usize = 3;
+const HTTP_INITIAL_BACKOFF_MS: u64 = 300;
+
 /// Identifier for a GitHub dataset release to download.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum DatasetRelease {
@@ -311,19 +316,48 @@ fn fetch_release(client: &Client, release: &DatasetRelease) -> Result<ReleaseRes
         DatasetRelease::Tag(tag) => format!("{}/tags/{}", RELEASES_API_BASE, tag),
     };
 
-    let response = client
-        .get(&url)
-        .header(ACCEPT, "application/vnd.github+json")
-        .send()?;
+    // Retry on transient failures but do not retry on a definitive 404 for a tag.
+    let mut last_err: Option<reqwest::Error> = None;
+    let mut backoff = HTTP_INITIAL_BACKOFF_MS;
+    for attempt in 0..=HTTP_MAX_RETRIES {
+        let resp = client
+            .get(&url)
+            .header(ACCEPT, "application/vnd.github+json")
+            .send();
 
-    if response.status() == StatusCode::NOT_FOUND {
-        if let DatasetRelease::Tag(tag) = release {
-            return Err(Error::DatasetReleaseNotFound { tag: tag.clone() });
+        match resp {
+            Ok(response) => {
+                if response.status() == StatusCode::NOT_FOUND {
+                    if let DatasetRelease::Tag(tag) = release {
+                        return Err(Error::DatasetReleaseNotFound { tag: tag.clone() });
+                    }
+                }
+                match response.error_for_status() {
+                    Ok(ok) => return Ok(ok.json::<ReleaseResponse>()?),
+                    Err(err) => {
+                        // Only retry on server errors (5xx); client errors (4xx) are terminal.
+                        if let Some(status) = err.status() {
+                            if !status.is_server_error() {
+                                return Err(Error::Http(err));
+                            }
+                        }
+                        last_err = Some(err);
+                    }
+                }
+            }
+            Err(err) => {
+                // Network/timeout errors: retry.
+                last_err = Some(err);
+            }
+        }
+
+        if attempt < HTTP_MAX_RETRIES {
+            std::thread::sleep(Duration::from_millis(backoff));
+            backoff = (backoff.saturating_mul(2)).min(5_000);
         }
     }
 
-    let response = response.error_for_status()?;
-    Ok(response.json::<ReleaseResponse>()?)
+    Err(Error::Http(last_err.expect("retry loop sets error")))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -425,9 +459,36 @@ fn download_archive_asset(client: &Client, url: &str, destination: &Path) -> Res
 }
 
 fn download_to_file(client: &Client, url: &str, file: &mut File) -> Result<()> {
-    let mut response = client.get(url).send()?.error_for_status()?;
-    io::copy(&mut response, file)?;
-    Ok(())
+    let mut last_err: Option<reqwest::Error> = None;
+    let mut backoff = HTTP_INITIAL_BACKOFF_MS;
+    for attempt in 0..=HTTP_MAX_RETRIES {
+        match client.get(url).send() {
+            Ok(response) => match response.error_for_status() {
+                Ok(mut ok) => {
+                    io::copy(&mut ok, file)?;
+                    return Ok(());
+                }
+                Err(err) => {
+                    if let Some(status) = err.status() {
+                        if !status.is_server_error() {
+                            return Err(Error::Http(err));
+                        }
+                    }
+                    last_err = Some(err);
+                }
+            },
+            Err(err) => {
+                last_err = Some(err);
+            }
+        }
+
+        if attempt < HTTP_MAX_RETRIES {
+            std::thread::sleep(Duration::from_millis(backoff));
+            backoff = (backoff.saturating_mul(2)).min(5_000);
+        }
+    }
+
+    Err(Error::Http(last_err.expect("retry loop sets error")))
 }
 
 fn extract_archive(archive_path: &Path, destination: &Path) -> Result<()> {
