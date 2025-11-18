@@ -1,0 +1,17 @@
+[package]
+name = "evefrontier-lambda-route"
+version = "0.1.0"
+edition = "2021"
+authors = ["EveFrontier Contributors"]
+description = "AWS Lambda function for route computation using EveFrontier dataset."
+license = "Apache-2.0"
+
+[dependencies]
+evefrontier-lib = { path = "../evefrontier-lib" }
+lambda_runtime.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+tokio.workspace = true

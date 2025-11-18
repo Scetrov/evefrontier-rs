@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- 2025-11-18 - GitHub Copilot - [workspace] - Scaffolded three AWS Lambda crates (`evefrontier-lambda-route`, `evefrontier-lambda-scout-gates`, `evefrontier-lambda-scout-range`) with minimal handler stubs. Added `lambda_runtime` and `tokio` to workspace dependencies. Full handler implementation deferred to separate tasks.
 - 2025-11-16 - GitHub Copilot - [refactor] - Added conservative HTTP retries with exponential backoff in downloader (`github.rs`) for release metadata and asset downloads; improves robustness without API changes. Aligned with OWASP guidance (timeouts, transient failure handling).
 - 2025-11-15 - GitHub Copilot - [fix] - Corrected b parameter from 1.125 to 1.25 (transcription error) - now matches expected values exactly
 - 2025-11-15 - GitHub Copilot - [docs] - Documented exact EVE Frontier temperature formula with test cases in ADR 0012 and temperature module

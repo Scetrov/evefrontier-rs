@@ -23,7 +23,7 @@ Tasks are grouped by domain; checkboxes track completion status.
 - [x] Add CI validation step that runs example commands from README/USAGE docs to ensure they continue working
 ## Workspace & Tooling
 
-- [ ] Establish the Cargo workspace layout with `crates/evefrontier-lib`, `crates/evefrontier-cli`,
+- [x] Establish the Cargo workspace layout with `crates/evefrontier-lib`, `crates/evefrontier-cli`,
       and Lambda crates (for example `crates/evefrontier-lambda-route`, `crates/evefrontier-lambda-scout-gates`,
       `crates/evefrontier-lambda-scout-range`). Ensure shared code lives in the library crate.
 - [ ] Configure Nx to orchestrate Rust, lint, and security tasks (align with [ADR 0006](adrs/0006-software-components.md) and
