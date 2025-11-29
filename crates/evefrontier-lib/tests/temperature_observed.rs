@@ -44,10 +44,11 @@ fn solve_k_for_observation(
 #[ignore]
 fn observed_h123k_planet6_temperature_with_alternate_k_matches_28_1k() {
     // Arrange: ensure dataset present
-    let db_path = ensure_c3e6_dataset(None).expect("dataset available");
+    let paths = ensure_c3e6_dataset(None).expect("dataset available");
 
     // Query dataset for luminosity and distance of H:123K - Planet 6
-    let (luminosity, distance_m) = query_h123k_planet6(&db_path).expect("query H:123K - Planet 6");
+    let (luminosity, distance_m) =
+        query_h123k_planet6(&paths.database).expect("query H:123K - Planet 6");
 
     // Given the in-game observation: ~28.1 K at this location
     let observed_temp = 28.1_f64;

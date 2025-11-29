@@ -9,9 +9,38 @@ use tracing::{debug, info};
 
 use crate::error::{Error, Result};
 use crate::github::{download_dataset_with_tag, resolve_release_tag, DatasetRelease};
+use crate::spatial::spatial_index_path;
 
 /// Default filename for the cached dataset.
 const DATASET_FILENAME: &str = "static_data.db";
+
+/// Paths to dataset files.
+///
+/// Returned by [`ensure_dataset`] to provide access to both the database and
+/// any associated index files.
+#[derive(Debug, Clone)]
+pub struct DatasetPaths {
+    /// Path to the SQLite database file.
+    pub database: PathBuf,
+    /// Path to the spatial index file, if it exists.
+    pub spatial_index: Option<PathBuf>,
+}
+
+impl DatasetPaths {
+    /// Create paths for a database, checking for an existing spatial index.
+    pub fn for_database(database: PathBuf) -> Self {
+        let index_path = spatial_index_path(&database);
+        let spatial_index = if index_path.exists() {
+            Some(index_path)
+        } else {
+            None
+        };
+        Self {
+            database,
+            spatial_index,
+        }
+    }
+}
 
 /// Absolute path to the checked-in minimal fixture database, when available.
 static PROTECTED_FIXTURE_DATASET: Lazy<Option<PathBuf>> = Lazy::new(|| {
@@ -109,14 +138,16 @@ fn normalize_windows_data_dir(path: &Path) -> PathBuf {
     current
 }
 
-/// Ensure a dataset release is available locally and return its absolute path.
+/// Ensure a dataset release is available locally and return paths to the files.
 ///
 /// The resolution order matches the documentation:
 /// 1. Explicit `target` argument when provided.
 /// 2. `EVEFRONTIER_DATA_DIR` environment variable.
 /// 3. XDG/Platform-specific project directories.
 /// 4. Fallback to `~/.local/evefrontier/static_data.db` on Unix-like systems.
-pub fn ensure_dataset(target: Option<&Path>, release: DatasetRelease) -> Result<PathBuf> {
+///
+/// Returns [`DatasetPaths`] containing the database path and optional spatial index path.
+pub fn ensure_dataset(target: Option<&Path>, release: DatasetRelease) -> Result<DatasetPaths> {
     if let Some(explicit) = target {
         let resolved = canonical_dataset_path(explicit);
         return ensure_or_download(&resolved, &release);
@@ -131,17 +162,17 @@ pub fn ensure_dataset(target: Option<&Path>, release: DatasetRelease) -> Result<
     ensure_or_download(&default, &release)
 }
 
-/// Ensure the Era 6 Cycle 3 dataset is available locally and return its absolute path.
-pub fn ensure_c3e6_dataset(target: Option<&Path>) -> Result<PathBuf> {
+/// Ensure the Era 6 Cycle 3 dataset is available locally and return paths to the files.
+pub fn ensure_c3e6_dataset(target: Option<&Path>) -> Result<DatasetPaths> {
     ensure_dataset(target, DatasetRelease::tag("e6c3"))
 }
 
-fn ensure_or_download(path: &Path, release: &DatasetRelease) -> Result<PathBuf> {
+fn ensure_or_download(path: &Path, release: &DatasetRelease) -> Result<DatasetPaths> {
     guard_protected_dataset(path)?;
 
     if path.exists() {
         match evaluate_cache_state(path, release)? {
-            CacheState::Fresh => return Ok(path.to_path_buf()),
+            CacheState::Fresh => return Ok(DatasetPaths::for_database(path.to_path_buf())),
             CacheState::Stale { .. } => {
                 // Stale cache detected; proceed with re-download
             }
@@ -159,7 +190,7 @@ fn ensure_or_download(path: &Path, release: &DatasetRelease) -> Result<PathBuf> 
     );
     let resolved_tag = download_dataset_with_tag(path, release.clone())?;
     write_release_marker(path, release, &resolved_tag)?;
-    Ok(path.to_path_buf())
+    Ok(DatasetPaths::for_database(path.to_path_buf()))
 }
 
 fn canonical_dataset_path(path: &Path) -> PathBuf {

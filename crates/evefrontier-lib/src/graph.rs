@@ -2,7 +2,10 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use tracing::warn;
+
 use crate::db::{Starmap, SystemId, SystemPosition};
+use crate::spatial::{NeighbourQuery, SpatialIndex};
 
 /// Maximum number of nearest neighbors to include in the spatial graph.
 ///
@@ -214,4 +217,106 @@ fn merge_adjacency(
 
 fn compare_distance(a: f64, b: f64) -> Ordering {
     a.partial_cmp(&b).unwrap_or(Ordering::Greater)
+}
+
+/// Options for building spatial or hybrid graphs with index support.
+#[derive(Debug, Clone, Default)]
+pub struct GraphBuildOptions {
+    /// Pre-built spatial index. If None and spatial edges are needed,
+    /// the index will be built automatically (with a warning).
+    pub spatial_index: Option<Arc<SpatialIndex>>,
+    /// Maximum jump distance for spatial edges (light-years).
+    pub max_jump: Option<f64>,
+    /// Maximum temperature for spatial jump targets (Kelvin).
+    /// Systems with min_external_temp above this are excluded.
+    pub max_temperature: Option<f64>,
+}
+
+/// Build a routing graph that only considers spatial jumps, using a spatial index.
+///
+/// If no index is provided, builds one automatically (with a warning for large datasets).
+pub fn build_spatial_graph_indexed(starmap: &Starmap, options: &GraphBuildOptions) -> Graph {
+    let index = get_or_build_index(starmap, options);
+    let adjacency = build_spatial_adjacency_indexed(starmap, &index, options);
+
+    Graph {
+        mode: GraphMode::Spatial,
+        adjacency: Arc::new(adjacency),
+    }
+}
+
+/// Build a routing graph that combines gate and spatial edges, using a spatial index.
+///
+/// If no index is provided, builds one automatically (with a warning for large datasets).
+pub fn build_hybrid_graph_indexed(starmap: &Starmap, options: &GraphBuildOptions) -> Graph {
+    let index = get_or_build_index(starmap, options);
+    let gate = build_gate_adjacency(starmap);
+    let spatial = build_spatial_adjacency_indexed(starmap, &index, options);
+    let adjacency = merge_adjacency(starmap, gate, spatial);
+
+    Graph {
+        mode: GraphMode::Hybrid,
+        adjacency: Arc::new(adjacency),
+    }
+}
+
+fn get_or_build_index(starmap: &Starmap, options: &GraphBuildOptions) -> Arc<SpatialIndex> {
+    if let Some(ref index) = options.spatial_index {
+        return Arc::clone(index);
+    }
+
+    let system_count = starmap.systems.len();
+    if system_count > 100 {
+        warn!(
+            systems = system_count,
+            "spatial index not provided, building in-memory (this may be slow for large datasets)"
+        );
+    }
+
+    Arc::new(SpatialIndex::build(starmap))
+}
+
+fn build_spatial_adjacency_indexed(
+    starmap: &Starmap,
+    index: &SpatialIndex,
+    options: &GraphBuildOptions,
+) -> HashMap<SystemId, Vec<Edge>> {
+    let mut adjacency: HashMap<SystemId, Vec<Edge>> = HashMap::new();
+
+    for system in starmap.systems.values() {
+        let Some(position) = system.position else {
+            adjacency.entry(system.id).or_default();
+            continue;
+        };
+
+        let query_point = [position.x, position.y, position.z];
+        let query = NeighbourQuery {
+            // Fetch extra to account for self and filtering
+            k: MAX_SPATIAL_NEIGHBORS + 1,
+            radius: options.max_jump,
+            max_temperature: options.max_temperature,
+        };
+
+        let neighbors = index.nearest_filtered(query_point, &query);
+
+        let edges: Vec<Edge> = neighbors
+            .into_iter()
+            .filter(|(id, _)| *id != system.id) // Exclude self
+            .take(MAX_SPATIAL_NEIGHBORS)
+            .map(|(target, distance)| Edge {
+                target,
+                kind: EdgeKind::Spatial,
+                distance,
+            })
+            .collect();
+
+        adjacency.insert(system.id, edges);
+    }
+
+    // Ensure all systems have an entry
+    for &system_id in starmap.systems.keys() {
+        adjacency.entry(system_id).or_default();
+    }
+
+    adjacency
 }

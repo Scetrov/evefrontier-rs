@@ -8,8 +8,9 @@ use serde::Serialize;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 use evefrontier_lib::{
-    ensure_dataset, load_starmap, plan_route, DatasetRelease, Error as RouteError, RouteAlgorithm,
-    RouteConstraints, RouteOutputKind, RouteRenderMode, RouteRequest, RouteSummary, Starmap,
+    ensure_dataset, load_starmap, plan_route, spatial_index_path, DatasetRelease,
+    Error as RouteError, RouteAlgorithm, RouteConstraints, RouteOutputKind, RouteRenderMode,
+    RouteRequest, RouteSummary, SpatialIndex, Starmap,
 };
 
 #[derive(Parser, Debug)]
@@ -58,6 +59,15 @@ enum Command {
     Download,
     /// Compute a route between two system names using the loaded dataset.
     Route(RouteCommandArgs),
+    /// Build or rebuild the spatial index for faster routing.
+    IndexBuild(IndexBuildArgs),
+}
+
+#[derive(Args, Debug, Clone)]
+struct IndexBuildArgs {
+    /// Force rebuild even if index already exists.
+    #[arg(long, action = ArgAction::SetTrue)]
+    force: bool,
 }
 
 #[derive(Args, Debug, Clone)]
@@ -422,6 +432,7 @@ fn main() -> Result<()> {
         Command::Route(route_args) => {
             handle_route_command(&context, &route_args, RouteOutputKind::Route)
         }
+        Command::IndexBuild(args) => handle_index_build(&context, &args),
     };
 
     if result.is_ok() && context.should_show_footer() {
@@ -434,10 +445,57 @@ fn main() -> Result<()> {
 
 fn handle_download(context: &AppContext) -> Result<()> {
     let release = context.dataset_release();
-    let dataset_path = ensure_dataset(context.target_path(), release.clone())
+    let paths = ensure_dataset(context.target_path(), release.clone())
         .context("failed to locate or download the EveFrontier dataset")?;
-    let output = DownloadOutput::new(&dataset_path, &release);
+    let output = DownloadOutput::new(&paths.database, &release);
     context.output_format().render_download(&output)
+}
+
+fn handle_index_build(context: &AppContext, args: &IndexBuildArgs) -> Result<()> {
+    let paths = ensure_dataset(context.target_path(), context.dataset_release())
+        .context("failed to locate or download the EveFrontier dataset")?;
+
+    let index_path = spatial_index_path(&paths.database);
+
+    // Check if index already exists
+    if index_path.exists() && !args.force {
+        println!(
+            "Spatial index already exists at {}\nUse --force to rebuild.",
+            index_path.display()
+        );
+        return Ok(());
+    }
+
+    println!("Loading starmap from {}...", paths.database.display());
+    let starmap = load_starmap(&paths.database)
+        .with_context(|| format!("failed to load dataset from {}", paths.database.display()))?;
+
+    println!(
+        "Building spatial index for {} systems...",
+        starmap.systems.len()
+    );
+    let index = SpatialIndex::build(&starmap);
+
+    let systems_with_temp = starmap
+        .systems
+        .values()
+        .filter(|s| s.metadata.min_external_temp.is_some())
+        .count();
+
+    println!("Saving index to {}...", index_path.display());
+    index
+        .save(&index_path)
+        .context("failed to save spatial index")?;
+
+    let file_size = std::fs::metadata(&index_path).map(|m| m.len()).unwrap_or(0);
+
+    println!("Spatial index built successfully:");
+    println!("  Path: {}", index_path.display());
+    println!("  Systems indexed: {}", index.len());
+    println!("  Systems with temperature: {}", systems_with_temp);
+    println!("  File size: {} bytes", file_size);
+
+    Ok(())
 }
 
 fn handle_route_command(
@@ -524,10 +582,10 @@ fn format_route_not_found_message(
 }
 
 fn load_starmap_from_context(context: &AppContext) -> Result<Starmap> {
-    let dataset_path = ensure_dataset(context.target_path(), context.dataset_release())
+    let paths = ensure_dataset(context.target_path(), context.dataset_release())
         .context("failed to locate or download the EveFrontier dataset")?;
-    let starmap = load_starmap(&dataset_path)
-        .with_context(|| format!("failed to load dataset from {}", dataset_path.display()))?;
+    let starmap = load_starmap(&paths.database)
+        .with_context(|| format!("failed to load dataset from {}", paths.database.display()))?;
     Ok(starmap)
 }
 

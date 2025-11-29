@@ -164,6 +164,34 @@ The routing subcommands accept several flags that map directly to the library's 
   would overheat). Gate jumps are unaffected by temperature. Systems without temperature data 
   are treated as safe.
 
+### `index-build`
+
+Precomputes a KD-tree spatial index for efficient neighbor queries during routing. The index
+file is saved alongside the database with a `.spatial.bin` extension.
+
+```bash
+evefrontier-cli index-build --data-dir docs/fixtures/minimal_static_data.db
+```
+
+Output: `docs/fixtures/minimal_static_data.db.spatial.bin`
+
+Options:
+
+- `--force` — overwrite an existing spatial index file if present.
+
+The spatial index accelerates Dijkstra and A* routing algorithms by efficiently finding
+nearby systems within a given radius. Without a pre-built index, the CLI will build one
+automatically (with a warning) when spatial/hybrid routing is requested.
+
+**When to rebuild the index:**
+
+- After updating the dataset (new systems, changed coordinates)
+- After modifying temperature data in the dataset
+- When switching between dataset versions
+
+The index includes per-system minimum external temperature, enabling temperature-aware
+filtering during neighbor queries.
+
 ## Configuration & data path resolution
 
 The CLI resolves the data path in the following order:

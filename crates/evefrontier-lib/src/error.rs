@@ -78,6 +78,14 @@ pub enum Error {
     /// Wrapper for ZIP archive parsing errors.
     #[error(transparent)]
     Zip(#[from] zip::result::ZipError),
+
+    /// Raised when serializing a spatial index fails.
+    #[error("failed to serialize spatial index: {message}")]
+    SpatialIndexSerialize { message: String },
+
+    /// Raised when loading a spatial index fails.
+    #[error("failed to load spatial index from {path}: {message}")]
+    SpatialIndexLoad { path: PathBuf, message: String },
 }
 
 fn format_suggestions(suggestions: &[String]) -> String {

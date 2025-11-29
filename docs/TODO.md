@@ -80,17 +80,23 @@ Tasks are grouped by domain; checkboxes track completion status.
       - Added "Library API" section to docs/USAGE.md with code examples
       - Covers common patterns: dataset loading, routing, error handling, output formatting
       - Includes examples for all three routing algorithms and constraint usage
-- [ ] Implement KD-tree spatial index module (per ADR 0009): build, serialize (e.g., postcard +
+- [x] Implement KD-tree spatial index module (per ADR 0009): build, serialize (e.g., postcard +
       zstd), load, query nearest systems.
-- [ ] Integrate KD-tree spatial index into spatial/hybrid routing path selection logic.
-- [ ] Provide tests/benchmarks for KD-tree build and query performance.
-- [ ] Make KD-tree temperature-aware for neighbor queries
-      - Support predicates on `min_external_temp` (e.g., only return neighbors with
-            `min_external_temp >= --min-temp` preference)
-      - Consider precomputing per-node temperature metadata alongside KD-tree nodes to avoid
-            DB lookups during queries
-      - Optionally maintain temperature buckets or a secondary index for very fast filtering
-            before/while traversing the KD-tree
+      - `spatial.rs` module with kiddo v4.2, postcard+zstd serialization, SHA-256 checksum
+      - Index format: EFSI magic, version 1, feature flags, compressed tree data
+      - `build_spatial_index()`, `SpatialIndex::save()`, `load_spatial_index()` functions
+- [x] Integrate KD-tree spatial index into spatial/hybrid routing path selection logic.
+      - `build_spatial_graph_indexed()` and `build_hybrid_graph_indexed()` in graph.rs
+      - Auto-build fallback with `tracing::warn!` when index not provided
+      - `select_graph()` in routing.rs uses indexed builders for Dijkstra/A*
+- [x] Provide tests/benchmarks for KD-tree build and query performance.
+      - 8 integration tests in `tests/spatial_index.rs`
+      - Covers: build, serialize/deserialize, checksum validation, queries, temperature filtering
+- [x] Make KD-tree temperature-aware for neighbor queries
+      - `IndexNode` stores `min_external_temp` per system
+      - `NeighbourQuery` accepts `max_temperature: Option<f64>` filter
+      - `nearest_filtered()` and `within_radius_filtered()` apply predicates
+      - (v2 future work: subtree temperature aggregates for branch pruning)
 
 ## CLI (`evefrontier-cli`)
 
@@ -104,8 +110,13 @@ Tasks are grouped by domain; checkboxes track completion status.
 - [x] Provide friendly error messages for unknown systems and route failures.
 - [x] Add integration tests for CLI behavior (using `assert_cmd` or similar) with the fixture dataset.
 - [x] Update `README.md` and `docs/USAGE.md` with CLI examples that match the implemented behavior.
-- [ ] Add `index-build` (or `build-index`) subcommand to precompute KD-tree spatial index artifact.
-- [ ] Surface friendly errors when spatial index missing but requested.
+- [x] Add `index-build` (or `build-index`) subcommand to precompute KD-tree spatial index artifact.
+      - `evefrontier-cli index-build` command implemented
+      - Saves to `{database_path}.spatial.bin`
+      - Supports `--force` flag to overwrite existing index
+- [x] Surface friendly errors when spatial index missing but requested.
+      - Auto-build fallback with warning instead of hard error
+      - Uses `tracing::warn!` to inform user before building on-demand
 
 ## AWS Lambda crates
 
@@ -160,7 +171,9 @@ Tasks are grouped by domain; checkboxes track completion status.
       loader, graph, CLI, and Lambda components.
 - [ ] Provide onboarding steps in `docs/INITIAL_SETUP.md` once the workspace scaffolding stabilizes
       (update as tasks complete).
-- [ ] Extend `docs/USAGE.md` with KD-tree index usage and build instructions.
+- [x] Extend `docs/USAGE.md` with KD-tree index usage and build instructions.
+      - Added `index-build` subcommand documentation with examples
+      - Documented when to rebuild and temperature-aware filtering
 - [ ] Add ADR for any deviations from original KD-tree design if implementation adjustments occur.
 - [ ] Add `docs/RELEASE.md` section describing inclusion of spatial index artifact.
 

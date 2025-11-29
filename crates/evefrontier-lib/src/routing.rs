@@ -7,7 +7,8 @@ use serde::Serialize;
 use crate::db::{Starmap, SystemId};
 use crate::error::{Error, Result};
 use crate::graph::{
-    build_gate_graph, build_hybrid_graph, build_spatial_graph, EdgeKind, Graph, GraphMode,
+    build_gate_graph, build_hybrid_graph_indexed, build_spatial_graph_indexed, EdgeKind, Graph,
+    GraphBuildOptions, GraphMode,
 };
 use crate::path::{
     find_route_a_star, find_route_bfs, find_route_dijkstra, PathConstraints as SearchConstraints,
@@ -193,13 +194,22 @@ fn select_graph(
     algorithm: RouteAlgorithm,
     constraints: &SearchConstraints,
 ) -> Graph {
+    // Build options for indexed graph construction
+    let options = GraphBuildOptions {
+        spatial_index: None, // Will auto-build if needed
+        max_jump: constraints.max_jump,
+        max_temperature: constraints.max_temperature,
+    };
+
     if constraints.avoid_gates {
-        return build_spatial_graph(starmap);
+        return build_spatial_graph_indexed(starmap, &options);
     }
 
     match algorithm {
         RouteAlgorithm::Bfs => build_gate_graph(starmap),
-        RouteAlgorithm::Dijkstra | RouteAlgorithm::AStar => build_hybrid_graph(starmap),
+        RouteAlgorithm::Dijkstra | RouteAlgorithm::AStar => {
+            build_hybrid_graph_indexed(starmap, &options)
+        }
     }
 }
 

@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- 2025-11-16 - GitHub Copilot - [feature] - Implemented KD-tree spatial index module (spatial.rs) per ADR 0009: build/save/load with postcard+zstd, SHA-256 checksum validation
+- 2025-11-16 - GitHub Copilot - [feature] - Added temperature-aware nearest-neighbor and radius queries with min_external_temp filtering
+- 2025-11-16 - GitHub Copilot - [feature] - Added CLI `index-build` subcommand to precompute spatial index artifacts (`{db}.spatial.bin`)
+- 2025-11-16 - GitHub Copilot - [refactor] - Changed ensure_dataset to return DatasetPaths struct (database path + optional spatial index path)
+- 2025-11-16 - GitHub Copilot - [refactor] - Added indexed graph builders (build_spatial_graph_indexed, build_hybrid_graph_indexed) that use spatial index for efficient queries
+- 2025-11-16 - GitHub Copilot - [feature] - Auto-build spatial index with warning when index not found but spatial/hybrid routing requested
+- 2025-11-16 - GitHub Copilot - [tests] - Added 8 spatial index tests covering build, serialization, checksum validation, queries, and temperature filtering
+- 2025-11-16 - GitHub Copilot - [deps] - Added kiddo v4.2 (KD-tree), postcard v1.0 (serialization), zstd v0.13 (compression) dependencies
 - 2025-11-16 - GitHub Copilot - [refactor] - Added conservative HTTP retries with exponential backoff in downloader (`github.rs`) for release metadata and asset downloads; improves robustness without API changes. Aligned with OWASP guidance (timeouts, transient failure handling).
 - 2025-11-15 - GitHub Copilot - [fix] - Corrected b parameter from 1.125 to 1.25 (transcription error) - now matches expected values exactly
 - 2025-11-15 - GitHub Copilot - [docs] - Documented exact EVE Frontier temperature formula with test cases in ADR 0012 and temperature module

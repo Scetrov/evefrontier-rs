@@ -23,11 +23,11 @@
 //! };
 //!
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! // 1. Ensure dataset is downloaded and get its path
-//! let dataset_path = ensure_c3e6_dataset(None)?;
+//! // 1. Ensure dataset is downloaded and get its paths
+//! let paths = ensure_c3e6_dataset(None)?;
 //!
 //! // 2. Load the starmap into memory
-//! let starmap = load_starmap(&dataset_path)?;
+//! let starmap = load_starmap(&paths.database)?;
 //!
 //! // 3. Create a route request
 //! let request = RouteRequest {
@@ -83,14 +83,16 @@ pub mod graph;
 pub mod output;
 pub mod path;
 pub mod routing;
+pub mod spatial;
 pub mod temperature;
 
-pub use dataset::{default_dataset_path, ensure_c3e6_dataset, ensure_dataset};
+pub use dataset::{default_dataset_path, ensure_c3e6_dataset, ensure_dataset, DatasetPaths};
 pub use db::{load_starmap, Starmap, System, SystemId, SystemMetadata, SystemPosition};
 pub use error::{Error, Result};
 pub use github::DatasetRelease;
 pub use graph::{
-    build_gate_graph, build_graph, build_hybrid_graph, build_spatial_graph, Edge, EdgeKind, Graph,
+    build_gate_graph, build_graph, build_hybrid_graph, build_hybrid_graph_indexed,
+    build_spatial_graph, build_spatial_graph_indexed, Edge, EdgeKind, Graph, GraphBuildOptions,
     GraphMode,
 };
 pub use output::{RouteEndpoint, RouteOutputKind, RouteRenderMode, RouteStep, RouteSummary};
@@ -98,3 +100,6 @@ pub use path::{
     find_route, find_route_a_star, find_route_bfs, find_route_dijkstra, PathConstraints,
 };
 pub use routing::{plan_route, RouteAlgorithm, RouteConstraints, RoutePlan, RouteRequest};
+pub use spatial::{
+    spatial_index_path, try_load_spatial_index, IndexNode, NeighbourQuery, SpatialIndex,
+};
