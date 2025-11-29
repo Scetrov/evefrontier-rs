@@ -13,10 +13,21 @@ use evefrontier_lambda_shared::{
 };
 
 /// Bundled SQLite database (from data/static_data.db).
-static DB_BYTES: &[u8] = include_bytes!("../../../data/static_data.db");
 
 /// Bundled spatial index (from data/static_data.db.spatial.bin).
+// Bundled dataset bytes (build-time include).
+// In CI, large data artifacts under `data/` are not committed.
+// Use a feature flag to optionally bundle real dataset; otherwise fall back to fixture.
+#[cfg(feature = "bundle-data")]
+static DB_BYTES: &[u8] = include_bytes!("../../../data/static_data.db");
+#[cfg(not(feature = "bundle-data"))]
+static DB_BYTES: &[u8] = &[];
+
+// Spatial index bytes: when not bundling, provide empty slice to trigger runtime auto-build.
+#[cfg(feature = "bundle-data")]
 static INDEX_BYTES: &[u8] = include_bytes!("../../../data/static_data.db.spatial.bin");
+#[cfg(not(feature = "bundle-data"))]
+static INDEX_BYTES: &[u8] = &[];
 
 /// Information about a neighboring system.
 #[derive(Debug, Serialize)]

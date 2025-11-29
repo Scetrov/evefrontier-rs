@@ -14,10 +14,16 @@ use evefrontier_lambda_shared::{
 use evefrontier_lib::spatial::NeighbourQuery;
 
 /// Bundled SQLite database (from data/static_data.db).
+#[cfg(feature = "bundle-data")]
 static DB_BYTES: &[u8] = include_bytes!("../../../data/static_data.db");
+#[cfg(not(feature = "bundle-data"))]
+static DB_BYTES: &[u8] = &[];
 
 /// Bundled spatial index (from data/static_data.db.spatial.bin).
+#[cfg(feature = "bundle-data")]
 static INDEX_BYTES: &[u8] = include_bytes!("../../../data/static_data.db.spatial.bin");
+#[cfg(not(feature = "bundle-data"))]
+static INDEX_BYTES: &[u8] = &[];
 
 /// Information about a system within range.
 #[derive(Debug, Serialize)]

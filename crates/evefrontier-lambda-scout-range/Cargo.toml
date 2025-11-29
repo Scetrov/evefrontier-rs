@@ -6,6 +6,11 @@ authors.workspace = true
 license.workspace = true
 description = "AWS Lambda function for scouting systems within range"
 
+[features]
+# When enabled, bundles large dataset artifacts from `data/` into the binary.
+# Disabled by default to keep CI builds lightweight.
+bundle-data = []
+
 [dependencies]
 evefrontier-lib = { path = "../evefrontier-lib" }
 evefrontier-lambda-shared = { path = "../evefrontier-lambda-shared" }
