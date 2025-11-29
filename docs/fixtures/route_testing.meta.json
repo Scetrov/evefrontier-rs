@@ -1,0 +1,21 @@
+{
+  "source": "e6c3 dataset via extract_route_fixture.py",
+  "description": "Route testing fixture - systems appearing 4+ times for testing ~50% of SampleRoutes.csv",
+  "systems_count": 717,
+  "jumps_count": 344,
+  "testable_routes": 546,
+  "sample_systems": [
+    "EKF-8C1",
+    "ETP-BG1",
+    "U.J17.1J3",
+    "D.8Y7.KF4",
+    "Ydalir",
+    "B:14VS",
+    "EFD-CGC",
+    "Z:8TSI",
+    "OQN-2NB",
+    "ECG-SFB"
+  ],
+  "file_size_bytes": 1044480,
+  "sha256": "46d1b5598b2cf6ef2a9c3cb4cedcbebb1b86dc9846f3317442d630282833dc0c"
+}

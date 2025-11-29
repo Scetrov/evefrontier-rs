@@ -1,0 +1,4376 @@
+{
+  "description": "Routes testable with route_testing.db fixture (threshold 4+)",
+  "total_routes": 1082,
+  "testable_routes": 546,
+  "coverage_percent": 50.5,
+  "routes": [
+    {
+      "route_id": 1,
+      "start": "I4F-MCH",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 11
+    },
+    {
+      "route_id": 7,
+      "start": "Strym",
+      "end": "OKK-0PH",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 11
+    },
+    {
+      "route_id": 8,
+      "start": "Strym",
+      "end": "I4F-MCH",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 12
+    },
+    {
+      "route_id": 9,
+      "start": "Strym",
+      "end": "OCC-L8H",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 13
+    },
+    {
+      "route_id": 10,
+      "start": "Strym",
+      "end": "EBG-P8H",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 14
+    },
+    {
+      "route_id": 11,
+      "start": "Strym",
+      "end": "ESS-84H",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 15
+    },
+    {
+      "route_id": 12,
+      "start": "Strym",
+      "end": "I3R-VJH",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 16
+    },
+    {
+      "route_id": 17,
+      "start": "B:37EI",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 9
+    },
+    {
+      "route_id": 18,
+      "start": "Q:3AV7",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 3
+    },
+    {
+      "route_id": 19,
+      "start": "G:2TV3",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 22,
+      "start": "UPR-GK8",
+      "end": "EJL-1S5",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 24,
+      "start": "IBK-V0D",
+      "end": "G:393O",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 30
+    },
+    {
+      "route_id": 25,
+      "start": "G:393O",
+      "end": "I1V-88D",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 11
+    },
+    {
+      "route_id": 26,
+      "start": "G:393O",
+      "end": "H.PVC.2Q3",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 24
+    },
+    {
+      "route_id": 28,
+      "start": "G:393O",
+      "end": "F:3R6A",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 28
+    },
+    {
+      "route_id": 31,
+      "start": "Strym",
+      "end": "H:3086",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 23
+    },
+    {
+      "route_id": 33,
+      "start": "UPR-GK8",
+      "end": "EJL-1S5",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 37,
+      "start": "EM0-SPG",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 24
+    },
+    {
+      "route_id": 53,
+      "start": "A49-G7H",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 15
+    },
+    {
+      "route_id": 64,
+      "start": "AFF-GCB",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 26
+    },
+    {
+      "route_id": 68,
+      "start": "I0S-2PG",
+      "end": "A49-G7H",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 3
+    },
+    {
+      "route_id": 77,
+      "start": "A49-G7H",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 15
+    },
+    {
+      "route_id": 78,
+      "start": "I3R-VJH",
+      "end": "I4F-MCH",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 80,
+      "start": "UPR-GK8",
+      "end": "EJL-1S5",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 81,
+      "start": "UPR-GK8",
+      "end": "EJL-1S5",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 82,
+      "start": "UPR-GK8",
+      "end": "EJL-1S5",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 93,
+      "start": "I3J-V3H",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 24
+    },
+    {
+      "route_id": 97,
+      "start": "Strym",
+      "end": "OKK-0PH",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 3
+    },
+    {
+      "route_id": 100,
+      "start": "M.NM9.QVC",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 70.0,
+      "expected_length": 6
+    },
+    {
+      "route_id": 104,
+      "start": "F:3EV9",
+      "end": "C.789.ZS7",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 105,
+      "start": "Strym",
+      "end": "I4F-MCH",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 106,
+      "start": "Y:2VIO",
+      "end": "AFF-GCB",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 18
+    },
+    {
+      "route_id": 107,
+      "start": "AFF-GCB",
+      "end": "A 2560",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 109,
+      "start": "B:37EI",
+      "end": "A 2560",
+      "avoid_gates": false,
+      "max_ly": 82.0,
+      "expected_length": 13
+    },
+    {
+      "route_id": 111,
+      "start": "Y:2VIO",
+      "end": "A 2560",
+      "avoid_gates": false,
+      "max_ly": 82.0,
+      "expected_length": 12
+    },
+    {
+      "route_id": 116,
+      "start": "IK4-L8G",
+      "end": "Y:3TT1",
+      "avoid_gates": false,
+      "max_ly": 110.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 117,
+      "start": "ETV-0HB",
+      "end": "G:311L",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 118,
+      "start": "A49-G7H",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 120,
+      "start": "IT5-J58",
+      "end": "Y:2VIO",
+      "avoid_gates": false,
+      "max_ly": 81.0,
+      "expected_length": 10
+    },
+    {
+      "route_id": 121,
+      "start": "ES8-QC9",
+      "end": "IT5-J58",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 122,
+      "start": "ES8-QC9",
+      "end": "IT5-J58",
+      "avoid_gates": false,
+      "max_ly": 77.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 123,
+      "start": "IT5-J58",
+      "end": "EL5-SCG",
+      "avoid_gates": false,
+      "max_ly": 74.0,
+      "expected_length": 15
+    },
+    {
+      "route_id": 124,
+      "start": "IT5-J58",
+      "end": "EL5-SCG",
+      "avoid_gates": false,
+      "max_ly": 75.0,
+      "expected_length": 15
+    },
+    {
+      "route_id": 125,
+      "start": "IT5-J58",
+      "end": "EL5-SCG",
+      "avoid_gates": false,
+      "max_ly": 77.0,
+      "expected_length": 15
+    },
+    {
+      "route_id": 126,
+      "start": "IT5-J58",
+      "end": "EL5-SCG",
+      "avoid_gates": false,
+      "max_ly": 72.0,
+      "expected_length": 15
+    },
+    {
+      "route_id": 128,
+      "start": "G:1OR6",
+      "end": "ID3-N3G",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 8
+    },
+    {
+      "route_id": 129,
+      "start": "G:1OR6",
+      "end": "EL5-SCG",
+      "avoid_gates": false,
+      "max_ly": 72.0,
+      "expected_length": 10
+    },
+    {
+      "route_id": 130,
+      "start": "UT0-10G",
+      "end": "EL5-SCG",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 8
+    },
+    {
+      "route_id": 132,
+      "start": "UT0-10G",
+      "end": "ID3-N3G",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 6
+    },
+    {
+      "route_id": 133,
+      "start": "Strym",
+      "end": "H:33TL",
+      "avoid_gates": false,
+      "max_ly": 81.0,
+      "expected_length": 13
+    },
+    {
+      "route_id": 134,
+      "start": "H:33TL",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 81.0,
+      "expected_length": 13
+    },
+    {
+      "route_id": 136,
+      "start": "IT5-J58",
+      "end": "EL5-SCG",
+      "avoid_gates": false,
+      "max_ly": 76.0,
+      "expected_length": 15
+    },
+    {
+      "route_id": 137,
+      "start": "IT5-J58",
+      "end": "EL5-SCG",
+      "avoid_gates": false,
+      "max_ly": 76.0,
+      "expected_length": 15
+    },
+    {
+      "route_id": 138,
+      "start": "IT5-J58",
+      "end": "EL5-SCG",
+      "avoid_gates": false,
+      "max_ly": 76.0,
+      "expected_length": 15
+    },
+    {
+      "route_id": 139,
+      "start": "A49-G7H",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 140,
+      "start": "A49-G7H",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 141,
+      "start": "A49-G7H",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 142,
+      "start": "A49-G7H",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 143,
+      "start": "A49-G7H",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 144,
+      "start": "A49-G7H",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 145,
+      "start": "A49-G7H",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 146,
+      "start": "A49-G7H",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 147,
+      "start": "A49-G7H",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 148,
+      "start": "A49-G7H",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 149,
+      "start": "A49-G7H",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 150,
+      "start": "A49-G7H",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 151,
+      "start": "A49-G7H",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 152,
+      "start": "A49-G7H",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 153,
+      "start": "A49-G7H",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 154,
+      "start": "A49-G7H",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 155,
+      "start": "Strym",
+      "end": "I4F-MCH",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 156,
+      "start": "Strym",
+      "end": "I4F-MCH",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 157,
+      "start": "Strym",
+      "end": "I4F-MCH",
+      "avoid_gates": true,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 158,
+      "start": "Strym",
+      "end": "I4F-MCH",
+      "avoid_gates": true,
+      "max_ly": 200.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 161,
+      "start": "Strym",
+      "end": "Kudlo",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 22
+    },
+    {
+      "route_id": 162,
+      "start": "Obro",
+      "end": "H.PVC.2Q3",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 13
+    },
+    {
+      "route_id": 163,
+      "start": "E98-R6H",
+      "end": "Obro",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 10
+    },
+    {
+      "route_id": 164,
+      "start": "Strym",
+      "end": "H:33TL",
+      "avoid_gates": false,
+      "max_ly": 81.0,
+      "expected_length": 13
+    },
+    {
+      "route_id": 165,
+      "start": "H:33TL",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 81.0,
+      "expected_length": 13
+    },
+    {
+      "route_id": 167,
+      "start": "E98-R6H",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 10
+    },
+    {
+      "route_id": 168,
+      "start": "Strym",
+      "end": "H:33TL",
+      "avoid_gates": false,
+      "max_ly": 81.0,
+      "expected_length": 13
+    },
+    {
+      "route_id": 169,
+      "start": "H:33TL",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 81.0,
+      "expected_length": 13
+    },
+    {
+      "route_id": 172,
+      "start": "H:33TL",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 17
+    },
+    {
+      "route_id": 173,
+      "start": "H:33TL",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 79.0,
+      "expected_length": 17
+    },
+    {
+      "route_id": 176,
+      "start": "Strym",
+      "end": "A 2560",
+      "avoid_gates": false,
+      "max_ly": 110.0,
+      "expected_length": 12
+    },
+    {
+      "route_id": 177,
+      "start": "C.789.ZS7",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 109.0,
+      "expected_length": 17
+    },
+    {
+      "route_id": 178,
+      "start": "C.789.ZS7",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 109.0,
+      "expected_length": 17
+    },
+    {
+      "route_id": 179,
+      "start": "C.789.ZS7",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 109.0,
+      "expected_length": 17
+    },
+    {
+      "route_id": 180,
+      "start": "C.789.ZS7",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 109.0,
+      "expected_length": 17
+    },
+    {
+      "route_id": 181,
+      "start": "C.789.ZS7",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 109.0,
+      "expected_length": 17
+    },
+    {
+      "route_id": 182,
+      "start": "C.789.ZS7",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 109.0,
+      "expected_length": 17
+    },
+    {
+      "route_id": 183,
+      "start": "C.789.ZS7",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 109.0,
+      "expected_length": 17
+    },
+    {
+      "route_id": 185,
+      "start": "Strym",
+      "end": "Ydalir",
+      "avoid_gates": false,
+      "max_ly": 100.0,
+      "expected_length": 14
+    },
+    {
+      "route_id": 187,
+      "start": "Strym",
+      "end": "Ydalir",
+      "avoid_gates": false,
+      "max_ly": 84.0,
+      "expected_length": 17
+    },
+    {
+      "route_id": 188,
+      "start": "Strym",
+      "end": "Ydalir",
+      "avoid_gates": false,
+      "max_ly": 84.0,
+      "expected_length": 17
+    },
+    {
+      "route_id": 189,
+      "start": "Strym",
+      "end": "Ydalir",
+      "avoid_gates": false,
+      "max_ly": 84.0,
+      "expected_length": 19
+    },
+    {
+      "route_id": 190,
+      "start": "I1V-88D",
+      "end": "ISQ-FD6",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 26
+    },
+    {
+      "route_id": 191,
+      "start": "I1V-88D",
+      "end": "ISQ-FD6",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 26
+    },
+    {
+      "route_id": 192,
+      "start": "I1V-88D",
+      "end": "ISQ-FD6",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 26
+    },
+    {
+      "route_id": 195,
+      "start": "I1V-88D",
+      "end": "ISQ-FD6",
+      "avoid_gates": false,
+      "max_ly": 100.0,
+      "expected_length": 11
+    },
+    {
+      "route_id": 196,
+      "start": "Strym",
+      "end": "Ydalir",
+      "avoid_gates": false,
+      "max_ly": 84.0,
+      "expected_length": 19
+    },
+    {
+      "route_id": 197,
+      "start": "Ydalir",
+      "end": "I1V-88D",
+      "avoid_gates": false,
+      "max_ly": 100.0,
+      "expected_length": 12
+    },
+    {
+      "route_id": 199,
+      "start": "Strym",
+      "end": "I1V-88D",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 200,
+      "start": "I1V-88D",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 100.0,
+      "expected_length": 3
+    },
+    {
+      "route_id": 205,
+      "start": "Strym",
+      "end": "G:311L",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 21
+    },
+    {
+      "route_id": 208,
+      "start": "Strym",
+      "end": "Y8R|8O7",
+      "avoid_gates": false,
+      "max_ly": 110.0,
+      "expected_length": 9
+    },
+    {
+      "route_id": 216,
+      "start": "ET3-DCF",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 115.0,
+      "expected_length": 11
+    },
+    {
+      "route_id": 219,
+      "start": "H:3960",
+      "end": "Y:2VIO",
+      "avoid_gates": true,
+      "max_ly": 110.0,
+      "expected_length": 13
+    },
+    {
+      "route_id": 220,
+      "start": "U:351S",
+      "end": "Y:2VIO",
+      "avoid_gates": true,
+      "max_ly": 110.0,
+      "expected_length": 10
+    },
+    {
+      "route_id": 221,
+      "start": "H.PVC.2Q3",
+      "end": "Y:3TT1",
+      "avoid_gates": true,
+      "max_ly": 110.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 222,
+      "start": "Strym",
+      "end": "U:351S",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 223,
+      "start": "H.PVC.2Q3",
+      "end": "H:3086",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 224,
+      "start": "Strym",
+      "end": "Y:2VIO",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 225,
+      "start": "U:351S",
+      "end": "EL5-SCG",
+      "avoid_gates": true,
+      "max_ly": 110.0,
+      "expected_length": 9
+    },
+    {
+      "route_id": 226,
+      "start": "U:36OE",
+      "end": "E0L-7TH",
+      "avoid_gates": false,
+      "max_ly": 110.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 227,
+      "start": "Strym",
+      "end": "U:36OE",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 228,
+      "start": "Z:2V39",
+      "end": "Q:3AV7",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 229,
+      "start": "Strym",
+      "end": "Y:2VIO",
+      "avoid_gates": false,
+      "max_ly": 110.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 230,
+      "start": "Strym",
+      "end": "Y:2VIO",
+      "avoid_gates": true,
+      "max_ly": 110.0,
+      "expected_length": 12
+    },
+    {
+      "route_id": 231,
+      "start": "Strym",
+      "end": "Y:2VIO",
+      "avoid_gates": true,
+      "max_ly": 110.0,
+      "expected_length": 12
+    },
+    {
+      "route_id": 233,
+      "start": "U:351S",
+      "end": "IRJ-31F",
+      "avoid_gates": false,
+      "max_ly": 110.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 234,
+      "start": "Strym",
+      "end": "U:36OE",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 235,
+      "start": "Strym",
+      "end": "Q:13N6",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 236,
+      "start": "B:37EI",
+      "end": "IRJ-31F",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 11
+    },
+    {
+      "route_id": 237,
+      "start": "Strym",
+      "end": "IRJ-31F",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 12
+    },
+    {
+      "route_id": 238,
+      "start": "Strym",
+      "end": "IRJ-31F",
+      "avoid_gates": false,
+      "max_ly": 85.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 239,
+      "start": "AFF-GCB",
+      "end": "OLJ-MKD",
+      "avoid_gates": false,
+      "max_ly": 110.0,
+      "expected_length": 3
+    },
+    {
+      "route_id": 240,
+      "start": "OLJ-MKD",
+      "end": "AFF-GCB",
+      "avoid_gates": false,
+      "max_ly": 110.0,
+      "expected_length": 3
+    },
+    {
+      "route_id": 242,
+      "start": "OQN-2NB",
+      "end": "OLJ-MKD",
+      "avoid_gates": true,
+      "max_ly": 110.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 243,
+      "start": "EFD-CGC",
+      "end": "IK2-JDB",
+      "avoid_gates": true,
+      "max_ly": 110.0,
+      "expected_length": 3
+    },
+    {
+      "route_id": 248,
+      "start": "B:311S",
+      "end": "U.L02.WT2",
+      "avoid_gates": false,
+      "max_ly": 110.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 249,
+      "start": "U.L02.WT2",
+      "end": "B:311S",
+      "avoid_gates": false,
+      "max_ly": 110.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 250,
+      "start": "U.L02.WT2",
+      "end": "Q:3NA8",
+      "avoid_gates": false,
+      "max_ly": 110.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 251,
+      "start": "F:3RN3",
+      "end": "Q:3NA8",
+      "avoid_gates": false,
+      "max_ly": 110.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 255,
+      "start": "M.NM9.QVC",
+      "end": "Q:3NA8",
+      "avoid_gates": false,
+      "max_ly": 110.0,
+      "expected_length": 12
+    },
+    {
+      "route_id": 256,
+      "start": "M.NM9.QVC",
+      "end": "F:3RN3",
+      "avoid_gates": false,
+      "max_ly": 110.0,
+      "expected_length": 12
+    },
+    {
+      "route_id": 263,
+      "start": "IF1-RD8",
+      "end": "J:2OTI",
+      "avoid_gates": false,
+      "max_ly": 110.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 264,
+      "start": "OLJ-MKD",
+      "end": "B:311S",
+      "avoid_gates": true,
+      "max_ly": 110.0,
+      "expected_length": 6
+    },
+    {
+      "route_id": 265,
+      "start": "B:311S",
+      "end": "OLJ-MKD",
+      "avoid_gates": true,
+      "max_ly": 110.0,
+      "expected_length": 6
+    },
+    {
+      "route_id": 268,
+      "start": "Q:3NA8",
+      "end": "OLJ-MKD",
+      "avoid_gates": true,
+      "max_ly": 110.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 269,
+      "start": "Q:3NA8",
+      "end": "ASM-KLF",
+      "avoid_gates": false,
+      "max_ly": 110.0,
+      "expected_length": 11
+    },
+    {
+      "route_id": 270,
+      "start": "B:311S",
+      "end": "U8Q-C1C",
+      "avoid_gates": false,
+      "max_ly": 110.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 272,
+      "start": "O77-4FC",
+      "end": "B:311S",
+      "avoid_gates": false,
+      "max_ly": 110.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 275,
+      "start": "Q:3NA8",
+      "end": "U8Q-C1C",
+      "avoid_gates": false,
+      "max_ly": 110.0,
+      "expected_length": 6
+    },
+    {
+      "route_id": 276,
+      "start": "B:3S38",
+      "end": "U8Q-C1C",
+      "avoid_gates": true,
+      "max_ly": 110.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 277,
+      "start": "U8Q-C1C",
+      "end": "OLJ-MKD",
+      "avoid_gates": false,
+      "max_ly": 110.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 278,
+      "start": "OLJ-MKD",
+      "end": "U8Q-C1C",
+      "avoid_gates": false,
+      "max_ly": 110.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 279,
+      "start": "B:3S38",
+      "end": "U8Q-C1C",
+      "avoid_gates": true,
+      "max_ly": 110.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 280,
+      "start": "O77-4FC",
+      "end": "B:3S38",
+      "avoid_gates": false,
+      "max_ly": 110.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 283,
+      "start": "O77-4FC",
+      "end": "J:32KI",
+      "avoid_gates": false,
+      "max_ly": 110.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 284,
+      "start": "O77-4FC",
+      "end": "B:3S38",
+      "avoid_gates": true,
+      "max_ly": 110.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 285,
+      "start": "ESS-3TB",
+      "end": "B:3S38",
+      "avoid_gates": false,
+      "max_ly": 110.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 288,
+      "start": "ESS-3TB",
+      "end": "B:311S",
+      "avoid_gates": false,
+      "max_ly": 110.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 295,
+      "start": "Y:2VIO",
+      "end": "EL5-SCG",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 12
+    },
+    {
+      "route_id": 298,
+      "start": "I4F-MCH",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 302,
+      "start": "OLJ-MKD",
+      "end": "A 2560",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 9
+    },
+    {
+      "route_id": 303,
+      "start": "OLJ-MKD",
+      "end": "A 2560",
+      "avoid_gates": false,
+      "max_ly": 70.0,
+      "expected_length": 8
+    },
+    {
+      "route_id": 306,
+      "start": "IVN-CB8",
+      "end": "OLJ-MKD",
+      "avoid_gates": false,
+      "max_ly": 63.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 308,
+      "start": "Q:1708",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 85.0,
+      "expected_length": 26
+    },
+    {
+      "route_id": 309,
+      "start": "U:1077",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 85.0,
+      "expected_length": 25
+    },
+    {
+      "route_id": 310,
+      "start": "IRJ-31F",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 12
+    },
+    {
+      "route_id": 311,
+      "start": "OLJ-MKD",
+      "end": "IRJ-31F",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 312,
+      "start": "E0L-7TH",
+      "end": "U:36OE",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 313,
+      "start": "E0L-7TH",
+      "end": "U:36OE",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 314,
+      "start": "E0L-7TH",
+      "end": "U:36OE",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 315,
+      "start": "E0L-7TH",
+      "end": "U:36OE",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 316,
+      "start": "EBG-P8H",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 6
+    },
+    {
+      "route_id": 317,
+      "start": "E0L-7TH",
+      "end": "U:36OE",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 318,
+      "start": "E0L-7TH",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 3
+    },
+    {
+      "route_id": 319,
+      "start": "U:36OE",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 320,
+      "start": "Strym",
+      "end": "E0L-7TH",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 3
+    },
+    {
+      "route_id": 321,
+      "start": "Strym",
+      "end": "U:36OE",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 322,
+      "start": "U:36OE",
+      "end": "E0L-7TH",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 323,
+      "start": "Strym",
+      "end": "E0L-7TH",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 3
+    },
+    {
+      "route_id": 324,
+      "start": "Strym",
+      "end": "A 2560",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 22
+    },
+    {
+      "route_id": 325,
+      "start": "OLJ-MKD",
+      "end": "IRJ-31F",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 13
+    },
+    {
+      "route_id": 326,
+      "start": "Strym",
+      "end": "OS7-94G",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 11
+    },
+    {
+      "route_id": 327,
+      "start": "U:36OE",
+      "end": "E0L-7TH",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 328,
+      "start": "U:36OE",
+      "end": "E0L-7TH",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 329,
+      "start": "Strym",
+      "end": "E0L-7TH",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 3
+    },
+    {
+      "route_id": 331,
+      "start": "Strym",
+      "end": "A 2560",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 13
+    },
+    {
+      "route_id": 332,
+      "start": "Strym",
+      "end": "A 2560",
+      "avoid_gates": false,
+      "max_ly": 70.0,
+      "expected_length": 12
+    },
+    {
+      "route_id": 333,
+      "start": "A 2560",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 70.0,
+      "expected_length": 12
+    },
+    {
+      "route_id": 335,
+      "start": "G5N|KLE",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 11
+    },
+    {
+      "route_id": 345,
+      "start": "Strym",
+      "end": "Nod",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 13
+    },
+    {
+      "route_id": 346,
+      "start": "IF1-RD8",
+      "end": "A 2560",
+      "avoid_gates": false,
+      "max_ly": 85.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 348,
+      "start": "Strym",
+      "end": "Nod",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 20
+    },
+    {
+      "route_id": 349,
+      "start": "Strym",
+      "end": "Nod",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 13
+    },
+    {
+      "route_id": 350,
+      "start": "Strym",
+      "end": "Nod",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 13
+    },
+    {
+      "route_id": 352,
+      "start": "Strym",
+      "end": "Brana",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 20
+    },
+    {
+      "route_id": 354,
+      "start": "IVN-CB8",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 10
+    },
+    {
+      "route_id": 360,
+      "start": "Q:3NA8",
+      "end": "IK2-JDB",
+      "avoid_gates": true,
+      "max_ly": 110.0,
+      "expected_length": 3
+    },
+    {
+      "route_id": 361,
+      "start": "D:35EN",
+      "end": "IK2-JDB",
+      "avoid_gates": true,
+      "max_ly": 110.0,
+      "expected_length": 3
+    },
+    {
+      "route_id": 362,
+      "start": "Strym",
+      "end": "M:3IE0",
+      "avoid_gates": false,
+      "max_ly": 70.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 370,
+      "start": "AFF-GCB",
+      "end": "A 2560",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 8
+    },
+    {
+      "route_id": 371,
+      "start": "E19-TBB",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 6
+    },
+    {
+      "route_id": 374,
+      "start": "U:36OE",
+      "end": "I12-TS9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 375,
+      "start": "B:3ENV",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 9
+    },
+    {
+      "route_id": 378,
+      "start": "H:328T",
+      "end": "EDN-JR7",
+      "avoid_gates": false,
+      "max_ly": 85.0,
+      "expected_length": 14
+    },
+    {
+      "route_id": 379,
+      "start": "AFF-GCB",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 380,
+      "start": "AFF-GCB",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 381,
+      "start": "H:328T",
+      "end": "EDN-JR7",
+      "avoid_gates": false,
+      "max_ly": 85.0,
+      "expected_length": 14
+    },
+    {
+      "route_id": 382,
+      "start": "H:328T",
+      "end": "EDN-JR7",
+      "avoid_gates": false,
+      "max_ly": 85.0,
+      "expected_length": 14
+    },
+    {
+      "route_id": 390,
+      "start": "H:3960",
+      "end": "ISG-QD6",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 13
+    },
+    {
+      "route_id": 391,
+      "start": "D:1ER6",
+      "end": "G:2VE5",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 25
+    },
+    {
+      "route_id": 395,
+      "start": "Strym",
+      "end": "G:2VE5",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 25
+    },
+    {
+      "route_id": 396,
+      "start": "Strym",
+      "end": "G:2VE5",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 25
+    },
+    {
+      "route_id": 411,
+      "start": "H:328T",
+      "end": "G:2VE5",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 25
+    },
+    {
+      "route_id": 421,
+      "start": "Strym",
+      "end": "IK4-L8G",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 422,
+      "start": "Strym",
+      "end": "OS7-94G",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 424,
+      "start": "H:328T",
+      "end": "G:2VE5",
+      "avoid_gates": false,
+      "max_ly": 75.0,
+      "expected_length": 27
+    },
+    {
+      "route_id": 437,
+      "start": "AFF-GCB",
+      "end": "IQP-BP1",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 16
+    },
+    {
+      "route_id": 441,
+      "start": "OD2-9P9",
+      "end": "IQP-BP1",
+      "avoid_gates": false,
+      "max_ly": 85.0,
+      "expected_length": 17
+    },
+    {
+      "route_id": 442,
+      "start": "OD2-9P9",
+      "end": "EF1-DG1",
+      "avoid_gates": false,
+      "max_ly": 85.0,
+      "expected_length": 19
+    },
+    {
+      "route_id": 443,
+      "start": "ES8-QC9",
+      "end": "IQP-BP1",
+      "avoid_gates": false,
+      "max_ly": 70.0,
+      "expected_length": 19
+    },
+    {
+      "route_id": 445,
+      "start": "U2J-FD5",
+      "end": "IQP-BP1",
+      "avoid_gates": false,
+      "max_ly": 70.0,
+      "expected_length": 13
+    },
+    {
+      "route_id": 446,
+      "start": "U2J-FD5",
+      "end": "IQP-BP1",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 10
+    },
+    {
+      "route_id": 447,
+      "start": "U2J-FD5",
+      "end": "IQP-BP1",
+      "avoid_gates": false,
+      "max_ly": 70.0,
+      "expected_length": 13
+    },
+    {
+      "route_id": 448,
+      "start": "U6D-0B5",
+      "end": "IQP-BP1",
+      "avoid_gates": false,
+      "max_ly": 70.0,
+      "expected_length": 14
+    },
+    {
+      "route_id": 451,
+      "start": "I2C-7B3",
+      "end": "EF1-DG1",
+      "avoid_gates": false,
+      "max_ly": 75.0,
+      "expected_length": 9
+    },
+    {
+      "route_id": 453,
+      "start": "ERG-FG2",
+      "end": "EF1-DG1",
+      "avoid_gates": false,
+      "max_ly": 70.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 458,
+      "start": "IMT-684",
+      "end": "A1F-HT9",
+      "avoid_gates": false,
+      "max_ly": 60.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 459,
+      "start": "Strym",
+      "end": "U:36OE",
+      "avoid_gates": false,
+      "max_ly": 110.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 463,
+      "start": "EM0-SPG",
+      "end": "A49-G7H",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 13
+    },
+    {
+      "route_id": 465,
+      "start": "Strym",
+      "end": "AFF-GCB",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 467,
+      "start": "AFF-GCB",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 469,
+      "start": "IK4-L8G",
+      "end": "I57-2PG",
+      "avoid_gates": false,
+      "max_ly": 85.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 470,
+      "start": "EBN-8FG",
+      "end": "Y:3TT1",
+      "avoid_gates": false,
+      "max_ly": 85.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 471,
+      "start": "EBN-8FG",
+      "end": "F:3R6A",
+      "avoid_gates": false,
+      "max_ly": 85.0,
+      "expected_length": 6
+    },
+    {
+      "route_id": 472,
+      "start": "E8S-20G",
+      "end": "Y:3TT1",
+      "avoid_gates": false,
+      "max_ly": 110.0,
+      "expected_length": 9
+    },
+    {
+      "route_id": 473,
+      "start": "E8S-20G",
+      "end": "Y:3TT1",
+      "avoid_gates": true,
+      "max_ly": 110.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 474,
+      "start": "E8S-20G",
+      "end": "F:3R6A",
+      "avoid_gates": true,
+      "max_ly": 110.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 475,
+      "start": "IK4-L8G",
+      "end": "Y:3TT1",
+      "avoid_gates": false,
+      "max_ly": 85.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 481,
+      "start": "J:2OTI",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 11
+    },
+    {
+      "route_id": 485,
+      "start": "OR3-Q1B",
+      "end": "IRJ-31F",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 486,
+      "start": "A49-G7H",
+      "end": "H:3960",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 488,
+      "start": "G:2VE5",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 28
+    },
+    {
+      "route_id": 489,
+      "start": "OBV-SJB",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 490,
+      "start": "OLJ-MKD",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 60.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 491,
+      "start": "OLJ-MKD",
+      "end": "IRJ-31F",
+      "avoid_gates": false,
+      "max_ly": 60.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 492,
+      "start": "ECG-SFB",
+      "end": "AFF-GCB",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 493,
+      "start": "G5N|KLE",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 11
+    },
+    {
+      "route_id": 496,
+      "start": "EBG-P8H",
+      "end": "OS7-94G",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 8
+    },
+    {
+      "route_id": 497,
+      "start": "E8S-20G",
+      "end": "Y:3TT1",
+      "avoid_gates": true,
+      "max_ly": 85.0,
+      "expected_length": 6
+    },
+    {
+      "route_id": 498,
+      "start": "E8S-20G",
+      "end": "Y:3TT1",
+      "avoid_gates": true,
+      "max_ly": 110.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 500,
+      "start": "E8S-20G",
+      "end": "F:3R6A",
+      "avoid_gates": true,
+      "max_ly": 110.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 501,
+      "start": "EBN-8FG",
+      "end": "F:3R6A",
+      "avoid_gates": false,
+      "max_ly": 85.0,
+      "expected_length": 6
+    },
+    {
+      "route_id": 502,
+      "start": "Strym",
+      "end": "F:3R6A",
+      "avoid_gates": false,
+      "max_ly": 110.0,
+      "expected_length": 6
+    },
+    {
+      "route_id": 503,
+      "start": "OR3-Q1B",
+      "end": "IRJ-31F",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 506,
+      "start": "I19-GF9",
+      "end": "UMH-DV1",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 22
+    },
+    {
+      "route_id": 508,
+      "start": "UGQ-122",
+      "end": "UMH-DV1",
+      "avoid_gates": false,
+      "max_ly": 70.0,
+      "expected_length": 9
+    },
+    {
+      "route_id": 510,
+      "start": "UGQ-122",
+      "end": "UMH-DV1",
+      "avoid_gates": false,
+      "max_ly": 70.0,
+      "expected_length": 9
+    },
+    {
+      "route_id": 511,
+      "start": "Strym",
+      "end": "B:2NRE",
+      "avoid_gates": false,
+      "max_ly": 119.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 513,
+      "start": "Strym",
+      "end": "B:2NRE",
+      "avoid_gates": false,
+      "max_ly": 119.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 514,
+      "start": "AFF-GCB",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 70.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 515,
+      "start": "EBN-8FG",
+      "end": "Y:3TT1",
+      "avoid_gates": false,
+      "max_ly": 85.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 516,
+      "start": "EBN-8FG",
+      "end": "F:3R6A",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 8
+    },
+    {
+      "route_id": 517,
+      "start": "EBN-8FG",
+      "end": "F:3R6A",
+      "avoid_gates": false,
+      "max_ly": 85.0,
+      "expected_length": 6
+    },
+    {
+      "route_id": 518,
+      "start": "Strym",
+      "end": "G5N|KLE",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 11
+    },
+    {
+      "route_id": 520,
+      "start": "Strym",
+      "end": "B:2NRE",
+      "avoid_gates": false,
+      "max_ly": 115.0,
+      "expected_length": 11
+    },
+    {
+      "route_id": 521,
+      "start": "AFF-GCB",
+      "end": "Y:2VIO",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 522,
+      "start": "J:2TEO",
+      "end": "B:3N85",
+      "avoid_gates": false,
+      "max_ly": 85.0,
+      "expected_length": 3
+    },
+    {
+      "route_id": 523,
+      "start": "J:2TEO",
+      "end": "B:3N85",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 3
+    },
+    {
+      "route_id": 524,
+      "start": "J:2TEO",
+      "end": "D:232I",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 3
+    },
+    {
+      "route_id": 529,
+      "start": "J:2OTI",
+      "end": "IMT-684",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 23
+    },
+    {
+      "route_id": 532,
+      "start": "IQ2-FL2",
+      "end": "IQP-BP1",
+      "avoid_gates": false,
+      "max_ly": 95.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 536,
+      "start": "J:2OTI",
+      "end": "I6D-VR6",
+      "avoid_gates": false,
+      "max_ly": 85.0,
+      "expected_length": 3
+    },
+    {
+      "route_id": 537,
+      "start": "E19-TBB",
+      "end": "U:1S6L",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 542,
+      "start": "UT0-10G",
+      "end": "ASM-KLF",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 16
+    },
+    {
+      "route_id": 543,
+      "start": "I12-TS9",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 8
+    },
+    {
+      "route_id": 544,
+      "start": "Strym",
+      "end": "G:311L",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 8
+    },
+    {
+      "route_id": 548,
+      "start": "Brana",
+      "end": "Nod",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 552,
+      "start": "EK4-TC3",
+      "end": "IQ2-FL2",
+      "avoid_gates": false,
+      "max_ly": 110.0,
+      "expected_length": 3
+    },
+    {
+      "route_id": 554,
+      "start": "EK4-TC3",
+      "end": "O67-SF4",
+      "avoid_gates": false,
+      "max_ly": 110.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 557,
+      "start": "IRD-502",
+      "end": "IQP-BP1",
+      "avoid_gates": false,
+      "max_ly": 85.0,
+      "expected_length": 3
+    },
+    {
+      "route_id": 562,
+      "start": "Strym",
+      "end": "A 2560",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 12
+    },
+    {
+      "route_id": 563,
+      "start": "J:2OTI",
+      "end": "O6T-898",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 8
+    },
+    {
+      "route_id": 565,
+      "start": "B:37EI",
+      "end": "Y:3TT1",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 11
+    },
+    {
+      "route_id": 568,
+      "start": "Strym",
+      "end": "A49-G7H",
+      "avoid_gates": false,
+      "max_ly": 100.0,
+      "expected_length": 10
+    },
+    {
+      "route_id": 569,
+      "start": "E8S-20G",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 6
+    },
+    {
+      "route_id": 572,
+      "start": "U:36OE",
+      "end": "OLJ-MKD",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 573,
+      "start": "EK4-TC3",
+      "end": "IQ2-FL2",
+      "avoid_gates": false,
+      "max_ly": 85.0,
+      "expected_length": 3
+    },
+    {
+      "route_id": 575,
+      "start": "EK4-TC3",
+      "end": "IQ2-FL2",
+      "avoid_gates": false,
+      "max_ly": 75.0,
+      "expected_length": 3
+    },
+    {
+      "route_id": 579,
+      "start": "OLJ-MKD",
+      "end": "G:311L",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 580,
+      "start": "O3K-FR2",
+      "end": "I0S-BB2",
+      "avoid_gates": false,
+      "max_ly": 85.0,
+      "expected_length": 3
+    },
+    {
+      "route_id": 588,
+      "start": "E1M-3J7",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 12
+    },
+    {
+      "route_id": 590,
+      "start": "UMH-DV1",
+      "end": "IQP-BP1",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 595,
+      "start": "Strym",
+      "end": "UMH-DV1",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 26
+    },
+    {
+      "route_id": 596,
+      "start": "B:37EI",
+      "end": "UMH-DV1",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 26
+    },
+    {
+      "route_id": 597,
+      "start": "B:37EI",
+      "end": "UMH-DV1",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 26
+    },
+    {
+      "route_id": 598,
+      "start": "I0D-QK1",
+      "end": "UMH-DV1",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 601,
+      "start": "E19-TBB",
+      "end": "AFF-GCB",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 3
+    },
+    {
+      "route_id": 602,
+      "start": "AFF-GCB",
+      "end": "UMV-CVC",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 3
+    },
+    {
+      "route_id": 603,
+      "start": "UMH-DV1",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 24
+    },
+    {
+      "route_id": 604,
+      "start": "OLJ-MKD",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 605,
+      "start": "ENV-9V8",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 100.0,
+      "expected_length": 8
+    },
+    {
+      "route_id": 606,
+      "start": "Strym",
+      "end": "A 2560",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 23
+    },
+    {
+      "route_id": 609,
+      "start": "Strym",
+      "end": "Nod",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 21
+    },
+    {
+      "route_id": 610,
+      "start": "Strym",
+      "end": "EBN-8FG",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 6
+    },
+    {
+      "route_id": 612,
+      "start": "I4F-MCH",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 615,
+      "start": "Strym",
+      "end": "I4F-MCH",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 616,
+      "start": "Strym",
+      "end": "I4F-MCH",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 3
+    },
+    {
+      "route_id": 617,
+      "start": "Strym",
+      "end": "I4F-MCH",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 618,
+      "start": "Strym",
+      "end": "I4F-MCH",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 619,
+      "start": "Strym",
+      "end": "I4F-MCH",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 3
+    },
+    {
+      "route_id": 620,
+      "start": "Strym",
+      "end": "I4F-MCH",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 621,
+      "start": "Strym",
+      "end": "I4F-MCH",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 622,
+      "start": "Strym",
+      "end": "I4F-MCH",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 623,
+      "start": "Strym",
+      "end": "I4F-MCH",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 624,
+      "start": "Strym",
+      "end": "I4F-MCH",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 625,
+      "start": "Strym",
+      "end": "I4F-MCH",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 626,
+      "start": "Strym",
+      "end": "I4F-MCH",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 628,
+      "start": "Strym",
+      "end": "UMH-DV1",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 25
+    },
+    {
+      "route_id": 629,
+      "start": "Strym",
+      "end": "UMH-DV1",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 25
+    },
+    {
+      "route_id": 631,
+      "start": "Strym",
+      "end": "UMH-DV1",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 28
+    },
+    {
+      "route_id": 632,
+      "start": "Strym",
+      "end": "UMH-DV1",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 25
+    },
+    {
+      "route_id": 633,
+      "start": "Strym",
+      "end": "UMH-DV1",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 28
+    },
+    {
+      "route_id": 634,
+      "start": "Strym",
+      "end": "UMH-DV1",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 25
+    },
+    {
+      "route_id": 635,
+      "start": "Strym",
+      "end": "UMH-DV1",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 25
+    },
+    {
+      "route_id": 636,
+      "start": "Strym",
+      "end": "UMH-DV1",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 25
+    },
+    {
+      "route_id": 637,
+      "start": "Strym",
+      "end": "UMH-DV1",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 25
+    },
+    {
+      "route_id": 638,
+      "start": "UMH-DV1",
+      "end": "IRJ-31F",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 21
+    },
+    {
+      "route_id": 639,
+      "start": "UMH-DV1",
+      "end": "IRJ-31F",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 21
+    },
+    {
+      "route_id": 645,
+      "start": "Strym",
+      "end": "Nod",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 14
+    },
+    {
+      "route_id": 648,
+      "start": "AFF-GCB",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 651,
+      "start": "IRJ-31F",
+      "end": "O77-4FC",
+      "avoid_gates": false,
+      "max_ly": 110.0,
+      "expected_length": 6
+    },
+    {
+      "route_id": 652,
+      "start": "E06-LTB",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 8
+    },
+    {
+      "route_id": 653,
+      "start": "OLJ-MKD",
+      "end": "H:3960",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 654,
+      "start": "U:3I80",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 11
+    },
+    {
+      "route_id": 655,
+      "start": "U:36OE",
+      "end": "J:2LR1",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 656,
+      "start": "E0L-7TH",
+      "end": "J:2LR1",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 3
+    },
+    {
+      "route_id": 657,
+      "start": "U0J-6HB",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 38
+    },
+    {
+      "route_id": 659,
+      "start": "U0J-6HB",
+      "end": "IL7-JQ9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 661,
+      "start": "E6S-F39",
+      "end": "IL7-JQ9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 3
+    },
+    {
+      "route_id": 662,
+      "start": "IL7-JQ9",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 36
+    },
+    {
+      "route_id": 663,
+      "start": "UK3-D48",
+      "end": "Strym",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 34
+    },
+    {
+      "route_id": 665,
+      "start": "USG-JP9",
+      "end": "IF7-N1B",
+      "avoid_gates": false,
+      "max_ly": 70.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 666,
+      "start": "OMV-02C",
+      "end": "IL7-JQ9",
+      "avoid_gates": false,
+      "max_ly": 60.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 667,
+      "start": "USG-JP9",
+      "end": "I20-P29",
+      "avoid_gates": false,
+      "max_ly": 85.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 670,
+      "start": "AJ4-JHC",
+      "end": "IL7-JQ9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 672,
+      "start": "ETM-BFD",
+      "end": "IL7-JQ9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 9
+    },
+    {
+      "route_id": 675,
+      "start": "ON0-QPC",
+      "end": "E21-PGD",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 3
+    },
+    {
+      "route_id": 676,
+      "start": "USG-JP9",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 75.0,
+      "expected_length": 19
+    },
+    {
+      "route_id": 679,
+      "start": "E2F-SQ7",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 60.0,
+      "expected_length": 20
+    },
+    {
+      "route_id": 681,
+      "start": "E2F-SQ7",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 60.0,
+      "expected_length": 20
+    },
+    {
+      "route_id": 682,
+      "start": "USG-JP9",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 75.0,
+      "expected_length": 19
+    },
+    {
+      "route_id": 683,
+      "start": "ES3-J97",
+      "end": "IL7-JQ9",
+      "avoid_gates": false,
+      "max_ly": 60.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 685,
+      "start": "ET5-BGC",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 21
+    },
+    {
+      "route_id": 686,
+      "start": "ET5-BGC",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 21
+    },
+    {
+      "route_id": 689,
+      "start": "AJ4-JHC",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 59.0,
+      "expected_length": 21
+    },
+    {
+      "route_id": 690,
+      "start": "ET5-BGC",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 21
+    },
+    {
+      "route_id": 692,
+      "start": "IL7-JQ9",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 59.0,
+      "expected_length": 23
+    },
+    {
+      "route_id": 693,
+      "start": "ET5-BGC",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 21
+    },
+    {
+      "route_id": 694,
+      "start": "USG-JP9",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 75.0,
+      "expected_length": 18
+    },
+    {
+      "route_id": 695,
+      "start": "USG-JP9",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 75.0,
+      "expected_length": 18
+    },
+    {
+      "route_id": 697,
+      "start": "B:18VV",
+      "end": "B.RGL.482",
+      "avoid_gates": false,
+      "max_ly": 75.0,
+      "expected_length": 3
+    },
+    {
+      "route_id": 698,
+      "start": "ON0-QPC",
+      "end": "IL7-JQ9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 8
+    },
+    {
+      "route_id": 699,
+      "start": "ON0-QPC",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 23
+    },
+    {
+      "route_id": 700,
+      "start": "USG-JP9",
+      "end": "ORV-P28",
+      "avoid_gates": false,
+      "max_ly": 62.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 701,
+      "start": "IGS-DR9",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 59.0,
+      "expected_length": 27
+    },
+    {
+      "route_id": 704,
+      "start": "F:65OK",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 59.0,
+      "expected_length": 6
+    },
+    {
+      "route_id": 705,
+      "start": "AJ4-JHC",
+      "end": "IL7-JQ9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 707,
+      "start": "UNL-LV8",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 59.0,
+      "expected_length": 23
+    },
+    {
+      "route_id": 710,
+      "start": "B:18VV",
+      "end": "B.RGL.482",
+      "avoid_gates": false,
+      "max_ly": 75.0,
+      "expected_length": 3
+    },
+    {
+      "route_id": 711,
+      "start": "USG-JP9",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 75.0,
+      "expected_length": 18
+    },
+    {
+      "route_id": 713,
+      "start": "E6S-F39",
+      "end": "ORV-P28",
+      "avoid_gates": false,
+      "max_ly": 60.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 715,
+      "start": "B:18VV",
+      "end": "B.RGL.482",
+      "avoid_gates": false,
+      "max_ly": 70.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 716,
+      "start": "M:47IR",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 59.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 717,
+      "start": "G:10EV",
+      "end": "B.RGL.482",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 3
+    },
+    {
+      "route_id": 718,
+      "start": "G:112T",
+      "end": "B.RGL.482",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 719,
+      "start": "B:18VV",
+      "end": "G:112T",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 721,
+      "start": "U:165O",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 59.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 726,
+      "start": "M.PLT.KFM",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 65.0,
+      "expected_length": 9
+    },
+    {
+      "route_id": 727,
+      "start": "M.PLT.KFM",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 68.0,
+      "expected_length": 8
+    },
+    {
+      "route_id": 728,
+      "start": "M.PLT.KFM",
+      "end": "F:2O7L",
+      "avoid_gates": false,
+      "max_ly": 75.0,
+      "expected_length": 6
+    },
+    {
+      "route_id": 729,
+      "start": "OL0-J99",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 75.0,
+      "expected_length": 18
+    },
+    {
+      "route_id": 730,
+      "start": "ON0-QPC",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 23
+    },
+    {
+      "route_id": 731,
+      "start": "OL0-J99",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 65.0,
+      "expected_length": 21
+    },
+    {
+      "route_id": 732,
+      "start": "OL0-J99",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 70.0,
+      "expected_length": 18
+    },
+    {
+      "route_id": 733,
+      "start": "F:113E",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 57.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 735,
+      "start": "AJ4-JHC",
+      "end": "IL7-JQ9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 737,
+      "start": "Q:47O9",
+      "end": "M.349.42M",
+      "avoid_gates": false,
+      "max_ly": 75.0,
+      "expected_length": 3
+    },
+    {
+      "route_id": 741,
+      "start": "ET5-BGC",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 65.0,
+      "expected_length": 27
+    },
+    {
+      "route_id": 742,
+      "start": "ET5-BGC",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 58.0,
+      "expected_length": 30
+    },
+    {
+      "route_id": 743,
+      "start": "ET5-BGC",
+      "end": "B:K8OS",
+      "avoid_gates": false,
+      "max_ly": 60.0,
+      "expected_length": 16
+    },
+    {
+      "route_id": 744,
+      "start": "ET5-BGC",
+      "end": "B:K8OS",
+      "avoid_gates": false,
+      "max_ly": 58.0,
+      "expected_length": 17
+    },
+    {
+      "route_id": 745,
+      "start": "O7P-6C9",
+      "end": "B:K8OS",
+      "avoid_gates": false,
+      "max_ly": 65.0,
+      "expected_length": 12
+    },
+    {
+      "route_id": 747,
+      "start": "O7P-6C9",
+      "end": "B:K8OS",
+      "avoid_gates": false,
+      "max_ly": 58.0,
+      "expected_length": 13
+    },
+    {
+      "route_id": 748,
+      "start": "O7P-6C9",
+      "end": "B:K8OS",
+      "avoid_gates": false,
+      "max_ly": 59.0,
+      "expected_length": 13
+    },
+    {
+      "route_id": 750,
+      "start": "O7P-6C9",
+      "end": "B:K8OS",
+      "avoid_gates": false,
+      "max_ly": 55.0,
+      "expected_length": 15
+    },
+    {
+      "route_id": 751,
+      "start": "O7P-6C9",
+      "end": "B:K8OS",
+      "avoid_gates": false,
+      "max_ly": 54.0,
+      "expected_length": 15
+    },
+    {
+      "route_id": 752,
+      "start": "O7P-6C9",
+      "end": "B:K8OS",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 11
+    },
+    {
+      "route_id": 753,
+      "start": "O7P-6C9",
+      "end": "B:K8OS",
+      "avoid_gates": false,
+      "max_ly": 70.0,
+      "expected_length": 12
+    },
+    {
+      "route_id": 754,
+      "start": "ET5-BGC",
+      "end": "B:K8OS",
+      "avoid_gates": false,
+      "max_ly": 70.0,
+      "expected_length": 16
+    },
+    {
+      "route_id": 755,
+      "start": "ET5-BGC",
+      "end": "B:K8OS",
+      "avoid_gates": false,
+      "max_ly": 67.0,
+      "expected_length": 16
+    },
+    {
+      "route_id": 756,
+      "start": "ET5-BGC",
+      "end": "B:K8OS",
+      "avoid_gates": false,
+      "max_ly": 66.0,
+      "expected_length": 17
+    },
+    {
+      "route_id": 757,
+      "start": "ET5-BGC",
+      "end": "B:K8OS",
+      "avoid_gates": false,
+      "max_ly": 60.0,
+      "expected_length": 16
+    },
+    {
+      "route_id": 758,
+      "start": "ET5-BGC",
+      "end": "B:K8OS",
+      "avoid_gates": false,
+      "max_ly": 96.0,
+      "expected_length": 13
+    },
+    {
+      "route_id": 760,
+      "start": "O7P-6C9",
+      "end": "B:K8OS",
+      "avoid_gates": false,
+      "max_ly": 95.0,
+      "expected_length": 11
+    },
+    {
+      "route_id": 761,
+      "start": "O7P-6C9",
+      "end": "B:K8OS",
+      "avoid_gates": false,
+      "max_ly": 93.0,
+      "expected_length": 11
+    },
+    {
+      "route_id": 762,
+      "start": "O7P-6C9",
+      "end": "B:K8OS",
+      "avoid_gates": false,
+      "max_ly": 87.0,
+      "expected_length": 11
+    },
+    {
+      "route_id": 763,
+      "start": "IF7-N1B",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 17
+    },
+    {
+      "route_id": 764,
+      "start": "OL0-J99",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 53.0,
+      "expected_length": 30
+    },
+    {
+      "route_id": 765,
+      "start": "OL0-J99",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 75.0,
+      "expected_length": 18
+    },
+    {
+      "route_id": 766,
+      "start": "OL0-J99",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 65.0,
+      "expected_length": 21
+    },
+    {
+      "route_id": 768,
+      "start": "OL0-J99",
+      "end": "IQ9-7F6",
+      "avoid_gates": false,
+      "max_ly": 50.0,
+      "expected_length": 6
+    },
+    {
+      "route_id": 769,
+      "start": "J:3VO9",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 3
+    },
+    {
+      "route_id": 771,
+      "start": "IL7-JQ9",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 17
+    },
+    {
+      "route_id": 775,
+      "start": "UF9-DFC",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 21
+    },
+    {
+      "route_id": 777,
+      "start": "U6R-506",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 81.0,
+      "expected_length": 11
+    },
+    {
+      "route_id": 778,
+      "start": "U6R-506",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 70.0,
+      "expected_length": 11
+    },
+    {
+      "route_id": 779,
+      "start": "U6R-506",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 68.0,
+      "expected_length": 14
+    },
+    {
+      "route_id": 780,
+      "start": "M:47IR",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 60.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 781,
+      "start": "F:65OK",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 59.0,
+      "expected_length": 6
+    },
+    {
+      "route_id": 782,
+      "start": "M.Q1R.6PM",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 81.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 783,
+      "start": "M.Q1R.6PM",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 68.0,
+      "expected_length": 9
+    },
+    {
+      "route_id": 784,
+      "start": "M.Q1R.6PM",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 64.0,
+      "expected_length": 10
+    },
+    {
+      "route_id": 787,
+      "start": "Y:1IO3",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 70.0,
+      "expected_length": 11
+    },
+    {
+      "route_id": 788,
+      "start": "ON0-QPC",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 23
+    },
+    {
+      "route_id": 790,
+      "start": "E5C-55D",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 22
+    },
+    {
+      "route_id": 791,
+      "start": "F:3EV9",
+      "end": "Z:13AL",
+      "avoid_gates": false,
+      "max_ly": 59.0,
+      "expected_length": 3
+    },
+    {
+      "route_id": 792,
+      "start": "F:3EV9",
+      "end": "OHT-FN5",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 11
+    },
+    {
+      "route_id": 798,
+      "start": "IL7-JQ9",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 17
+    },
+    {
+      "route_id": 799,
+      "start": "OKS-DJ9",
+      "end": "IL7-JQ9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 6
+    },
+    {
+      "route_id": 805,
+      "start": "O62-Q48",
+      "end": "IL7-JQ9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 806,
+      "start": "O62-Q48",
+      "end": "E2T-059",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 807,
+      "start": "AMP-TL8",
+      "end": "I20-P29",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 808,
+      "start": "IL7-JQ9",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 17
+    },
+    {
+      "route_id": 809,
+      "start": "U:14LL",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 6
+    },
+    {
+      "route_id": 810,
+      "start": "B:2N45",
+      "end": "M:EEKO",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 816,
+      "start": "F:3EV9",
+      "end": "G:2VE5",
+      "avoid_gates": false,
+      "max_ly": 75.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 818,
+      "start": "F:3EV9",
+      "end": "G:2VE5",
+      "avoid_gates": false,
+      "max_ly": 55.0,
+      "expected_length": 8
+    },
+    {
+      "route_id": 822,
+      "start": "M:1VE6",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 827,
+      "start": "IGS-DR9",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 74.0,
+      "expected_length": 19
+    },
+    {
+      "route_id": 833,
+      "start": "H:51O4",
+      "end": "P:KO6K",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 835,
+      "start": "F:3EV9",
+      "end": "P:KO6K",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 838,
+      "start": "IL7-JQ9",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 17
+    },
+    {
+      "route_id": 839,
+      "start": "IL7-JQ9",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 70.0,
+      "expected_length": 19
+    },
+    {
+      "route_id": 842,
+      "start": "F:3EV9",
+      "end": "G:2VE5",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 6
+    },
+    {
+      "route_id": 844,
+      "start": "Q:2R95",
+      "end": "C.789.ZS7",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 845,
+      "start": "H:2RE8",
+      "end": "G:3AKA",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 846,
+      "start": "H:51O4",
+      "end": "H.8W7.WN1",
+      "avoid_gates": false,
+      "max_ly": 75.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 847,
+      "start": "UK3-D48",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 15
+    },
+    {
+      "route_id": 848,
+      "start": "J:K887",
+      "end": "H.8W7.WN1",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 849,
+      "start": "O4N-BT5",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 10
+    },
+    {
+      "route_id": 850,
+      "start": "H:2RE8",
+      "end": "O.RH8.G7D",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 851,
+      "start": "IGS-DR9",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 74.0,
+      "expected_length": 19
+    },
+    {
+      "route_id": 854,
+      "start": "B:2N45",
+      "end": "M:EEKO",
+      "avoid_gates": false,
+      "max_ly": 55.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 857,
+      "start": "F:3EV9",
+      "end": "B.HJT.33E",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 859,
+      "start": "F:3EV9",
+      "end": "B.HJT.33E",
+      "avoid_gates": false,
+      "max_ly": 75.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 860,
+      "start": "F:3EV9",
+      "end": "B.HJT.33E",
+      "avoid_gates": false,
+      "max_ly": 65.0,
+      "expected_length": 8
+    },
+    {
+      "route_id": 864,
+      "start": "B.RGL.482",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 865,
+      "start": "I75-6BF",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 28
+    },
+    {
+      "route_id": 866,
+      "start": "U:2IA0",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 867,
+      "start": "U6L-25C",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 20
+    },
+    {
+      "route_id": 868,
+      "start": "U6L-25C",
+      "end": "OVL-MT6",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 869,
+      "start": "EFL-6BB",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 18
+    },
+    {
+      "route_id": 877,
+      "start": "ITT-585",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 11
+    },
+    {
+      "route_id": 879,
+      "start": "F:3EV9",
+      "end": "M.349.42M",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 3
+    },
+    {
+      "route_id": 884,
+      "start": "P:KO6K",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 888,
+      "start": "F:3EV9",
+      "end": "B.RGL.482",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 906,
+      "start": "Y:S507",
+      "end": "G:3AKA",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 907,
+      "start": "B:2T52",
+      "end": "M.349.42M",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 908,
+      "start": "M:19VN",
+      "end": "M.349.42M",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 915,
+      "start": "ICD-0SB",
+      "end": "IL7-JQ9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 916,
+      "start": "E8P-9KB",
+      "end": "IF7-N1B",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 917,
+      "start": "E6S-F39",
+      "end": "IL7-JQ9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 918,
+      "start": "OJQ-Q4C",
+      "end": "IL7-JQ9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 919,
+      "start": "OJQ-Q4C",
+      "end": "IL7-JQ9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 920,
+      "start": "OJQ-Q4C",
+      "end": "IL7-JQ9",
+      "avoid_gates": false,
+      "max_ly": 63.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 921,
+      "start": "OJQ-Q4C",
+      "end": "IL7-JQ9",
+      "avoid_gates": false,
+      "max_ly": 58.0,
+      "expected_length": 10
+    },
+    {
+      "route_id": 922,
+      "start": "O7P-6C9",
+      "end": "IL7-JQ9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 6
+    },
+    {
+      "route_id": 923,
+      "start": "O7P-6C9",
+      "end": "IL7-JQ9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 6
+    },
+    {
+      "route_id": 924,
+      "start": "UJ7-559",
+      "end": "E2T-059",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 925,
+      "start": "AJ4-JHC",
+      "end": "IL7-JQ9",
+      "avoid_gates": true,
+      "max_ly": 80.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 927,
+      "start": "O7P-6C9",
+      "end": "IL7-JQ9",
+      "avoid_gates": true,
+      "max_ly": 80.0,
+      "expected_length": 6
+    },
+    {
+      "route_id": 928,
+      "start": "E3Q-V4D",
+      "end": "IL7-JQ9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 929,
+      "start": "E28-6CD",
+      "end": "IL7-JQ9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 8
+    },
+    {
+      "route_id": 930,
+      "start": "E3Q-V4D",
+      "end": "IL7-JQ9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 933,
+      "start": "ETM-BFD",
+      "end": "IL7-JQ9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 9
+    },
+    {
+      "route_id": 936,
+      "start": "OFT-PDC",
+      "end": "IL7-JQ9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 938,
+      "start": "OFT-PDC",
+      "end": "IL7-JQ9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 939,
+      "start": "U5V-JDC",
+      "end": "IL7-JQ9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 940,
+      "start": "ED7-RGC",
+      "end": "IL7-JQ9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 6
+    },
+    {
+      "route_id": 942,
+      "start": "UT9-CVC",
+      "end": "IL7-JQ9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 946,
+      "start": "ERR-JBC",
+      "end": "IL7-JQ9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 947,
+      "start": "UF9-DFC",
+      "end": "IL7-JQ9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 6
+    },
+    {
+      "route_id": 951,
+      "start": "A6L-L7B",
+      "end": "IL7-JQ9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 952,
+      "start": "A6L-L7B",
+      "end": "I75-6BF",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 8
+    },
+    {
+      "route_id": 954,
+      "start": "A48-DQ8",
+      "end": "OFT-PDC",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 955,
+      "start": "B.8RD.YLM",
+      "end": "OFT-PDC",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 9
+    },
+    {
+      "route_id": 962,
+      "start": "Brana",
+      "end": "Nod",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 966,
+      "start": "I1R-N4F",
+      "end": "ARK-5DF",
+      "avoid_gates": false,
+      "max_ly": 200.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 967,
+      "start": "I1R-N4F",
+      "end": "ARK-5DF",
+      "avoid_gates": false,
+      "max_ly": 150.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 969,
+      "start": "I1R-N4F",
+      "end": "ARK-5DF",
+      "avoid_gates": false,
+      "max_ly": 137.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 978,
+      "start": "Strym",
+      "end": "I4F-MCH",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 979,
+      "start": "Strym",
+      "end": "Brana",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 20
+    },
+    {
+      "route_id": 980,
+      "start": "Strym",
+      "end": "Brana",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 20
+    },
+    {
+      "route_id": 981,
+      "start": "Nod",
+      "end": "Brana",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 1000,
+      "start": "EKK-9R1",
+      "end": "G:2VE5",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 6
+    },
+    {
+      "route_id": 1001,
+      "start": "B:EOL1",
+      "end": "EKK-9R1",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 1003,
+      "start": "EKK-9R1",
+      "end": "IJ7-LSS",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 3
+    },
+    {
+      "route_id": 1006,
+      "start": "G:2VE5",
+      "end": "EKK-9R1",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 6
+    },
+    {
+      "route_id": 1007,
+      "start": "E2F-SQ7",
+      "end": "IL7-JQ9",
+      "avoid_gates": false,
+      "max_ly": 63.0,
+      "expected_length": 8
+    },
+    {
+      "route_id": 1008,
+      "start": "E2F-SQ7",
+      "end": "IL7-JQ9",
+      "avoid_gates": false,
+      "max_ly": 60.0,
+      "expected_length": 8
+    },
+    {
+      "route_id": 1013,
+      "start": "I4F-MCH",
+      "end": "Brana",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 17
+    },
+    {
+      "route_id": 1014,
+      "start": "I4F-MCH",
+      "end": "Brana",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 17
+    },
+    {
+      "route_id": 1017,
+      "start": "Strym",
+      "end": "Nod",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 20
+    },
+    {
+      "route_id": 1018,
+      "start": "Strym",
+      "end": "Nod",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 20
+    },
+    {
+      "route_id": 1019,
+      "start": "Strym",
+      "end": "Nod",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 20
+    },
+    {
+      "route_id": 1020,
+      "start": "Strym",
+      "end": "Nod",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 20
+    },
+    {
+      "route_id": 1021,
+      "start": "Strym",
+      "end": "Nod",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 20
+    },
+    {
+      "route_id": 1022,
+      "start": "Strym",
+      "end": "Nod",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 20
+    },
+    {
+      "route_id": 1023,
+      "start": "Strym",
+      "end": "A 2560",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 23
+    },
+    {
+      "route_id": 1027,
+      "start": "IL7-JQ9",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 17
+    },
+    {
+      "route_id": 1030,
+      "start": "IL7-JQ9",
+      "end": "B.8RD.YLM",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 1031,
+      "start": "B.8RD.YLM",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 14
+    },
+    {
+      "route_id": 1032,
+      "start": "B.8RD.YLM",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 70.0,
+      "expected_length": 14
+    },
+    {
+      "route_id": 1033,
+      "start": "B.8RD.YLM",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 14
+    },
+    {
+      "route_id": 1036,
+      "start": "A48-DQ8",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 16
+    },
+    {
+      "route_id": 1038,
+      "start": "IL7-JQ9",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 17
+    },
+    {
+      "route_id": 1040,
+      "start": "Y:S507",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 60.0,
+      "expected_length": 6
+    },
+    {
+      "route_id": 1041,
+      "start": "Y:S507",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 50.0,
+      "expected_length": 9
+    },
+    {
+      "route_id": 1042,
+      "start": "IL7-JQ9",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 300.0,
+      "expected_length": 13
+    },
+    {
+      "route_id": 1045,
+      "start": "O.FCT.CQJ",
+      "end": "B:L3T1",
+      "avoid_gates": false,
+      "max_ly": 70.0,
+      "expected_length": 4
+    },
+    {
+      "route_id": 1046,
+      "start": "M.PLT.KFM",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 5
+    },
+    {
+      "route_id": 1048,
+      "start": "IL7-JQ9",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 300.0,
+      "expected_length": 13
+    },
+    {
+      "route_id": 1049,
+      "start": "IDG-RV5",
+      "end": "B.RGL.482",
+      "avoid_gates": true,
+      "max_ly": 300.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 1050,
+      "start": "IDG-RV5",
+      "end": "B.RGL.482",
+      "avoid_gates": true,
+      "max_ly": 200.0,
+      "expected_length": 2
+    },
+    {
+      "route_id": 1054,
+      "start": "IL7-JQ9",
+      "end": "B.8RD.YLM",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 7
+    },
+    {
+      "route_id": 1055,
+      "start": "B.8RD.YLM",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 14
+    },
+    {
+      "route_id": 1056,
+      "start": "G:112T",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 8
+    },
+    {
+      "route_id": 1057,
+      "start": "B:373T",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 8
+    },
+    {
+      "route_id": 1058,
+      "start": "ORV-P28",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 15
+    },
+    {
+      "route_id": 1061,
+      "start": "OVL-MT6",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 14
+    },
+    {
+      "route_id": 1064,
+      "start": "Strym",
+      "end": "A 2560",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 23
+    },
+    {
+      "route_id": 1068,
+      "start": "O4N-BT5",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 55.0,
+      "expected_length": 21
+    },
+    {
+      "route_id": 1072,
+      "start": "IL7-JQ9",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 17
+    },
+    {
+      "route_id": 1073,
+      "start": "IL7-JQ9",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 22
+    },
+    {
+      "route_id": 1074,
+      "start": "IL7-JQ9",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 22
+    },
+    {
+      "route_id": 1075,
+      "start": "IL7-JQ9",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 22
+    },
+    {
+      "route_id": 1076,
+      "start": "IL7-JQ9",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 53
+    },
+    {
+      "route_id": 1077,
+      "start": "IL7-JQ9",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 53
+    },
+    {
+      "route_id": 1078,
+      "start": "IL7-JQ9",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 53
+    },
+    {
+      "route_id": 1079,
+      "start": "IL7-JQ9",
+      "end": "F:3EV9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 53
+    },
+    {
+      "route_id": 1081,
+      "start": "ETM-BFD",
+      "end": "IL7-JQ9",
+      "avoid_gates": false,
+      "max_ly": 80.0,
+      "expected_length": 10
+    }
+  ]
+}

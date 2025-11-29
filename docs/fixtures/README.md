@@ -1,10 +1,19 @@
 # Test Fixtures
 
-This directory contains the minimal test fixture database used by integration and unit tests.
+This directory contains test fixture databases used by integration and unit tests.
 
-## Current Fixture: `minimal_static_data.db`
+## Fixtures Overview
 
-The fixture is extracted from the **e6c3 dataset** and contains **8 real EVE Frontier systems** with authentic coordinates, metadata, and connectivity:
+| Fixture | Systems | Jumps | Purpose |
+|---------|---------|-------|---------|
+| `minimal_static_data.db` | 8 | 12 | Core routing tests, schema validation |
+| `route_testing.db` | 717 | 344 | Sample route validation (~50% coverage) |
+
+## Current Fixtures
+
+### 1. `minimal_static_data.db` - Core Fixture
+
+A minimal fixture with 8 real EVE Frontier systems for unit testing:
 
 | System ID | System Name | Gate Connections | Notes |
 |-----------|-------------|------------------|-------|
@@ -16,6 +25,18 @@ The fixture is extracted from the **e6c3 dataset** and contains **8 real EVE Fro
 | 30000195 | J:35IA | → Nod | |
 | 30000260 | Y:3R7E | → Brana, H:2L2S | |
 | 30022425 | E1J-M5G | (none) | Spatial-only system (no gates) |
+
+### 2. `route_testing.db` - Sample Routes Fixture
+
+A larger fixture containing 717 systems that cover ~50% of routes from `SampleRoutes.csv`:
+
+- **717 solar systems** extracted from e6c3 dataset
+- **344 jump gates** between these systems
+- **2,700 planets** and **5,122 moons**
+- **546 testable routes** (50.5% of sample routes)
+
+The systems were selected by analyzing `SampleRoutes.csv` and extracting systems that appear
+in 4+ route paths (the "corridor" systems).
 
 ### Routing Examples
 
@@ -53,6 +74,23 @@ Or use the wrapper script:
 
 ```bash
 python3 scripts/create_minimal_db.py /tmp/e6c3_source/static_data.db
+```
+
+### Route Testing Fixture
+
+To regenerate the route testing fixture (requires `SampleRoutes.csv` in `docs/`):
+
+```bash
+# Download the dataset first
+cargo run -p evefrontier-cli -- download
+
+# Extract the fixture with ~50% route coverage (threshold 4+)
+python3 scripts/extract_route_fixture.py --threshold 4
+
+# Or for different coverage levels:
+python3 scripts/extract_route_fixture.py --threshold 2  # ~73% coverage, 1443 systems
+python3 scripts/extract_route_fixture.py --threshold 3  # ~58% coverage, 973 systems
+python3 scripts/extract_route_fixture.py --threshold 5  # ~41% coverage, 578 systems
 ```
 
 ### Fixture Management Helpers
