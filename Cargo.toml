@@ -2,6 +2,10 @@
 members = [
     "crates/evefrontier-lib",
     "crates/evefrontier-cli",
+    "crates/evefrontier-lambda-shared",
+    "crates/evefrontier-lambda-route",
+    "crates/evefrontier-lambda-scout-gates",
+    "crates/evefrontier-lambda-scout-range",
 ]
 resolver = "2"
 
@@ -58,7 +62,7 @@ directories = "6.0.0"
 thiserror = "2.0.17"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
-rusqlite = { version = "0.37.0", features = ["bundled"] }
+rusqlite = { version = "0.37.0", features = ["bundled", "serialize"] }
 clap = { version = "4.5.51", features = ["derive"] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.20", features = ["fmt", "env-filter"] }
@@ -69,3 +73,6 @@ assert_cmd = "2.1.1"
 predicates = "3.1.3"
 once_cell = "1.21.3"
 rusty-hook = "0.11.2"
+lambda_runtime = "0.13"
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+http = "1.0"

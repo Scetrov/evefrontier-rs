@@ -1,34 +1,48 @@
 # Project TODOs
 
-This TODO list captures the remaining work required to implement the EveFrontier CLI, library,
-AWS Lambda functions, and supporting infrastructure described throughout the documentation and ADRs.
+This TODO list captures the remaining work required to implement the EveFrontier CLI, library, AWS
+Lambda functions, and supporting infrastructure described throughout the documentation and ADRs.
 Tasks are grouped by domain; checkboxes track completion status.
 
 ## 🔥 High Priority - Test & Documentation Fixes
 
 - [x] **CRITICAL**: Ensure test fixture protection is maintained
-  - The test fixture now uses 8 real systems from e6c3 (Nod, Brana, D:2NAS, G:3OA0, H:2L2S, J:35IA, Y:3R7E, E1J-M5G)
+  - The test fixture now uses 8 real systems from e6c3 (Nod, Brana, D:2NAS, G:3OA0, H:2L2S, J:35IA,
+    Y:3R7E, E1J-M5G)
   - Tests use real system names and pass in CI with actual production data structure
   - All tests updated to reference real systems: Nod, Brana, H:2L2S, etc.
   - Documentation updated in `README.md` and `docs/USAGE.md` to use real system names
-- [x] Rebuild test fixture database using real e6c3 dataset (completed with `extract_fixture_from_dataset.py`)
+- [x] Rebuild test fixture database using real e6c3 dataset (completed with
+      `extract_fixture_from_dataset.py`)
   - Fixture includes Nod, Brana, and all systems connected by gates or within 80 ly of Brana
   - 8 systems, 12 jump gates, 26 planets, 43 moons extracted from real e6c3 data
-  - Schema bug fixed: loader now correctly handles `constellationId`/`regionId` (camelCase) from e6c3 
-- [x] Add `.gitignore` entry for `*.db.release` marker files (ephemeral download metadata; implemented as a global pattern)
+  - Schema bug fixed: loader now correctly handles `constellationId`/`regionId` (camelCase) from
+    e6c3
+- [x] Add `.gitignore` entry for `*.db.release` marker files (ephemeral download metadata;
+      implemented as a global pattern)
 - [x] Add fixture protection to prevent accidental overwrites:
   - [x] Document in `docs/fixtures/README.md` that fixture should not be replaced with downloads
-      - [x] Library guard rejects download targets that resolve to `docs/fixtures/minimal_static_data.db`
-- [x] Document `.vscode/mcp.json` in README or CONTRIBUTING guide (GitHub Copilot MCP server config; clarify if required or optional for developers)
-- [x] Add CI validation step that runs example commands from README/USAGE docs to ensure they continue working
+    - [x] Library guard rejects download targets that resolve to
+          `docs/fixtures/minimal_static_data.db`
+- [x] Document `.vscode/mcp.json` in README or CONTRIBUTING guide (GitHub Copilot MCP server config;
+      clarify if required or optional for developers)
+- [x] Add CI validation step that runs example commands from README/USAGE docs to ensure they
+      continue working
+
 ## Workspace & Tooling
 
-- [ ] Establish the Cargo workspace layout with `crates/evefrontier-lib`, `crates/evefrontier-cli`,
-      and Lambda crates (for example `crates/evefrontier-lambda-route`, `crates/evefrontier-lambda-scout-gates`,
-      `crates/evefrontier-lambda-scout-range`). Ensure shared code lives in the library crate.
-- [ ] Configure Nx to orchestrate Rust, lint, and security tasks (align with [ADR 0006](adrs/0006-software-components.md) and
-      `.github/copilot-instructions.md`). Define tasks for `build`, `test`, `lint`, `clippy`,
-      `audit`, and dependency update reporting.
+- [x] Establish the Cargo workspace layout with `crates/evefrontier-lib`, `crates/evefrontier-cli`,
+      and Lambda crates (for example `crates/evefrontier-lambda-route`,
+      `crates/evefrontier-lambda-scout-gates`, `crates/evefrontier-lambda-scout-range`). Ensure
+      shared code lives in the library crate.
+  - `evefrontier-lambda-shared` crate contains common Lambda infrastructure
+  - Three Lambda crates added: `evefrontier-lambda-route`, `evefrontier-lambda-scout-gates`,
+    `evefrontier-lambda-scout-range`
+  - Library crate extended with `load_starmap_from_connection()` and
+    `SpatialIndex::load_from_bytes()` for Lambda use
+- [ ] Configure Nx to orchestrate Rust, lint, and security tasks (align with
+      [ADR 0006](adrs/0006-software-components.md) and `.github/copilot-instructions.md`). Define
+      tasks for `build`, `test`, `lint`, `clippy`, `audit`, and dependency update reporting.
 - [ ] Scaffold Node/Nx workspace: add `package.json`, `pnpm-lock.yaml`, `nx.json`, and project
       targets for Rust crates and scripts (ADR 0006 & 0007 alignment).
 - [ ] Add `package.json`, `pnpm-lock.yaml`, and Nx project configuration. Document developer
@@ -36,11 +50,9 @@ Tasks are grouped by domain; checkboxes track completion status.
 - [ ] Add CI workflow enforcing ADR filename pattern (`^\\d{4}-.+\\.md$`) and immutability (reject
       edits to historical ADRs except via explicit override label).
 - [x] Create reproducible toolchain pins for Node (`.nvmrc` or Volta config) and confirm
-      `.rust-toolchain` matches the intended compiler release.
-      - Created `.nvmrc` with Node 20 (LTS)
-      - Confirmed `.rust-toolchain` specifies Rust 1.91.1
-      - Updated all CI workflows to use Rust 1.91.1 (matching `.rust-toolchain`)
-      - Documented version pinning in `CONTRIBUTING.md`
+      `.rust-toolchain` matches the intended compiler release. - Created `.nvmrc` with Node 20
+      (LTS) - Confirmed `.rust-toolchain` specifies Rust 1.91.1 - Updated all CI workflows to use
+      Rust 1.91.1 (matching `.rust-toolchain`) - Documented version pinning in `CONTRIBUTING.md`
 - [ ] Introduce automation scripts under `scripts/` (e.g., dataset fixture sync, release helpers)
       and register them as Nx tasks if applicable.
 
@@ -51,129 +63,142 @@ Tasks are grouped by domain; checkboxes track completion status.
       extract `.zip` archives ([ADR 0003](adrs/0003-downloader-caching.md)).
 - [x] Support injecting a pre-existing dataset path (for tests) and allow callers to override the
       cache location.
-- [x] Implement `load_starmap` with runtime schema detection ([ADR 0004](adrs/0004-schema-detection.md)) for both `SolarSystems` / `Jumps`
-      and legacy `mapSolarSystems` datasets.
-- [x] Define the `Starmap` data model, including system metadata, adjacency lists, and a
-      `HashMap` for name-to-ID lookups.
+- [x] Implement `load_starmap` with runtime schema detection
+      ([ADR 0004](adrs/0004-schema-detection.md)) for both `SolarSystems` / `Jumps` and legacy
+      `mapSolarSystems` datasets.
+- [x] Define the `Starmap` data model, including system metadata, adjacency lists, and a `HashMap`
+      for name-to-ID lookups.
 - [x] Build graph construction helpers (`graph.rs`) that transform the `Starmap` into search graphs
       for gate, spatial, or hybrid routing modes.
 - [x] Implement pathfinding algorithms in `path.rs`: breadth-first search for unweighted graphs,
-      Dijkstra for weighted routes, and A* for heuristic-guided searches. Support filters such as
+      Dijkstra for weighted routes, and A\* for heuristic-guided searches. Support filters such as
       maximum jump distance, gate-only routes, spatial routes, avoided systems, and temperature
       constraints.
 - [x] Provide serialization helpers for CLI/Lambda outputs (plain text, rich text, JSON, in-game
       note format) with appropriate structs and enums.
 - [x] Add robust error handling via a shared `Error` type (using `thiserror`) and bubble errors to
-      callers with actionable messages.
-      - Comprehensive `Error` enum in `error.rs` with thiserror derive
-      - All error variants have descriptive messages and context (paths, tags, system names)
-      - Transparent wrapping of underlying errors (SQLite, IO, HTTP, ZIP)
-      - Helper functions for formatted error suggestions
+      callers with actionable messages. - Comprehensive `Error` enum in `error.rs` with thiserror
+      derive - All error variants have descriptive messages and context (paths, tags, system
+      names) - Transparent wrapping of underlying errors (SQLite, IO, HTTP, ZIP) - Helper functions
+      for formatted error suggestions
 - [x] Write unit tests covering schema detection, dataset loading, graph construction, and routing
-      behavior using fixtures in `docs/fixtures/`.
-      - 8 test files with 43+ integration tests
-      - Tests cover: dataset_download, dataset_fixture_guard, dataset_normalize, fuzzy_matching, graph, load_starmap, output, routing
-      - All tests use minimal_static_data.db fixture from docs/fixtures/
-      - Comprehensive edge case and error path coverage
-- [x] Document the public API in `docs/USAGE.md` and Rustdoc comments.
-      - Enhanced lib.rs with comprehensive module documentation and usage examples
-      - Added "Library API" section to docs/USAGE.md with code examples
-      - Covers common patterns: dataset loading, routing, error handling, output formatting
-      - Includes examples for all three routing algorithms and constraint usage
+      behavior using fixtures in `docs/fixtures/`. - 8 test files with 43+ integration tests - Tests
+      cover: dataset_download, dataset_fixture_guard, dataset_normalize, fuzzy_matching, graph,
+      load_starmap, output, routing - All tests use minimal_static_data.db fixture from
+      docs/fixtures/ - Comprehensive edge case and error path coverage
+- [x] Document the public API in `docs/USAGE.md` and Rustdoc comments. - Enhanced lib.rs with
+      comprehensive module documentation and usage examples - Added "Library API" section to
+      docs/USAGE.md with code examples - Covers common patterns: dataset loading, routing, error
+      handling, output formatting - Includes examples for all three routing algorithms and
+      constraint usage
 - [x] Implement KD-tree spatial index module (per ADR 0009): build, serialize (e.g., postcard +
-      zstd), load, query nearest systems.
-      - `spatial.rs` module with kiddo v4.2, postcard+zstd serialization, SHA-256 checksum
-      - Index format: EFSI magic, version 1, feature flags, compressed tree data
-      - `build_spatial_index()`, `SpatialIndex::save()`, `load_spatial_index()` functions
-- [x] Integrate KD-tree spatial index into spatial/hybrid routing path selection logic.
-      - `build_spatial_graph_indexed()` and `build_hybrid_graph_indexed()` in graph.rs
-      - Auto-build fallback with `tracing::warn!` when index not provided
-      - `select_graph()` in routing.rs uses indexed builders for Dijkstra/A*
-- [x] Provide tests/benchmarks for KD-tree build and query performance.
-      - 8 integration tests in `tests/spatial_index.rs`
-      - Covers: build, serialize/deserialize, checksum validation, queries, temperature filtering
-- [x] Make KD-tree temperature-aware for neighbor queries
-      - `IndexNode` stores `min_external_temp` per system
-      - `NeighbourQuery` accepts `max_temperature: Option<f64>` filter
-      - `nearest_filtered()` and `within_radius_filtered()` apply predicates
-      - (v2 future work: subtree temperature aggregates for branch pruning)
+      zstd), load, query nearest systems. - `spatial.rs` module with kiddo v4.2, postcard+zstd
+      serialization, SHA-256 checksum - Index format: EFSI magic, version 1, feature flags,
+      compressed tree data - `build_spatial_index()`, `SpatialIndex::save()`, `load_spatial_index()`
+      functions
+- [x] Integrate KD-tree spatial index into spatial/hybrid routing path selection logic. -
+      `build_spatial_graph_indexed()` and `build_hybrid_graph_indexed()` in graph.rs - Auto-build
+      fallback with `tracing::warn!` when index not provided - `select_graph()` in routing.rs uses
+      indexed builders for Dijkstra/A\*
+- [x] Provide tests/benchmarks for KD-tree build and query performance. - 8 integration tests in
+      `tests/spatial_index.rs` - Covers: build, serialize/deserialize, checksum validation, queries,
+      temperature filtering
+- [x] Make KD-tree temperature-aware for neighbor queries - `IndexNode` stores `min_external_temp`
+      per system - `NeighbourQuery` accepts `max_temperature: Option<f64>` filter -
+      `nearest_filtered()` and `within_radius_filtered()` apply predicates - (v2 future work:
+      subtree temperature aggregates for branch pruning)
 
 ## CLI (`evefrontier-cli`)
 
 - [x] Implement the CLI skeleton with Clap, including global `--data-dir`, `--format`, `--no-logo`,
-      and other shared options. Respect the data path resolution order defined in `docs/INITIAL_SETUP.md`.
-- [x] Implement the `download` subcommand that wraps `ensure_c3e6_dataset`, reports the resolved path,
-      and exits with appropriate codes.
+      and other shared options. Respect the data path resolution order defined in
+      `docs/INITIAL_SETUP.md`.
+- [x] Implement the `download` subcommand that wraps `ensure_c3e6_dataset`, reports the resolved
+      path, and exits with appropriate codes.
 - [x] Implement unified `route` subcommand (replacing earlier `search` / `path`) exposing all
       routing functionality via flags: `--algorithm`, `--format`, `--max-jump`, `--avoid`,
       `--avoid-gates`, `--max-temp`.
 - [x] Provide friendly error messages for unknown systems and route failures.
-- [x] Add integration tests for CLI behavior (using `assert_cmd` or similar) with the fixture dataset.
+- [x] Add integration tests for CLI behavior (using `assert_cmd` or similar) with the fixture
+      dataset.
 - [x] Update `README.md` and `docs/USAGE.md` with CLI examples that match the implemented behavior.
-- [x] Add `index-build` (or `build-index`) subcommand to precompute KD-tree spatial index artifact.
-      - `evefrontier-cli index-build` command implemented
-      - Saves to `{database_path}.spatial.bin`
-      - Supports `--force` flag to overwrite existing index
-- [x] Surface friendly errors when spatial index missing but requested.
-      - Auto-build fallback with warning instead of hard error
-      - Uses `tracing::warn!` to inform user before building on-demand
+- [x] Add `index-build` (or `build-index`) subcommand to precompute KD-tree spatial index
+      artifact. - `evefrontier-cli index-build` command implemented - Saves to
+      `{database_path}.spatial.bin` - Supports `--force` flag to overwrite existing index
+- [x] Surface friendly errors when spatial index missing but requested. - Auto-build fallback with
+      warning instead of hard error - Uses `tracing::warn!` to inform user before building on-demand
 
 ## AWS Lambda crates
 
-- [ ] Scaffold Lambda crates (e.g., `evefrontier-lambda-route`, `evefrontier-lambda-scout-gates`,
+- [x] Scaffold Lambda crates (e.g., `evefrontier-lambda-route`, `evefrontier-lambda-scout-gates`,
       `evefrontier-lambda-scout-range`) that depend on the library crate.
-- [ ] Implement shared bootstrap logic to download or locate the dataset at cold start and share it
+  - Created `evefrontier-lambda-shared` crate with common infrastructure
+  - Created three Lambda crates: `route`, `scout-gates`, `scout-range`
+  - All Lambda crates use `include_bytes!` for bundled dataset
+- [x] Implement shared bootstrap logic to download or locate the dataset at cold start and share it
       across invocations (per `.github/copilot-instructions.md`).
-- [ ] Define request/response models using `serde` and ensure JSON serialization matches API
+  - `LambdaRuntime` in `evefrontier-lambda-shared` provides singleton initialization
+  - Uses rusqlite `deserialize_bytes()` for zero-copy database loading
+  - `SpatialIndex::load_from_bytes()` added for bundled spatial index
+  - Cold-start timing logged via tracing (`db_load_ms`, `index_load_ms`, `total_init_ms`)
+- [x] Define request/response models using `serde` and ensure JSON serialization matches API
       contracts.
-- [ ] Wire Lambda handlers (using `lambda_runtime` or `aws_lambda_events`) to call library APIs and
+  - `RouteRequest`, `ScoutGatesRequest`, `ScoutRangeRequest` with `Validate` trait
+  - `LambdaResponse<T>` wrapper with `content_type: "application/json"`
+  - RFC 9457 `ProblemDetails` for structured error responses
+- [x] Wire Lambda handlers (using `lambda_runtime` or `aws_lambda_events`) to call library APIs and
       return results with structured errors.
+  - All three handlers wired with `lambda_runtime::run(service_fn(handler))`
+  - Handlers return `Result<Response, Error>` with `Response` enum for success/error
+  - Route handler: parses request, validates, calls `plan_route()`, returns route with system names
+  - Scout-gates handler: returns gate-connected neighbors from adjacency list
+  - Scout-range handler: uses `SpatialIndex::nearest_filtered()` with radius/temperature filters
 - [ ] Provide infrastructure notes or SAM/CDK templates (if required) for deployment under `docs/`.
-- [ ] Add Lambda-focused tests (unit tests and, if possible, integration tests using `lambda_runtime::run` mocks).
-- [ ] Integrate KD-tree spatial index loading at cold start if artifact bundled.
+- [ ] Add Lambda-focused tests (unit tests and, if possible, integration tests using
+      `lambda_runtime::run` mocks).
+- [x] Integrate KD-tree spatial index loading at cold start if artifact bundled.
+  - `SpatialIndex::load_from_bytes()` and `load_from_reader()` added to library
+  - Lambda runtime loads spatial index from bundled bytes at cold start
 
 ## Testing & Quality
 
 - [x] Ensure `cargo fmt`, `cargo clippy --all-targets --all-features`, and `cargo test --workspace`
-      run cleanly; hook them into Nx and CI ([ADR 0007](adrs/0007-devsecops-practices.md)).
-      - Pre-commit hooks configured with rusty-hook to run all CI checks locally
-      - [x] Add dataset fixture management helpers to keep fixtures synchronized and documented in
+      run cleanly; hook them into Nx and CI ([ADR 0007](adrs/0007-devsecops-practices.md)). -
+      Pre-commit hooks configured with rusty-hook to run all CI checks locally - [x] Add dataset
+      fixture management helpers to keep fixtures synchronized and documented in
       `docs/fixtures/README.md`.
-- [x] Integrate `cargo audit` and Node SCA checks into CI and document remediation workflows.
-      - cargo-audit integrated into CI (`security-audit` job in `.github/workflows/ci.yml`)
-      - Pre-commit hook updated to run cargo audit (step 5 in `.rusty-hook.toml`)
-      - `make audit` target added to Makefile
-      - Comprehensive remediation guide created in `docs/SECURITY_AUDIT.md`
+- [x] Integrate `cargo audit` and Node SCA checks into CI and document remediation workflows. -
+      cargo-audit integrated into CI (`security-audit` job in `.github/workflows/ci.yml`) -
+      Pre-commit hook updated to run cargo audit (step 5 in `.rusty-hook.toml`) - `make audit`
+      target added to Makefile - Comprehensive remediation guide created in `docs/SECURITY_AUDIT.md`
 - [x] Add CI guard requiring `CHANGELOG.md` modification for non-doc code changes (ADR 0010).
-- [x] Schedule nightly dependency outdated report (Rust & Node) and publish artifact.
-      - Created `.github/workflows/dependency-check.yml` with nightly schedule (2 AM UTC)
-      - Separate jobs for Rust (`cargo outdated`) and Node (`pnpm outdated`)
-      - Artifacts published with 30-day retention: `rust-outdated-report`, `node-outdated-report`
-      - Manual trigger via `workflow_dispatch` also supported
-      - Documented in `CONTRIBUTING.md` under "Dependency Management" section
+- [x] Schedule nightly dependency outdated report (Rust & Node) and publish artifact. - Created
+      `.github/workflows/dependency-check.yml` with nightly schedule (2 AM UTC) - Separate jobs for
+      Rust (`cargo outdated`) and Node (`pnpm outdated`) - Artifacts published with 30-day
+      retention: `rust-outdated-report`, `node-outdated-report` - Manual trigger via
+      `workflow_dispatch` also supported - Documented in `CONTRIBUTING.md` under "Dependency
+      Management" section
   - [x] Establish benchmarking or profiling harnesses for pathfinding performance (optional but
         recommended).
 
 ## Documentation & Communication
 
 - [x] Create `CHANGELOG.md` with an `Unreleased` section and update it for each change (per
-      `CONTRIBUTING.md`).
-      - CHANGELOG.md exists at repository root
-      - Unreleased section actively maintained
-      - Follows format: date - author - [category] - description
-      - Integrated into pre-commit workflow via CONTRIBUTING.md guidance
+      `CONTRIBUTING.md`). - CHANGELOG.md exists at repository root - Unreleased section actively
+      maintained - Follows format: date - author - [category] - description - Integrated into
+      pre-commit workflow via CONTRIBUTING.md guidance
 - [ ] Align `README.md` with the new workspace layout, CLI commands, Lambda crates, and development
       workflow.
 - [ ] Expand `docs/USAGE.md` with Lambda invocation examples and dataset caching behavior.
-- [ ] Document release and signing procedures in `docs/RELEASE.md`, including cosign/GPG commands and
-      attestation steps (ADR 0007).
+- [ ] Document release and signing procedures in `docs/RELEASE.md`, including cosign/GPG commands
+      and attestation steps (ADR 0007).
 - [ ] Add architecture diagrams or sequence diagrams illustrating data flow between downloader,
       loader, graph, CLI, and Lambda components.
 - [ ] Provide onboarding steps in `docs/INITIAL_SETUP.md` once the workspace scaffolding stabilizes
       (update as tasks complete).
-- [x] Extend `docs/USAGE.md` with KD-tree index usage and build instructions.
-      - Added `index-build` subcommand documentation with examples
-      - Documented when to rebuild and temperature-aware filtering
+- [x] Extend `docs/USAGE.md` with KD-tree index usage and build instructions. - Added `index-build`
+      subcommand documentation with examples - Documented when to rebuild and temperature-aware
+      filtering
 - [ ] Add ADR for any deviations from original KD-tree design if implementation adjustments occur.
 - [ ] Add `docs/RELEASE.md` section describing inclusion of spatial index artifact.
 
@@ -188,6 +213,8 @@ Tasks are grouped by domain; checkboxes track completion status.
       runbooks.
 - [ ] Add CI to verify spatial index artifact freshness against dataset version.
 - [ ] Document operational procedure for regenerating spatial index after dataset updates.
+- [ ] Build Terraform deployment solution to deploy the Lambda functions and document.
+- [ ] Bake AWS deployment into GitHub CI runner using GitHub Secrets as a secrets source.
 
 ---
 

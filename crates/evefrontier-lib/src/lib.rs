@@ -87,7 +87,10 @@ pub mod spatial;
 pub mod temperature;
 
 pub use dataset::{default_dataset_path, ensure_c3e6_dataset, ensure_dataset, DatasetPaths};
-pub use db::{load_starmap, Starmap, System, SystemId, SystemMetadata, SystemPosition};
+pub use db::{
+    load_starmap, load_starmap_from_connection, Starmap, System, SystemId, SystemMetadata,
+    SystemPosition,
+};
 pub use error::{Error, Result};
 pub use github::DatasetRelease;
 pub use graph::{

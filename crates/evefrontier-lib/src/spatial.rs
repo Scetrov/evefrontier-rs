@@ -565,6 +565,126 @@ impl SpatialIndex {
             id_to_index,
         })
     }
+
+    /// Load a spatial index from a byte slice.
+    ///
+    /// This is useful for loading from bundled data (e.g., `include_bytes!` in Lambda).
+    /// The byte slice must contain the complete index with header, compressed data,
+    /// and checksum.
+    ///
+    /// # Example
+    ///
+    /// ```text
+    /// static INDEX_BYTES: &[u8] = include_bytes!("../data/spatial.bin");
+    /// let index = SpatialIndex::load_from_bytes(INDEX_BYTES)?;
+    /// ```
+    pub fn load_from_bytes(bytes: &[u8]) -> Result<Self> {
+        use std::io::Cursor;
+        Self::load_from_reader(Cursor::new(bytes))
+    }
+
+    /// Load a spatial index from any `Read + Seek` source.
+    ///
+    /// This is the underlying implementation shared by `load` (file) and
+    /// `load_from_bytes` (bundled data).
+    pub fn load_from_reader<R: std::io::Read>(mut reader: R) -> Result<Self> {
+        // Read and validate header
+        let mut header = [0u8; HEADER_SIZE];
+        reader
+            .read_exact(&mut header)
+            .map_err(|e| Error::SpatialIndexDeserialize {
+                message: format!("failed to read header: {}", e),
+            })?;
+
+        if &header[0..4] != INDEX_MAGIC {
+            return Err(Error::SpatialIndexDeserialize {
+                message: "invalid magic bytes".to_string(),
+            });
+        }
+
+        let version = header[4];
+        if version != INDEX_VERSION {
+            return Err(Error::SpatialIndexDeserialize {
+                message: format!(
+                    "unsupported version {} (expected {})",
+                    version, INDEX_VERSION
+                ),
+            });
+        }
+
+        let _flags = header[5];
+        let node_count = u32::from_le_bytes(header[6..10].try_into().unwrap());
+
+        // Read remaining data (compressed + checksum)
+        let mut remaining = Vec::new();
+        reader
+            .read_to_end(&mut remaining)
+            .map_err(|e| Error::SpatialIndexDeserialize {
+                message: format!("failed to read data: {}", e),
+            })?;
+
+        if remaining.len() < CHECKSUM_SIZE {
+            return Err(Error::SpatialIndexDeserialize {
+                message: "data too short for checksum".to_string(),
+            });
+        }
+
+        let checksum_start = remaining.len() - CHECKSUM_SIZE;
+        let compressed = &remaining[..checksum_start];
+        let stored_checksum = &remaining[checksum_start..];
+
+        // Verify checksum
+        let computed_checksum = Sha256::digest(compressed);
+        if computed_checksum.as_slice() != stored_checksum {
+            return Err(Error::SpatialIndexDeserialize {
+                message: "checksum mismatch - data may be corrupted".to_string(),
+            });
+        }
+
+        // Decompress
+        let decompressed =
+            zstd::decode_all(compressed).map_err(|e| Error::SpatialIndexDeserialize {
+                message: format!("zstd decompression failed: {}", e),
+            })?;
+
+        // Deserialize nodes
+        let nodes: Vec<IndexNode> =
+            postcard::from_bytes(&decompressed).map_err(|e| Error::SpatialIndexDeserialize {
+                message: format!("postcard deserialization failed: {}", e),
+            })?;
+
+        if nodes.len() != node_count as usize {
+            warn!(
+                expected = node_count,
+                actual = nodes.len(),
+                "node count mismatch in spatial index"
+            );
+        }
+
+        // Rebuild tree and lookups
+        let mut tree: KdTree<f32, usize, 3, BUCKET_SIZE, u32> = KdTree::new();
+        let mut temp_lookup = HashMap::new();
+        let mut id_to_index = HashMap::new();
+
+        for (index, node) in nodes.iter().enumerate() {
+            tree.add(&node.coords, index);
+            temp_lookup.insert(node.system_id, node.min_external_temp);
+            id_to_index.insert(node.system_id, index);
+        }
+
+        info!(
+            node_count = nodes.len(),
+            systems_with_temp = temp_lookup.values().filter(|t| t.is_some()).count(),
+            "loaded spatial index from bytes"
+        );
+
+        Ok(Self {
+            tree,
+            nodes,
+            temp_lookup,
+            id_to_index,
+        })
+    }
 }
 
 impl std::fmt::Debug for SpatialIndex {

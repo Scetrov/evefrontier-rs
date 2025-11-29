@@ -1,0 +1,21 @@
+[package]
+name = "evefrontier-lambda-shared"
+version = "0.1.0"
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Shared infrastructure for EveFrontier AWS Lambda functions"
+
+[dependencies]
+evefrontier-lib = { path = "../evefrontier-lib" }
+serde.workspace = true
+serde_json.workspace = true
+once_cell.workspace = true
+tracing.workspace = true
+tracing-subscriber = { workspace = true, features = ["json"] }
+http.workspace = true
+lambda_runtime.workspace = true
+rusqlite = { workspace = true, features = ["bundled", "serialize"] }
+
+[dev-dependencies]
+tokio.workspace = true

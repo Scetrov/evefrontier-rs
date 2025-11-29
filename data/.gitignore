@@ -1,0 +1,6 @@
+# Bundled dataset files for Lambda builds
+# These files must be placed here before building Lambda crates
+# See README.md in this directory for instructions
+
+*.db
+*.bin

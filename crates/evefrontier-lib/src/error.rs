@@ -83,9 +83,17 @@ pub enum Error {
     #[error("failed to serialize spatial index: {message}")]
     SpatialIndexSerialize { message: String },
 
-    /// Raised when loading a spatial index fails.
+    /// Raised when loading a spatial index from a file fails.
     #[error("failed to load spatial index from {path}: {message}")]
     SpatialIndexLoad { path: PathBuf, message: String },
+
+    /// Raised when deserializing a spatial index from bytes fails.
+    #[error("failed to deserialize spatial index: {message}")]
+    SpatialIndexDeserialize { message: String },
+
+    /// Database deserialization failed (used with rusqlite serialize feature).
+    #[error("failed to deserialize database: {message}")]
+    DatabaseDeserialize { message: String },
 }
 
 fn format_suggestions(suggestions: &[String]) -> String {

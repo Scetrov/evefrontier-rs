@@ -234,14 +234,33 @@ impl SchemaVariant {
 /// edges into the in-memory graph.
 pub fn load_starmap(db_path: &Path) -> Result<Starmap> {
     let connection = Connection::open(db_path)?;
-    let schema = detect_schema(&connection)?;
-    debug!(schema = %schema.variant, path = %db_path.display(), "loading starmap");
+    load_starmap_from_connection(&connection)
+}
 
-    let mut systems = load_systems(&connection, &schema)?;
-    let adjacency = Arc::new(load_adjacency(&connection, &schema, &systems)?);
+/// Load systems and jumps from an already-opened database connection.
+///
+/// This is useful for loading from in-memory databases (e.g., Lambda with
+/// bundled data) or when the connection is managed externally.
+///
+/// # Example
+///
+/// ```no_run
+/// use rusqlite::Connection;
+/// use evefrontier_lib::db::load_starmap_from_connection;
+///
+/// let conn = Connection::open_in_memory().unwrap();
+/// // ... deserialize database bytes into conn ...
+/// let starmap = load_starmap_from_connection(&conn).unwrap();
+/// ```
+pub fn load_starmap_from_connection(connection: &Connection) -> Result<Starmap> {
+    let schema = detect_schema(connection)?;
+    debug!(schema = %schema.variant, "loading starmap from connection");
+
+    let mut systems = load_systems(connection, &schema)?;
+    let adjacency = Arc::new(load_adjacency(connection, &schema, &systems)?);
 
     // Calculate minimum external temperatures for systems (if celestial data available)
-    calculate_min_external_temps(&connection, &mut systems)?;
+    calculate_min_external_temps(connection, &mut systems)?;
 
     let mut name_to_id = HashMap::new();
     for system in systems.values() {

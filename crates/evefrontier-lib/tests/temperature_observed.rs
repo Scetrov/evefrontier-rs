@@ -1,3 +1,14 @@
+//! Integration tests for temperature model validation against observed in-game data.
+//!
+//! These tests require the full e6c3 dataset and are gated behind the `integration` feature
+//! to avoid running during normal `cargo test`. Run with:
+//!
+//! ```bash
+//! cargo test -p evefrontier-lib --test temperature_observed -- --include-ignored
+//! ```
+//!
+//! Or enable the integration tests feature (if added).
+
 use evefrontier_lib::dataset::ensure_c3e6_dataset;
 use evefrontier_lib::temperature::{compute_temperature_meters, TemperatureModelParams};
 use rusqlite::{params, Connection};
