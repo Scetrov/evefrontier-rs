@@ -245,7 +245,7 @@ The workspace includes AWS Lambda functions for serverless deployment:
 - **Gate neighbors** (`evefrontier-lambda-scout-gates`) — GET gate-connected systems
 - **Range neighbors** (`evefrontier-lambda-scout-range`) — GET systems within jump range
 
-All Lambda functions use the same `evefrontier-lib` core and include bundled datasets for fast cold starts.
+All Lambda functions use the same `evefrontier-lib` core and support optional dataset bundling for fast cold starts (via the `bundle-data` feature, which is disabled by default).
 
 See [`docs/TODO.md`](docs/TODO.md) for deployment documentation (infrastructure setup is in progress).
 
