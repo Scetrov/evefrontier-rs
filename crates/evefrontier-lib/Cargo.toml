@@ -21,13 +21,13 @@ strsim = "0.11.1"
 once_cell.workspace = true
 
 # Spatial index (KD-tree) support - ADR 0009
-kiddo = "4.2"
+ kiddo = "5.2"
 postcard = { version = "1.0", default-features = false, features = ["alloc"] }
 zstd = "0.13"
 sha2 = "0.10"
 
 [dev-dependencies]
-criterion = "0.5"
+ criterion = "0.8"
 
 [[bench]]
 name = "pathfinding"

@@ -13,7 +13,6 @@ use evefrontier_lambda_shared::{
 };
 
 /// Bundled SQLite database (from data/static_data.db).
-
 /// Bundled spatial index (from data/static_data.db.spatial.bin).
 // Bundled dataset bytes (build-time include).
 // In CI, large data artifacts under `data/` are not committed.
