@@ -19,6 +19,7 @@
     },
     "test": {
       "executor": "nx:run-commands",
+      "dependsOn": ["build"],
       "options": {
         "command": "cargo test -p evefrontier-lambda-route --locked",
         "cwd": "{workspaceRoot}"

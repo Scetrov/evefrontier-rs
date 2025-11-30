@@ -17,19 +17,25 @@
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["production", "^production"],
-      "cache": true
+      "outputs": ["{workspaceRoot}/target/debug", "{workspaceRoot}/target/release"],
+      "cache": true,
+      "parallel": false
     },
     "test": {
+      "dependsOn": ["build"],
       "inputs": ["default", "^production", "{workspaceRoot}/docs/fixtures/**/*"],
-      "cache": true
+      "cache": true,
+      "parallel": false
     },
     "lint": {
       "inputs": ["default"],
-      "cache": true
+      "cache": true,
+      "parallel": false
     },
     "clippy": {
       "inputs": ["default", "^production"],
-      "cache": true
+      "cache": true,
+      "parallel": false
     },
     "audit": {
       "cache": false
