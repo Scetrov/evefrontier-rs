@@ -8,19 +8,19 @@
     "build": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "cargo build -p evefrontier-lib",
+        "command": "cargo build -p evefrontier-lib --locked",
         "cwd": "{workspaceRoot}"
       },
       "configurations": {
         "release": {
-          "command": "cargo build -p evefrontier-lib --release"
+          "command": "cargo build -p evefrontier-lib --release --locked"
         }
       }
     },
     "test": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "cargo test -p evefrontier-lib",
+        "command": "cargo test -p evefrontier-lib --locked",
         "cwd": "{workspaceRoot}"
       }
     },

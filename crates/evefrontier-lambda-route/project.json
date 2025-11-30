@@ -8,19 +8,19 @@
     "build": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "cargo build -p evefrontier-lambda-route",
+        "command": "cargo build -p evefrontier-lambda-route --locked",
         "cwd": "{workspaceRoot}"
       },
       "configurations": {
         "release": {
-          "command": "cargo build -p evefrontier-lambda-route --release"
+          "command": "cargo build -p evefrontier-lambda-route --release --locked"
         }
       }
     },
     "test": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "cargo test -p evefrontier-lambda-route",
+        "command": "cargo test -p evefrontier-lambda-route --locked",
         "cwd": "{workspaceRoot}"
       }
     },

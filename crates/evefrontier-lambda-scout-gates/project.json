@@ -8,19 +8,19 @@
     "build": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "cargo build -p evefrontier-lambda-scout-gates",
+        "command": "cargo build -p evefrontier-lambda-scout-gates --locked",
         "cwd": "{workspaceRoot}"
       },
       "configurations": {
         "release": {
-          "command": "cargo build -p evefrontier-lambda-scout-gates --release"
+          "command": "cargo build -p evefrontier-lambda-scout-gates --release --locked"
         }
       }
     },
     "test": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "cargo test -p evefrontier-lambda-scout-gates",
+        "command": "cargo test -p evefrontier-lambda-scout-gates --locked",
         "cwd": "{workspaceRoot}"
       }
     },
