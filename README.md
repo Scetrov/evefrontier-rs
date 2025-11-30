@@ -21,12 +21,15 @@ This repository contains multiple crates organized as a Cargo workspace:
   - `route` — Compute routes between systems with advanced options
   - `index-build` — Precompute spatial index for faster queries
   
-### AWS Lambda Functions
-- **`evefrontier-lambda-shared`** — Common Lambda infrastructure (runtime, error handling, tracing)
-- **`evefrontier-lambda-route`** — Route planning endpoint
-- **`evefrontier-lambda-scout-gates`** — Gate-connected neighbors query
-- **`evefrontier-lambda-scout-range`** — Systems within jump range query
+### AWS Lambda Crates
+- **Lambda function crates:**
+  - **`evefrontier-lambda-route`** — Route planning endpoint
+  - **`evefrontier-lambda-scout-gates`** — Gate-connected neighbors query
+  - **`evefrontier-lambda-scout-range`** — Systems within jump range query
+- **Shared/infrastructure crate:**
+  - **`evefrontier-lambda-shared`** — Common Lambda infrastructure (runtime, error handling, tracing)
 
+> Note: The workspace contains 6 crates in total: the core library (`evefrontier-lib`), CLI (`evefrontier-cli`), 3 Lambda function crates, and 1 shared Lambda infrastructure crate.
 ### Documentation
 - [`docs/INITIAL_SETUP.md`](docs/INITIAL_SETUP.md) — Configuration and data path resolution
 - [`docs/USAGE.md`](docs/USAGE.md) — Comprehensive usage examples
