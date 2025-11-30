@@ -218,20 +218,23 @@ The index enables efficient nearest-neighbor and radius queries with temperature
 Example:
 
 ```rust
-use evefrontier_lib::{ensure_dataset, load_starmap, plan_route, RoutingOptions, Algorithm};
+use evefrontier_lib::{ensure_dataset, load_starmap, plan_route, RouteRequest, RouteAlgorithm, RouteConstraints, DatasetRelease};
 
 let paths = ensure_dataset(None, DatasetRelease::latest())?;
-let conn = Connection::open(&paths.database)?;
-let starmap = load_starmap(&conn)?;
+let starmap = load_starmap(&paths.database)?;
 
-let options = RoutingOptions {
-    algorithm: Algorithm::AStar,
-    max_jump_ly: Some(80.0),
-    ..Default::default()
+let request = RouteRequest {
+    start: "Nod".to_string(),
+    goal: "Brana".to_string(),
+    algorithm: RouteAlgorithm::AStar,
+    constraints: RouteConstraints {
+        max_jump: Some(80.0),
+        ..Default::default()
+    },
 };
 
-let plan = plan_route(&starmap, "Nod", "Brana", &options)?;
-println!("Route: {} jumps", plan.jumps.len());
+let plan = plan_route(&starmap, &request)?;
+println!("Route: {} jumps", plan.jumps);
 ```
 
 See [`docs/TODO.md`](docs/TODO.md) for the comprehensive backlog covering the downloader, advanced
