@@ -67,7 +67,7 @@ pre-commit = """
         echo "   See CONTRIBUTING.md for detailed setup instructions."
         exit 1
     fi
-    cargo audit
+    cargo audit --deny warnings
     
     echo "✅ All pre-commit checks passed!"
 """

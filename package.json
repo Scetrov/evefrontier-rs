@@ -24,7 +24,7 @@
     "format": "prettier --write '**/*.{json,yml,yaml}'",
     "format:check": "prettier --check '**/*.{json,yml,yaml}'",
     "clippy": "nx run-many -t clippy --exclude evefrontier-rs",
-    "audit": "cargo audit",
+    "audit": "cargo audit --deny warnings",
     "outdated": "cargo outdated --workspace",
     "outdated:node": "node scripts/outdated-report.js",
     "prepare": "husky || true",
