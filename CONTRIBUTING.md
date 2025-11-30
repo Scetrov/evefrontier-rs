@@ -49,13 +49,21 @@ npm install -g pnpm@10
 pnpm install
 ```
 
-Common developer commands via Nx (once installed):
+Common developer commands (recommended via package.json scripts for consistency):
 
 ```sh
-pnpm nx run-many -t build
-pnpm nx run-many -t test
-pnpm nx run-many -t clippy
+pnpm run build
+pnpm run test
+pnpm run clippy
 pnpm run lint:md
+```
+
+Or, run Nx directly with the required exclusion flag to avoid recursive invocation of the root project:
+
+```sh
+pnpm nx run-many -t build --exclude evefrontier-rs
+pnpm nx run-many -t test --exclude evefrontier-rs
+pnpm nx run-many -t clippy --exclude evefrontier-rs
 ```
 
 ## Local development

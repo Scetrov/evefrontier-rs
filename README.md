@@ -59,16 +59,25 @@ and the accepted ADRs under [`docs/adrs/`](docs/adrs/).
 
 - Requires Node 24 (per `.nvmrc`) and pnpm 10+.
 - Install: `npm i -g pnpm@10 && pnpm install`.
-- Nx commands:
-  - `pnpm nx run-many -t build`
-  - `pnpm nx run-many -t test`
-  - `pnpm nx run-many -t clippy`
+- Recommended commands (use package.json scripts for consistency):
+  - `pnpm run build`
+  - `pnpm run test`
+  - `pnpm run clippy`
+  - `pnpm run lint:md`
+
+Or run Nx directly with the required exclusion flag to avoid recursive invocation of the root project:
+
+```sh
+pnpm nx run-many -t build --exclude evefrontier-rs
+pnpm nx run-many -t test --exclude evefrontier-rs
+pnpm nx run-many -t clippy --exclude evefrontier-rs
+```
 
 Troubleshooting Nx:
 - If Nx appears stuck refreshing the workspace or you see daemon messages, try:
 
 ```sh
-NX_DAEMON=false pnpm nx run-many -t build
+NX_DAEMON=false pnpm nx run-many -t build --exclude evefrontier-rs
 pnpm nx reset
 ```
 
