@@ -178,7 +178,7 @@ Tasks are grouped by domain; checkboxes track completion status.
       run cleanly in CI ([ADR 0007](adrs/0007-devsecops-practices.md)). Pre-commit hooks configured
       with rusty-hook to run all CI checks locally.
 - [x] Hook Rust build, test, lint, and clippy tasks into Nx orchestration per [ADR 0006](adrs/0006-software-components.md)
-      and [ADR 0007](adrs/0007-devsecops-practices.md). 
+      and [ADR 0007](adrs/0007-devsecops-practices.md).
   - Added `parallel: false` to all Rust task targetDefaults in nx.json to allow Cargo to manage its own parallelism
   - Added `dependsOn: ["build"]` to all test targets across 6 crates to ensure builds complete before tests
   - Added `dependsOn: ["build"]` to clippy target to ensure compilation before linting
