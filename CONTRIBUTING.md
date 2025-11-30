@@ -136,9 +136,14 @@ Environment
 > tooling are compatible with Node 22+, but the repository standard is Node 24
 > LTS to align with modern features and CI configuration.
 
-- Install `pnpm` (recommended):
+- Install `pnpm` (recommended using corepack for version consistency):
 
-  npm install -g pnpm
+  corepack enable
+  corepack prepare pnpm@10.0.0 --activate
+
+  Alternatively, install globally with version pin:
+
+  npm install -g pnpm@10
 
 3. Optional developer tools
 
