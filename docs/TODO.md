@@ -181,7 +181,7 @@ Tasks are grouped by domain; checkboxes track completion status.
       and [ADR 0007](adrs/0007-devsecops-practices.md).
   - Added `parallel: false` to all Rust task targetDefaults in nx.json to allow Cargo to manage its own parallelism
   - Added `dependsOn: ["build"]` to all test targets across 6 crates to ensure builds complete before tests
-  - Added `dependsOn: ["build"]` to clippy target to ensure compilation before linting
+  - Added `dependsOn: ["build"]` to clippy target in nx.json's targetDefaults (not in individual project.json files) to ensure compilation before linting
   - Configured outputs for build target to cache `target/debug` and `target/release` directories
   - Documented Nx task orchestration in CONTRIBUTING.md with usage examples and troubleshooting
   - Verified task execution with caching and dependency resolution working correctly
