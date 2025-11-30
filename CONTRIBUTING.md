@@ -66,6 +66,67 @@ pnpm nx run-many -t test --exclude evefrontier-rs
 pnpm nx run-many -t clippy --exclude evefrontier-rs
 ```
 
+## Nx Task Orchestration
+
+The repository uses Nx to orchestrate Rust build, test, lint, and clippy tasks across all 6 crates. Nx provides:
+
+- **Task dependencies**: Tests automatically run after builds complete (`test` depends on `build`)
+- **Intelligent caching**: Nx caches task outputs locally to skip redundant work
+- **Affected detection**: Run tasks only for projects impacted by your changes
+
+### Task Execution Model
+
+Nx tasks are configured with `parallel: false` for all Rust targets. This means:
+- Nx orchestrates task order and dependencies (e.g., ensuring builds complete before tests)
+- Cargo manages its own internal parallelism for compilation (`-j` flag)
+- No conflicts between Nx and Cargo parallelism
+
+### Common Nx Commands
+
+Run a single project's tests (with automatic build):
+```sh
+pnpm nx run evefrontier-lib:test
+```
+
+Run tests for all projects:
+```sh
+pnpm nx run-many --target=test --all
+```
+
+Run tests only for projects affected by your changes:
+```sh
+pnpm nx affected --target=test
+```
+
+Build specific projects with explicit dependency order:
+```sh
+pnpm nx run-many --target=build --projects=evefrontier-lib,evefrontier-cli
+```
+
+Run clippy on all crates:
+```sh
+pnpm nx run-many --target=clippy --all
+```
+
+### Cache Behavior
+
+- Nx caches build and test outputs in `.nx/cache/` (local only, not committed)
+- Cache keys include input files (Cargo.toml, Cargo.lock, src/**), toolchain version, and command
+- To clear cache: `pnpm nx reset`
+- To bypass cache for a single run: `pnpm nx run <project>:<target> --skip-nx-cache`
+
+### Troubleshooting
+
+If Nx daemon causes issues (rare):
+```sh
+NX_DAEMON=false pnpm nx run-many --target=test --all
+```
+
+To see detailed task execution:
+```sh
+pnpm nx run <project>:<target> --verbose
+```
+
 ## Local development
 
 1. Install Rust (see `.rust-toolchain`) and Node (see `.nvmrc` if using Node tools).

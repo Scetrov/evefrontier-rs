@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- 2025-11-30 - GitHub Copilot - [build] - Hooked Rust build/test/lint/clippy tasks into Nx orchestration with proper dependency chains and caching
+- 2025-11-30 - GitHub Copilot - [build] - Added `dependsOn: ["build"]` to all test targets across 6 crates to ensure builds complete before tests
+- 2025-11-30 - GitHub Copilot - [build] - Configured `parallel: false` for Rust tasks in nx.json to allow Cargo to manage its own compilation parallelism
+- 2025-11-30 - GitHub Copilot - [docs] - Added comprehensive Nx task orchestration section to CONTRIBUTING.md with usage examples and troubleshooting
 - 2025-11-30 - GitHub Copilot - [deps] - Bumped `kiddo` from 4.2.1 to 5.2 (KD-tree). Verified spatial index build/load and tests; no API adjustments required.
 - 2025-11-30 - GitHub Copilot - [deps] - Bumped `criterion` from 0.5.1 to 0.8.0 (benchmarks). Updated bench to use `std::hint::black_box` removing deprecation warnings.
 - 2025-11-30 - GitHub Copilot - [lint] - Fixed clippy doc comment warning in `evefrontier-lambda-scout-gates`.
