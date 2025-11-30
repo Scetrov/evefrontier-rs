@@ -208,8 +208,15 @@ Tasks are grouped by domain; checkboxes track completion status.
       `CONTRIBUTING.md`). - CHANGELOG.md exists at repository root - Unreleased section actively
       maintained - Follows format: date - author - [category] - description - Integrated into
       pre-commit workflow via CONTRIBUTING.md guidance
-- [ ] Align `README.md` with the new workspace layout, CLI commands, Lambda crates, and development
+- [x] Align `README.md` with the new workspace layout, CLI commands, Lambda crates, and development
       workflow.
+  - Documented all 6 crates with clear descriptions (lib, cli, 4 Lambda functions)
+  - Added comprehensive workspace structure section with categories
+  - Updated all CLI examples to use real system names (Nod, Brana, H:2L2S)
+  - Documented Nx task orchestration with practical examples
+  - Added spatial index usage section
+  - Included Lambda deployment overview
+  - Added library API example code
 - [ ] Expand `docs/USAGE.md` with Lambda invocation examples and dataset caching behavior.
 - [ ] Document release and signing procedures in `docs/RELEASE.md`, including cosign/GPG commands
       and attestation steps ([ADR 0007](adrs/0007-devsecops-practices.md)).

@@ -3,6 +3,7 @@
 All notable changes to this project will be documented in this file.
 
 ## Unreleased
+- 2025-11-30 - GitHub Copilot - [docs] - Aligned README.md with current workspace layout: documented 6 Lambda crates, Nx orchestration, spatial indexing, and updated all examples to use real system names
 
 - 2025-11-30 - GitHub Copilot - [build] - Hooked Rust build/test/lint/clippy tasks into Nx orchestration with proper dependency chains and caching
 - 2025-11-30 - GitHub Copilot - [build] - Added `dependsOn: ["build"]` to all test targets across 6 crates to ensure builds complete before tests
