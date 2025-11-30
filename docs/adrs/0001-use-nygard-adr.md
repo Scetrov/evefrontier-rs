@@ -1,4 +1,4 @@
-# ADR 0001: Use Nygard-style Architecture Decision Records (modified test)
+# ADR 0001: Use Nygard-style Architecture Decision Records
 
 ## Status
 
