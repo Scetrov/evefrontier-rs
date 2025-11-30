@@ -1,0 +1,53 @@
+{
+  "name": "evefrontier-rs",
+  "version": "0.1.0",
+  "private": true,
+  "description": "EVE Frontier pathfinding and routing library, CLI, and Lambda functions",
+  "license": "MIT",
+  "author": "Scetrov",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Scetrov/evefrontier-rs.git"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=10.0.0"
+  },
+  "packageManager": "pnpm@10.0.0",
+  "workspaces": [
+    "."
+  ],
+  "scripts": {
+    "build": "nx run-many -t build",
+    "test": "nx run-many -t test",
+    "lint": "nx run-many -t lint",
+    "lint:md": "markdownlint-cli2 '**/*.md' '#node_modules' '#target'",
+    "lint:md:fix": "markdownlint-cli2 --fix '**/*.md' '#node_modules' '#target'",
+    "format": "prettier --write '**/*.{json,yml,yaml}'",
+    "format:check": "prettier --check '**/*.{json,yml,yaml}'",
+    "clippy": "nx run-many -t clippy",
+    "audit": "nx run-many -t audit",
+    "outdated": "nx run-many -t outdated",
+    "outdated:report": "node scripts/outdated-report.js",
+    "prepare": "husky || true",
+    "precommit": "lint-staged"
+  },
+  "lint-staged": {
+    "*.md": [
+      "markdownlint-cli2 --fix"
+    ],
+    "*.{json,yml,yaml}": [
+      "prettier --write"
+    ]
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "cross-env": "^7.0.3",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.11",
+    "markdownlint-cli2": "^0.16.0",
+    "nx": "^20.2.2",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2"
+  }
+}

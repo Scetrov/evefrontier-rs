@@ -30,6 +30,34 @@ Before merging a PR that modifies code, docs, or other user-visible behavior, ad
 edits must append the changelog entry when they apply changes, check the system time to identify the
 actual date do not use dates in the past. Reviewers should verify the changelog entry for clarity.
 
+## Tooling requirements
+
+- Node.js: use the version pinned in `.nvmrc` (currently 24 LTS). Install via `nvm use`.
+- Package manager: pnpm 10+. The repository declares `"packageManager": "pnpm@10.0.0"` and
+  enforces `engines.pnpm >= 10.0.0`.
+
+Quick setup:
+
+```sh
+# Ensure Node 24 per .nvmrc
+nvm use
+
+# Install pnpm v10 globally (recommended)
+npm install -g pnpm@10
+
+# Install workspace tools and generate lockfile
+pnpm install
+```
+
+Common developer commands via Nx (once installed):
+
+```sh
+pnpm nx run-many -t build
+pnpm nx run-many -t test
+pnpm nx run-many -t clippy
+pnpm run lint:md
+```
+
 ## Local development
 
 1. Install Rust (see `.rust-toolchain`) and Node (see `.nvmrc` if using Node tools).

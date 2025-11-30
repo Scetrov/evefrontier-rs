@@ -1,0 +1,45 @@
+{
+  "name": "evefrontier-lambda-scout-range",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "crates/evefrontier-lambda-scout-range/src",
+  "tags": ["type:application", "lang:rust", "scope:lambda"],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "cargo build -p evefrontier-lambda-scout-range",
+        "cwd": "{workspaceRoot}"
+      },
+      "configurations": {
+        "release": {
+          "command": "cargo build -p evefrontier-lambda-scout-range --release"
+        }
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "cargo test -p evefrontier-lambda-scout-range",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          "cargo fmt -p evefrontier-lambda-scout-range -- --check"
+        ],
+        "cwd": "{workspaceRoot}",
+        "parallel": false
+      }
+    },
+    "clippy": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "cargo clippy -p evefrontier-lambda-scout-range --all-targets -- -D warnings",
+        "cwd": "{workspaceRoot}"
+      }
+    }
+  }
+}

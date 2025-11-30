@@ -1,0 +1,40 @@
+{
+  "name": "evefrontier-lambda-shared",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "library",
+  "sourceRoot": "crates/evefrontier-lambda-shared/src",
+  "tags": ["type:library", "lang:rust", "scope:lambda"],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "cargo build -p evefrontier-lambda-shared",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "cargo test -p evefrontier-lambda-shared",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          "cargo fmt -p evefrontier-lambda-shared -- --check"
+        ],
+        "cwd": "{workspaceRoot}",
+        "parallel": false
+      }
+    },
+    "clippy": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "cargo clippy -p evefrontier-lambda-shared --all-targets -- -D warnings",
+        "cwd": "{workspaceRoot}"
+      }
+    }
+  }
+}

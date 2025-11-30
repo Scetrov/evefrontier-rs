@@ -1,0 +1,45 @@
+{
+  "name": "evefrontier-lambda-scout-gates",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "crates/evefrontier-lambda-scout-gates/src",
+  "tags": ["type:application", "lang:rust", "scope:lambda"],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "cargo build -p evefrontier-lambda-scout-gates",
+        "cwd": "{workspaceRoot}"
+      },
+      "configurations": {
+        "release": {
+          "command": "cargo build -p evefrontier-lambda-scout-gates --release"
+        }
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "cargo test -p evefrontier-lambda-scout-gates",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          "cargo fmt -p evefrontier-lambda-scout-gates -- --check"
+        ],
+        "cwd": "{workspaceRoot}",
+        "parallel": false
+      }
+    },
+    "clippy": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "cargo clippy -p evefrontier-lambda-scout-gates --all-targets -- -D warnings",
+        "cwd": "{workspaceRoot}"
+      }
+    }
+  }
+}
