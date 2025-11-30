@@ -48,7 +48,7 @@ Tasks are grouped by domain; checkboxes track completion status.
 - [ ] Add `package.json`, `pnpm-lock.yaml`, and Nx project configuration. Document developer
       commands in `CONTRIBUTING.md` and `docs/USAGE.md`.
 - [ ] Add CI workflow enforcing ADR filename pattern (`^\\d{4}-.+\\.md$`) and immutability (reject
-      edits to historical ADRs except via explicit override label).
+      edits to historical ADRs except via explicit override label) per [ADR 0001](adrs/0001-use-nygard-adr.md).
 - [x] Create reproducible toolchain pins for Node (`.nvmrc` or Volta config) and confirm
       `.rust-toolchain` matches the intended compiler release. - Created `.nvmrc` with Node 20
       (LTS) - Confirmed `.rust-toolchain` specifies Rust 1.91.1 - Updated all CI workflows to use
@@ -163,15 +163,18 @@ Tasks are grouped by domain; checkboxes track completion status.
 ## Testing & Quality
 
 - [x] Ensure `cargo fmt`, `cargo clippy --all-targets --all-features`, and `cargo test --workspace`
-      run cleanly; hook them into Nx and CI ([ADR 0007](adrs/0007-devsecops-practices.md)). -
-      Pre-commit hooks configured with rusty-hook to run all CI checks locally - [x] Add dataset
-      fixture management helpers to keep fixtures synchronized and documented in
+      run cleanly in CI ([ADR 0007](adrs/0007-devsecops-practices.md)). Pre-commit hooks configured
+      with rusty-hook to run all CI checks locally.
+- [ ] Hook Rust build, test, lint, and clippy tasks into Nx orchestration per [ADR 0006](adrs/0006-software-components.md)
+      and [ADR 0007](adrs/0007-devsecops-practices.md).
+- [x] Add dataset fixture management helpers to keep fixtures synchronized and documented in
       `docs/fixtures/README.md`.
 - [x] Integrate `cargo audit` and Node SCA checks into CI and document remediation workflows. -
       cargo-audit integrated into CI (`security-audit` job in `.github/workflows/ci.yml`) -
       Pre-commit hook updated to run cargo audit (step 5 in `.rusty-hook.toml`) - `make audit`
       target added to Makefile - Comprehensive remediation guide created in `docs/SECURITY_AUDIT.md`
-- [x] Add CI guard requiring `CHANGELOG.md` modification for non-doc code changes (ADR 0010).
+- [ ] Add CI guard requiring `CHANGELOG.md` modification for non-doc code changes ([ADR 0010](adrs/0010-maintain-changelog.md)).
+      Currently documented in CONTRIBUTING.md but not enforced by CI workflow.
 - [x] Schedule nightly dependency outdated report (Rust & Node) and publish artifact. - Created
       `.github/workflows/dependency-check.yml` with nightly schedule (2 AM UTC) - Separate jobs for
       Rust (`cargo outdated`) and Node (`pnpm outdated`) - Artifacts published with 30-day
@@ -191,7 +194,9 @@ Tasks are grouped by domain; checkboxes track completion status.
       workflow.
 - [ ] Expand `docs/USAGE.md` with Lambda invocation examples and dataset caching behavior.
 - [ ] Document release and signing procedures in `docs/RELEASE.md`, including cosign/GPG commands
-      and attestation steps (ADR 0007).
+      and attestation steps ([ADR 0007](adrs/0007-devsecops-practices.md)).
+- [ ] Implement CI release job with artifact signing (cosign/GPG) and attestation generation per
+      [ADR 0007](adrs/0007-devsecops-practices.md).
 - [ ] Add architecture diagrams or sequence diagrams illustrating data flow between downloader,
       loader, graph, CLI, and Lambda components.
 - [ ] Provide onboarding steps in `docs/INITIAL_SETUP.md` once the workspace scaffolding stabilizes
@@ -201,6 +206,7 @@ Tasks are grouped by domain; checkboxes track completion status.
       filtering
 - [ ] Add ADR for any deviations from original KD-tree design if implementation adjustments occur.
 - [ ] Add `docs/RELEASE.md` section describing inclusion of spatial index artifact.
+- [ ] Add Rust-specific badges to README (crates.io, docs.rs, maintenance status, license, build status).
 
 ## Security & Operations
 
@@ -213,8 +219,41 @@ Tasks are grouped by domain; checkboxes track completion status.
       runbooks.
 - [ ] Add CI to verify spatial index artifact freshness against dataset version.
 - [ ] Document operational procedure for regenerating spatial index after dataset updates.
-- [ ] Build Terraform deployment solution to deploy the Lambda functions and document.
+- [ ] Build Terraform deployment solution to deploy the Lambda functions and document per
+      [ADR 0007](adrs/0007-devsecops-practices.md) secrets management requirements.
 - [ ] Bake AWS deployment into GitHub CI runner using GitHub Secrets as a secrets source.
+- [ ] Add Rust based cyclomatic compexity scanning to ensure that code complexity remains within
+      acceptable bounds (i.e. < 15)
+
+## Docker Microservices & Kubernetes Deployment
+
+- [ ] Create ADR documenting containerization and Kubernetes deployment strategy, covering security
+      practices, image signing, and operational requirements.
+- [ ] Create Dockerfiles for each microservice (route, scout-gates, scout-range) using multi-stage
+      builds with Distroless base images for minimal runtime containers.
+- [ ] Ensure microservice scope aligns with Lambda function boundaries: each container should
+      implement a single, well-defined API endpoint matching its Lambda equivalent.
+- [ ] Configure Traefik as the API Gateway for the microservices stack:
+  - [ ] Define Traefik routing rules and middleware (rate limiting, authentication, etc.)
+  - [ ] Set up service discovery and load balancing configuration
+  - [ ] Document Traefik ingress configuration and TLS/certificate management
+- [ ] Create Helm chart for Kubernetes deployment:
+  - [ ] Chart structure with values.yaml for configuration (replicas, resource limits, etc.)
+  - [ ] Kubernetes manifests for deployments, services, and config maps
+  - [ ] Traefik ingress resources and routing configuration
+  - [ ] Health check and readiness probe definitions
+  - [ ] Documentation for chart installation and configuration options
+- [ ] Add CI/CD pipeline for building and publishing Docker images per [ADR 0007](adrs/0007-devsecops-practices.md):
+  - [ ] Multi-architecture builds (amd64, arm64) for container images
+  - [ ] Image scanning for vulnerabilities (e.g., Trivy, Grype) integrated into CI workflow
+  - [ ] Image signing with cosign for supply chain security
+  - [ ] Push to container registry with semantic versioning tags
+  - [ ] Generate and attach SBOM (Software Bill of Materials) to images
+- [ ] Document deployment procedures in `docs/DEPLOYMENT.md`:
+  - [ ] Local development with Docker Compose
+  - [ ] Kubernetes deployment using Helm
+  - [ ] Configuration and secrets management for containerized environments
+  - [ ] Observability setup (metrics, logs, traces) for microservices
 
 ---
 
