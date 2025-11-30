@@ -55,6 +55,25 @@ and the accepted ADRs under [`docs/adrs/`](docs/adrs/).
   specific dataset tag; otherwise the CLI downloads the latest release from
   [`Scetrov/evefrontier_datasets`](https://github.com/Scetrov/evefrontier_datasets).
 
+## Developer Tooling (pnpm 10 + Nx)
+
+- Requires Node 24 (per `.nvmrc`) and pnpm 10+.
+- Install: `npm i -g pnpm@10 && pnpm install`.
+- Nx commands:
+  - `pnpm nx run-many -t build`
+  - `pnpm nx run-many -t test`
+  - `pnpm nx run-many -t clippy`
+
+Troubleshooting Nx:
+- If Nx appears stuck refreshing the workspace or you see daemon messages, try:
+
+```sh
+NX_DAEMON=false pnpm nx run-many -t build
+pnpm nx reset
+```
+
+- The root project `evefrontier-rs` is excluded from `run-many` to avoid recursive invocations.
+
 ### Output formats
 
 The CLI supports multiple output formats for the `route` subcommand via the `--format` flag:

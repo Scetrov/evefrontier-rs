@@ -16,16 +16,16 @@
   "packageManager": "pnpm@10.0.0",
   
   "scripts": {
-    "build": "nx run-many -t build",
-    "test": "nx run-many -t test",
-    "lint": "nx run-many -t lint",
+    "build": "nx run-many -t build --exclude evefrontier-rs",
+    "test": "nx run-many -t test --exclude evefrontier-rs",
+    "lint": "nx run-many -t lint --exclude evefrontier-rs",
     "lint:md": "markdownlint-cli2 '**/*.md' '#node_modules' '#target'",
     "lint:md:fix": "markdownlint-cli2 --fix '**/*.md' '#node_modules' '#target'",
     "format": "prettier --write '**/*.{json,yml,yaml}'",
     "format:check": "prettier --check '**/*.{json,yml,yaml}'",
-    "clippy": "nx run-many -t clippy",
-    "audit": "nx run-many -t audit",
-    "outdated": "nx run-many -t outdated",
+    "clippy": "nx run-many -t clippy --exclude evefrontier-rs",
+    "audit": "nx run-many -t audit --exclude evefrontier-rs",
+    "outdated": "nx run-many -t outdated --exclude evefrontier-rs",
     "outdated:report": "node scripts/outdated-report.js",
     "prepare": "husky || true",
     "precommit": "lint-staged"
