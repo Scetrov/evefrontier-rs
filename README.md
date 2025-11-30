@@ -65,6 +65,11 @@ and the accepted ADRs under [`docs/adrs/`](docs/adrs/).
   - `pnpm run clippy`
   - `pnpm run lint:md`
 
+Notes on markdown linting configuration:
+- The authoritative configuration for `markdownlint-cli2` is `.markdownlint.yaml`.
+- A legacy `.markdownlint.json` is present; it will be removed once all rules are migrated.
+- Rust lint (`cargo fmt --check`) does not depend on markdownlint config, so Nx cache inputs for the Rust `lint` target intentionally exclude markdownlint files.
+
 Or run Nx directly with the required exclusion flag to avoid recursive invocation of the root project:
 
 ```sh
