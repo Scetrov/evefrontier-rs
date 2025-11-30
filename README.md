@@ -212,7 +212,7 @@ The index enables efficient nearest-neighbor and radius queries with temperature
   BFS, Dijkstra, or A* while applying distance, avoidance, gate, and temperature
   constraints. Lower-level helpers such as `build_graph`/`find_route_bfs` remain available when
   needed.
-- `build_spatial_index` / `load_spatial_index` — create and load KD-tree spatial indexes for 
+- `SpatialIndex::build` / `try_load_spatial_index` — create and load KD-tree spatial indexes for 
   efficient neighbor queries with temperature awareness.
 
 Example:
