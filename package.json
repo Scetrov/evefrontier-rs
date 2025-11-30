@@ -14,9 +14,7 @@
     "pnpm": ">=10.0.0"
   },
   "packageManager": "pnpm@10.0.0",
-  "workspaces": [
-    "."
-  ],
+  
   "scripts": {
     "build": "nx run-many -t build",
     "test": "nx run-many -t test",
