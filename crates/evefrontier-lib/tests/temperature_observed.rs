@@ -1,5 +1,4 @@
 //! Integration tests for temperature model validation against observed in-game data.
-#![allow(dead_code, unused_imports)]
 //!
 //! These tests require the full e6c3 dataset and are gated behind the `integration` feature
 //! to avoid running during normal `cargo test`. Run with:
@@ -10,10 +9,9 @@
 //!
 //! Or enable the integration tests feature (if added).
 
-use evefrontier_lib::dataset::ensure_c3e6_dataset;
-use evefrontier_lib::temperature::{compute_temperature_meters, TemperatureModelParams};
 use rusqlite::{params, Connection};
 
+#[allow(dead_code)]
 fn query_h123k_planet6(db_path: &std::path::Path) -> rusqlite::Result<(f64, f64)> {
     let conn = Connection::open(db_path)?;
     let mut stmt = conn.prepare(
@@ -35,6 +33,7 @@ fn query_h123k_planet6(db_path: &std::path::Path) -> rusqlite::Result<(f64, f64)
     Ok(row)
 }
 
+#[allow(dead_code)]
 fn solve_k_for_observation(
     distance_m: f64,
     luminosity_watts: f64,
