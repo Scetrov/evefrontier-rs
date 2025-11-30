@@ -68,8 +68,18 @@ pnpm nx run-many -t clippy --exclude evefrontier-rs
 
 ## Nx Task Orchestration
 
-The repository uses Nx to orchestrate Rust build, test, lint, and clippy tasks across all 6 crates. Nx provides:
+The repository uses Nx to orchestrate Rust build, test, lint, and clippy tasks across all 6 crates in the workspace:
 
+- evefrontier-lib
+- evefrontier-cli
+- evefrontier-lambda-shared
+- evefrontier-lambda-route
+- evefrontier-lambda-scout-gates
+- evefrontier-lambda-scout-range
+
+> **Note:** When referring to "all 6 crates", this means all workspace members listed above. "All Lambda crates" refers to the 4 crates under `crates/evefrontier-lambda-*` (including the shared crate), while "Lambda functions" refers specifically to the 3 function crates (`route`, `scout-gates`, `scout-range`). Be explicit in PRs and documentation to avoid confusion.
+
+Nx provides:
 - **Task dependencies**: Tests automatically run after builds complete (`test` depends on `build`)
 - **Intelligent caching**: Nx caches task outputs locally to skip redundant work
 - **Affected detection**: Run tasks only for projects impacted by your changes
