@@ -32,7 +32,7 @@ actual date do not use dates in the past. Reviewers should verify the changelog 
 
 ## Tooling requirements
 
-- Node.js: use the version pinned in `.nvmrc` (currently 24 LTS). Install via `nvm use`.
+- Node.js: use the version pinned in `.nvmrc` (currently 24). Note that Node.js 24 is not an LTS release. Install via `nvm use`.
 - Package manager: pnpm 10+. The repository declares `"packageManager": "pnpm@10.0.0"` and
   enforces `engines.pnpm >= 10.0.0`.
 
@@ -119,7 +119,7 @@ Environment
 2. Install Node.js and pnpm (for developer tooling)
 
 - Use a tool like `volta` or `nvm` to manage Node versions.
-- The repository pins Node 20 (LTS) in `.nvmrc`. If using nvm:
+- The repository pins Node 24 in `.nvmrc`. If using nvm:
 
   nvm use # automatically uses version from .nvmrc
 
