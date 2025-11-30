@@ -33,7 +33,6 @@
       "parallel": false
     },
     "clippy": {
-      "dependsOn": ["build"],
       "inputs": ["default", "^production"],
       "cache": true,
       "parallel": false
