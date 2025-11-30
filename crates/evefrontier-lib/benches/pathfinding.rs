@@ -1,8 +1,9 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 use evefrontier_lib::{
     load_starmap, plan_route, RouteAlgorithm, RouteConstraints, RouteRequest, Starmap,
 };
 use once_cell::sync::Lazy;
+use std::hint::black_box;
 use std::path::PathBuf;
 
 fn fixture_path() -> PathBuf {

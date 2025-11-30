@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- 2025-11-30 - GitHub Copilot - [deps] - Bumped `kiddo` from 4.2.1 to 5.2.2 (KD-tree). Verified spatial index build/load and tests; no API adjustments required.
+- 2025-11-30 - GitHub Copilot - [deps] - Bumped `criterion` from 0.5.1 to 0.8.0 (benchmarks). Updated bench to use `std::hint::black_box` removing deprecation warnings.
+- 2025-11-30 - GitHub Copilot - [lint] - Fixed clippy doc comment warning in `evefrontier-lambda-scout-gates`.
+
 - 2025-11-16 - GitHub Copilot - [feature] - Implemented KD-tree spatial index module (spatial.rs) per ADR 0009: build/save/load with postcard+zstd, SHA-256 checksum validation
 - 2025-11-16 - GitHub Copilot - [feature] - Added temperature-aware nearest-neighbor and radius queries with min_external_temp filtering
 - 2025-11-16 - GitHub Copilot - [feature] - Added CLI `index-build` subcommand to precompute spatial index artifacts (`{db}.spatial.bin`)
