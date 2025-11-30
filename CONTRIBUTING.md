@@ -30,6 +30,42 @@ Before merging a PR that modifies code, docs, or other user-visible behavior, ad
 edits must append the changelog entry when they apply changes, check the system time to identify the
 actual date do not use dates in the past. Reviewers should verify the changelog entry for clarity.
 
+## Tooling requirements
+
+- Node.js: use the version pinned in `.nvmrc` (currently 24 LTS as of November 2025). Install via `nvm use`.
+- Package manager: pnpm 10+. The repository declares `"packageManager": "pnpm@10.0.0"` and
+  enforces `engines.pnpm >= 10.0.0`.
+
+Quick setup:
+
+```sh
+# Ensure Node 24 per .nvmrc
+nvm use
+
+# Install pnpm v10 globally (recommended)
+npm install -g pnpm@10
+
+# Install workspace tools and generate lockfile
+pnpm install
+```
+
+Common developer commands (recommended via package.json scripts for consistency):
+
+```sh
+pnpm run build
+pnpm run test
+pnpm run clippy
+pnpm run lint:md
+```
+
+Or, run Nx directly with the required exclusion flag to avoid recursive invocation of the root project:
+
+```sh
+pnpm nx run-many -t build --exclude evefrontier-rs
+pnpm nx run-many -t test --exclude evefrontier-rs
+pnpm nx run-many -t clippy --exclude evefrontier-rs
+```
+
 ## Local development
 
 1. Install Rust (see `.rust-toolchain`) and Node (see `.nvmrc` if using Node tools).
@@ -91,13 +127,23 @@ Environment
 2. Install Node.js and pnpm (for developer tooling)
 
 - Use a tool like `volta` or `nvm` to manage Node versions.
-- The repository pins Node 20 (LTS) in `.nvmrc`. If using nvm:
+- The repository pins Node 24 (LTS) in `.nvmrc`. If using nvm:
 
   nvm use # automatically uses version from .nvmrc
 
-- Install `pnpm` (recommended):
+> Note: If your environment policy mandates current LTS prior to October 2025,
+> use Node 22 LTS and update `.nvmrc` accordingly. The workspace scripts and Nx
+> tooling are compatible with Node 22+, but the repository standard is Node 24
+> LTS to align with modern features and CI configuration.
 
-  npm install -g pnpm
+- Install `pnpm` (recommended using corepack for version consistency):
+
+  corepack enable
+  corepack prepare pnpm@10.0.0 --activate
+
+  Alternatively, install globally with version pin:
+
+  npm install -g pnpm@10
 
 3. Optional developer tools
 

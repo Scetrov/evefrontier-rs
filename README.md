@@ -55,6 +55,39 @@ and the accepted ADRs under [`docs/adrs/`](docs/adrs/).
   specific dataset tag; otherwise the CLI downloads the latest release from
   [`Scetrov/evefrontier_datasets`](https://github.com/Scetrov/evefrontier_datasets).
 
+## Developer Tooling (pnpm 10 + Nx)
+
+- Requires Node 24 (per `.nvmrc`) and pnpm 10+.
+- Install: `npm i -g pnpm@10 && pnpm install`.
+- Recommended commands (use package.json scripts for consistency):
+  - `pnpm run build`
+  - `pnpm run test`
+  - `pnpm run clippy`
+  - `pnpm run lint:md`
+
+Notes on markdown linting configuration:
+- The authoritative configuration for `markdownlint-cli2` is `.markdownlint.yaml`.
+- A legacy `.markdownlint.json` is present; it will be removed once all rules are migrated.
+- Rust lint (`cargo fmt --check`) does not depend on markdownlint config, so Nx cache inputs for the Rust `lint` target intentionally exclude markdownlint files.
+
+Or run Nx directly with the required exclusion flag to avoid recursive invocation of the root project:
+
+```sh
+pnpm nx run-many -t build --exclude evefrontier-rs
+pnpm nx run-many -t test --exclude evefrontier-rs
+pnpm nx run-many -t clippy --exclude evefrontier-rs
+```
+
+Troubleshooting Nx:
+- If Nx appears stuck refreshing the workspace or you see daemon messages, try:
+
+```sh
+NX_DAEMON=false pnpm nx run-many -t build --exclude evefrontier-rs
+pnpm nx reset
+```
+
+- The root project `evefrontier-rs` is excluded from `run-many` to avoid recursive invocations.
+
 ### Output formats
 
 The CLI supports multiple output formats for the `route` subcommand via the `--format` flag:

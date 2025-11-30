@@ -28,23 +28,46 @@ version = "1"
 [package.metadata.rusty-hook.hooks]
 pre-commit = """
     set -e
-    echo "🔍 Running pre-commit checks..."
+    
+    # Check for required tooling
+    if ! command -v pnpm &> /dev/null; then
+        echo "❌ Error: pnpm is required for pre-commit hooks."
+        echo "   Recommended setup using corepack (respects packageManager in package.json):"
+        echo "     corepack enable"
+        echo "     corepack prepare pnpm@10.0.0 --activate"
+        echo ""
+        echo "   Alternative: npm install -g pnpm@10"
+        echo "   See CONTRIBUTING.md for detailed setup instructions."
+        exit 1
+    fi
+    
+    echo "🔍 Running pre-commit checks via Nx..."
     
     # 1. Format check
     echo "  → Checking code formatting..."
-    cargo fmt --all -- --check
+    pnpm nx run-many -t lint --exclude evefrontier-rs
     
     # 2. Clippy
     echo "  → Running clippy..."
-    cargo clippy --workspace --all-targets -- -D warnings
+    pnpm nx run-many -t clippy --exclude evefrontier-rs
     
     # 3. Build
     echo "  → Building workspace..."
-    cargo build --workspace --all-targets
+    pnpm nx run-many -t build --exclude evefrontier-rs
     
     # 4. Tests
     echo "  → Running tests..."
-    cargo test --workspace
+    pnpm nx run-many -t test --exclude evefrontier-rs
+    
+    # 5. Security audit (workspace-level)
+    echo "  → Running security audit..."
+    if ! command -v cargo-audit &> /dev/null; then
+        echo "❌ Error: cargo-audit is required for pre-commit hooks."
+        echo "   Install with: cargo install cargo-audit --locked"
+        echo "   See CONTRIBUTING.md for detailed setup instructions."
+        exit 1
+    fi
+    cargo audit --deny warnings
     
     echo "✅ All pre-commit checks passed!"
 """

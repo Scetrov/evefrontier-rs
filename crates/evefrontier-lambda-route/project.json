@@ -1,0 +1,42 @@
+{
+  "name": "evefrontier-lambda-route",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "crates/evefrontier-lambda-route/src",
+  "tags": ["type:application", "lang:rust", "scope:lambda"],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "cargo build -p evefrontier-lambda-route --locked",
+        "cwd": "{workspaceRoot}"
+      },
+      "configurations": {
+        "release": {
+          "command": "cargo build -p evefrontier-lambda-route --release --locked"
+        }
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "cargo test -p evefrontier-lambda-route --locked",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "cargo fmt -p evefrontier-lambda-route -- --check",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "clippy": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "cargo clippy -p evefrontier-lambda-route --all-targets -- -D warnings",
+        "cwd": "{workspaceRoot}"
+      }
+    }
+  }
+}

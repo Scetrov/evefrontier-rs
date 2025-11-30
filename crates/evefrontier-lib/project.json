@@ -1,0 +1,49 @@
+{
+  "name": "evefrontier-lib",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "library",
+  "sourceRoot": "crates/evefrontier-lib/src",
+  "tags": ["type:library", "lang:rust"],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "cargo build -p evefrontier-lib --locked",
+        "cwd": "{workspaceRoot}"
+      },
+      "configurations": {
+        "release": {
+          "command": "cargo build -p evefrontier-lib --release --locked"
+        }
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "cargo test -p evefrontier-lib --locked",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "cargo fmt -p evefrontier-lib -- --check",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "clippy": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "cargo clippy -p evefrontier-lib --all-targets -- -D warnings",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "doc": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "cargo doc -p evefrontier-lib --no-deps",
+        "cwd": "{workspaceRoot}"
+      }
+    }
+  }
+}

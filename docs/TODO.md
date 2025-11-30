@@ -40,13 +40,25 @@ Tasks are grouped by domain; checkboxes track completion status.
     `evefrontier-lambda-scout-range`
   - Library crate extended with `load_starmap_from_connection()` and
     `SpatialIndex::load_from_bytes()` for Lambda use
-- [ ] Configure Nx to orchestrate Rust, lint, and security tasks (align with
+- [x] Configure Nx to orchestrate Rust, lint, and security tasks (align with
       [ADR 0006](adrs/0006-software-components.md) and `.github/copilot-instructions.md`). Define
       tasks for `build`, `test`, `lint`, `clippy`, `audit`, and dependency update reporting.
-- [ ] Scaffold Node/Nx workspace: add `package.json`, `pnpm-lock.yaml`, `nx.json`, and project
+  - Created nx.json with target defaults and caching for all specified tasks
+  - Created project.json for all 6 Rust crates with executor configurations
+  - Wired Nx targets into pre-commit hooks (Cargo.toml) and CI workflows (.github/workflows/ci.yml)
+  - Fixed root project recursion issue with --exclude evefrontier-rs flag
+- [x] Scaffold Node/Nx workspace: add `package.json`, `pnpm-lock.yaml`, `nx.json`, and project
       targets for Rust crates and scripts (ADR 0006 & 0007 alignment).
-- [ ] Add `package.json`, `pnpm-lock.yaml`, and Nx project configuration. Document developer
+  - Created package.json with pnpm 10.0.0 engines and Nx scripts
+  - Created pnpm-workspace.yaml (required for pnpm 10)
+  - Generated pnpm-lock.yaml with 211 packages
+  - Configured nx.json with cacheable targets and input patterns
+  - Added 6 project.json files for each Rust crate
+- [x] Add `package.json`, `pnpm-lock.yaml`, and Nx project configuration. Document developer
       commands in `CONTRIBUTING.md` and `docs/USAGE.md`.
+  - Documented pnpm 10 setup instructions in CONTRIBUTING.md (Tooling requirements section)
+  - Added Developer Tooling section to README.md with Nx usage and troubleshooting
+  - Included daemon troubleshooting (NX_DAEMON=false, pnpm nx reset)
 - [ ] Add CI workflow enforcing ADR filename pattern (`^\\d{4}-.+\\.md$`) and immutability (reject
       edits to historical ADRs except via explicit override label) per [ADR 0001](adrs/0001-use-nygard-adr.md).
 - [x] Create reproducible toolchain pins for Node (`.nvmrc` or Volta config) and confirm
