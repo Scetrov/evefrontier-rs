@@ -32,8 +32,12 @@ pre-commit = """
     # Check for required tooling
     if ! command -v pnpm &> /dev/null; then
         echo "❌ Error: pnpm is required for pre-commit hooks."
-        echo "   Install with: npm install -g pnpm@10"
-        echo "   Or see CONTRIBUTING.md for setup instructions."
+        echo "   Recommended setup using corepack (respects packageManager in package.json):"
+        echo "     corepack enable"
+        echo "     corepack prepare pnpm@10.0.0 --activate"
+        echo ""
+        echo "   Alternative: npm install -g pnpm@10"
+        echo "   See CONTRIBUTING.md for detailed setup instructions."
         exit 1
     fi
     
