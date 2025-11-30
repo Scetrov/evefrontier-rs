@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
-- 2025-11-30 - GitHub Copilot - [deps] - Bumped `kiddo` from 4.2.1 to 5.2.2 (KD-tree). Verified spatial index build/load and tests; no API adjustments required.
+- 2025-11-30 - GitHub Copilot - [deps] - Bumped `kiddo` from 4.2.1 to 5.2 (KD-tree). Verified spatial index build/load and tests; no API adjustments required.
 - 2025-11-30 - GitHub Copilot - [deps] - Bumped `criterion` from 0.5.1 to 0.8.0 (benchmarks). Updated bench to use `std::hint::black_box` removing deprecation warnings.
 - 2025-11-30 - GitHub Copilot - [lint] - Fixed clippy doc comment warning in `evefrontier-lambda-scout-gates`.
 
