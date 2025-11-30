@@ -32,7 +32,7 @@ actual date do not use dates in the past. Reviewers should verify the changelog 
 
 ## Tooling requirements
 
-- Node.js: use the version pinned in `.nvmrc` (currently 24 LTS). Install via `nvm use`.
+- Node.js: use the version pinned in `.nvmrc` (currently 24 LTS as of November 2025). Install via `nvm use`.
 - Package manager: pnpm 10+. The repository declares `"packageManager": "pnpm@10.0.0"` and
   enforces `engines.pnpm >= 10.0.0`.
 
@@ -130,6 +130,11 @@ Environment
 - The repository pins Node 24 (LTS) in `.nvmrc`. If using nvm:
 
   nvm use # automatically uses version from .nvmrc
+
+> Note: If your environment policy mandates current LTS prior to October 2025,
+> use Node 22 LTS and update `.nvmrc` accordingly. The workspace scripts and Nx
+> tooling are compatible with Node 22+, but the repository standard is Node 24
+> LTS to align with modern features and CI configuration.
 
 - Install `pnpm` (recommended):
 
