@@ -46,9 +46,9 @@ pre-commit = """
     echo "  → Running tests..."
     pnpm nx run-many -t test --exclude evefrontier-rs
     
-    # 5. Security audit
+    # 5. Security audit (workspace-level)
     echo "  → Running security audit..."
-    pnpm nx run-many -t audit --exclude evefrontier-rs
+    cargo audit
     
     echo "✅ All pre-commit checks passed!"
 """

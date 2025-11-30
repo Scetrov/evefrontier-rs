@@ -150,7 +150,7 @@ jobs:
       - name: Install cargo-audit
         run: cargo install cargo-audit --locked
 
-      - name: Run security audit via Nx
-        run: pnpm nx run-many -t audit --exclude evefrontier-rs
+      - name: Run security audit
+        run: cargo audit
 
 
