@@ -61,6 +61,12 @@ pre-commit = """
     
     # 5. Security audit (workspace-level)
     echo "  → Running security audit..."
+    if ! command -v cargo-audit &> /dev/null; then
+        echo "❌ Error: cargo-audit is required for pre-commit hooks."
+        echo "   Install with: cargo install cargo-audit --locked"
+        echo "   See CONTRIBUTING.md for detailed setup instructions."
+        exit 1
+    fi
     cargo audit
     
     echo "✅ All pre-commit checks passed!"
