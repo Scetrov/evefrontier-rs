@@ -27,11 +27,8 @@
     "lint": {
       "executor": "nx:run-commands",
       "options": {
-        "commands": [
-          "cargo fmt -p evefrontier-lib -- --check"
-        ],
-        "cwd": "{workspaceRoot}",
-        "parallel": false
+        "command": "cargo fmt -p evefrontier-lib -- --check",
+        "cwd": "{workspaceRoot}"
       }
     },
     "clippy": {
