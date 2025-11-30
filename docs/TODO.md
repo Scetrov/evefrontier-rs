@@ -204,7 +204,7 @@ Tasks are grouped by domain; checkboxes track completion status.
       pre-commit workflow via CONTRIBUTING.md guidance
 - [x] Align `README.md` with the new workspace layout, CLI commands, Lambda crates, and development
       workflow.
-  - Documented all 6 crates with clear descriptions (lib, cli, 4 Lambda functions)
+  - Documented all 6 crates with clear descriptions (lib, cli, 3 Lambda functions, and 1 Lambda shared infrastructure crate)
   - Added comprehensive workspace structure section with categories
   - Updated all CLI examples to use real system names (Nod, Brana, H:2L2S)
   - Documented Nx task orchestration with practical examples
