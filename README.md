@@ -1,5 +1,12 @@
 # EveFrontier Rust Workspace
 
+[![Crates.io](https://img.shields.io/crates/v/evefrontier-lib.svg)](https://crates.io/crates/evefrontier-lib)
+[![Docs.rs](https://docs.rs/evefrontier-lib/badge.svg)](https://docs.rs/evefrontier-lib)
+[![Build Status](https://github.com/Scetrov/evefrontier-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/Scetrov/evefrontier-rs/actions/workflows/ci.yml)
+[![GitHub Release](https://img.shields.io/github/v/release/Scetrov/evefrontier-rs)](https://github.com/Scetrov/evefrontier-rs/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Maintenance](https://img.shields.io/badge/maintenance-active-green.svg)](#)
+
 A comprehensive Rust workspace for working with EVE Frontier static datasets, providing pathfinding and navigation tools for the game world.
 
 ## 📦 Workspace Structure
