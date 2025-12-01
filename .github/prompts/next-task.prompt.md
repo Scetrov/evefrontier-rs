@@ -98,6 +98,7 @@ Based on your understanding, design a small, incremental, Rust-idiomatic plan.
 2. Make the plan small and reversible:
    - Prefer minimal changes that fit inside a single logical commit.
    - Avoid repo-wide refactors unless absolutely necessary.
+   - Plan to make changes on a feature branch and create a pull request against `main`.
 
 3. If there are competing approaches:
    - Briefly compare them:
