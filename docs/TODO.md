@@ -232,6 +232,9 @@ Tasks are grouped by domain; checkboxes track completion status.
 - [ ] Add ADR for any deviations from original KD-tree design if implementation adjustments occur.
 - [ ] Add `docs/RELEASE.md` section describing inclusion of spatial index artifact.
 - [x] Add Rust-specific badges to README (crates.io, docs.rs, maintenance status, license, build status).
+- [ ] Publish `evefrontier-lib` to crates.io (prerequisite for badges).
+- [ ] Publish `evefrontier-cli` to crates.io (prerequisite for badges).
+- [ ] Create GitHub Release v0.1.0 with signed artifacts (prerequisite for release badge).
 
 ## Security & Operations
 
