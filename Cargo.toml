@@ -75,7 +75,7 @@ pre-commit = """
 [workspace.package]
 edition = "2021"
 authors = ["EveFrontier Contributors"]
-license = "Apache-2.0"
+license = "MIT"
 repository = "https://github.com/scetrov/evefrontier-rs"
 description = "Workspace for EveFrontier pathfinding library, CLI, and AWS Lambda functions."
 
@@ -86,8 +86,8 @@ thiserror = "2.0.17"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
 rusqlite = { version = "0.37.0", features = ["bundled", "serialize"] }
-clap = { version = "4.5.51", features = ["derive"] }
-tracing = "0.1.41"
+clap = { version = "4.5.53", features = ["derive"] }
+tracing = "0.1.43"
 tracing-subscriber = { version = "0.3.20", features = ["fmt", "env-filter"] }
 reqwest = { version = "0.12.24", default-features = false, features = ["blocking", "json", "rustls-tls"] }
 tempfile = "3.23.0"
@@ -98,4 +98,4 @@ once_cell = "1.21.3"
 rusty-hook = "0.11.2"
 lambda_runtime = "0.13"
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
-http = "1.0"
+http = "1.4.0"
