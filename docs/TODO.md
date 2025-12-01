@@ -231,7 +231,7 @@ Tasks are grouped by domain; checkboxes track completion status.
       filtering
 - [ ] Add ADR for any deviations from original KD-tree design if implementation adjustments occur.
 - [ ] Add `docs/RELEASE.md` section describing inclusion of spatial index artifact.
-- [ ] Add Rust-specific badges to README (crates.io, docs.rs, maintenance status, license, build status).
+- [x] Add Rust-specific badges to README (crates.io, docs.rs, maintenance status, license, build status).
 
 ## Security & Operations
 
