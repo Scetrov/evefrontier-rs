@@ -1,6 +1,5 @@
 # EveFrontier Rust Workspace
 
-
 [![Crates.io](https://img.shields.io/crates/v/evefrontier-lib.svg)](https://crates.io/crates/evefrontier-lib)
 [![Docs.rs](https://docs.rs/evefrontier-lib/badge.svg)](https://docs.rs/evefrontier-lib)
 [![Build Status](https://github.com/Scetrov/evefrontier-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/Scetrov/evefrontier-rs/actions/workflows/ci.yml)
