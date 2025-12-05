@@ -59,8 +59,14 @@ Tasks are grouped by domain; checkboxes track completion status.
   - Documented pnpm 10 setup instructions in CONTRIBUTING.md (Tooling requirements section)
   - Added Developer Tooling section to README.md with Nx usage and troubleshooting
   - Included daemon troubleshooting (NX_DAEMON=false, pnpm nx reset)
-- [ ] Add CI workflow enforcing ADR filename pattern (`^\\d{4}-.+\\.md$`) and immutability (reject
+- [x] Add CI workflow enforcing ADR filename pattern (`^\\d{4}-.+\\.md$`) and immutability (reject
       edits to historical ADRs except via explicit override label) per [ADR 0001](adrs/0001-use-nygard-adr.md).
+  - Created `.github/workflows/adr-governance.yml` with comprehensive validation
+  - Enforces pattern: `^docs/adrs/\d{4}-[a-z0-9-]+\.md$`
+  - Blocks edits to existing ADRs unless `allow-adr-edits` label present
+  - Provides detailed error messages with examples and guidance
+  - Added ADR governance section to CONTRIBUTING.md with complete procedures
+  - Updated PR template with ADR immutability checklist
 - [x] Create reproducible toolchain pins for Node (`.nvmrc` or Volta config) and confirm
       `.rust-toolchain` matches the intended compiler release. - Created `.nvmrc` with Node 20
       (LTS) - Confirmed `.rust-toolchain` specifies Rust 1.91.1 - Updated all CI workflows to use
@@ -217,7 +223,15 @@ Tasks are grouped by domain; checkboxes track completion status.
   - Added spatial index usage section
   - Included Lambda deployment overview
   - Added library API example code
-- [ ] Expand `docs/USAGE.md` with Lambda invocation examples and dataset caching behavior.
+- [x] Expand `docs/USAGE.md` with Lambda invocation examples and dataset caching behavior.
+  - Added comprehensive "AWS Lambda Functions" section with three endpoints documented
+  - Request/response schemas with real examples for all Lambda functions
+  - AWS SDK examples in Python and JavaScript for each endpoint
+  - curl invocation examples with API Gateway integration
+  - Cold-start behavior and initialization sequence documentation
+  - Performance metrics and memory usage guidelines
+  - Configuration, secrets, and IAM permissions documentation
+  - Deployment considerations with build commands and Lambda settings
 - [ ] Document release and signing procedures in `docs/RELEASE.md`, including cosign/GPG commands
       and attestation steps ([ADR 0007](adrs/0007-devsecops-practices.md)).
 - [ ] Implement CI release job with artifact signing (cosign/GPG) and attestation generation per

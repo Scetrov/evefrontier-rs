@@ -417,3 +417,393 @@ let starmap = load_starmap(fixture_path)?;
 - **Constraint Impact**: Each constraint (avoided systems, max jump, etc.) may increase route
   computation time. Use sparingly for best performance.
 
+## AWS Lambda Functions
+
+The workspace provides three AWS Lambda functions for serverless route planning and navigation. Each
+Lambda is a thin wrapper around `evefrontier-lib` with optimized cold-start performance via bundled
+dataset and spatial index.
+
+### Lambda Function Overview
+
+| Function | Endpoint | Description |
+|----------|----------|-------------|
+| `evefrontier-lambda-route` | `/route` | Compute routes between systems with algorithm selection |
+| `evefrontier-lambda-scout-gates` | `/scout-gates` | Find gate-connected neighbors of a system |
+| `evefrontier-lambda-scout-range` | `/scout-range` | Find systems within spatial range with temperature filtering |
+
+All Lambda functions:
+- Accept JSON requests and return JSON responses
+- Use RFC 9457 Problem Details for structured error responses
+- Support tracing for CloudWatch Logs integration
+- Bundle the dataset and spatial index for zero-download cold starts
+- Share a common runtime initialized once per Lambda container lifecycle
+
+### Route Lambda
+
+Computes routes between two systems using configurable algorithms and constraints.
+
+#### Request Schema
+
+```json
+{
+  "from": "Nod",
+  "to": "Brana",
+  "algorithm": "a-star",
+  "max_jump": 80.0,
+  "avoid": ["H:2L2S"],
+  "avoid_gates": false,
+  "max_temperature": 50.0
+}
+```
+
+**Fields:**
+- `from` (required): Starting system name
+- `to` (required): Destination system name
+- `algorithm` (optional): `"bfs"`, `"dijkstra"`, or `"a-star"` (default: `"a-star"`)
+- `max_jump` (optional): Maximum jump distance in light-years
+- `avoid` (optional): Array of system names to avoid
+- `avoid_gates` (optional): If `true`, use only spatial jumps (default: `false`)
+- `max_temperature` (optional): Maximum star temperature threshold in Kelvin
+
+#### Response Schema
+
+**Success (HTTP 200):**
+```json
+{
+  "content_type": "application/json",
+  "data": {
+    "hops": 3,
+    "gates": 2,
+    "jumps": 1,
+    "algorithm": "a-star",
+    "route": ["Nod", "D:2NAS", "Brana"]
+  }
+}
+```
+
+**Error (HTTP 400/404/500):**
+```json
+{
+  "type": "https://evefrontier.example/problems/unknown-system",
+  "title": "Unknown System",
+  "status": 404,
+  "detail": "System 'InvalidName' not found in dataset. Did you mean: Nod, Brana?",
+  "instance": "/route/req-abc123"
+}
+```
+
+#### Invocation Examples
+
+**AWS SDK (Python):**
+```python
+import boto3
+import json
+
+lambda_client = boto3.client('lambda', region_name='us-east-1')
+
+payload = {
+    "from": "Nod",
+    "to": "Brana",
+    "algorithm": "a-star",
+    "max_jump": 80.0
+}
+
+response = lambda_client.invoke(
+    FunctionName='evefrontier-route',
+    InvocationType='RequestResponse',
+    Payload=json.dumps(payload)
+)
+
+result = json.loads(response['Payload'].read())
+print(f"Route: {result['data']['route']}")
+print(f"Hops: {result['data']['hops']}")
+```
+
+**AWS SDK (JavaScript/Node.js):**
+```javascript
+const { LambdaClient, InvokeCommand } = require("@aws-sdk/client-lambda");
+
+const client = new LambdaClient({ region: "us-east-1" });
+
+const payload = {
+  from: "Nod",
+  to: "Brana",
+  algorithm: "a-star",
+  max_jump: 80.0
+};
+
+const command = new InvokeCommand({
+  FunctionName: "evefrontier-route",
+  Payload: JSON.stringify(payload),
+});
+
+const response = await client.send(command);
+const result = JSON.parse(Buffer.from(response.Payload).toString());
+console.log(`Route: ${result.data.route}`);
+```
+
+**curl (via API Gateway):**
+```bash
+curl -X POST https://api.example.com/route \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{
+    "from": "Nod",
+    "to": "Brana",
+    "algorithm": "a-star"
+  }'
+```
+
+### Scout Gates Lambda
+
+Returns gate-connected neighbors of a system.
+
+#### Request Schema
+
+```json
+{
+  "system": "Nod"
+}
+```
+
+**Fields:**
+- `system` (required): System name to find neighbors for
+
+#### Response Schema
+
+**Success (HTTP 200):**
+```json
+{
+  "content_type": "application/json",
+  "data": {
+    "system": "Nod",
+    "system_id": 30011392,
+    "count": 2,
+    "neighbors": [
+      {
+        "name": "D:2NAS",
+        "id": 30011393
+      },
+      {
+        "name": "G:3OA0",
+        "id": 30011394
+      }
+    ]
+  }
+}
+```
+
+#### Invocation Examples
+
+**AWS SDK (Python):**
+```python
+payload = {"system": "Nod"}
+
+response = lambda_client.invoke(
+    FunctionName='evefrontier-scout-gates',
+    InvocationType='RequestResponse',
+    Payload=json.dumps(payload)
+)
+
+result = json.loads(response['Payload'].read())
+neighbors = result['data']['neighbors']
+print(f"Found {result['data']['count']} gate-connected systems:")
+for neighbor in neighbors:
+    print(f"  - {neighbor['name']} (ID: {neighbor['id']})")
+```
+
+**curl (via API Gateway):**
+```bash
+curl -X POST https://api.example.com/scout-gates \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{"system": "Nod"}'
+```
+
+### Scout Range Lambda
+
+Returns systems within spatial range with optional temperature filtering.
+
+#### Request Schema
+
+```json
+{
+  "system": "Nod",
+  "limit": 50,
+  "radius": 100.0,
+  "max_temperature": 50.0
+}
+```
+
+**Fields:**
+- `system` (required): Center system name
+- `limit` (optional): Maximum number of results (default: 50)
+- `radius` (optional): Maximum distance in light-years (no limit if omitted)
+- `max_temperature` (optional): Maximum star temperature threshold in Kelvin
+
+#### Response Schema
+
+**Success (HTTP 200):**
+```json
+{
+  "content_type": "application/json",
+  "data": {
+    "system": "Nod",
+    "system_id": 30011392,
+    "count": 3,
+    "systems": [
+      {
+        "name": "D:2NAS",
+        "id": 30011393,
+        "distance_ly": 25.4,
+        "min_temp_k": 30.0
+      },
+      {
+        "name": "Brana",
+        "id": 30011395,
+        "distance_ly": 67.8,
+        "min_temp_k": 45.2
+      },
+      {
+        "name": "G:3OA0",
+        "id": 30011394,
+        "distance_ly": 88.3
+      }
+    ]
+  }
+}
+```
+
+**Notes:**
+- Results are ordered by distance (closest first)
+- `min_temp_k` field is included only if temperature data is available in the dataset
+- KD-tree spatial index is used for efficient neighbor queries (sub-millisecond for typical datasets)
+
+#### Invocation Examples
+
+**AWS SDK (Python):**
+```python
+payload = {
+    "system": "Nod",
+    "radius": 100.0,
+    "max_temperature": 50.0,
+    "limit": 10
+}
+
+response = lambda_client.invoke(
+    FunctionName='evefrontier-scout-range',
+    InvocationType='RequestResponse',
+    Payload=json.dumps(payload)
+)
+
+result = json.loads(response['Payload'].read())
+systems = result['data']['systems']
+print(f"Found {result['data']['count']} systems within range:")
+for system in systems:
+    temp_info = f", temp: {system['min_temp_k']}K" if 'min_temp_k' in system else ""
+    print(f"  - {system['name']}: {system['distance_ly']:.1f} ly{temp_info}")
+```
+
+**curl (via API Gateway):**
+```bash
+curl -X POST https://api.example.com/scout-range \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{
+    "system": "Nod",
+    "radius": 100.0,
+    "max_temperature": 50.0
+  }'
+```
+
+### Cold Start & Initialization
+
+Lambda functions bundle the EVE Frontier dataset and spatial index at build time for optimal
+cold-start performance. Initialization happens once per Lambda container lifecycle.
+
+#### Initialization Sequence
+
+1. **Tracing Setup**: JSON-formatted CloudWatch Logs integration
+2. **Database Loading**: Zero-copy deserialization from bundled bytes (`rusqlite::deserialize_bytes`)
+3. **Spatial Index Loading**: KD-tree deserialized from bundled compressed bytes
+4. **Starmap Construction**: In-memory graph built from database tables
+
+#### Cold Start Timing
+
+Typical cold-start metrics (logged via tracing):
+
+```json
+{
+  "level": "INFO",
+  "message": "runtime initialized",
+  "db_load_ms": 45,
+  "index_load_ms": 12,
+  "total_init_ms": 57,
+  "timestamp": "2025-12-05T10:30:45.123Z"
+}
+```
+
+- **Database load**: 30-60ms (depends on dataset size)
+- **Spatial index load**: 10-20ms (compressed format enables fast decompression)
+- **Total cold start**: <100ms for typical e6c3 dataset
+
+**Warm invocations** reuse the initialized container and return in <10ms.
+
+#### Memory Usage
+
+- **Bundled assets**: ~20-50 MB (dataset + spatial index compressed)
+- **Runtime memory**: ~80-150 MB (starmap, KD-tree, graph structures)
+- **Total Lambda memory**: 512 MB recommended (256 MB minimum)
+
+### Configuration & Secrets
+
+#### Environment Variables
+
+Currently, Lambda functions do not require environment configuration. All data is bundled at build time.
+
+**Future configuration options** (when implemented):
+- `LOG_LEVEL`: Tracing verbosity (`debug`, `info`, `warn`, `error`)
+- `DATASET_VERSION`: Override bundled dataset version (if dynamic loading enabled)
+
+#### IAM Permissions
+
+Lambda functions require minimal IAM permissions:
+
+**Required:**
+- `logs:CreateLogGroup`
+- `logs:CreateLogStream`
+- `logs:PutLogEvents`
+
+**If using API Gateway:**
+- Configure authentication (API keys, Cognito, IAM, or custom authorizers)
+
+**Future requirements** (when secrets are needed):
+- `secretsmanager:GetSecretValue` (if API tokens or credentials are externalized)
+
+#### Deployment Considerations
+
+1. **Build with bundled data**:
+   ```bash
+   cargo build --release -p evefrontier-lambda-route --features bundle-data
+   cargo build --release -p evefrontier-lambda-scout-gates --features bundle-data
+   cargo build --release -p evefrontier-lambda-scout-range --features bundle-data
+   ```
+
+2. **Package for AWS Lambda**:
+   - Binaries must be named `bootstrap` for custom Lambda runtimes
+   - Package in `.zip` with binary at root
+   - Or use container images with AWS Lambda Runtime Interface
+
+3. **Lambda Configuration**:
+   - Runtime: `provided.al2` (custom Rust runtime)
+   - Memory: 512 MB (recommended)
+   - Timeout: 10 seconds (routes typically compute in <1s)
+   - Architecture: `arm64` or `x86_64` (match build target)
+
+4. **API Gateway Integration**:
+   - Set up REST API or HTTP API endpoints
+   - Configure CORS if needed for browser clients
+   - Enable CloudWatch Logs for request tracing
+
+**See `docs/RELEASE.md` (future)** for detailed deployment automation and Terraform templates.
+

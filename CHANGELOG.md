@@ -3,6 +3,11 @@
 All notable changes to this project will be documented in this file.
 
 ## Unreleased
+- 2025-12-05 - auto-llm:copilot - [ci] - Added ADR governance workflow enforcing filename pattern and immutability per ADR 0001 and Constitution Principle III
+- 2025-12-05 - auto-llm:copilot - [docs] - Added comprehensive Lambda invocation documentation to USAGE.md with request/response schemas, SDK examples, and cold-start behavior
+- 2025-12-05 - auto-llm:copilot - [docs] - Added ADR governance section to CONTRIBUTING.md documenting immutability policy, naming conventions, and override procedures
+- 2025-12-05 - auto-llm:copilot - [github] - Created PR template with ADR checklist and security/testing requirements
+
 - 2025-11-30 - GitHub Copilot - [docs] - Aligned README.md with current workspace layout: documented 6 Lambda crates, Nx orchestration, spatial indexing, and updated all examples to use real system names
 
 - 2025-11-30 - GitHub Copilot - [build] - Hooked Rust build/test/lint/clippy tasks into Nx orchestration with proper dependency chains and caching

@@ -30,6 +30,153 @@ Before merging a PR that modifies code, docs, or other user-visible behavior, ad
 edits must append the changelog entry when they apply changes, check the system time to identify the
 actual date do not use dates in the past. Reviewers should verify the changelog entry for clarity.
 
+## Architecture Decision Records (ADRs)
+
+This project uses Architecture Decision Records (ADRs) to document architecturally significant
+decisions. ADRs are stored in `docs/adrs/` and follow the Nygard/Fowler format per
+[ADR 0001](docs/adrs/0001-use-nygard-adr.md) and the
+[project Constitution](. specify/memory/constitution.md).
+
+### When to Create an ADR
+
+Create an ADR when making decisions that affect:
+- Project architecture or structure (workspace layout, module boundaries)
+- Core algorithms or data structures (routing algorithms, spatial indexing)
+- Technology choices (libraries, frameworks, build tools)
+- Security or compliance requirements
+- Performance characteristics or constraints
+- API contracts or data schemas
+
+**Do NOT create ADRs for:**
+- Bug fixes (unless they require an architectural change)
+- UI/UX tweaks or minor refactorings
+- Documentation updates
+- Dependency version bumps
+
+### ADR Naming Convention
+
+ADRs must follow this pattern: `docs/adrs/NNNN-slug-title.md`
+
+**Rules:**
+- **NNNN**: Four-digit sequence number (e.g., `0001`, `0042`, `0123`)
+- **slug-title**: Lowercase words separated by hyphens (kebab-case)
+- **File extension**: `.md`
+
+**Valid examples:**
+- ✅ `docs/adrs/0001-use-nygard-adr.md`
+- ✅ `docs/adrs/0009-kd-tree-spatial-index.md`
+- ✅ `docs/adrs/0013-containerization-strategy.md`
+
+**Invalid examples:**
+- ❌ `docs/adrs/adr-001-use-nygard.md` (number must come first)
+- ❌ `docs/adrs/1-use-nygard-adr.md` (number must be 4 digits)
+- ❌ `docs/adrs/0001-Use-Nygard-ADR.md` (slug must be lowercase)
+- ❌ `docs/adrs/0001_use_nygard_adr.md` (use hyphens, not underscores)
+
+### ADR Immutability Policy
+
+**ADRs are immutable after ratification.** This ensures historical context is preserved and prevents
+revisionist changes.
+
+#### Creating a New ADR
+
+1. Determine the next sequence number by checking existing ADRs
+2. Create a file in `docs/adrs/` with the proper naming pattern
+3. Use the ADR template from `docs/adrs/TEMPLATE.md` or copy an existing ADR structure
+4. Fill in all sections: Status, Context, Decision, Rationale, Consequences, References
+5. Submit as part of your PR
+6. The CI workflow will validate the filename pattern automatically
+
+#### Editing an Existing ADR
+
+**Substantive changes are not allowed.** Instead:
+
+1. **Create a new ADR** that supersedes or amends the original
+2. Set the Status in the new ADR to: `Supersedes ADR XXXX` or `Amends ADR XXXX`
+3. Explain in the Context section why the original decision is being revised
+4. Document the new approach in the Decision section
+5. Cross-reference the original ADR in the References section
+
+**Example:**
+```markdown
+# ADR 0013: Use PostgreSQL Instead of SQLite
+
+## Status
+
+Supersedes ADR 0004
+
+## Context
+
+ADR 0004 adopted SQLite for dataset storage. Since then, we've discovered that...
+```
+
+#### Fixing Typos or Errors
+
+For **minor corrections only** (typos, formatting, broken links):
+
+1. Make your changes to the existing ADR file
+2. Request the `allow-adr-edits` label on your PR (ask a maintainer)
+3. Explain in the PR description what is being corrected and why it's not substantive
+
+The ADR governance CI workflow will:
+- ✅ **Allow** edits to existing ADRs if the `allow-adr-edits` label is present
+- ❌ **Block** edits to existing ADRs without the label
+- ✅ **Allow** all new ADRs (validated for filename pattern only)
+
+**Use the label sparingly** — it's meant for obvious errors, not policy changes.
+
+#### Enforcement
+
+The `.github/workflows/adr-governance.yml` workflow automatically:
+- Validates ADR filenames match the required pattern
+- Detects edits to existing ADRs and checks for the override label
+- Provides detailed error messages with guidance
+
+If the workflow fails on your PR:
+- **Pattern violation**: Fix the filename to match `NNNN-slug-title.md`
+- **Immutability violation**: Either create a new ADR or request the `allow-adr-edits` label with justification
+
+### ADR Best Practices
+
+- **Be specific**: Document the exact decision, not just general principles
+- **Include context**: Explain the problem being solved and constraints
+- **Show alternatives**: Document options considered and why they were rejected
+- **Document consequences**: Both positive and negative outcomes
+- **Add references**: Link to related ADRs, issues, documentation, or external resources
+- **Use present tense**: Write as if the decision is being made now ("We will use..." not "We used...")
+- **Keep it concise**: 1-3 pages maximum; link to detailed specs elsewhere if needed
+
+### ADR Template
+
+See `docs/adrs/TEMPLATE.md` for the standard structure. Key sections:
+
+```markdown
+# ADR NNNN: Title
+
+## Status
+<!-- Proposed | Accepted | Deprecated | Superseded by ADR XXXX -->
+
+## Context
+<!-- What problem are we solving? What constraints exist? -->
+
+## Decision
+<!-- What are we doing? Be specific and actionable. -->
+
+## Rationale
+<!-- Why this approach? What alternatives were considered? -->
+
+## Consequences
+<!-- What does this decision enable? What trade-offs do we accept? -->
+
+## References
+<!-- Links to related ADRs, issues, RFCs, external docs -->
+```
+
+For more details, see:
+- [ADR 0001: Use Nygard-style ADRs](docs/adrs/0001-use-nygard-adr.md)
+- [Constitution Principle III](. specify/memory/constitution.md#iii-architecture-decision-records-mandatory)
+
+
 ## Tooling requirements
 
 - Node.js: use the version pinned in `.nvmrc` (currently 24 LTS as of November 2025). Install via `nvm use`.
