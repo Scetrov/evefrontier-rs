@@ -509,7 +509,7 @@ payload = {
 }
 
 response = lambda_client.invoke(
-    FunctionName='evefrontier-route',
+    FunctionName='evefrontier-lambda-route',
     InvocationType='RequestResponse',
     Payload=json.dumps(payload)
 )
@@ -600,7 +600,7 @@ Returns gate-connected neighbors of a system.
 payload = {"system": "Nod"}
 
 response = lambda_client.invoke(
-    FunctionName='evefrontier-scout-gates',
+    FunctionName='evefrontier-lambda-scout-gates',
     InvocationType='RequestResponse',
     Payload=json.dumps(payload)
 )
@@ -691,7 +691,7 @@ payload = {
 }
 
 response = lambda_client.invoke(
-    FunctionName='evefrontier-scout-range',
+    FunctionName='evefrontier-lambda-scout-range',
     InvocationType='RequestResponse',
     Payload=json.dumps(payload)
 )
