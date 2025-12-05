@@ -46,9 +46,6 @@ jobs:
           echo "$CHANGED_ADRS"
           echo ""
           
-          # ADR filename pattern (NNNN-slug-title.md)
-          ADR_PATTERN='^docs/adrs/[0-9]{4}-[a-z0-9-]+\.md$'
-          
           VALIDATION_FAILED=0
           PATTERN_VIOLATIONS=""
           IMMUTABILITY_VIOLATIONS=""
@@ -61,8 +58,9 @@ jobs:
             
             echo "Checking: $adr_file"
             
-            # 1. Validate filename pattern
-            if ! echo "$adr_file" | grep -Pq "$ADR_PATTERN"; then
+            # 1. Validate filename pattern (using portable POSIX extended regex)
+            # Pattern: docs/adrs/NNNN-slug-title.md where NNNN is 4 digits, slug is lowercase letters/numbers/hyphens
+            if ! echo "$adr_file" | grep -Eq "^docs/adrs/[0-9]{4}-[a-z0-9-]+\.md$"; then
               echo "  ❌ Pattern violation: Filename does not match required pattern"
               PATTERN_VIOLATIONS="${PATTERN_VIOLATIONS}${adr_file}\n"
               VALIDATION_FAILED=1
