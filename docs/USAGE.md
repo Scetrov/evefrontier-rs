@@ -211,7 +211,7 @@ Key library entrypoints (in `crates/evefrontier-lib`):
 
 - `ensure_dataset(target_dir: Option<&Path>, release: DatasetRelease)` — resolves or downloads the
   dataset release identified by `release`. The optional path argument allows tests to point at
-  fixture data or custom paths. `ensure_c3e6_dataset` is still available as a shorthand for
+  fixture data or custom paths. `ensure_e6c3_dataset` is still available as a shorthand for
   `DatasetRelease::tag("e6c3")`.
 - `load_starmap(db_path: &Path)` — loads systems and jumps into memory with schema detection for the
   `SolarSystems`/`Jumps` schema. Each `System` entry includes optional metadata (region, constellation,
@@ -242,7 +242,7 @@ You can reuse the same file when running the CLI by passing `--data-dir docs/fix
 For development and testing you can override the GitHub download by setting the
 `EVEFRONTIER_DATASET_SOURCE` environment variable to a local path. The path may point to either a
 `.db` file or a `.zip` archive containing the database. When set, `ensure_dataset` (and convenience
-wrappers like `ensure_c3e6_dataset`) copy or extract the local file instead of contacting GitHub.
+wrappers like `ensure_e6c3_dataset`) copy or extract the local file instead of contacting GitHub.
 
 ```pwsh
 $env:EVEFRONTIER_DATASET_SOURCE = "docs/fixtures/minimal_static_data.db"
@@ -261,13 +261,13 @@ routes.
 
 ```rust
 use evefrontier_lib::{
-    ensure_c3e6_dataset, load_starmap, plan_route,
+    ensure_e6c3_dataset, load_starmap, plan_route,
     RouteRequest, RouteAlgorithm, RouteConstraints,
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 1. Ensure dataset is available (downloads if needed)
-    let dataset_path = ensure_c3e6_dataset(None)?;
+    let dataset_path = ensure_e6c3_dataset(None)?;
 
     // 2. Load starmap into memory
     let starmap = load_starmap(&dataset_path)?;

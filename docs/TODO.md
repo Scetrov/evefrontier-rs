@@ -76,7 +76,7 @@ Tasks are grouped by domain; checkboxes track completion status.
 
 ## Library (`evefrontier-lib`)
 
-- [x] Implement `ensure_c3e6_dataset` to download the latest dataset release from GitHub, cache it
+- [x] Implement `ensure_e6c3_dataset` to download the latest dataset release from GitHub, cache it
       in the OS cache directory under `evefrontier_datasets/`, perform atomic writes, and optionally
       extract `.zip` archives ([ADR 0003](adrs/0003-downloader-caching.md)).
 - [x] Support injecting a pre-existing dataset path (for tests) and allow callers to override the
@@ -131,7 +131,7 @@ Tasks are grouped by domain; checkboxes track completion status.
 - [x] Implement the CLI skeleton with Clap, including global `--data-dir`, `--format`, `--no-logo`,
       and other shared options. Respect the data path resolution order defined in
       `docs/INITIAL_SETUP.md`.
-- [x] Implement the `download` subcommand that wraps `ensure_c3e6_dataset`, reports the resolved
+- [x] Implement the `download` subcommand that wraps `ensure_e6c3_dataset`, reports the resolved
       path, and exits with appropriate codes.
 - [x] Implement unified `route` subcommand (replacing earlier `search` / `path`) exposing all
       routing functionality via flags: `--algorithm`, `--format`, `--max-jump`, `--avoid`,

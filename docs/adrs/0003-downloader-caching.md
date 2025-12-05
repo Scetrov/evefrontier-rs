@@ -22,4 +22,4 @@ a temporary file and atomically rename to the final path once the download compl
 ## Consequences
 
 - Cached assets persist between runs and automatically save network bandwidth.
-- Tests that require determinism may provide an explicit path to `ensure_c3e6_dataset`.
+- Tests that require determinism may provide an explicit path to `ensure_e6c3_dataset`.

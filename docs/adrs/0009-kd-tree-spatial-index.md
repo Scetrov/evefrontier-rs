@@ -74,7 +74,7 @@ Key points:
    - Add an index builder CLI subcommand (or a separate small tool) that reads the DB, builds the
      K‑D Tree, and writes the index file next to the `static_data.db` (or the checked-in
      `minimal_static_data.db` fixture) in the release bundle or cache.
-   - Extend `ensure_c3e6_dataset` to look for and return the index path together with the DB
+   - Extend `ensure_e6c3_dataset` to look for and return the index path together with the DB
      path, or provide a `load_spatial_index` function in `evefrontier-lib`.
    - Route planning: when `--min-temp` is specified, pass a temperature predicate to KD-tree queries
      to filter neighbours rather than post-filtering only.
@@ -214,13 +214,13 @@ impl SpatialIndex {
   checked-in fixture `minimal_static_data.db`, converts coordinates, builds a `kiddo` tree,
   serializes with `postcard`, compresses with `zstd`, and writes `spatial_index.bin`.
 2. Add an `evefrontier-cli index-build` subcommand that runs the builder locally and writes the
-  index into the cache dir used by `ensure_c3e6_dataset`. (For development, invoke as
+  index into the cache dir used by `ensure_e6c3_dataset`. (For development, invoke as
   `cargo run -p evefrontier-cli -- index-build`.)
 2b. Release packaging: extend the release (GitHub Actions) pipeline to run `index-build` during
    artifact preparation and attach `spatial_index.bin` and a `spatial_index.meta` JSON (version,
    precision, compression, checksum) to the GitHub release. CI should also publish or cache the
    artifact for downstream jobs and provide a checksum verification step in the release workflow.
-3. Update `ensure_c3e6_dataset` to prefer the index alongside the DB and add `load_spatial_index`
+3. Update `ensure_e6c3_dataset` to prefer the index alongside the DB and add `load_spatial_index`
   to the public API.
 3b. Temperature-aware build: compute and embed `min_external_temp` for each system in the index;
     include a header flag to indicate presence and a simple version bump.

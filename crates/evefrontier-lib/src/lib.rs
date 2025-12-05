@@ -9,7 +9,7 @@
 //!
 //! The typical workflow for using this library is:
 //!
-//! 1. **Ensure the dataset is available** using [`ensure_c3e6_dataset`] or [`ensure_dataset`]
+//! 1. **Ensure the dataset is available** using [`ensure_e6c3_dataset`] or [`ensure_dataset`]
 //! 2. **Load the starmap** with [`load_starmap`]
 //! 3. **Plan a route** using [`plan_route`] with a [`RouteRequest`]
 //! 4. **Format the output** using types from the [`output`] module
@@ -18,13 +18,13 @@
 //!
 //! ```no_run
 //! use evefrontier_lib::{
-//!     ensure_c3e6_dataset, load_starmap, plan_route,
+//!     ensure_e6c3_dataset, load_starmap, plan_route,
 //!     RouteRequest, RouteAlgorithm, RouteConstraints
 //! };
 //!
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! // 1. Ensure dataset is downloaded and get its paths
-//! let paths = ensure_c3e6_dataset(None)?;
+//! let paths = ensure_e6c3_dataset(None)?;
 //!
 //! // 2. Load the starmap into memory
 //! let starmap = load_starmap(&paths.database)?;
@@ -86,7 +86,7 @@ pub mod routing;
 pub mod spatial;
 pub mod temperature;
 
-pub use dataset::{default_dataset_path, ensure_c3e6_dataset, ensure_dataset, DatasetPaths};
+pub use dataset::{default_dataset_path, ensure_e6c3_dataset, ensure_dataset, DatasetPaths};
 pub use db::{
     load_starmap, load_starmap_from_connection, Starmap, System, SystemId, SystemMetadata,
     SystemPosition,

@@ -163,7 +163,7 @@ pub fn ensure_dataset(target: Option<&Path>, release: DatasetRelease) -> Result<
 }
 
 /// Ensure the Era 6 Cycle 3 dataset is available locally and return paths to the files.
-pub fn ensure_c3e6_dataset(target: Option<&Path>) -> Result<DatasetPaths> {
+pub fn ensure_e6c3_dataset(target: Option<&Path>) -> Result<DatasetPaths> {
     ensure_dataset(target, DatasetRelease::tag("e6c3"))
 }
 
