@@ -471,15 +471,15 @@ Computes routes between two systems using configurable algorithms and constraint
 ```json
 {
   "content_type": "application/json",
-  "data": {
-    "hops": 3,
-    "gates": 2,
-    "jumps": 1,
-    "algorithm": "a-star",
-    "route": ["Nod", "D:2NAS", "Brana"]
-  }
+  "hops": 3,
+  "gates": 2,
+  "jumps": 1,
+  "algorithm": "a-star",
+  "route": ["Nod", "D:2NAS", "Brana"]
 }
 ```
+
+*Note: The `LambdaResponse` wrapper uses `#[serde(flatten)]`, so response fields are merged directly into the top level.*
 
 **Error (HTTP 400/404/500):**
 ```json
@@ -575,23 +575,23 @@ Returns gate-connected neighbors of a system.
 ```json
 {
   "content_type": "application/json",
-  "data": {
-    "system": "Nod",
-    "system_id": 30011392,
-    "count": 2,
-    "neighbors": [
-      {
-        "name": "D:2NAS",
-        "id": 30011393
-      },
-      {
-        "name": "G:3OA0",
-        "id": 30011394
-      }
-    ]
-  }
+  "system": "Nod",
+  "system_id": 30011392,
+  "count": 2,
+  "neighbors": [
+    {
+      "name": "D:2NAS",
+      "id": 30011393
+    },
+    {
+      "name": "G:3OA0",
+      "id": 30011394
+    }
+  ]
 }
 ```
+
+*Note: The `LambdaResponse` wrapper uses `#[serde(flatten)]`, so response fields are merged directly into the top level.*
 
 #### Invocation Examples
 
@@ -647,32 +647,32 @@ Returns systems within spatial range with optional temperature filtering.
 ```json
 {
   "content_type": "application/json",
-  "data": {
-    "system": "Nod",
-    "system_id": 30011392,
-    "count": 3,
-    "systems": [
-      {
-        "name": "D:2NAS",
-        "id": 30011393,
-        "distance_ly": 25.4,
-        "min_temp_k": 30.0
-      },
-      {
-        "name": "Brana",
-        "id": 30011395,
-        "distance_ly": 67.8,
-        "min_temp_k": 45.2
-      },
-      {
-        "name": "G:3OA0",
-        "id": 30011394,
-        "distance_ly": 88.3
-      }
-    ]
-  }
+  "system": "Nod",
+  "system_id": 30011392,
+  "count": 3,
+  "systems": [
+    {
+      "name": "D:2NAS",
+      "id": 30011393,
+      "distance_ly": 25.4,
+      "min_temp_k": 30.0
+    },
+    {
+      "name": "Brana",
+      "id": 30011395,
+      "distance_ly": 67.8,
+      "min_temp_k": 45.2
+    },
+    {
+      "name": "G:3OA0",
+      "id": 30011394,
+      "distance_ly": 88.3
+    }
+  ]
 }
 ```
+
+*Note: The `LambdaResponse` wrapper uses `#[serde(flatten)]`, so response fields are merged directly into the top level.*
 
 **Notes:**
 - Results are ordered by distance (closest first)
