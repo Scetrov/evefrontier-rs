@@ -60,7 +60,7 @@ jobs:
             
             # 1. Validate filename pattern (using portable POSIX extended regex)
             # Pattern: docs/adrs/NNNN-slug-title.md where NNNN is 4 digits, slug is lowercase letters/numbers/hyphens
-            if ! echo "$adr_file" | grep -Eq "^docs/adrs/[0-9]{4}-[a-z0-9-]+\.md$"; then
+            if ! echo "$adr_file" | grep -Eq "^docs/adrs/[0-9][0-9][0-9][0-9]-[a-z0-9-]+\.md$"; then
               echo "  ❌ Pattern violation: Filename does not match required pattern"
               PATTERN_VIOLATIONS="${PATTERN_VIOLATIONS}${adr_file}\n"
               VALIDATION_FAILED=1
