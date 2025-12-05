@@ -46,7 +46,7 @@
 
 ### Security (if applicable)
 - [ ] I have followed security best practices (input validation, parameterized queries, no hardcoded secrets)
-- [ ] I have reviewed `.github/instructions/security-and-owap.instructions.md`
+- [ ] I have reviewed `.github/instructions/security-and-owasp.instructions.md`
 - [ ] `cargo audit` passes with no new vulnerabilities
 
 ## Additional Notes
