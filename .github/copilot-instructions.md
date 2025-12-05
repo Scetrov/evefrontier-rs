@@ -67,7 +67,7 @@ Ensure that you follow a Boyd Loop style of development:
   tests under `crates/evefrontier-lib/tests` or `crates/evefrontier-lib/src/lib.rs` test modules).
 
 Note: The downloader uses the OS cache dir via the `dirs`/`directories` crates. For deterministic
-testing, call `ensure_c3e6_dataset(Some(path))` to control where the DB is placed.
+testing, call `ensure_e6c3_dataset(Some(path))` to control where the DB is placed.
 
 ## Important code patterns and conventions
 
@@ -75,7 +75,7 @@ testing, call `ensure_c3e6_dataset(Some(path))` to control where the DB is place
 
   - `crates/evefrontier-lib/src/github.rs` downloads releases from GitHub and caches assets.
   - The code accepts both `.db` files and zipped releases containing `.db` files. The library
-    extracts the first `*.db` or a file containing `c3e6` in its name.
+    extracts the first `*.db` or a file containing `e6c3` in its name.
   - `crates/evefrontier-lib/src/db.rs` loads systems and jumps. The loader was updated to support
     the `static_data.db` schema (tables `SolarSystems(solarSystemId, name)` and
     `Jumps(fromSystemId, toSystemId)`). If you add support for additional release schemas, add
@@ -128,7 +128,7 @@ testing, call `ensure_c3e6_dataset(Some(path))` to control where the DB is place
 - Add schema detection in `db.rs`:
   - Run `PRAGMA table_info('SolarSystems')` or query `sqlite_master` to select between
     `mapSolarSystems` and `SolarSystems`.
-- Make `ensure_c3e6_dataset` accept an explicit `target_db: Option<&Path>` (already present) and
+- Make `ensure_e6c3_dataset` accept an explicit `target_db: Option<&Path>` (already present) and
   document it in the library API.
 - Add tests: create `crates/evefrontier-lib/tests/load_starmap.rs` which opens a small checked-in
   SQLite fixture and asserts system/jump counts.

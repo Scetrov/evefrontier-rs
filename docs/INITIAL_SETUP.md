@@ -37,7 +37,7 @@ cargo test --workspace
 Notes
 
 - If tests require the dataset, call `ensure_dataset(Some(path), DatasetRelease::latest())` in tests
-  or provide the dataset path via environment/config when running the CLI. `ensure_c3e6_dataset`
+  or provide the dataset path via environment/config when running the CLI. `ensure_e6c3_dataset`
   remains available when the Era 6 Cycle 3 dataset is specifically required.
 - See `docs/DEPENDENCIES.md` and `CONTRIBUTING.md` for additional setup and contribution
   guidelines.
@@ -65,7 +65,7 @@ Implement a small, stable public surface so other tools and Lambdas can reuse be
   - Accepts either a path to an existing `.db` file or downloads a release asset from GitHub,
     caching under the OS cache dir (e.g. `directories::BaseDirs::cache_dir()/evefrontier_datasets/`).
   - Download to a temporary file and atomically rename to the final filename on success.
-  - `ensure_c3e6_dataset` is a helper that pins the release to `DatasetRelease::tag("e6c3")`.
+  - `ensure_e6c3_dataset` is a helper that pins the release to `DatasetRelease::tag("e6c3")`.
 
 - `load_starmap(db_path: &Path) -> Result<Starmap>`
   - Loads systems and jumps into in-memory structures. `Starmap` should contain:
@@ -112,7 +112,7 @@ Implement a small, stable public surface so other tools and Lambdas can reuse be
 - Download behavior:
   - Download to a temporary file in the cache dir.
   - Validate the download (size / presence) and then atomically rename to the final filename.
-  - If a release is a zip, extract the first `.db` matching `*.db` or containing `c3e6` in the name.
+  - If a release is a zip, extract the first `.db` matching `*.db` or containing `e6c3` in the name.
 
 ## 7. Tests and fixtures
 

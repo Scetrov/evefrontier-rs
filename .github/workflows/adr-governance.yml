@@ -1,0 +1,165 @@
+name: ADR Governance
+
+on:
+  pull_request:
+    paths:
+      - 'docs/adrs/**'
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  validate-adrs:
+    name: Validate ADR filename pattern and immutability
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history needed to detect existing ADRs
+
+      - name: Fetch base branch
+        run: |
+          git fetch origin ${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}
+
+      - name: Validate ADR governance rules
+        id: validate
+        run: |
+          set -e
+          
+          echo "::group::ADR Governance Validation"
+          echo "Checking ADRs changed in this PR..."
+          
+          # Get list of changed ADR files
+          CHANGED_ADRS=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- 'docs/adrs/*.md' | grep -v 'TEMPLATE.md' || true)
+          
+          if [ -z "$CHANGED_ADRS" ]; then
+            echo "✅ No ADR files changed in this PR"
+            echo "::endgroup::"
+            exit 0
+          fi
+          
+          echo "Changed ADR files:"
+          echo "$CHANGED_ADRS"
+          echo ""
+          
+          VALIDATION_FAILED=0
+          PATTERN_VIOLATIONS=""
+          IMMUTABILITY_VIOLATIONS=""
+          
+          # Check each changed ADR file
+          while IFS= read -r adr_file; do
+            if [ -z "$adr_file" ]; then
+              continue
+            fi
+            
+            echo "Checking: $adr_file"
+            
+            # 1. Validate filename pattern (using portable POSIX extended regex)
+            # Pattern: docs/adrs/NNNN-slug-title.md where NNNN is 4 digits, slug is lowercase letters/numbers/hyphens
+            if ! echo "$adr_file" | grep -Eq "^docs/adrs/[0-9][0-9][0-9][0-9]-[a-z0-9-]+\.md$"; then
+              echo "  ❌ Pattern violation: Filename does not match required pattern"
+              PATTERN_VIOLATIONS="${PATTERN_VIOLATIONS}${adr_file}\n"
+              VALIDATION_FAILED=1
+            else
+              echo "  ✅ Filename pattern valid"
+            fi
+            
+            # 2. Check if ADR exists in base branch (immutability check)
+            if git cat-file -e "origin/${{ github.base_ref }}:$adr_file" 2>/dev/null; then
+              echo "  ⚠️  ADR exists in base branch - checking for edit permission..."
+              
+              # Check if PR has the override label
+              LABELS=$(gh pr view ${{ github.event.pull_request.number }} --json labels --jq '.labels[].name' || echo "")
+              
+              if echo "$LABELS" | grep -q "allow-adr-edits"; then
+                echo "  ✅ Override label 'allow-adr-edits' present - edit allowed"
+              else
+                echo "  ❌ Immutability violation: Editing existing ADR without override label"
+                IMMUTABILITY_VIOLATIONS="${IMMUTABILITY_VIOLATIONS}${adr_file}\n"
+                VALIDATION_FAILED=1
+              fi
+            else
+              echo "  ✅ New ADR - no immutability check needed"
+            fi
+            
+            echo ""
+          done <<< "$CHANGED_ADRS"
+          
+          # Report results
+          if [ $VALIDATION_FAILED -eq 1 ]; then
+            echo "::endgroup::"
+            echo "::error::ADR governance validation failed"
+            
+            if [ -n "$PATTERN_VIOLATIONS" ]; then
+              echo ""
+              echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+              echo "❌ FILENAME PATTERN VIOLATIONS"
+              echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+              echo ""
+              echo "The following ADR files do not match the required naming pattern:"
+              printf '%s' "$PATTERN_VIOLATIONS"
+              echo ""
+              echo "Required pattern: docs/adrs/NNNN-slug-title.md"
+              echo ""
+              echo "Valid examples:"
+              echo "  ✅ docs/adrs/0001-use-nygard-adr.md"
+              echo "  ✅ docs/adrs/0042-adopt-kd-tree-spatial-index.md"
+              echo "  ✅ docs/adrs/0123-refactor-graph-builder.md"
+              echo ""
+              echo "Invalid examples:"
+              echo "  ❌ docs/adrs/adr-001-use-nygard.md (number must come first)"
+              echo "  ❌ docs/adrs/1-use-nygard-adr.md (number must be 4 digits)"
+              echo "  ❌ docs/adrs/0001-Use-Nygard-ADR.md (slug must be lowercase)"
+              echo "  ❌ docs/adrs/0001_use_nygard_adr.md (use hyphens, not underscores)"
+              echo ""
+              echo "See ADR 0001 for naming conventions:"
+              echo "  https://github.com/${{ github.repository }}/blob/main/docs/adrs/0001-use-nygard-adr.md"
+              echo ""
+            fi
+            
+            if [ -n "$IMMUTABILITY_VIOLATIONS" ]; then
+              echo ""
+              echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+              echo "❌ IMMUTABILITY VIOLATIONS"
+              echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+              echo ""
+              echo "The following ADRs already exist and cannot be modified:"
+              printf '%s' "$IMMUTABILITY_VIOLATIONS"
+              echo ""
+              echo "Architecture Decision Records are immutable once ratified."
+              echo "This ensures historical context is preserved and prevents revisionist changes."
+              echo ""
+              echo "Solutions:"
+              echo ""
+              echo "1. FOR TYPOS/MINOR CORRECTIONS:"
+              echo "   Add the 'allow-adr-edits' label to this PR to override immutability."
+              echo "   Use this sparingly - only for obvious errors, not substantive changes."
+              echo ""
+              echo "2. FOR SUBSTANTIVE CHANGES:"
+              echo "   Create a new ADR that supersedes or amends the existing decision."
+              echo "   Example: If changing ADR 0005, create ADR 0013 with:"
+              echo "     - Status: Supersedes ADR 0005"
+              echo "     - Context: Explains why the original decision is being revised"
+              echo "     - Decision: Documents the new approach"
+              echo ""
+              echo "See the Constitution (Principle III) for ADR governance:"
+              echo "  https://github.com/${{ github.repository }}/blob/main/.specify/memory/constitution.md"
+              echo ""
+              echo "See ADR 0001 for immutability rationale:"
+              echo "  https://github.com/${{ github.repository }}/blob/main/docs/adrs/0001-use-nygard-adr.md"
+              echo ""
+            fi
+            
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            
+            exit 1
+          fi
+          
+          echo "✅ All ADR governance rules passed"
+          echo "::endgroup::"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
