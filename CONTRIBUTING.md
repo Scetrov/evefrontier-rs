@@ -174,7 +174,7 @@ See `docs/adrs/TEMPLATE.md` for the standard structure. Key sections:
 
 For more details, see:
 - [ADR 0001: Use Nygard-style ADRs](docs/adrs/0001-use-nygard-adr.md)
-- [Constitution Principle III](. specify/memory/constitution.md#iii-architecture-decision-records-mandatory)
+- [Constitution Principle III](.specify/memory/constitution.md#iii-architecture-decision-records-mandatory)
 
 
 ## Tooling requirements
