@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 
 ## Unreleased
+- 2025-12-07 - auto-llm:copilot - [fix] - Fixed CHANGELOG format documentation to include hyphen separator after category tag
+- 2025-12-07 - auto-llm:copilot - [fix] - Added jq availability check with error handling in changelog-guard script
+- 2025-12-07 - auto-llm:copilot - [ci] - Removed unused GITHUB_HEAD_REF and GITHUB_SHA environment variables from changelog-guard job
+- 2025-12-07 - auto-llm:copilot - [docs] - Clarified bot PR exemption as future enhancement in TODO.md
 - 2025-12-05 - auto-llm:copilot - [ci] - Added ADR governance workflow enforcing filename pattern and immutability per ADR 0001 and Constitution Principle III
 - 2025-12-05 - auto-llm:copilot - [docs] - Added comprehensive Lambda invocation documentation to USAGE.md with request/response schemas, SDK examples, and cold-start behavior
 - 2025-12-05 - auto-llm:copilot - [docs] - Added ADR governance section to CONTRIBUTING.md documenting immutability policy, naming conventions, and override procedures
