@@ -156,6 +156,9 @@ jobs:
           git fetch origin ${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}
           git fetch origin ${{ github.head_ref }}:refs/remotes/origin/${{ github.head_ref }} || true
 
+      - name: Install jq for JSON parsing
+        run: sudo apt-get update && sudo apt-get install -y jq
+
       - name: Check CHANGELOG.md requirement
         run: |
           bash .github/scripts/check-changelog.sh
