@@ -94,6 +94,7 @@ N/A - This is purely a CI/workflow feature with no data model or entities
 | `Cargo.toml`                 | Dependencies  | YES                | Dependency updates are code changes  |
 | `Makefile`                   | Build script  | YES                | Build system changes                 |
 | `docs/**`                    | Documentation | NO                 | Pure documentation                   |
+| `specs/**`                   | Specifications | NO                 | Planning/design documents            |
 | `.github/workflows/**`       | CI config     | NO                 | Meta/infrastructure                  |
 | `*.md` (at root)             | Root docs     | NO                 | Meta/documentation                   |
 | `.gitignore`, `.nvmrc`, etc. | Config files  | NO                 | Infrastructure configuration         |

@@ -34,6 +34,7 @@ CODE_PATTERNS=(
 # Files/patterns exempt from CHANGELOG requirement (pure docs/config)
 EXEMPT_PATTERNS=(
   "docs/**"
+  "specs/**"
   ".github/workflows/**"
   ".github/scripts/**"
   ".gitignore"
