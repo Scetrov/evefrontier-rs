@@ -152,10 +152,10 @@ EOF
 main() {
   log_info "Checking CHANGELOG.md requirement for PR changes..."
   
-  # Verify GitHub Actions environment
-  if [[ -z "$GITHUB_BASE_REF" ]] || [[ -z "$GITHUB_HEAD_REF" ]]; then
-    log_error "Missing GitHub Actions environment variables"
-    log_error "GITHUB_BASE_REF=$GITHUB_BASE_REF, GITHUB_HEAD_REF=$GITHUB_HEAD_REF"
+  # Verify GitHub Actions environment - only base_ref required
+  if [[ -z "$GITHUB_BASE_REF" ]]; then
+    log_error "Missing GITHUB_BASE_REF environment variable"
+    log_error "This script should only run in pull_request GitHub Actions events"
     return 2
   fi
   
@@ -172,13 +172,27 @@ main() {
   fi
   
   # Get list of files changed in PR
-  log_info "Comparing $GITHUB_BASE_REF...$GITHUB_HEAD_REF"
-  CHANGED_FILES=$(git diff --name-only "origin/$GITHUB_BASE_REF"..."$GITHUB_HEAD_REF" 2>/dev/null || echo "")
+  # Use merge base to compare against base branch (handles both direct and fork PRs)
+  log_info "Computing changed files against base branch: $GITHUB_BASE_REF"
+  
+  # Find merge base and diff against it
+  MERGE_BASE=$(git merge-base "origin/$GITHUB_BASE_REF" HEAD 2>/dev/null)
+  if [[ -z "$MERGE_BASE" ]]; then
+    log_error "Could not find merge base between origin/$GITHUB_BASE_REF and HEAD"
+    log_info "Available refs:"
+    git show-ref | head -20
+    return 2
+  fi
+  
+  log_info "Merge base: $MERGE_BASE"
+  CHANGED_FILES=$(git diff --name-only "$MERGE_BASE...HEAD" 2>/dev/null || echo "")
   
   if [[ -z "$CHANGED_FILES" ]]; then
-    log_warning "No files detected in diff. This may indicate a shallow clone."
-    log_info "Assuming no changelog required for this edge case."
-    return 0
+    log_error "No files detected in diff. This should not happen in a normal PR."
+    log_info "Git output for debugging:"
+    git diff --name-only "$MERGE_BASE...HEAD" || true
+    git log --oneline "$MERGE_BASE..HEAD" || true
+    return 2
   fi
   
   # Separate changed files into code and exempt categories

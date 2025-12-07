@@ -143,15 +143,18 @@ jobs:
   changelog-guard:
     name: Enforce CHANGELOG.md updates for code changes
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'  # Only run on PRs, not on push
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Full history for diff comparison
+          ref: ${{ github.event.pull_request.head.sha }}  # Check out the PR commit
 
-      - name: Fetch base branch
+      - name: Fetch base and head refs
         run: |
           git fetch origin ${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}
+          git fetch origin ${{ github.head_ref }}:refs/remotes/origin/${{ github.head_ref }} || true
 
       - name: Check CHANGELOG.md requirement
         run: |
@@ -159,6 +162,7 @@ jobs:
         env:
           GITHUB_BASE_REF: ${{ github.base_ref }}
           GITHUB_HEAD_REF: ${{ github.head_ref }}
+          GITHUB_SHA: ${{ github.sha }}
           GITHUB_EVENT_PATH: ${{ github.event_path }}
 
 
