@@ -43,16 +43,16 @@ This project maintains a CHANGELOG following [ADR 0010](docs/adrs/0010-maintain-
 Add entries to the `Unreleased` section at the top of `CHANGELOG.md` using this format:
 
 ```markdown
-- YYYY-MM-DD - Author Name - [category] Brief description of the change
+- YYYY-MM-DD - Author Name - [category] - Brief description of the change
 ```
 
 **Valid categories:** `[feature]`, `[fix]`, `[docs]`, `[refactor]`, `[security]`, `[perf]`, `[ci]`, `[build]`, `[deps]`, `[lint]`
 
 **Examples:**
 ```markdown
-- 2025-12-07 - Jane Doe - [feature] Added CI guard for CHANGELOG.md enforcement
-- 2025-12-07 - auto-llm:copilot - [fix] Fixed edge case in spatial routing with temperature filtering
-- 2025-12-07 - John Smith - [perf] Optimized KD-tree query performance by 15%
+- 2025-12-07 - Jane Doe - [feature] - Added CI guard for CHANGELOG.md enforcement
+- 2025-12-07 - auto-llm:copilot - [fix] - Fixed edge case in spatial routing with temperature filtering
+- 2025-12-07 - John Smith - [perf] - Optimized KD-tree query performance by 15%
 ```
 
 ### CI Enforcement

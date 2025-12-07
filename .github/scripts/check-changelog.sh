@@ -139,11 +139,11 @@ print_exemption_rules() {
    👉 ADR 0010: Maintain CHANGELOG.md
 
 📝 CHANGELOG.md Entry Format:
-   - YYYY-MM-DD - Author Name - [category] description
+   - YYYY-MM-DD - Author Name - [category] - description
    
    Example:
-   - 2025-12-07 - Jane Doe - [feature] Added CI guard for CHANGELOG.md
-   - 2025-12-07 - auto-llm:copilot - [fix] Fixed edge case in routing
+   - 2025-12-07 - Jane Doe - [feature] - Added CI guard for CHANGELOG.md
+   - 2025-12-07 - auto-llm:copilot - [fix] - Fixed edge case in routing
 
 EOF
 }
@@ -164,13 +164,19 @@ main() {
   
   # Check if skip label is present
   if [[ -n "$GITHUB_EVENT_PATH" ]] && [[ -f "$GITHUB_EVENT_PATH" ]]; then
-    # Extract PR labels from GitHub event payload
-    SKIP_LABEL_PRESENT=$(jq -r '.pull_request.labels[] | select(.name == "skip-changelog-check")' "$GITHUB_EVENT_PATH" 2>/dev/null || echo "")
-    
-    if [[ -n "$SKIP_LABEL_PRESENT" ]]; then
-      log_warning "CHANGELOG.md check SKIPPED due to 'skip-changelog-check' label"
-      log_info "This label should only be used for emergency fixes"
-      return 0
+    # Check if jq is available for JSON parsing
+    if ! command -v jq &> /dev/null; then
+      log_warning "jq not found - cannot check for skip-changelog-check label"
+      log_info "Label-based bypass will not work without jq installed"
+    else
+      # Extract PR labels from GitHub event payload
+      SKIP_LABEL_PRESENT=$(jq -r '.pull_request.labels[] | select(.name == "skip-changelog-check")' "$GITHUB_EVENT_PATH" 2>/dev/null || echo "")
+      
+      if [[ -n "$SKIP_LABEL_PRESENT" ]]; then
+        log_warning "CHANGELOG.md check SKIPPED due to 'skip-changelog-check' label"
+        log_info "This label should only be used for emergency fixes"
+        return 0
+      fi
     fi
   fi
   

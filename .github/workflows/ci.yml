@@ -164,8 +164,6 @@ jobs:
           bash .github/scripts/check-changelog.sh
         env:
           GITHUB_BASE_REF: ${{ github.base_ref }}
-          GITHUB_HEAD_REF: ${{ github.head_ref }}
-          GITHUB_SHA: ${{ github.sha }}
           GITHUB_EVENT_PATH: ${{ github.event_path }}
 
 
