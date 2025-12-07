@@ -202,8 +202,8 @@ Tasks are grouped by domain; checkboxes track completion status.
       - Added `changelog-guard` job to `.github/workflows/ci.yml` with proper triggering
       - Updated `CONTRIBUTING.md` with "Maintaining CHANGELOG.md" section
       - Implemented emergency override via `skip-changelog-check` label
-      - Supports bot PR exemption (Dependabot, Renovate)
       - Clear error messages with exemption rules and CONTRIBUTING.md link
+      - **Future v2 enhancement**: Bot PR exemption (Dependabot, Renovate) documented in spec.md edge cases
 - [x] Schedule nightly dependency outdated report (Rust & Node) and publish artifact. - Created
       `.github/workflows/dependency-check.yml` with nightly schedule (2 AM UTC) - Separate jobs for
       Rust (`cargo outdated`) and Node (`pnpm outdated`) - Artifacts published with 30-day
