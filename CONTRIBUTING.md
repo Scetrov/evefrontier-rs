@@ -46,7 +46,7 @@ Add entries to the `Unreleased` section at the top of `CHANGELOG.md` using this 
 - YYYY-MM-DD - Author Name - [category] Brief description of the change
 ```
 
-**Valid categories:** `[feature]`, `[fix]`, `[docs]`, `[refactor]`, `[security]`, `[perf]`
+**Valid categories:** `[feature]`, `[fix]`, `[docs]`, `[refactor]`, `[security]`, `[perf]`, `[ci]`, `[build]`, `[deps]`, `[lint]`
 
 **Examples:**
 ```markdown

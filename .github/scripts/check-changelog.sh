@@ -35,11 +35,13 @@ CODE_PATTERNS=(
 EXEMPT_PATTERNS=(
   "docs/**"
   ".github/workflows/**"
+  ".github/scripts/**"
   ".gitignore"
   ".nvmrc"
   ".prettierrc*"
   ".eslintrc*"
-  "*.md"  # Root-level markdown files like README.md, CONTRIBUTING.md
+  "README.md"
+  "CONTRIBUTING.md"
   "LICENSE"
   "CODE_OF_CONDUCT.md"
   ".github/pull_request_template.md"
