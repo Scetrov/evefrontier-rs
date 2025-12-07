@@ -197,8 +197,13 @@ Tasks are grouped by domain; checkboxes track completion status.
       cargo-audit integrated into CI (`security-audit` job in `.github/workflows/ci.yml`) -
       Pre-commit hook updated to run cargo audit (step 5 in `.rusty-hook.toml`) - `make audit`
       target added to Makefile - Comprehensive remediation guide created in `docs/SECURITY_AUDIT.md`
-- [ ] Add CI guard requiring `CHANGELOG.md` modification for non-doc code changes ([ADR 0010](adrs/0010-maintain-changelog.md)).
-      Currently documented in CONTRIBUTING.md but not enforced by CI workflow.
+- [x] Add CI guard requiring `CHANGELOG.md` modification for non-doc code changes ([ADR 0010](adrs/0010-maintain-changelog.md)).
+      - Created `.github/scripts/check-changelog.sh` with file pattern detection and exemption rules
+      - Added `changelog-guard` job to `.github/workflows/ci.yml` with proper triggering
+      - Updated `CONTRIBUTING.md` with "Maintaining CHANGELOG.md" section
+      - Implemented emergency override via `skip-changelog-check` label
+      - Supports bot PR exemption (Dependabot, Renovate)
+      - Clear error messages with exemption rules and CONTRIBUTING.md link
 - [x] Schedule nightly dependency outdated report (Rust & Node) and publish artifact. - Created
       `.github/workflows/dependency-check.yml` with nightly schedule (2 AM UTC) - Separate jobs for
       Rust (`cargo outdated`) and Node (`pnpm outdated`) - Artifacts published with 30-day

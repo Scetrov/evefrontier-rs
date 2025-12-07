@@ -140,4 +140,25 @@ jobs:
       - name: Run security audit
         run: cargo audit --deny warnings
 
+  changelog-guard:
+    name: Enforce CHANGELOG.md updates for code changes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for diff comparison
+
+      - name: Fetch base branch
+        run: |
+          git fetch origin ${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}
+
+      - name: Check CHANGELOG.md requirement
+        run: |
+          bash .github/scripts/check-changelog.sh
+        env:
+          GITHUB_BASE_REF: ${{ github.base_ref }}
+          GITHUB_HEAD_REF: ${{ github.head_ref }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+
 

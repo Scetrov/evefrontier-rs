@@ -22,13 +22,50 @@ behave respectfully.
 - Open a PR against `main` with the provided Pull Request template.
 - Include unit tests for new behavior where practical.
 
-## Changelog requirement
+## Maintaining CHANGELOG.md
 
-Before merging a PR that modifies code, docs, or other user-visible behavior, add a short entry to
-`CHANGELOG.md` under the `Unreleased` section. The entry should contain a one-line summary, the date
-(YYYY-MM-DD), the author (name or `auto-llm:<id>`), and a tag `[manual]` or `[auto-llm]`. LLM/agent
-edits must append the changelog entry when they apply changes, check the system time to identify the
-actual date do not use dates in the past. Reviewers should verify the changelog entry for clarity.
+This project maintains a CHANGELOG following [ADR 0010](docs/adrs/0010-maintain-changelog.md). All code changes must include a corresponding CHANGELOG.md entry.
+
+### When CHANGELOG.md Update is Required
+
+**✅ These changes REQUIRE a CHANGELOG.md entry:**
+- Modifications to source code (`src/`, `crates/`, `examples/`, etc.)
+- Changes to build system (`Cargo.toml`, `Makefile`)
+- Test or benchmark code changes (`tests/`, `benches/`)
+
+**⏭️ These changes are EXEMPT from CHANGELOG requirement:**
+- Pure documentation updates (`docs/`, root `*.md` files)
+- CI configuration (`.github/workflows/`)
+- Repository configuration (`.gitignore`, `.nvmrc`, etc.)
+
+### CHANGELOG Entry Format
+
+Add entries to the `Unreleased` section at the top of `CHANGELOG.md` using this format:
+
+```markdown
+- YYYY-MM-DD - Author Name - [category] Brief description of the change
+```
+
+**Valid categories:** `[feature]`, `[fix]`, `[docs]`, `[refactor]`, `[security]`, `[perf]`
+
+**Examples:**
+```markdown
+- 2025-12-07 - Jane Doe - [feature] Added CI guard for CHANGELOG.md enforcement
+- 2025-12-07 - auto-llm:copilot - [fix] Fixed edge case in spatial routing with temperature filtering
+- 2025-12-07 - John Smith - [perf] Optimized KD-tree query performance by 15%
+```
+
+### CI Enforcement
+
+**The CI workflow automatically validates CHANGELOG.md updates.** If your PR:
+- ✅ Modifies code + updates CHANGELOG.md → CI passes
+- ❌ Modifies code but skips CHANGELOG.md → CI fails with guidance
+- ✅ Only changes docs/config → CI passes without CHANGELOG requirement
+- ✅ Has `skip-changelog-check` label → CI passes (emergency only)
+
+### Emergency Override
+
+For time-sensitive fixes, add the `skip-changelog-check` label to your PR. This label should only be used with maintainer approval for genuine emergencies—changelog updates are expected to be addressed in a follow-up PR.
 
 ## Architecture Decision Records (ADRs)
 
