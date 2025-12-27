@@ -694,22 +694,12 @@ Then check CloudWatch Logs for detailed traces.
 
 The module creates a minimal IAM execution role policy for the Lambda functions. The actual policy
 in [`terraform/modules/evefrontier-lambda/iam.tf`](../terraform/modules/evefrontier-lambda/iam.tf)
-contains two statements:
+grants only CloudWatch Logs write permissions:
 
 ```json
 {
   "Version": "2012-10-17",
   "Statement": [
-    {
-      "Sid": "CloudWatchLogsCreateGroup",
-      "Effect": "Allow",
-      "Action": "logs:CreateLogGroup",
-      "Resource": [
-        "arn:aws:logs:REGION:ACCOUNT_ID:log-group:/aws/lambda/PREFIX-route",
-        "arn:aws:logs:REGION:ACCOUNT_ID:log-group:/aws/lambda/PREFIX-scout-gates",
-        "arn:aws:logs:REGION:ACCOUNT_ID:log-group:/aws/lambda/PREFIX-scout-range"
-      ]
-    },
     {
       "Sid": "CloudWatchLogsWrite",
       "Effect": "Allow",
@@ -727,8 +717,12 @@ contains two statements:
 }
 ```
 
-> **Note:** `REGION`, `ACCOUNT_ID`, and `PREFIX` are resolved at deployment time from your AWS
-> configuration and the `name_prefix` variable. Refer to the Terraform code for the exact policy.
+> **Note:** Log groups are created by Terraform, not Lambda. The Lambda execution role does not
+> include `logs:CreateLogGroup` because Terraform manages log group lifecycle. If log groups are
+> accidentally deleted, run `terraform apply` to recreate them.
+>
+> `REGION`, `ACCOUNT_ID`, and `PREFIX` are resolved at deployment time from your AWS configuration
+> and the `project_name` variable. Refer to the Terraform code for the exact policy.
 
 Lambda functions have **no access** to:
 - S3 buckets
