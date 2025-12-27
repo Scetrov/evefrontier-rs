@@ -60,7 +60,8 @@ Tasks are grouped by domain; checkboxes track completion status.
   - Added Developer Tooling section to README.md with Nx usage and troubleshooting
   - Included daemon troubleshooting (NX_DAEMON=false, pnpm nx reset)
 - [x] Add CI workflow enforcing ADR filename pattern (`^\\d{4}-.+\\.md$`) and immutability (reject
-      edits to historical ADRs except via explicit override label) per [ADR 0001](adrs/0001-use-nygard-adr.md).
+      edits to historical ADRs except via explicit override label) per
+      [ADR 0001](adrs/0001-use-nygard-adr.md).
   - Created `.github/workflows/adr-governance.yml` with comprehensive validation
   - Enforces pattern: `^docs/adrs/\d{4}-[a-z0-9-]+\.md$`
   - Blocks edits to existing ADRs unless `allow-adr-edits` label present
@@ -188,11 +189,14 @@ Tasks are grouped by domain; checkboxes track completion status.
 - [x] Ensure `cargo fmt`, `cargo clippy --all-targets --all-features`, and `cargo test --workspace`
       run cleanly in CI ([ADR 0007](adrs/0007-devsecops-practices.md)). Pre-commit hooks configured
       with rusty-hook to run all CI checks locally.
-- [x] Hook Rust build, test, lint, and clippy tasks into Nx orchestration per [ADR 0006](adrs/0006-software-components.md)
-      and [ADR 0007](adrs/0007-devsecops-practices.md).
-  - Added `parallel: false` to all Rust task targetDefaults in nx.json to allow Cargo to manage its own parallelism
-  - Added `dependsOn: ["build"]` to all test targets across 6 crates to ensure builds complete before tests
-  - Added `dependsOn: ["build"]` to clippy target in nx.json's targetDefaults (not in individual project.json files) to ensure compilation before linting
+- [x] Hook Rust build, test, lint, and clippy tasks into Nx orchestration per
+      [ADR 0006](adrs/0006-software-components.md) and [ADR 0007](adrs/0007-devsecops-practices.md).
+  - Added `parallel: false` to all Rust task targetDefaults in nx.json to allow Cargo to manage its
+    own parallelism
+  - Added `dependsOn: ["build"]` to all test targets across 6 crates to ensure builds complete
+    before tests
+  - Added `dependsOn: ["build"]` to clippy target in nx.json's targetDefaults (not in individual
+    project.json files) to ensure compilation before linting
   - Configured outputs for build target to cache `target/debug` and `target/release` directories
   - Documented Nx task orchestration in CONTRIBUTING.md with usage examples and troubleshooting
   - Verified task execution with caching and dependency resolution working correctly
@@ -202,14 +206,14 @@ Tasks are grouped by domain; checkboxes track completion status.
       cargo-audit integrated into CI (`security-audit` job in `.github/workflows/ci.yml`) -
       Pre-commit hook updated to run cargo audit (step 5 in `.rusty-hook.toml`) - `make audit`
       target added to Makefile - Comprehensive remediation guide created in `docs/SECURITY_AUDIT.md`
-- [x] Add CI guard requiring `CHANGELOG.md` modification for non-doc code changes ([ADR 0010](adrs/0010-maintain-changelog.md)).
-      - Created `.github/scripts/check-changelog.sh` with file pattern detection and exemption rules
-      - Added `changelog-guard` job to `.github/workflows/ci.yml` with proper triggering
-      - Updated `CONTRIBUTING.md` with "Maintaining CHANGELOG.md" section
-      - Implemented emergency override via `skip-changelog-check` label
-      - Clear error messages with exemption rules and CONTRIBUTING.md link
-      - Exempts `.github/scripts/**`, `specs/**`, and explicit root `.md` files
-      - **Future v2 enhancement**: Bot PR exemption (Dependabot, Renovate) documented in spec.md edge cases
+- [x] Add CI guard requiring `CHANGELOG.md` modification for non-doc code changes
+      ([ADR 0010](adrs/0010-maintain-changelog.md)). - Created `.github/scripts/check-changelog.sh`
+      with file pattern detection and exemption rules - Added `changelog-guard` job to
+      `.github/workflows/ci.yml` with proper triggering - Updated `CONTRIBUTING.md` with
+      "Maintaining CHANGELOG.md" section - Implemented emergency override via `skip-changelog-check`
+      label - Clear error messages with exemption rules and CONTRIBUTING.md link - Exempts
+      `.github/scripts/**`, `specs/**`, and explicit root `.md` files - **Future v2 enhancement**:
+      Bot PR exemption (Dependabot, Renovate) documented in spec.md edge cases
 - [x] Schedule nightly dependency outdated report (Rust & Node) and publish artifact. - Created
       `.github/workflows/dependency-check.yml` with nightly schedule (2 AM UTC) - Separate jobs for
       Rust (`cargo outdated`) and Node (`pnpm outdated`) - Artifacts published with 30-day
@@ -249,23 +253,24 @@ Tasks are grouped by domain; checkboxes track completion status.
       [ADR 0007](adrs/0007-devsecops-practices.md).
 - [ ] Add architecture diagrams or sequence diagrams illustrating data flow between downloader,
       loader, graph, CLI, and Lambda components.
-- [ ] Provide onboarding steps in `docs/INITIAL_SETUP.md` once the workspace scaffolding stabilizes
+- [x] Provide onboarding steps in `docs/INITIAL_SETUP.md` once the workspace scaffolding stabilizes
       (update as tasks complete).
 - [x] Extend `docs/USAGE.md` with KD-tree index usage and build instructions. - Added `index-build`
       subcommand documentation with examples - Documented when to rebuild and temperature-aware
       filtering
 - [ ] Add ADR for any deviations from original KD-tree design if implementation adjustments occur.
 - [ ] Add `docs/RELEASE.md` section describing inclusion of spatial index artifact.
-- [x] Add Rust-specific badges to README (crates.io, docs.rs, maintenance status, license, build status).
+- [x] Add Rust-specific badges to README (crates.io, docs.rs, maintenance status, license, build
+      status).
 - [ ] Publish `evefrontier-lib` to crates.io (prerequisite for badges).
 - [ ] Publish `evefrontier-cli` to crates.io (prerequisite for badges).
 - [ ] Create GitHub Release v0.1.0 with signed artifacts (prerequisite for release badge).
 
 ## Security & Operations
 
-- [ ] Define secrets management and configuration guidance for Lambda deployments (environment
+- [x] Define secrets management and configuration guidance for Lambda deployments (environment
       variables, AWS Secrets Manager, etc.).
-- [ ] Implement logging and observability hooks (structured logs, optional tracing) across CLI and
+- [x] Implement logging and observability hooks (structured logs, optional tracing) across CLI and
       Lambdas.
 - [ ] Add metrics or usage telemetry (if desired) with opt-in controls and documentation.
 - [ ] Plan for dataset update automation (scheduled job or manual release) and document operational
@@ -296,7 +301,8 @@ Tasks are grouped by domain; checkboxes track completion status.
   - [ ] Traefik ingress resources and routing configuration
   - [ ] Health check and readiness probe definitions
   - [ ] Documentation for chart installation and configuration options
-- [ ] Add CI/CD pipeline for building and publishing Docker images per [ADR 0007](adrs/0007-devsecops-practices.md):
+- [ ] Add CI/CD pipeline for building and publishing Docker images per
+      [ADR 0007](adrs/0007-devsecops-practices.md):
   - [ ] Multi-architecture builds (amd64, arm64) for container images
   - [ ] Image scanning for vulnerabilities (e.g., Trivy, Grype) integrated into CI workflow
   - [ ] Image signing with cosign for supply chain security
