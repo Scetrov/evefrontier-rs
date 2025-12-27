@@ -90,32 +90,32 @@ variable "lambda_reserved_concurrency" {
 # -----------------------------------------------------------------------------
 
 variable "route_binary_path" {
-  description = "Path to the built 'bootstrap' binary for the route Lambda function."
+  description = "Path to the built 'bootstrap' binary for the route Lambda function. May be either a raw 'bootstrap' file or a pre-packaged '.zip' archive. When providing a '.zip', it MUST contain a file named 'bootstrap' in the root of the archive, as required by the AWS Lambda custom runtime."
   type        = string
 
   validation {
     condition     = can(regex(".*bootstrap$", var.route_binary_path)) || can(regex(".*\\.zip$", var.route_binary_path))
-    error_message = "Binary path must end with 'bootstrap' (raw binary) or '.zip' (pre-packaged)."
+    error_message = "Binary path must end with 'bootstrap' (raw binary) or '.zip' (pre-packaged). If using '.zip', ensure the archive contains a 'bootstrap' file in its root."
   }
 }
 
 variable "scout_gates_binary_path" {
-  description = "Path to the built 'bootstrap' binary for the scout-gates Lambda function."
+  description = "Path to the built 'bootstrap' binary for the scout-gates Lambda function. May be either a raw 'bootstrap' file or a pre-packaged '.zip' archive. When providing a '.zip', it MUST contain a file named 'bootstrap' in the root of the archive, as required by the AWS Lambda custom runtime."
   type        = string
 
   validation {
     condition     = can(regex(".*bootstrap$", var.scout_gates_binary_path)) || can(regex(".*\\.zip$", var.scout_gates_binary_path))
-    error_message = "Binary path must end with 'bootstrap' (raw binary) or '.zip' (pre-packaged)."
+    error_message = "Binary path must end with 'bootstrap' (raw binary) or '.zip' (pre-packaged). If using '.zip', ensure the archive contains a 'bootstrap' file in its root."
   }
 }
 
 variable "scout_range_binary_path" {
-  description = "Path to the built 'bootstrap' binary for the scout-range Lambda function."
+  description = "Path to the built 'bootstrap' binary for the scout-range Lambda function. May be either a raw 'bootstrap' file or a pre-packaged '.zip' archive. When providing a '.zip', it MUST contain a file named 'bootstrap' in the root of the archive, as required by the AWS Lambda custom runtime."
   type        = string
 
   validation {
     condition     = can(regex(".*bootstrap$", var.scout_range_binary_path)) || can(regex(".*\\.zip$", var.scout_range_binary_path))
-    error_message = "Binary path must end with 'bootstrap' (raw binary) or '.zip' (pre-packaged)."
+    error_message = "Binary path must end with 'bootstrap' (raw binary) or '.zip' (pre-packaged). If using '.zip', ensure the archive contains a 'bootstrap' file in its root."
   }
 }
 
