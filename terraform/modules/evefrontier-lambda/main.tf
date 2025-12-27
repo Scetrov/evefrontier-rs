@@ -29,6 +29,18 @@ locals {
 # -----------------------------------------------------------------------------
 # Data Sources: Package Lambda Binaries
 # -----------------------------------------------------------------------------
+# These data sources conditionally create zip archives from raw binaries.
+# If the binary path ends with '.zip', we assume it's pre-packaged and skip.
+# If it's a raw 'bootstrap' binary, we create the zip archive.
+#
+# NOTE: File existence is validated at apply time, not plan time. If a binary
+# path points to a non-existent file, Terraform will fail during apply with:
+# - Raw binary: "Error in function call" from archive_file data source
+# - Pre-packaged zip: "unable to read file" from aws_lambda_function
+#
+# To catch missing files early, verify binaries exist before running Terraform:
+#   ls -la binaries/bootstrap-*
+# -----------------------------------------------------------------------------
 
 # Route Lambda binary packaging
 data "archive_file" "route" {
