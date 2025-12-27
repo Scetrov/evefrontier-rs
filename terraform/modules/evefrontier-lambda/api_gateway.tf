@@ -139,13 +139,16 @@ resource "aws_apigatewayv2_route" "scout_range" {
 # -----------------------------------------------------------------------------
 # Lambda Permissions for API Gateway
 # -----------------------------------------------------------------------------
+# Source ARN is scoped to specific stage and HTTP method for least privilege.
+# Format: {execution_arn}/{stage}/{method}/{path}
+# -----------------------------------------------------------------------------
 
 resource "aws_lambda_permission" "route" {
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.route.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.main.execution_arn}/*/*/route"
+  source_arn    = "${aws_apigatewayv2_api.main.execution_arn}/${var.api_stage_name}/POST/route"
 }
 
 resource "aws_lambda_permission" "scout_gates" {
@@ -153,7 +156,7 @@ resource "aws_lambda_permission" "scout_gates" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.scout_gates.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.main.execution_arn}/*/*/scout-gates"
+  source_arn    = "${aws_apigatewayv2_api.main.execution_arn}/${var.api_stage_name}/POST/scout-gates"
 }
 
 resource "aws_lambda_permission" "scout_range" {
@@ -161,5 +164,5 @@ resource "aws_lambda_permission" "scout_range" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.scout_range.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.main.execution_arn}/*/*/scout-range"
+  source_arn    = "${aws_apigatewayv2_api.main.execution_arn}/${var.api_stage_name}/POST/scout-range"
 }
