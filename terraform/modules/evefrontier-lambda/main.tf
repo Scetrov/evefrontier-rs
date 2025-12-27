@@ -72,6 +72,12 @@ data "archive_file" "scout_range" {
 # -----------------------------------------------------------------------------
 # Route Lambda Function
 # -----------------------------------------------------------------------------
+# NOTE: reserved_concurrent_executions behavior:
+# - Values >= 0 are passed through directly to AWS Lambda
+# - Value -1 (or any negative) maps to null, which AWS treats as "unreserved"
+# - "Unreserved" allows scaling up to the account's concurrent execution limit
+# This pattern is used for all three Lambda functions below.
+# -----------------------------------------------------------------------------
 
 resource "aws_lambda_function" "route" {
   function_name = "${var.project_name}-route-${var.environment}"
