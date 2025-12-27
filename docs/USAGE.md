@@ -807,3 +807,74 @@ Lambda functions require minimal IAM permissions:
 
 **See `docs/RELEASE.md` (future)** for detailed deployment automation and Terraform templates.
 
+## Development Scripts
+
+The `scripts/` directory contains utility scripts for fixture management, database inspection, and
+development tooling. All scripts are registered as Nx tasks.
+
+### Available Script Tasks
+
+```bash
+# Verify test fixture integrity
+pnpm nx run scripts:fixture-verify
+
+# Show current fixture status
+pnpm nx run scripts:fixture-status
+
+# Record fixture metadata (after updates)
+pnpm nx run scripts:fixture-record
+
+# Inspect a database file
+pnpm nx run scripts:inspect-db docs/fixtures/minimal_static_data.db
+
+# Run all verification tasks
+pnpm nx run scripts:verify-all
+```
+
+### Fixture Management
+
+The test fixture at `docs/fixtures/minimal_static_data.db` is pinned and verified against
+recorded metadata. This ensures deterministic test results across different environments.
+
+**Verify fixture integrity:**
+
+```bash
+pnpm nx run scripts:fixture-verify
+```
+
+This command compares the current fixture against the recorded SHA-256 checksum and table row counts
+in `docs/fixtures/minimal_static_data.meta.json`. It fails if the fixture has been modified.
+
+**Record new metadata after updating the fixture:**
+
+```bash
+pnpm nx run scripts:fixture-record
+```
+
+Use this after intentionally modifying the fixture (e.g., adding new test systems).
+
+### Database Inspection
+
+The `inspect-db` task displays the schema and contents of any evefrontier SQLite database:
+
+```bash
+pnpm nx run scripts:inspect-db docs/fixtures/minimal_static_data.db
+```
+
+Output includes table names, system data, planets, moons, and jump gates.
+
+### Python Environment
+
+Scripts use Python stdlib only (no external dependencies). For future scripts requiring
+dependencies, run:
+
+```bash
+pnpm nx run scripts:venv-setup
+```
+
+This creates a virtual environment at `scripts/.venv/` and installs packages from
+`scripts/requirements.txt`.
+
+For detailed script documentation, see `scripts/README.md`.
+
+

@@ -1,0 +1,98 @@
+{
+  "name": "scripts",
+  "$schema": "../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "scripts",
+  "tags": ["type:tooling", "lang:mixed", "scope:scripts"],
+  "targets": {
+    "venv-setup": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          "python3 -m venv scripts/.venv",
+          "scripts/.venv/bin/pip install -r scripts/requirements.txt"
+        ],
+        "cwd": "{workspaceRoot}",
+        "parallel": false
+      },
+      "cache": false
+    },
+    "fixture-verify": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "python3 scripts/fixture_status.py verify",
+        "cwd": "{workspaceRoot}"
+      },
+      "inputs": [
+        "{workspaceRoot}/docs/fixtures/minimal_static_data.db",
+        "{workspaceRoot}/docs/fixtures/minimal_static_data.meta.json",
+        "{workspaceRoot}/scripts/fixture_status.py"
+      ],
+      "cache": true
+    },
+    "fixture-status": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "python3 scripts/fixture_status.py status",
+        "cwd": "{workspaceRoot}"
+      },
+      "cache": false
+    },
+    "fixture-record": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "python3 scripts/fixture_status.py record",
+        "cwd": "{workspaceRoot}"
+      },
+      "outputs": [
+        "{workspaceRoot}/docs/fixtures/minimal_static_data.meta.json"
+      ],
+      "cache": false
+    },
+    "fixture-sync": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "python3 scripts/extract_fixture_from_dataset.py"
+      },
+      "cache": false
+    },
+    "fixture-create": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "python3 scripts/create_minimal_db.py"
+      },
+      "cache": false
+    },
+    "route-fixture-extract": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "python3 scripts/extract_route_fixture.py",
+        "cwd": "{workspaceRoot}"
+      },
+      "cache": false
+    },
+    "inspect-db": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "python3 scripts/inspect_db.py"
+      },
+      "cache": false
+    },
+    "analyze-routes": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "python3 scripts/analyze_sample_routes.py"
+      },
+      "cache": false
+    },
+    "verify-all": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["fixture-verify"],
+      "options": {
+        "command": "echo 'All verification tasks passed'",
+        "cwd": "{workspaceRoot}"
+      },
+      "cache": false
+    }
+  }
+}

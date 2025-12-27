@@ -134,6 +134,11 @@ __pycache__/
 *.py[cod]
 *.pyo
 
+# Python virtual environments
+scripts/.venv/
+.venv/
+venv/
+
 # Logs
 *.log
 logs/
