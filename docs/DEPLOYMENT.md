@@ -31,10 +31,112 @@ This guide covers deploying the EveFrontier Lambda functions to AWS using Terraf
 ### AWS Requirements
 
 - AWS account with appropriate permissions
-- IAM user or role with the following policies:
-  - `AWSLambda_FullAccess` (or custom policy for Lambda, API Gateway, CloudWatch, IAM)
-  - `IAMFullAccess` (for creating Lambda execution role)
+- IAM user or role with a **custom least-privilege policy** (see below)
 - Configured AWS credentials (`aws configure` or environment variables)
+
+#### Deployment IAM Policy
+
+> **Security Note:** Avoid attaching broad AWS-managed policies like `AWSLambda_FullAccess` or
+> `IAMFullAccess` to deployment users/roles. These grant far more permissions than needed and
+> increase blast radius if credentials are compromised. Use a narrowly scoped custom policy instead.
+
+The deploying principal needs permissions for:
+- Managing EveFrontier Lambda functions
+- Managing EveFrontier API Gateway resources  
+- Creating/managing CloudWatch log groups
+- Minimal IAM actions to create the Lambda execution role
+
+Example IAM policy (adjust `REGION` and `ACCOUNT_ID` to match your environment):
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "LambdaFunctionManagement",
+      "Effect": "Allow",
+      "Action": [
+        "lambda:CreateFunction",
+        "lambda:UpdateFunctionCode",
+        "lambda:UpdateFunctionConfiguration",
+        "lambda:PublishVersion",
+        "lambda:DeleteFunction",
+        "lambda:GetFunction",
+        "lambda:GetFunctionConfiguration",
+        "lambda:ListVersionsByFunction",
+        "lambda:AddPermission",
+        "lambda:RemovePermission",
+        "lambda:GetPolicy",
+        "lambda:TagResource",
+        "lambda:UntagResource"
+      ],
+      "Resource": "arn:aws:lambda:REGION:ACCOUNT_ID:function:evefrontier-*"
+    },
+    {
+      "Sid": "ApiGatewayManagement",
+      "Effect": "Allow",
+      "Action": [
+        "apigateway:GET",
+        "apigateway:POST",
+        "apigateway:PUT",
+        "apigateway:PATCH",
+        "apigateway:DELETE",
+        "apigateway:TagResource",
+        "apigateway:UntagResource"
+      ],
+      "Resource": [
+        "arn:aws:apigateway:REGION::/apis",
+        "arn:aws:apigateway:REGION::/apis/*"
+      ]
+    },
+    {
+      "Sid": "CloudWatchLogsManagement",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:DeleteLogGroup",
+        "logs:DescribeLogGroups",
+        "logs:PutRetentionPolicy",
+        "logs:TagLogGroup",
+        "logs:UntagLogGroup",
+        "logs:ListTagsLogGroup"
+      ],
+      "Resource": [
+        "arn:aws:logs:REGION:ACCOUNT_ID:log-group:/aws/lambda/evefrontier-*",
+        "arn:aws:logs:REGION:ACCOUNT_ID:log-group:/aws/apigateway/evefrontier-*"
+      ]
+    },
+    {
+      "Sid": "LambdaExecutionRoleManagement",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateRole",
+        "iam:GetRole",
+        "iam:DeleteRole",
+        "iam:TagRole",
+        "iam:UntagRole",
+        "iam:PutRolePolicy",
+        "iam:GetRolePolicy",
+        "iam:DeleteRolePolicy",
+        "iam:ListRolePolicies",
+        "iam:ListAttachedRolePolicies"
+      ],
+      "Resource": "arn:aws:iam::ACCOUNT_ID:role/evefrontier-*"
+    },
+    {
+      "Sid": "PassRoleToLambda",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": "arn:aws:iam::ACCOUNT_ID:role/evefrontier-*",
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": "lambda.amazonaws.com"
+        }
+      }
+    }
+  ]
+}
+```
 
 ### Verify Prerequisites
 
