@@ -42,7 +42,7 @@ variable "tags" {
 # -----------------------------------------------------------------------------
 
 variable "lambda_memory_mb" {
-  description = "Memory allocation in MB for Lambda functions. Bundled dataset requires ~256MB minimum."
+  description = "Memory allocation in MB for Lambda functions. Bundled dataset requires ~256MB minimum; 512MB+ recommended for better performance."
   type        = number
   default     = 512
 
@@ -161,9 +161,14 @@ variable "api_stage_name" {
 }
 
 variable "cors_allowed_origins" {
-  description = "List of allowed CORS origins. Use ['*'] to allow all origins (not recommended for production)."
+  description = "List of allowed CORS origins. Use ['*'] only for development; specify explicit origins for production."
   type        = list(string)
   default     = ["*"]
+
+  validation {
+    condition     = !(var.environment == "prod" && contains(var.cors_allowed_origins, "*"))
+    error_message = "Using '*' for cors_allowed_origins is not allowed when environment is 'prod'. Specify explicit allowed origins for production."
+  }
 }
 
 variable "cors_allowed_methods" {

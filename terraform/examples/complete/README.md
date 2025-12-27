@@ -206,13 +206,15 @@ First request after deployment may be slow due to cold start. The bundled datase
 
 ## Cost Estimation
 
-Approximate monthly costs (us-east-1, as of 2024):
+Approximate monthly costs (us-east-1). Verify current pricing at [AWS Lambda Pricing](https://aws.amazon.com/lambda/pricing/) and [API Gateway Pricing](https://aws.amazon.com/api-gateway/pricing/):
 
-| Component | Free Tier | Beyond Free Tier |
-|-----------|-----------|------------------|
+| Component | Free Tier | Beyond Free Tier (example) |
+|-----------|-----------|----------------------------|
 | Lambda (1M requests) | 1M requests free | ~$0.20/1M requests |
 | Lambda (GB-seconds) | 400K GB-s free | ~$0.0000166667/GB-s |
 | API Gateway | 1M requests free | ~$1.00/1M requests |
 | CloudWatch Logs | 5GB ingestion free | ~$0.50/GB |
+
+> **Note:** Pricing varies by region and changes over time. Always consult the AWS Pricing Calculator for accurate cost estimates.
 
 For low-traffic use cases, the deployment typically remains within free tier limits.

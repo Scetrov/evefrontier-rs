@@ -9,7 +9,7 @@
 # -----------------------------------------------------------------------------
 
 output "api_endpoint" {
-  description = "Base URL for the API Gateway endpoint (includes stage)"
+  description = "Complete invoke URL for the API Gateway (includes stage)"
   value       = aws_apigatewayv2_stage.main.invoke_url
 }
 

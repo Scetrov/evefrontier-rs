@@ -8,7 +8,7 @@ Terraform module for deploying [EveFrontier](https://github.com/Scetrov/evefront
 - **HTTP API Gateway**: Low-latency API with CORS support
 - **Least-Privilege IAM**: CloudWatch Logs only (no unnecessary permissions)
 - **Configurable**: Memory, timeout, logging, throttling all customizable
-- **ARM64 by Default**: Better price/performance for Rust workloads
+- **ARM64 by Default**: Typically offers better price/performance for Rust workloads (see [AWS Lambda Pricing](https://aws.amazon.com/lambda/pricing/))
 
 ## Requirements
 

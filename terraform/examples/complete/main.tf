@@ -72,7 +72,7 @@ module "evefrontier" {
 
   # Core configuration
   environment  = var.environment
-  project_name = "evefrontier"
+  project_name = "evefrontier-demo" # Customize this for your deployment
 
   # Lambda binary paths (must be named 'bootstrap' for custom runtime)
   route_binary_path       = "${var.binaries_path}/bootstrap-route"

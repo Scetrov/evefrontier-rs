@@ -141,10 +141,11 @@ resource "aws_apigatewayv2_route" "scout_range" {
 # -----------------------------------------------------------------------------
 # Source ARN is scoped to specific stage and HTTP method for least privilege.
 # Format: {execution_arn}/{stage}/{method}/{path}
+# Statement IDs are descriptive to aid debugging and auditing in AWS Console.
 # -----------------------------------------------------------------------------
 
 resource "aws_lambda_permission" "route" {
-  statement_id  = "AllowAPIGatewayInvoke"
+  statement_id  = "AllowAPIGatewayInvokeRoute"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.route.function_name
   principal     = "apigateway.amazonaws.com"
@@ -152,7 +153,7 @@ resource "aws_lambda_permission" "route" {
 }
 
 resource "aws_lambda_permission" "scout_gates" {
-  statement_id  = "AllowAPIGatewayInvoke"
+  statement_id  = "AllowAPIGatewayInvokeScoutGates"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.scout_gates.function_name
   principal     = "apigateway.amazonaws.com"
@@ -160,7 +161,7 @@ resource "aws_lambda_permission" "scout_gates" {
 }
 
 resource "aws_lambda_permission" "scout_range" {
-  statement_id  = "AllowAPIGatewayInvoke"
+  statement_id  = "AllowAPIGatewayInvokeScoutRange"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.scout_range.function_name
   principal     = "apigateway.amazonaws.com"

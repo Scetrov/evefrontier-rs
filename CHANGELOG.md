@@ -3,7 +3,7 @@
 All notable changes to this project will be documented in this file.
 
 ## Unreleased
-- 2025-12-27 - auto-llm:copilot - [adr] - Added ADR 0013: Infrastructure as Code Tooling documenting Terraform choice over SAM/CDK/Pulumi
+- 2025-12-27 - auto-llm:copilot - [adr] - Created ADR 0013: Infrastructure as Code Tooling to document the decision to use Terraform over alternatives (SAM/CDK/Pulumi)
 - 2025-12-27 - auto-llm:copilot - [feature] - Added Terraform module for Lambda deployment at `terraform/modules/evefrontier-lambda/`
 - 2025-12-27 - auto-llm:copilot - [feature] - Added HTTP API Gateway v2 configuration with routes for /route, /scout-gates, /scout-range endpoints
 - 2025-12-27 - auto-llm:copilot - [feature] - Added IAM least-privilege policy for Lambda execution (CloudWatch Logs only)

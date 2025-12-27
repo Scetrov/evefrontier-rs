@@ -46,7 +46,8 @@ The deploying principal needs permissions for:
 - Creating/managing CloudWatch log groups
 - Minimal IAM actions to create the Lambda execution role
 
-Example IAM policy (adjust `REGION` and `ACCOUNT_ID` to match your environment):
+Example IAM policy. **Replace `<YOUR_REGION>` with your AWS region (e.g., `us-east-1`) and
+`<YOUR_ACCOUNT_ID>` with your 12-digit AWS account ID** before using:
 
 ```json
 {
@@ -68,7 +69,7 @@ Example IAM policy (adjust `REGION` and `ACCOUNT_ID` to match your environment):
         "lambda:TagResource",
         "lambda:UntagResource"
       ],
-      "Resource": "arn:aws:lambda:REGION:ACCOUNT_ID:function:evefrontier-*"
+      "Resource": "arn:aws:lambda:<YOUR_REGION>:<YOUR_ACCOUNT_ID>:function:evefrontier-*"
     },
     {
       "Sid": "ApiGatewayManagement",
@@ -83,8 +84,8 @@ Example IAM policy (adjust `REGION` and `ACCOUNT_ID` to match your environment):
         "apigateway:UntagResource"
       ],
       "Resource": [
-        "arn:aws:apigateway:REGION::/apis",
-        "arn:aws:apigateway:REGION::/apis/*"
+        "arn:aws:apigateway:<YOUR_REGION>::/apis",
+        "arn:aws:apigateway:<YOUR_REGION>::/apis/*"
       ]
     },
     {
@@ -100,8 +101,8 @@ Example IAM policy (adjust `REGION` and `ACCOUNT_ID` to match your environment):
         "logs:ListTagsLogGroup"
       ],
       "Resource": [
-        "arn:aws:logs:REGION:ACCOUNT_ID:log-group:/aws/lambda/evefrontier-*",
-        "arn:aws:logs:REGION:ACCOUNT_ID:log-group:/aws/apigateway/evefrontier-*"
+        "arn:aws:logs:<YOUR_REGION>:<YOUR_ACCOUNT_ID>:log-group:/aws/lambda/evefrontier-*",
+        "arn:aws:logs:<YOUR_REGION>:<YOUR_ACCOUNT_ID>:log-group:/aws/apigateway/evefrontier-*"
       ]
     },
     {
@@ -119,13 +120,13 @@ Example IAM policy (adjust `REGION` and `ACCOUNT_ID` to match your environment):
         "iam:ListRolePolicies",
         "iam:ListAttachedRolePolicies"
       ],
-      "Resource": "arn:aws:iam::ACCOUNT_ID:role/evefrontier-*"
+      "Resource": "arn:aws:iam::<YOUR_ACCOUNT_ID>:role/evefrontier-*"
     },
     {
       "Sid": "PassRoleToLambda",
       "Effect": "Allow",
       "Action": "iam:PassRole",
-      "Resource": "arn:aws:iam::ACCOUNT_ID:role/evefrontier-*",
+      "Resource": "arn:aws:iam::<YOUR_ACCOUNT_ID>:role/evefrontier-*",
       "Condition": {
         "StringEquals": {
           "iam:PassedToService": "lambda.amazonaws.com"
@@ -502,11 +503,14 @@ Lambda functions use structured JSON logging via `tracing`:
 
 ### CloudWatch Insights Queries
 
+> **Note:** These queries assume JSON-formatted logs as shown above. Adjust field names and
+> patterns based on your actual log output structure.
+
 ```sql
--- Find slow requests
+-- Find slow requests (adjust field path based on actual log structure)
 fields @timestamp, @message
 | filter @message like /duration_ms/
-| parse @message /duration_ms.*?(\d+)/ as duration
+| parse @message /\"duration_ms\":\s*(\d+)/ as duration
 | filter duration > 1000
 | sort @timestamp desc
 | limit 100
@@ -579,7 +583,7 @@ lambda_reserved_concurrency = 100
 
 ### Cost Optimization
 
-1. **ARM64 architecture**: ~34% cheaper than x86_64
+1. **ARM64 architecture**: Generally cheaper than x86_64 (see [AWS Lambda Pricing](https://aws.amazon.com/lambda/pricing/) for current rates in your region)
 2. **Right-size memory**: 512MB is sufficient for most workloads
 3. **Log retention**: Reduce `log_retention_days` for dev environments
 4. **Provisioned concurrency**: Only if cold starts are unacceptable
@@ -687,6 +691,10 @@ The module creates a minimal IAM execution role policy for the Lambda functions.
 in [`terraform/modules/evefrontier-lambda/iam.tf`](../terraform/modules/evefrontier-lambda/iam.tf)
 grants only CloudWatch Logs write permissions:
 
+The actual IAM policy created by the Terraform module can be found in
+[`terraform/modules/evefrontier-lambda/iam.tf`](../terraform/modules/evefrontier-lambda/iam.tf).
+The policy grants only CloudWatch Logs write permissions:
+
 ```json
 {
   "Version": "2012-10-17",
@@ -699,9 +707,9 @@ grants only CloudWatch Logs write permissions:
         "logs:PutLogEvents"
       ],
       "Resource": [
-        "arn:aws:logs:REGION:ACCOUNT_ID:log-group:/aws/lambda/PREFIX-route:*",
-        "arn:aws:logs:REGION:ACCOUNT_ID:log-group:/aws/lambda/PREFIX-scout-gates:*",
-        "arn:aws:logs:REGION:ACCOUNT_ID:log-group:/aws/lambda/PREFIX-scout-range:*"
+        "arn:aws:logs:<REGION>:<ACCOUNT_ID>:log-group:/aws/lambda/<PROJECT_NAME>-route-<ENV>:*",
+        "arn:aws:logs:<REGION>:<ACCOUNT_ID>:log-group:/aws/lambda/<PROJECT_NAME>-scout-gates-<ENV>:*",
+        "arn:aws:logs:<REGION>:<ACCOUNT_ID>:log-group:/aws/lambda/<PROJECT_NAME>-scout-range-<ENV>:*"
       ]
     }
   ]
@@ -712,8 +720,8 @@ grants only CloudWatch Logs write permissions:
 > include `logs:CreateLogGroup` because Terraform manages log group lifecycle. If log groups are
 > accidentally deleted, run `terraform apply` to recreate them.
 >
-> `REGION`, `ACCOUNT_ID`, and `PREFIX` are resolved at deployment time from your AWS configuration
-> and the `project_name` variable. Refer to the Terraform code for the exact policy.
+> The placeholders `<REGION>`, `<ACCOUNT_ID>`, `<PROJECT_NAME>`, and `<ENV>` are resolved at
+> deployment time based on your AWS configuration and Terraform variables.
 
 Lambda functions have **no access** to:
 - S3 buckets
@@ -726,7 +734,6 @@ Lambda functions have **no access** to:
 - Dataset is bundled at build time (no runtime downloads)
 - No API keys or credentials in Lambda environment
 - No database connections
-
 ### CORS
 
 For production:
