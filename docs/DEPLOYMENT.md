@@ -194,6 +194,12 @@ curl -X POST "${API}/route" -H "Content-Type: application/json" \
 
 Lambda runs on Amazon Linux 2023. For ARM64 deployment (recommended), you need cross-compilation.
 
+> **Note on Rust targets**: This guide uses `aarch64-unknown-linux-gnu` which dynamically links
+> against glibc. This works because the `provided.al2023` Lambda runtime includes glibc. An
+> alternative is `aarch64-unknown-linux-musl` which produces fully static binaries, but requires
+> musl toolchain setup and may have compatibility issues with some crates. For most use cases,
+> the `gnu` target is simpler and works well with Amazon Linux 2023.
+
 #### Ubuntu/Debian
 
 ```bash

@@ -118,14 +118,16 @@ variable "cors_allowed_origins" {
 **Build Commands**:
 ```bash
 # Build for Lambda (ARM64)
-cargo build --release --target aarch64-unknown-linux-musl \
+# Using gnu target (works with provided.al2023 runtime which includes glibc)
+# Alternative: aarch64-unknown-linux-musl for fully static binaries
+cargo build --release --target aarch64-unknown-linux-gnu \
   -p evefrontier-lambda-route \
   -p evefrontier-lambda-scout-gates \
   -p evefrontier-lambda-scout-range \
   --features bundle-data
 
 # Package (example for route function)
-cp target/aarch64-unknown-linux-musl/release/evefrontier-lambda-route bootstrap
+cp target/aarch64-unknown-linux-gnu/release/evefrontier-lambda-route bootstrap
 zip lambda-route.zip bootstrap
 ```
 
