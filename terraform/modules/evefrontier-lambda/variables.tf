@@ -166,8 +166,10 @@ variable "cors_allowed_origins" {
   default     = ["*"]
 
   validation {
-    condition     = !(var.environment == "prod" && contains(var.cors_allowed_origins, "*"))
-    error_message = "Using '*' for cors_allowed_origins is not allowed when environment is 'prod'. Specify explicit allowed origins for production."
+    # Using '*' is only allowed for explicitly non-production environments.
+    # This protects against overly permissive CORS in production-like environments.
+    condition     = !contains(var.cors_allowed_origins, "*") || contains(["dev", "local", "test", "staging"], lower(var.environment))
+    error_message = "Using '*' for cors_allowed_origins is only allowed when environment is one of: dev, local, test, staging. Specify explicit allowed origins for other environments."
   }
 }
 
@@ -211,8 +213,8 @@ variable "throttling_rate_limit" {
   default     = 50
 
   validation {
-    condition     = var.throttling_rate_limit > 0
-    error_message = "Throttling rate limit must be greater than 0."
+    condition     = var.throttling_rate_limit > 0 && var.throttling_rate_limit <= var.throttling_burst_limit
+    error_message = "Throttling rate limit must be greater than 0 and must not exceed the throttling burst limit."
   }
 }
 

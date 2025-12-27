@@ -89,8 +89,16 @@ module "evefrontier" {
   log_level          = "info"
 
   # API Gateway
-  api_stage_name         = "v1"
-  cors_allowed_origins   = ["*"] # Restrict in production!
+  api_stage_name = "v1"
+
+  # CORS configuration:
+  # - For development and testing, a wildcard ("*") origin is convenient but NOT SAFE
+  #   for production use.
+  # - In production, you MUST restrict CORS to explicit, trusted origins (for example,
+  #   your frontend URL). The underlying module validates that wildcards are not
+  #   allowed when environment is not in: dev, local, test, staging.
+  # Example for production: cors_allowed_origins = ["https://your-frontend.example.com"]
+  cors_allowed_origins   = ["*"]
   throttling_burst_limit = 100
   throttling_rate_limit  = 50
 

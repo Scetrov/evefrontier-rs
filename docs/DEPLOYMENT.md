@@ -697,11 +697,7 @@ Then check CloudWatch Logs for detailed traces.
 ### IAM Least Privilege
 
 The module creates a minimal IAM execution role policy for the Lambda functions. The actual policy
-in [`terraform/modules/evefrontier-lambda/iam.tf`](../terraform/modules/evefrontier-lambda/iam.tf)
-grants only CloudWatch Logs write permissions:
-
-The actual IAM policy created by the Terraform module can be found in
-[`terraform/modules/evefrontier-lambda/iam.tf`](../terraform/modules/evefrontier-lambda/iam.tf).
+can be found in [`terraform/modules/evefrontier-lambda/iam.tf`](../terraform/modules/evefrontier-lambda/iam.tf).
 The policy grants only CloudWatch Logs write permissions:
 
 ```json

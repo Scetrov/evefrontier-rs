@@ -25,10 +25,8 @@ resource "aws_iam_role" "lambda_execution" {
     ]
   })
 
-  tags = merge(var.tags, {
-    Name        = "${var.project_name}-lambda-execution-${var.environment}"
-    Project     = var.project_name
-    Environment = var.environment
+  tags = merge(local.common_tags, {
+    Name = "${var.project_name}-lambda-execution-${var.environment}"
   })
 }
 
@@ -37,7 +35,9 @@ resource "aws_iam_role" "lambda_execution" {
 # -----------------------------------------------------------------------------
 # Log group creation is handled by Terraform (cloudwatch.tf).
 # Lambda only needs permissions to write to existing log groups.
-# If log groups are accidentally deleted, run `terraform apply` to recreate.
+# IMPORTANT: Lambda functions depend on log groups via `depends_on` in main.tf.
+# If log groups are accidentally deleted, run `terraform apply` to recreate
+# them before the Lambda functions can successfully write logs.
 #
 # Full CloudWatch Logs ARN pattern for log streams:
 #   arn:aws:logs:region:account-id:log-group:log-group-name:*

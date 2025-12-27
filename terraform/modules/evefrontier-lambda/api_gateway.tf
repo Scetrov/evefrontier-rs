@@ -58,10 +58,8 @@ resource "aws_apigatewayv2_stage" "main" {
     })
   }
 
-  tags = merge(var.tags, {
-    Name        = "${var.project_name}-api-stage-${var.environment}"
-    Project     = var.project_name
-    Environment = var.environment
+  tags = merge(local.common_tags, {
+    Name = "${var.project_name}-api-stage-${var.environment}"
   })
 }
 
@@ -73,10 +71,8 @@ resource "aws_cloudwatch_log_group" "api_gateway" {
   name              = "/aws/apigateway/${var.project_name}-api-${var.environment}"
   retention_in_days = var.log_retention_days > 0 ? var.log_retention_days : null
 
-  tags = merge(var.tags, {
-    Name        = "${var.project_name}-api-logs-${var.environment}"
-    Project     = var.project_name
-    Environment = var.environment
+  tags = merge(local.common_tags, {
+    Name = "${var.project_name}-api-logs-${var.environment}"
   })
 }
 
