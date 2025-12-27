@@ -10,7 +10,7 @@
 
 Create comprehensive infrastructure documentation and deployment templates for the AWS Lambda
 functions (`evefrontier-lambda-route`, `evefrontier-lambda-scout-gates`,
-`evefrontier-lambda-scout-range`). This includes Terraform modules (per ADR 0007), deployment
+`evefrontier-lambda-scout-range`). This includes Terraform modules (per ADR 0013), deployment
 guides, and operational runbooks.
 
 ## Background
@@ -39,7 +39,7 @@ However, there is no infrastructure-as-code for deployment. Users must manually 
 
 ## Non-Goals
 
-- SAM templates (Terraform preferred per ADR 0007)
+- SAM templates (Terraform preferred per ADR 0013)
 - CDK (adds TypeScript dependency, unnecessary complexity)
 - Multi-region deployment (single region sufficient for initial release)
 - Custom domain configuration (user-specific, document as optional)
@@ -175,7 +175,7 @@ terraform/
 
 ## References
 
-- [ADR 0007: DevSecOps Practices](../docs/adrs/0007-devsecops-practices.md)
+- [ADR 0013: Infrastructure as Code Tooling](../docs/adrs/0013-infrastructure-as-code-tooling.md)
 - [AWS Lambda Terraform Provider](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lambda_function)
 - [Terraform Module Best Practices](https://developer.hashicorp.com/terraform/language/modules/develop)
 - [docs/USAGE.md Lambda section](../docs/USAGE.md#aws-lambda-functions)

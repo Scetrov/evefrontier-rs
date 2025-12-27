@@ -26,11 +26,11 @@
 |----------|---------|-----|
 | `docs/USAGE.md` | Lambda invocation, SDK examples | No deployment instructions |
 | `docs/TODO.md` | Lists Terraform as TODO | Not implemented |
-| ADR 0007 | References Terraform for IaC | No templates exist |
+| ADR 0013 | Documents Terraform as IaC choice | Created as part of this feature |
 
 ### Technology Stack Confirmed
 
-- **IaC Tool**: Terraform (per ADR 0007)
+- **IaC Tool**: Terraform (per ADR 0013)
 - **Lambda Runtime**: provided.al2023 (custom Rust)
 - **API Gateway**: HTTP API (v2)
 - **Architecture**: arm64 (cost-effective)
@@ -44,7 +44,7 @@
 |-----------|--------|----------------|
 | I. TDD | ✅ N/A | Infrastructure code, not application code |
 | II. Library-First | ✅ N/A | Documentation task |
-| III. ADR Documentation | ✅ COMPLIANT | Aligns with ADR 0007 |
+| III. ADR Documentation | ✅ COMPLIANT | Aligns with ADR 0013 |
 | IV. Clean Code | ✅ APPLICABLE | Terraform follows HCL best practices |
 | V. Security-First | ✅ COMPLIANT | IAM least-privilege, no secrets |
 | VI. Testing Tiers | ✅ APPLICABLE | `terraform validate` and `plan` |
@@ -58,7 +58,7 @@
 
 | Gate | Status | Evidence |
 |------|--------|----------|
-| ADR alignment | ✅ PASSED | ADR 0007 mandates Terraform |
+| ADR alignment | ✅ PASSED | ADR 0013 documents Terraform choice |
 | Security review | ✅ PASSED | IAM minimal, no secrets |
 | Breaking changes | ✅ NONE | New files only |
 | Dependencies | ✅ MET | Lambda functions complete |
@@ -73,7 +73,7 @@ See [research.md](./research.md) for detailed findings.
 
 | Decision | Rationale |
 |----------|-----------|
-| Terraform over SAM/CDK | ADR 0007 alignment, no extra runtime |
+| Terraform over SAM/CDK | ADR 0013 rationale, no extra runtime |
 | HTTP API over REST API | 70% lower cost, simpler setup |
 | Single module with all 3 Lambdas | Simpler deployment, shared patterns |
 | arm64 architecture | Better price/performance for Rust |

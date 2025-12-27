@@ -12,7 +12,7 @@
 
 **Decision**: Terraform  
 **Rationale**: 
-- ADR 0007 explicitly mentions Terraform for infrastructure
+- ADR 0013 documents Terraform as the IaC tool choice
 - Team familiarity with Terraform (implied by ADR)
 - No additional language runtime required (SAM needs Python/Node, CDK needs TypeScript)
 - Better multi-cloud portability if needed later

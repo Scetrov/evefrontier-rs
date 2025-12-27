@@ -178,7 +178,7 @@ Tasks are grouped by domain; checkboxes track completion status.
   - Scout-gates handler: returns gate-connected neighbors from adjacency list
   - Scout-range handler: uses `SpatialIndex::nearest_filtered()` with radius/temperature filters
 - [x] Provide infrastructure notes or SAM/CDK templates (if required) for deployment under `docs/`.
-  - Created Terraform module at `terraform/modules/evefrontier-lambda/` (per ADR 0007)
+  - Created Terraform module at `terraform/modules/evefrontier-lambda/` (per ADR 0013)
   - Module includes: Lambda functions, HTTP API Gateway v2, IAM roles, CloudWatch Logs
   - Example configuration at `terraform/examples/complete/`
   - Comprehensive deployment guide in `docs/DEPLOYMENT.md`
