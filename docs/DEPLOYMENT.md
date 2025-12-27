@@ -615,11 +615,48 @@ lambda_memory_mb       = 1024  # More memory = faster CPU
 
 **Cause**: AWS credentials lack required permissions.
 
-**Solution**: Ensure IAM user/role has:
-- `lambda:*` for Lambda operations
-- `apigateway:*` for API Gateway
-- `logs:*` for CloudWatch Logs
-- `iam:*` for creating execution role
+**Solution**: Ensure the IAM user/role has the following permissions (scoped to this module's
+resources where possible). See the [Deployment IAM Policy](#deployment-iam-policy) section above
+for a complete policy template.
+
+- **For Lambda** (scoped to `evefrontier-*` functions):
+  - `lambda:CreateFunction`
+  - `lambda:UpdateFunctionCode`
+  - `lambda:UpdateFunctionConfiguration`
+  - `lambda:PublishVersion`
+  - `lambda:CreateAlias`
+  - `lambda:UpdateAlias`
+  - `lambda:DeleteFunction`
+  - `lambda:GetFunction`
+  - `lambda:GetFunctionConfiguration`
+  - `lambda:AddPermission`
+  - `lambda:RemovePermission`
+  - `lambda:GetPolicy`
+
+- **For API Gateway** (scoped to `/apis` and `/apis/*`):
+  - `apigateway:GET`
+  - `apigateway:POST`
+  - `apigateway:PUT`
+  - `apigateway:PATCH`
+  - `apigateway:DELETE`
+
+- **For CloudWatch Logs** (scoped to `evefrontier-*` log groups):
+  - `logs:CreateLogGroup`
+  - `logs:DeleteLogGroup`
+  - `logs:DescribeLogGroups`
+  - `logs:PutRetentionPolicy`
+
+- **For IAM** (scoped to `evefrontier-*` execution role only):
+  - `iam:CreateRole`
+  - `iam:GetRole`
+  - `iam:DeleteRole`
+  - `iam:PutRolePolicy`
+  - `iam:GetRolePolicy`
+  - `iam:DeleteRolePolicy`
+  - `iam:PassRole` (with `iam:PassedToService` condition for `lambda.amazonaws.com`)
+
+> **Security Note:** Avoid using wildcard action patterns like `lambda:*` or `iam:*`. These
+> effectively create admin-level access and increase blast radius if credentials are compromised.
 
 #### "CORS error in browser"
 
