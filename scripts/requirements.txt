@@ -1,0 +1,10 @@
+# Python dependencies for evefrontier-rs scripts
+# =============================================
+#
+# Currently all scripts use Python stdlib only (sqlite3, json, pathlib, argparse).
+# Add dependencies here when needed - they will be installed via:
+#   pnpm nx run scripts:venv-setup
+#
+# Example:
+#   requests>=2.28.0
+#   pyyaml>=6.0

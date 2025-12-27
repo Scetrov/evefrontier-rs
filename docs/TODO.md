@@ -71,8 +71,13 @@ Tasks are grouped by domain; checkboxes track completion status.
       `.rust-toolchain` matches the intended compiler release. - Created `.nvmrc` with Node 20
       (LTS) - Confirmed `.rust-toolchain` specifies Rust 1.91.1 - Updated all CI workflows to use
       Rust 1.91.1 (matching `.rust-toolchain`) - Documented version pinning in `CONTRIBUTING.md`
-- [ ] Introduce automation scripts under `scripts/` (e.g., dataset fixture sync, release helpers)
+- [x] Introduce automation scripts under `scripts/` (e.g., dataset fixture sync, release helpers)
       and register them as Nx tasks if applicable.
+  - Created `scripts/project.json` with 10 Nx targets for Python and Node scripts
+  - Created `scripts/requirements.txt` with stdlib-only dependencies
+  - Created `scripts/README.md` documenting all available tasks
+  - Fixed `inspect_db.py` bug (now handles schema variations gracefully)
+  - Updated `CONTRIBUTING.md` and `docs/USAGE.md` with script task documentation
 
 ## Library (`evefrontier-lib`)
 

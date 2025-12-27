@@ -321,6 +321,49 @@ To see detailed task execution:
 pnpm nx run <project>:<target> --verbose
 ```
 
+## Scripts Project
+
+The `scripts/` directory is registered as an Nx project (`scripts`) and contains utility scripts
+for fixture management, database inspection, and development tooling.
+
+### Available Script Tasks
+
+| Task | Description |
+|------|-------------|
+| `scripts:venv-setup` | Set up Python virtual environment |
+| `scripts:fixture-verify` | Verify fixture integrity against recorded metadata |
+| `scripts:fixture-status` | Display current fixture status and statistics |
+| `scripts:fixture-record` | Record current fixture metadata after updates |
+| `scripts:inspect-db <path>` | Inspect SQLite database schema and contents |
+| `scripts:verify-all` | Run all verification tasks |
+
+### Running Script Tasks
+
+```sh
+# Verify test fixtures are intact
+pnpm nx run scripts:fixture-verify
+
+# Inspect a database file
+pnpm nx run scripts:inspect-db docs/fixtures/minimal_static_data.db
+
+# Run all verification tasks
+pnpm nx run scripts:verify-all
+```
+
+### Python Virtual Environment
+
+Python scripts use a local virtual environment in `scripts/.venv/`:
+
+```sh
+# Set up the virtual environment (first-time or after requirements change)
+pnpm nx run scripts:venv-setup
+```
+
+Dependencies are defined in `scripts/requirements.txt`. Currently, all scripts use Python stdlib
+only, so no external packages are required.
+
+For detailed documentation of all scripts, see `scripts/README.md`.
+
 ## Local development
 
 1. Install Rust (see `.rust-toolchain`) and Node (see `.nvmrc` if using Node tools).
