@@ -35,6 +35,10 @@ resource "aws_iam_role" "lambda_execution" {
 # -----------------------------------------------------------------------------
 # CloudWatch Logs Policy (Least Privilege)
 # -----------------------------------------------------------------------------
+# Primary log group creation is handled by Terraform (cloudwatch.tf).
+# CreateLogGroup is included for resilience - if log groups are accidentally
+# deleted, Lambda can recreate them without manual intervention.
+# -----------------------------------------------------------------------------
 
 resource "aws_iam_role_policy" "lambda_logging" {
   name = "${var.project_name}-lambda-logging-${var.environment}"
@@ -44,7 +48,17 @@ resource "aws_iam_role_policy" "lambda_logging" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "CloudWatchLogsAccess"
+        Sid    = "CloudWatchLogsCreateGroup"
+        Effect = "Allow"
+        Action = "logs:CreateLogGroup"
+        Resource = [
+          aws_cloudwatch_log_group.route.arn,
+          aws_cloudwatch_log_group.scout_gates.arn,
+          aws_cloudwatch_log_group.scout_range.arn
+        ]
+      },
+      {
+        Sid    = "CloudWatchLogsWrite"
         Effect = "Allow"
         Action = [
           "logs:CreateLogStream",
