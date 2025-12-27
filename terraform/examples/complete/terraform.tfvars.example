@@ -1,0 +1,21 @@
+# =============================================================================
+# Example Terraform Variables
+# =============================================================================
+# Copy this file to terraform.tfvars and customize for your deployment.
+# DO NOT commit terraform.tfvars with sensitive values to version control.
+# =============================================================================
+
+# AWS region for deployment
+aws_region = "us-east-1"
+
+# Deployment environment (dev, staging, prod)
+environment = "dev"
+
+# Path to directory containing Lambda binaries
+# These must be built with:
+#   cargo build --release --target aarch64-unknown-linux-gnu \
+#     -p evefrontier-lambda-route \
+#     -p evefrontier-lambda-scout-gates \
+#     -p evefrontier-lambda-scout-range \
+#     --features bundle-data
+binaries_path = "./binaries"

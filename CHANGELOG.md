@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 
 ## Unreleased
+- 2025-12-27 - auto-llm:copilot - [feature] - Added Terraform module for Lambda deployment at `terraform/modules/evefrontier-lambda/`
+- 2025-12-27 - auto-llm:copilot - [feature] - Added HTTP API Gateway v2 configuration with routes for /route, /scout-gates, /scout-range endpoints
+- 2025-12-27 - auto-llm:copilot - [feature] - Added IAM least-privilege policy for Lambda execution (CloudWatch Logs only)
+- 2025-12-27 - auto-llm:copilot - [docs] - Created `docs/DEPLOYMENT.md` with comprehensive Lambda deployment guide
+- 2025-12-27 - auto-llm:copilot - [docs] - Added Terraform module README with usage examples, inputs/outputs reference, and architecture diagram
+- 2025-12-27 - auto-llm:copilot - [docs] - Added complete example configuration at `terraform/examples/complete/`
+- 2025-12-27 - auto-llm:copilot - [docs] - Updated USAGE.md with link to DEPLOYMENT.md for infrastructure setup
 - 2025-12-27 - auto-llm:copilot - [fix] - Improved inspect_db.py error handling: added clear error message for missing database files with proper exit codes
 - 2025-12-27 - auto-llm:copilot - [feature] - Added scripts Nx project with 10 targets for Python and Node.js utilities (fixture-verify, fixture-status, inspect-db, etc.)
 - 2025-12-27 - auto-llm:copilot - [fix] - Fixed inspect_db.py crash when mapSolarSystems table missing (now handles schema variations gracefully)

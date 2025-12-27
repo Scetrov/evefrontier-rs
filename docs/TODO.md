@@ -177,7 +177,11 @@ Tasks are grouped by domain; checkboxes track completion status.
   - Route handler: parses request, validates, calls `plan_route()`, returns route with system names
   - Scout-gates handler: returns gate-connected neighbors from adjacency list
   - Scout-range handler: uses `SpatialIndex::nearest_filtered()` with radius/temperature filters
-- [ ] Provide infrastructure notes or SAM/CDK templates (if required) for deployment under `docs/`.
+- [x] Provide infrastructure notes or SAM/CDK templates (if required) for deployment under `docs/`.
+  - Created Terraform module at `terraform/modules/evefrontier-lambda/` (per ADR 0007)
+  - Module includes: Lambda functions, HTTP API Gateway v2, IAM roles, CloudWatch Logs
+  - Example configuration at `terraform/examples/complete/`
+  - Comprehensive deployment guide in `docs/DEPLOYMENT.md`
 - [ ] Add Lambda-focused tests (unit tests and, if possible, integration tests using
       `lambda_runtime::run` mocks).
 - [x] Integrate KD-tree spatial index loading at cold start if artifact bundled.
