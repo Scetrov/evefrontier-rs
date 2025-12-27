@@ -38,6 +38,12 @@ resource "aws_iam_role" "lambda_execution" {
 # Log group creation is handled by Terraform (cloudwatch.tf).
 # Lambda only needs permissions to write to existing log groups.
 # If log groups are accidentally deleted, run `terraform apply` to recreate.
+#
+# The `:*` suffix on log group ARNs is required for log stream operations.
+# CloudWatch Logs ARN format: arn:aws:logs:region:account:log-group:name:*
+# This allows Lambda to create log streams (with any name) and write events
+# to them within the specified log groups. This is the standard AWS pattern
+# for Lambda logging - Lambda auto-generates stream names based on invocation.
 # -----------------------------------------------------------------------------
 
 resource "aws_iam_role_policy" "lambda_logging" {
@@ -54,6 +60,8 @@ resource "aws_iam_role_policy" "lambda_logging" {
           "logs:CreateLogStream",
           "logs:PutLogEvents"
         ]
+        # The :* suffix allows operations on log streams within the log group.
+        # Lambda creates streams named: YYYY/MM/DD/[$LATEST|version]/instance-id
         Resource = [
           "${aws_cloudwatch_log_group.route.arn}:*",
           "${aws_cloudwatch_log_group.scout_gates.arn}:*",
