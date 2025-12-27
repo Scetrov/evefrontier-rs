@@ -4,10 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 - 2025-12-27 - auto-llm:copilot - [fix] - Improved inspect_db.py error handling: added clear error message for missing database files with proper exit codes
-- 2025-12-07 - auto-llm:copilot - [feature] - Added scripts Nx project with 10 targets for Python and Node.js utilities (fixture-verify, fixture-status, inspect-db, etc.)
-- 2025-12-07 - auto-llm:copilot - [fix] - Fixed inspect_db.py crash when mapSolarSystems table missing (now handles schema variations gracefully)
-- 2025-12-07 - auto-llm:copilot - [docs] - Added Development Scripts section to USAGE.md documenting all script tasks
-- 2025-12-07 - auto-llm:copilot - [docs] - Added Scripts Project section to CONTRIBUTING.md with task table and usage examples
+- 2025-12-27 - auto-llm:copilot - [feature] - Added scripts Nx project with 10 targets for Python and Node.js utilities (fixture-verify, fixture-status, inspect-db, etc.)
+- 2025-12-27 - auto-llm:copilot - [fix] - Fixed inspect_db.py crash when mapSolarSystems table missing (now handles schema variations gracefully)
+- 2025-12-27 - auto-llm:copilot - [docs] - Added Development Scripts section to USAGE.md documenting all script tasks
+- 2025-12-27 - auto-llm:copilot - [docs] - Added Scripts Project section to CONTRIBUTING.md with task table and usage examples
 - 2025-12-07 - auto-llm:copilot - [fix] - Fixed CHANGELOG format documentation to include hyphen separator after category tag
 - 2025-12-07 - auto-llm:copilot - [fix] - Added jq availability check with error handling in changelog-guard script
 - 2025-12-07 - auto-llm:copilot - [ci] - Removed unused GITHUB_HEAD_REF and GITHUB_SHA environment variables from changelog-guard job

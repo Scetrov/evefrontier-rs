@@ -52,14 +52,16 @@
     "fixture-sync": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "python3 scripts/extract_fixture_from_dataset.py"
+        "command": "python3 scripts/extract_fixture_from_dataset.py {args.source} {args.target}",
+        "cwd": "{workspaceRoot}"
       },
       "cache": false
     },
     "fixture-create": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "python3 scripts/create_minimal_db.py"
+        "command": "python3 scripts/create_minimal_db.py {args.source}",
+        "cwd": "{workspaceRoot}"
       },
       "cache": false
     },
@@ -74,14 +76,16 @@
     "inspect-db": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "python3 scripts/inspect_db.py"
+        "command": "python3 scripts/inspect_db.py {args.path}",
+        "cwd": "{workspaceRoot}"
       },
       "cache": false
     },
     "analyze-routes": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "python3 scripts/analyze_sample_routes.py"
+        "command": "python3 scripts/analyze_sample_routes.py {args.db} {args.csv}",
+        "cwd": "{workspaceRoot}"
       },
       "cache": false
     },
