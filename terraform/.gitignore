@@ -3,8 +3,8 @@
 *.tfstate.*
 *.tfstate.backup
 
-# Terraform lock file (commit this for reproducibility)
-# .terraform.lock.hcl
+# Terraform lock file - DO commit this for reproducibility
+# (not ignored - should be tracked in version control)
 
 # Terraform working directory
 .terraform/

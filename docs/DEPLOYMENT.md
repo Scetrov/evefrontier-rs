@@ -137,6 +137,15 @@ Example IAM policy. **Replace `<YOUR_REGION>` with your AWS region (e.g., `us-ea
 }
 ```
 
+> **⚠️ Security Note:** This policy grants `iam:CreateRole` and `iam:PutRolePolicy` on
+> `evefrontier-*` roles combined with `iam:PassRole`. In highly sensitive environments, consider:
+> - Using pre-created IAM roles instead of allowing Terraform to create them
+> - Applying [IAM permissions boundaries](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html)
+>   to limit what policies can be attached to created roles
+> - Restricting the deployment principal to a dedicated CI/CD pipeline with short-lived credentials
+>
+> These measures reduce the risk of privilege escalation if deployment credentials are compromised.
+
 ### Verify Prerequisites
 
 ```bash

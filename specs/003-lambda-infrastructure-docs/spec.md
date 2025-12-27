@@ -96,9 +96,11 @@ terraform/
 | POST   | `/route`       | evefrontier-lambda-route         |
 | POST   | `/scout-gates` | evefrontier-lambda-scout-gates   |
 | POST   | `/scout-range` | evefrontier-lambda-scout-range   |
-| GET    | `/health`      | (optional) health check endpoint |
 
 ### IAM Policy (Least Privilege)
+
+Log groups are created by Terraform, not Lambda. The Lambda execution role only needs
+permissions to write to existing log groups:
 
 ```json
 {
@@ -106,8 +108,8 @@ terraform/
   "Statement": [
     {
       "Effect": "Allow",
-      "Action": ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"],
-      "Resource": "arn:aws:logs:*:*:log-group:/aws/lambda/evefrontier-*"
+      "Action": ["logs:CreateLogStream", "logs:PutLogEvents"],
+      "Resource": "arn:aws:logs:*:*:log-group:/aws/lambda/evefrontier-*:*"
     }
   ]
 }

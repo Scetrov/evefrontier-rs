@@ -187,18 +187,33 @@ variable "cors_max_age_seconds" {
   description = "How long browsers should cache CORS preflight responses."
   type        = number
   default     = 300
+
+  validation {
+    condition     = var.cors_max_age_seconds >= 0 && var.cors_max_age_seconds <= 86400
+    error_message = "CORS max age must be between 0 and 86400 seconds (24 hours)."
+  }
 }
 
 variable "throttling_burst_limit" {
   description = "API Gateway throttling burst limit (requests per second burst)."
   type        = number
   default     = 100
+
+  validation {
+    condition     = var.throttling_burst_limit > 0
+    error_message = "Throttling burst limit must be greater than 0."
+  }
 }
 
 variable "throttling_rate_limit" {
-  description = "API Gateway throttling rate limit (requests per second sustained)."
+  description = "API Gateway throttling rate limit (requests per second sustained). Must not exceed burst limit."
   type        = number
   default     = 50
+
+  validation {
+    condition     = var.throttling_rate_limit > 0
+    error_message = "Throttling rate limit must be greater than 0."
+  }
 }
 
 # -----------------------------------------------------------------------------

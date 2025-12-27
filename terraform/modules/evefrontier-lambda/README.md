@@ -159,6 +159,9 @@ After deployment, the following endpoints are available:
 ### Example API Calls
 
 ```bash
+# First, export the API endpoint from Terraform output
+export API_ENDPOINT=$(terraform output -raw api_endpoint)
+
 # Calculate a route
 curl -X POST "${API_ENDPOINT}/route" \
   -H "Content-Type: application/json" \
