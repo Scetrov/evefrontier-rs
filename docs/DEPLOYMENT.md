@@ -613,48 +613,35 @@ lambda_memory_mb       = 1024  # More memory = faster CPU
 
 **Cause**: AWS credentials lack required permissions.
 
-**Solution**: Ensure the IAM user/role has the following permissions (scoped to this module's
-resources where possible). See the [Deployment IAM Policy](#deployment-iam-policy) section above
-for a complete policy template.
+**Solution**: See the [Deployment IAM Policy](#deployment-iam-policy) section for a complete
+least-privilege policy template.
 
-- **For Lambda** (scoped to `evefrontier-*` functions):
-  - `lambda:CreateFunction`
-  - `lambda:UpdateFunctionCode`
-  - `lambda:UpdateFunctionConfiguration`
-  - `lambda:PublishVersion`
-  - `lambda:CreateAlias`
-  - `lambda:UpdateAlias`
-  - `lambda:DeleteFunction`
-  - `lambda:GetFunction`
-  - `lambda:GetFunctionConfiguration`
-  - `lambda:AddPermission`
-  - `lambda:RemovePermission`
-  - `lambda:GetPolicy`
+**Diagnosing the specific missing permission:**
 
-- **For API Gateway** (scoped to `/apis` and `/apis/*`):
-  - `apigateway:GET`
-  - `apigateway:POST`
-  - `apigateway:PUT`
-  - `apigateway:PATCH`
-  - `apigateway:DELETE`
+1. Check AWS CloudTrail for the denied API call:
+   ```bash
+   aws cloudtrail lookup-events \
+     --lookup-attributes AttributeKey=EventName,AttributeValue=<API_CALL> \
+     --max-results 5
+   ```
 
-- **For CloudWatch Logs** (scoped to `evefrontier-*` log groups):
-  - `logs:CreateLogGroup`
-  - `logs:DeleteLogGroup`
-  - `logs:DescribeLogGroups`
-  - `logs:PutRetentionPolicy`
+2. Look for `errorCode: AccessDenied` or `UnauthorizedAccess` in the event details
 
-- **For IAM** (scoped to `evefrontier-*` execution role only):
-  - `iam:CreateRole`
-  - `iam:GetRole`
-  - `iam:DeleteRole`
-  - `iam:PutRolePolicy`
-  - `iam:GetRolePolicy`
-  - `iam:DeleteRolePolicy`
-  - `iam:PassRole` (with `iam:PassedToService` condition for `lambda.amazonaws.com`)
+3. Add only the specific missing permission to your policy, scoped to the appropriate resources
 
-> **Security Note:** Avoid using wildcard action patterns like `lambda:*` or `iam:*`. These
-> effectively create admin-level access and increase blast radius if credentials are compromised.
+**Required permissions summary** (see Deployment IAM Policy for full details):
+
+- **Lambda**: `CreateFunction`, `UpdateFunctionCode`, `UpdateFunctionConfiguration`, `DeleteFunction`,
+  `GetFunction`, `GetFunctionConfiguration`, `AddPermission`, `RemovePermission`, `GetPolicy`,
+  `TagResource`, `UntagResource`
+- **API Gateway**: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`
+- **CloudWatch Logs**: `CreateLogGroup`, `DeleteLogGroup`, `DescribeLogGroups`, `PutRetentionPolicy`
+- **IAM**: `CreateRole`, `GetRole`, `DeleteRole`, `PutRolePolicy`, `GetRolePolicy`, `DeleteRolePolicy`,
+  `PassRole` (with condition)
+
+> **Security Note:** Never use wildcard action patterns like `lambda:*` or `iam:*` to resolve
+> permission errors. These effectively create admin-level access and increase blast radius if
+> credentials are compromised. Always diagnose and add only the specific missing permission.
 
 #### "CORS error in browser"
 
