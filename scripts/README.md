@@ -23,16 +23,16 @@ This creates a `.venv` folder in the scripts directory and installs dependencies
 | `fixture-verify` | `pnpm nx run scripts:fixture-verify` | Verify fixture integrity against recorded metadata |
 | `fixture-status` | `pnpm nx run scripts:fixture-status` | Display current fixture status and statistics |
 | `fixture-record` | `pnpm nx run scripts:fixture-record` | Record current fixture metadata (after updates) |
-| `fixture-sync` | `pnpm nx run scripts:fixture-sync <source> <target>` | Sync fixture from source dataset |
-| `fixture-create` | `pnpm nx run scripts:fixture-create <source>` | Create minimal fixture database |
+| `fixture-sync` | `pnpm nx run scripts:fixture-sync -- --args.source=<path> --args.target=<path>` | Sync fixture from source dataset |
+| `fixture-create` | `pnpm nx run scripts:fixture-create -- --args.source=<path>` | Create minimal fixture database from source |
 | `route-fixture-extract` | `pnpm nx run scripts:route-fixture-extract` | Extract route testing fixtures |
 
 ### Database Inspection
 
 | Task | Command | Description |
 |------|---------|-------------|
-| `inspect-db` | `pnpm nx run scripts:inspect-db <path>` | Inspect SQLite database schema and contents |
-| `analyze-routes` | `pnpm nx run scripts:analyze-routes <db> <csv>` | Analyze sample routes from CSV |
+| `inspect-db` | `pnpm nx run scripts:inspect-db -- --args.path=<path>` | Inspect SQLite database schema and contents |
+| `analyze-routes` | `pnpm nx run scripts:analyze-routes -- --args.db=<path> --args.csv=<path>` | Analyze sample routes from CSV |
 
 ### Meta Tasks
 
@@ -48,11 +48,11 @@ This creates a `.venv` folder in the scripts directory and installs dependencies
 | Script | Purpose | Usage |
 |--------|---------|-------|
 | `fixture_status.py` | Fixture verification & status | `fixture_status.py [verify\|status\|record]` |
-| `extract_fixture_from_dataset.py` | Extract fixture from dataset | `extract_fixture_from_dataset.py <src> <tgt>` |
-| `create_minimal_db.py` | Create minimal test database | `create_minimal_db.py <source>` |
+| `extract_fixture_from_dataset.py` | Extract fixture from e6c3 dataset | `extract_fixture_from_dataset.py` (hardcoded targets) |
+| `create_minimal_db.py` | Create minimal test database from e6c3 | `create_minimal_db.py` (wrapper for extract_fixture) |
 | `extract_route_fixture.py` | Extract route testing scenarios | `extract_route_fixture.py` |
-| `inspect_db.py` | Database schema inspection | `inspect_db.py <path>` |
-| `analyze_sample_routes.py` | Route analysis from sample data | `analyze_sample_routes.py <db> <csv>` |
+| `inspect_db.py` | Database schema inspection | `inspect_db.py <path>` (use via Nx: `pnpm nx run scripts:inspect-db -- --args.path=<path>`) |
+| `analyze_sample_routes.py` | Route analysis from sample data | `analyze_sample_routes.py <db> <csv>` (use via Nx: `pnpm nx run scripts:analyze-routes -- --args.db=<db> --args.csv=<csv>`) |
 
 ### Node.js Scripts
 
@@ -77,6 +77,39 @@ The `fixture-verify` task is cached based on inputs and should be included in CI
 ```
 
 For local development, run `fixture-status` to check current state without failing on mismatches.
+
+## Examples
+
+### Inspect a Database
+
+```bash
+# Inspect the fixture database
+pnpm nx run scripts:inspect-db -- --args.path=docs/fixtures/minimal_static_data.db
+
+# Inspect any SQLite database
+pnpm nx run scripts:inspect-db -- --args.path=/path/to/database.db
+```
+
+### Analyze Routes
+
+```bash
+# Analyze routes from sample data
+pnpm nx run scripts:analyze-routes -- --args.db=docs/fixtures/minimal_static_data.db --args.csv=docs/SampleRoutes.csv
+```
+
+### Create Fixture from Source
+
+```bash
+# Create fixture from downloaded e6c3 dataset
+pnpm nx run scripts:fixture-create -- --args.source=/tmp/e6c3_source/static_data.db
+```
+
+### Sync Fixture
+
+```bash
+# Extract and sync fixture from source to target
+pnpm nx run scripts:fixture-sync -- --args.source=/tmp/e6c3_source/static_data.db --args.target=docs/fixtures/minimal_static_data.db
+```
 
 ## Adding New Scripts
 
