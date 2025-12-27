@@ -63,6 +63,13 @@ resource "aws_iam_role_policy" "lambda_logging" {
 # -----------------------------------------------------------------------------
 # Optional: VPC Policy (only if VPC config is provided)
 # -----------------------------------------------------------------------------
+# NOTE: Resource = "*" is required for Lambda VPC ENI operations.
+# AWS Lambda dynamically creates Elastic Network Interfaces (ENIs) at runtime
+# when functions are configured to access VPC resources. The ENI IDs are not
+# known until invocation time, making resource-level restrictions impossible.
+# This is a documented AWS limitation and a known exception to least-privilege.
+# See: https://docs.aws.amazon.com/lambda/latest/dg/configuration-vpc.html
+# -----------------------------------------------------------------------------
 
 resource "aws_iam_role_policy" "lambda_vpc" {
   count = var.vpc_config != null ? 1 : 0
@@ -83,6 +90,8 @@ resource "aws_iam_role_policy" "lambda_vpc" {
           "ec2:AssignPrivateIpAddresses",
           "ec2:UnassignPrivateIpAddresses"
         ]
+        # Wildcard required: Lambda creates ENIs dynamically at runtime.
+        # ENI resource ARNs are not predictable before function invocation.
         Resource = "*"
       }
     ]
