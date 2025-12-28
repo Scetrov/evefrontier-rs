@@ -19,7 +19,7 @@ pub fn print_logo() {
     use crate::terminal::{colors, supports_unicode};
 
     let (orange, cyan, reset) = if supports_color() {
-        (colors::ORANGE, "\x1b[36m", colors::RESET)
+        (colors::ORANGE, colors::CYAN, colors::RESET)
     } else {
         ("", "", "")
     };
@@ -93,30 +93,34 @@ pub fn render_text(summary: &RouteSummary, show_temps: bool) {
     println!("Total ly jumped: {:.0}ly", summary.jump_distance);
 }
 
-fn render_text_step(step: &RouteStep, show_temps: bool) {
-    let name = step.name.as_deref().unwrap_or("<unknown>");
+fn render_step_with_prefix(prefix: &str, step: &RouteStep, name: &str, show_temps: bool) {
     if let (Some(distance), Some(method)) = (step.distance, step.method.as_deref()) {
         if show_temps {
             if let Some(t) = step.min_external_temp {
                 println!(
-                    " - {} [min {:.2}K] ({:.0}ly via {})",
-                    name, t, distance, method
+                    "{}{} [min {:.2}K] ({:.0}ly via {})",
+                    prefix, name, t, distance, method
                 );
             } else {
-                println!(" - {} ({:.0}ly via {})", name, distance, method);
+                println!("{}{} ({:.0}ly via {})", prefix, name, distance, method);
             }
         } else {
-            println!(" - {} ({:.0}ly via {})", name, distance, method);
+            println!("{}{} ({:.0}ly via {})", prefix, name, distance, method);
         }
     } else if show_temps {
         if let Some(t) = step.min_external_temp {
-            println!(" - {} [min {:.2}K]", name, t);
+            println!("{}{} [min {:.2}K]", prefix, name, t);
         } else {
-            println!(" - {}", name);
+            println!("{}{}", prefix, name);
         }
     } else {
-        println!(" - {}", name);
+        println!("{}{}", prefix, name);
     }
+}
+
+fn render_text_step(step: &RouteStep, show_temps: bool) {
+    let name = step.name.as_deref().unwrap_or("<unknown>");
+    render_step_with_prefix(" - ", step, name, show_temps);
 }
 
 /// Render a route summary in rich text format using the library's renderer.
@@ -195,28 +199,8 @@ pub fn render_emoji(summary: &RouteSummary, show_temps: bool) {
 }
 
 fn render_emoji_step(icon: &str, step: &RouteStep, name: &str, show_temps: bool) {
-    if let (Some(distance), Some(method)) = (step.distance, step.method.as_deref()) {
-        if show_temps {
-            if let Some(t) = step.min_external_temp {
-                println!(
-                    " {} {} [min {:.2}K] ({:.0}ly via {})",
-                    icon, name, t, distance, method
-                );
-            } else {
-                println!(" {} {} ({:.0}ly via {})", icon, name, distance, method);
-            }
-        } else {
-            println!(" {} {} ({:.0}ly via {})", icon, name, distance, method);
-        }
-    } else if show_temps {
-        if let Some(t) = step.min_external_temp {
-            println!(" {} {} [min {:.2}K]", icon, name, t);
-        } else {
-            println!(" {} {}", icon, name);
-        }
-    } else {
-        println!(" {} {}", icon, name);
-    }
+    let prefix = format!(" {} ", icon);
+    render_step_with_prefix(&prefix, step, name, show_temps);
 }
 
 /// Render a route summary in notepad format.

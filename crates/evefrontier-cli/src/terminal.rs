@@ -258,4 +258,126 @@ mod tests {
         assert!(p.tag_start.is_empty());
         assert!(p.cyan.is_empty());
     }
+
+    // Note: Testing supports_color() and supports_unicode() directly is challenging
+    // because they read environment variables which are global process state.
+    // The following tests use serial test execution via the test harness to avoid
+    // race conditions, and save/restore environment variables.
+
+    mod supports_color_tests {
+        use super::*;
+        use std::env;
+
+        /// Helper to run a test with temporary environment variable changes.
+        fn with_env_vars<F, R>(vars: &[(&str, Option<&str>)], f: F) -> R
+        where
+            F: FnOnce() -> R,
+        {
+            // Save original values
+            let saved: Vec<_> = vars.iter().map(|(k, _)| (*k, env::var_os(k))).collect();
+
+            // Set test values
+            for (key, value) in vars {
+                match value {
+                    Some(v) => env::set_var(key, v),
+                    None => env::remove_var(key),
+                }
+            }
+
+            let result = f();
+
+            // Restore original values
+            for (key, value) in saved {
+                match value {
+                    Some(v) => env::set_var(key, v),
+                    None => env::remove_var(key),
+                }
+            }
+
+            result
+        }
+
+        #[test]
+        fn test_supports_color_no_color_set() {
+            with_env_vars(&[("NO_COLOR", Some("1")), ("TERM", None)], || {
+                assert!(!supports_color(), "NO_COLOR=1 should disable colors");
+            });
+        }
+
+        #[test]
+        fn test_supports_color_term_dumb() {
+            with_env_vars(&[("NO_COLOR", None), ("TERM", Some("dumb"))], || {
+                assert!(!supports_color(), "TERM=dumb should disable colors");
+            });
+        }
+
+        #[test]
+        fn test_supports_color_default() {
+            with_env_vars(
+                &[("NO_COLOR", None), ("TERM", Some("xterm-256color"))],
+                || {
+                    assert!(supports_color(), "Normal terminal should support colors");
+                },
+            );
+        }
+    }
+
+    mod supports_unicode_tests {
+        use super::*;
+        use std::env;
+
+        /// Helper to run a test with temporary environment variable changes.
+        fn with_env_vars<F, R>(vars: &[(&str, Option<&str>)], f: F) -> R
+        where
+            F: FnOnce() -> R,
+        {
+            // Save original values
+            let saved: Vec<_> = vars.iter().map(|(k, _)| (*k, env::var_os(k))).collect();
+
+            // Set test values
+            for (key, value) in vars {
+                match value {
+                    Some(v) => env::set_var(key, v),
+                    None => env::remove_var(key),
+                }
+            }
+
+            let result = f();
+
+            // Restore original values
+            for (key, value) in saved {
+                match value {
+                    Some(v) => env::set_var(key, v),
+                    None => env::remove_var(key),
+                }
+            }
+
+            result
+        }
+
+        #[test]
+        fn test_supports_unicode_lang_utf8() {
+            with_env_vars(&[("LANG", Some("en_US.UTF-8")), ("LC_ALL", None)], || {
+                assert!(supports_unicode(), "LANG=en_US.UTF-8 should enable Unicode");
+            });
+        }
+
+        #[test]
+        fn test_supports_unicode_lc_all_utf8() {
+            with_env_vars(&[("LANG", None), ("LC_ALL", Some("C.UTF-8"))], || {
+                assert!(supports_unicode(), "LC_ALL=C.UTF-8 should enable Unicode");
+            });
+        }
+
+        #[test]
+        #[cfg(not(windows))]
+        fn test_supports_unicode_no_utf_hint() {
+            with_env_vars(&[("LANG", Some("C")), ("LC_ALL", None)], || {
+                assert!(
+                    !supports_unicode(),
+                    "Non-UTF locale should disable Unicode on Unix"
+                );
+            });
+        }
+    }
 }
