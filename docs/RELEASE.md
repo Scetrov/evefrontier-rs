@@ -164,8 +164,14 @@ brew install cosign
 go install github.com/sigstore/cosign/v2/cmd/cosign@latest
 
 # Linux (binary download - check https://github.com/sigstore/cosign/releases for latest)
-COSIGN_VERSION="v3.0.1"
+# Replace with the latest stable version from the releases page
+COSIGN_VERSION="v3.0.1"  # Example version - verify latest at https://github.com/sigstore/cosign/releases
 curl -LO "https://github.com/sigstore/cosign/releases/download/${COSIGN_VERSION}/cosign-linux-amd64"
+curl -LO "https://github.com/sigstore/cosign/releases/download/${COSIGN_VERSION}/cosign-linux-amd64.sig"
+curl -LO "https://github.com/sigstore/cosign/releases/download/${COSIGN_VERSION}/cosign_checksums.txt"
+
+# Verify checksum before installing
+sha256sum --ignore-missing -c cosign_checksums.txt
 chmod +x cosign-linux-amd64
 sudo mv cosign-linux-amd64 /usr/local/bin/cosign
 
@@ -204,7 +210,8 @@ cargo sbom --help
 > Install from a pinned release with checksum verification:
 >
 > ```bash
-> SYFT_VERSION="1.18.1"
+> # Replace with the latest stable version from https://github.com/anchore/syft/releases
+> SYFT_VERSION="1.18.1"  # Example version - verify latest before use
 > curl -LO "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_amd64.tar.gz"
 > curl -LO "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_checksums.txt"
 > sha256sum -c syft_${SYFT_VERSION}_checksums.txt --ignore-missing
@@ -492,6 +499,10 @@ cosign verify-blob --key cosign.pub \
   "evefrontier-cli-${VERSION}-linux-x86_64.tar.gz"
 ```
 
+> **Note**: This documentation standardizes on cosign v3's `--bundle` format throughout. The bundle
+> format combines the signature, certificate, and timestamps into a single `.bundle` file. Earlier
+> cosign versions used separate `.sig` files with `--signature` flag.
+
 ### cosign Signatures (Keyless)
 
 For CI releases, use keyless signing with OIDC:
@@ -516,7 +527,7 @@ WORKFLOW=".github/workflows/release.yml"
 cosign verify-blob \
   --certificate-identity="${REPO}/${WORKFLOW}@refs/tags/v${VERSION}" \
   --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-  --signature "evefrontier-cli-${VERSION}-linux-x86_64.tar.gz.sig" \
+  --bundle "evefrontier-cli-${VERSION}-linux-x86_64.tar.gz.bundle" \
   "evefrontier-cli-${VERSION}-linux-x86_64.tar.gz"
 ```
 
@@ -606,7 +617,7 @@ sha256sum -c SHA256SUMS
 
 ```bash
 cosign verify-blob --key cosign.pub \
-  --signature evefrontier-cli-0.2.0-linux-x86_64.tar.gz.sig \
+  --bundle evefrontier-cli-0.2.0-linux-x86_64.tar.gz.bundle \
   evefrontier-cli-0.2.0-linux-x86_64.tar.gz
 ```
 
@@ -756,6 +767,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       # Pin actions to full commit SHAs for supply chain security
+      # IMPORTANT: Verify SHA-to-version mappings before copying these examples.
+      # Use: gh api repos/{owner}/{repo}/git/refs/tags/{tag} to confirm SHAs match claimed versions.
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: dtolnay/rust-toolchain@a54c7afa936fefeb4456b2dd8068152669aa8203 # stable
       - run: cargo build --release --target ${{ matrix.target }}
@@ -773,10 +786,10 @@ jobs:
       - uses: sigstore/cosign-installer@dc72c7d5c4d10cd6bcb8cf6e3fd625a9e5e537da # v3.7.0
       - uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
 
-      # Keyless signing
+      # Keyless signing (cosign v3+ uses --bundle format)
       - run: |
           cosign sign-blob --yes \
-            --output-signature binary.sig \
+            --bundle binary.bundle \
             binary-x86_64-unknown-linux-gnu/evefrontier-cli
 
   release:
@@ -787,7 +800,7 @@ jobs:
         with:
           files: |
             *.tar.gz
-            *.sig
+            *.bundle
             SHA256SUMS
             SHA256SUMS.asc
             *.sbom.json
@@ -831,12 +844,12 @@ jobs:
 
 ### cosign Issues
 
-| Issue                  | Solution                                         |
-| ---------------------- | ------------------------------------------------ |
-| "cosign: no key"       | Generate with `cosign generate-key-pair`         |
-| Keyless signing fails  | Ensure `COSIGN_EXPERIMENTAL=1` is set            |
-| OIDC token error       | Verify `id-token: write` permission in workflow  |
-| Transparency log error | Check network connectivity to rekor.sigstore.dev |
+| Issue                  | Solution                                                                 |
+| ---------------------- | ------------------------------------------------------------------------ |
+| "cosign: no key"       | Generate with `cosign generate-key-pair`                                 |
+| Keyless signing fails  | For v2: set `COSIGN_EXPERIMENTAL=1`; for v3+: verify OIDC setup and logs |
+| OIDC token error       | Verify `id-token: write` permission in workflow                          |
+| Transparency log error | Check network connectivity to rekor.sigstore.dev                         |
 
 ### Build Issues
 
