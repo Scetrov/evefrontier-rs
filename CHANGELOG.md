@@ -3,6 +3,7 @@
 All notable changes to this project will be documented in this file.
 
 ## Unreleased
+- 2025-12-28 - auto-llm:copilot - [docs] - Fixed cargo audit documentation to accurately describe default behavior (fails on RustSec advisories, allows yanked warnings)
 - 2025-12-28 - auto-llm:copilot - [chore] - Updated kiddo dependency from 5.2.2 to 5.2.3 (patch release)
 - 2025-12-28 - auto-llm:copilot - [chore] - Changed cargo audit to allow yanked dependency warnings (only fail on actual CVEs)
 - 2025-12-28 - auto-llm:copilot - [docs] - Added TODO tracking entry for kiddo cmov 0.3.1 yanked dependency issue

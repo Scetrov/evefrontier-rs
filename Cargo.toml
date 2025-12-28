@@ -67,7 +67,7 @@ pre-commit = """
         echo "   See CONTRIBUTING.md for detailed setup instructions."
         exit 1
     fi
-    # Only fail on actual security vulnerabilities (allow yanked/unmaintained warnings)
+    # Default behavior: fail on security advisories, show warnings for yanked/unmaintained
     cargo audit
     
     echo "✅ All pre-commit checks passed!"
