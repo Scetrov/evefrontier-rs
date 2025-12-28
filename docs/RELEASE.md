@@ -47,7 +47,7 @@ procedures to comply with the [Constitution v1.1.0](../README.md) and
     - [Create the Release](#create-the-release)
     - [Release Notes Template](#release-notes-template)
   - [Verification](#verification)
-    - [Tag Verification](#tag-verification)
+    - [Tag Verification](#tag-verification-1)
     - [Artifact Verification](#artifact-verification)
     - [SBOM Inspection](#sbom-inspection)
   - [Rollback \& Revocation](#rollback--revocation)
