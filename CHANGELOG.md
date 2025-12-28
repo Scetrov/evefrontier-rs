@@ -3,6 +3,9 @@
 All notable changes to this project will be documented in this file.
 
 ## Unreleased
+- 2025-12-28 - auto-llm:copilot - [chore] - Updated kiddo dependency from 5.2.2 to 5.2.3 (patch release)
+- 2025-12-28 - auto-llm:copilot - [chore] - Changed cargo audit to allow yanked dependency warnings (only fail on actual CVEs)
+- 2025-12-28 - auto-llm:copilot - [docs] - Added TODO tracking entry for kiddo cmov 0.3.1 yanked dependency issue
 - 2025-12-27 - auto-llm:copilot - [adr] - Created ADR 0013: Infrastructure as Code Tooling to document the decision to use Terraform over alternatives (SAM/CDK/Pulumi)
 - 2025-12-27 - auto-llm:copilot - [feature] - Added Terraform module for Lambda deployment at `terraform/modules/evefrontier-lambda/`
 - 2025-12-27 - auto-llm:copilot - [feature] - Added HTTP API Gateway v2 configuration with routes for /route, /scout-gates, /scout-range endpoints
