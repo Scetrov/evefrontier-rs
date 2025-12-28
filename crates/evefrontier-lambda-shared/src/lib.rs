@@ -11,7 +11,7 @@
 //! # Testing Support
 //!
 //! The [`test_utils`] module provides test fixtures and mock contexts for Lambda
-//! handler testing. It is only available in test builds.
+//! handler testing. Enable the `test-utils` feature to access it from dependent crates.
 
 #![deny(warnings)]
 
@@ -21,7 +21,7 @@ mod response;
 mod runtime;
 mod tracing_init;
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-utils"))]
 pub mod test_utils;
 
 pub use problem::{

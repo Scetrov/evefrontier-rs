@@ -9,14 +9,14 @@
 //!
 //! ```ignore
 //! use evefrontier_lambda_shared::test_utils::{
-//!     fixture_db_bytes, build_test_spatial_index, mock_lambda_context
+//!     fixture_db_bytes, fixture_spatial_index, mock_request_id,
 //! };
 //!
 //! #[test]
 //! fn test_handler() {
 //!     let db_bytes = fixture_db_bytes();
-//!     let index = build_test_spatial_index();
-//!     let ctx = mock_lambda_context("test-request-123");
+//!     let index = fixture_spatial_index();
+//!     let request_id = mock_request_id("test-request-123");
 //!     // ... test handler logic
 //! }
 //! ```
@@ -73,10 +73,20 @@ pub fn fixture_index_bytes() -> &'static [u8] {
     static BYTES: OnceLock<Vec<u8>> = OnceLock::new();
     BYTES.get_or_init(|| {
         let index = fixture_spatial_index();
-        // Save to a temp file and read back since SpatialIndex uses file-based save
-        let temp_path = std::env::temp_dir().join("test_spatial_index.bin");
+        // Save to a temp file and read back since SpatialIndex uses file-based save.
+        // Use a per-process filename to reduce collision risk between concurrent test runs.
+        let temp_path =
+            std::env::temp_dir().join(format!("test_spatial_index-{}.bin", std::process::id()));
         index.save(&temp_path).expect("index save should succeed");
-        std::fs::read(&temp_path).expect("index read should succeed")
+        let bytes = std::fs::read(&temp_path).expect("index read should succeed");
+        // Best-effort cleanup: remove the temporary file after reading its contents.
+        if let Err(err) = std::fs::remove_file(&temp_path) {
+            eprintln!(
+                "warning: failed to remove temporary spatial index file {:?}: {}",
+                temp_path, err
+            );
+        }
+        bytes
     })
 }
 

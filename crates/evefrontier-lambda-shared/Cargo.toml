@@ -6,6 +6,11 @@ authors.workspace = true
 license.workspace = true
 description = "Shared infrastructure for EveFrontier AWS Lambda functions"
 
+[features]
+default = []
+# Enable test utilities for cross-crate testing
+test-utils = []
+
 [dependencies]
 evefrontier-lib = { path = "../evefrontier-lib" }
 serde.workspace = true

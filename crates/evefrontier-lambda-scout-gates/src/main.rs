@@ -146,13 +146,12 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Response, Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use evefrontier_lambda_shared::{ScoutGatesRequest, Validate};
-    use evefrontier_lib::load_starmap;
+    use evefrontier_lambda_shared::{test_utils, ScoutGatesRequest, Validate};
     use serde_json::json;
-    use std::path::PathBuf;
 
-    fn fixture_path() -> PathBuf {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/fixtures/minimal_static_data.db")
+    // Use shared test utilities for fixture loading to ensure consistency across Lambda test suites.
+    fn fixture_starmap() -> &'static evefrontier_lib::Starmap {
+        test_utils::fixture_starmap()
     }
 
     // ==================== Request Parsing Tests ====================
@@ -205,7 +204,7 @@ mod tests {
 
     #[test]
     fn test_lookup_system_with_gates_nod() {
-        let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+        let starmap = fixture_starmap();
         let system_id = starmap.system_id_by_name("Nod").expect("Nod exists");
 
         // Get neighbors from adjacency list
@@ -221,7 +220,7 @@ mod tests {
 
     #[test]
     fn test_lookup_system_brana_gates() {
-        let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+        let starmap = fixture_starmap();
         let system_id = starmap.system_id_by_name("Brana").expect("Brana exists");
 
         // Get neighbors from adjacency list
@@ -231,14 +230,14 @@ mod tests {
 
     #[test]
     fn test_lookup_unknown_system() {
-        let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+        let starmap = fixture_starmap();
         let result = starmap.system_id_by_name("NonExistentSystem12345");
         assert!(result.is_none());
     }
 
     #[test]
     fn test_fuzzy_suggestions_for_unknown_system() {
-        let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+        let starmap = fixture_starmap();
         let suggestions = starmap.fuzzy_system_matches("Nodd", 3); // typo of "Nod"
                                                                    // Should suggest "Nod" as a close match
         assert!(
@@ -249,7 +248,7 @@ mod tests {
 
     #[test]
     fn test_neighbor_resolution() {
-        let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+        let starmap = fixture_starmap();
         let system_id = starmap.system_id_by_name("Nod").expect("Nod exists");
 
         // Get neighbors and resolve their names

@@ -182,21 +182,17 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Response, Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use evefrontier_lambda_shared::{ScoutRangeRequest, Validate};
-    use evefrontier_lib::{load_starmap, SpatialIndex};
+    use evefrontier_lambda_shared::{test_utils, ScoutRangeRequest, Validate};
+    use evefrontier_lib::SpatialIndex;
     use serde_json::json;
-    use std::path::PathBuf;
 
-    fn fixture_path() -> PathBuf {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/fixtures/minimal_static_data.db")
+    // Use shared test utilities for fixture loading to ensure consistency across Lambda test suites.
+    fn fixture_starmap() -> &'static evefrontier_lib::Starmap {
+        test_utils::fixture_starmap()
     }
 
-    fn fixture_starmap() -> evefrontier_lib::Starmap {
-        load_starmap(&fixture_path()).expect("fixture loads")
-    }
-
-    fn fixture_spatial_index(starmap: &evefrontier_lib::Starmap) -> SpatialIndex {
-        SpatialIndex::build(starmap)
+    fn fixture_spatial_index() -> &'static SpatialIndex {
+        test_utils::fixture_spatial_index()
     }
 
     // ==================== Request Parsing Tests ====================
@@ -319,8 +315,7 @@ mod tests {
 
     #[test]
     fn test_spatial_index_build() {
-        let starmap = fixture_starmap();
-        let index = fixture_spatial_index(&starmap);
+        let index = fixture_spatial_index();
 
         // Fixture has 8 systems
         assert!(!index.is_empty(), "Spatial index should have entries");
@@ -329,7 +324,7 @@ mod tests {
     #[test]
     fn test_nearest_systems_from_nod() {
         let starmap = fixture_starmap();
-        let index = fixture_spatial_index(&starmap);
+        let index = fixture_spatial_index();
 
         let system_id = starmap.system_id_by_name("Nod").expect("Nod exists");
         let system = starmap.systems.get(&system_id).expect("Nod in starmap");
@@ -357,7 +352,7 @@ mod tests {
     #[test]
     fn test_nearest_systems_with_radius_filter() {
         let starmap = fixture_starmap();
-        let index = fixture_spatial_index(&starmap);
+        let index = fixture_spatial_index();
 
         let system_id = starmap.system_id_by_name("Nod").expect("Nod exists");
         let system = starmap.systems.get(&system_id).expect("Nod in starmap");

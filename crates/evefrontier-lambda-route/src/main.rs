@@ -145,17 +145,17 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Response, Error> {
 mod tests {
     use super::*;
     use evefrontier_lambda_shared::{
-        RouteAlgorithm as LambdaRouteAlgorithm, RouteRequest, Validate,
+        test_utils, RouteAlgorithm as LambdaRouteAlgorithm, RouteRequest, Validate,
     };
     use evefrontier_lib::{
-        load_starmap, plan_route, RouteAlgorithm as LibRouteAlgorithm, RouteConstraints,
+        plan_route, RouteAlgorithm as LibRouteAlgorithm, RouteConstraints,
         RouteRequest as LibRequest,
     };
     use serde_json::json;
-    use std::path::PathBuf;
 
-    fn fixture_path() -> PathBuf {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/fixtures/minimal_static_data.db")
+    // Use shared test utilities for fixture loading to ensure consistency across Lambda test suites.
+    fn fixture_starmap() -> &'static evefrontier_lib::Starmap {
+        test_utils::fixture_starmap()
     }
 
     // ==================== Request Parsing Tests ====================
@@ -249,9 +249,9 @@ mod tests {
 
     #[test]
     fn test_plan_route_nod_to_brana_bfs() {
-        let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+        let starmap = fixture_starmap();
         let request = LibRequest::bfs("Nod", "Brana");
-        let plan = plan_route(&starmap, &request).expect("route exists");
+        let plan = plan_route(starmap, &request).expect("route exists");
 
         assert!(plan.hop_count() >= 1);
         assert_eq!(plan.algorithm, LibRouteAlgorithm::Bfs);
@@ -259,14 +259,14 @@ mod tests {
 
     #[test]
     fn test_plan_route_nod_to_brana_dijkstra() {
-        let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+        let starmap = fixture_starmap();
         let request = LibRequest {
             start: "Nod".to_string(),
             goal: "Brana".to_string(),
             algorithm: LibRouteAlgorithm::Dijkstra,
             constraints: RouteConstraints::default(),
         };
-        let plan = plan_route(&starmap, &request).expect("route exists");
+        let plan = plan_route(starmap, &request).expect("route exists");
 
         assert!(plan.hop_count() >= 1);
         assert_eq!(plan.algorithm, LibRouteAlgorithm::Dijkstra);
@@ -274,14 +274,14 @@ mod tests {
 
     #[test]
     fn test_plan_route_nod_to_brana_astar() {
-        let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+        let starmap = fixture_starmap();
         let request = LibRequest {
             start: "Nod".to_string(),
             goal: "Brana".to_string(),
             algorithm: LibRouteAlgorithm::AStar,
             constraints: RouteConstraints::default(),
         };
-        let plan = plan_route(&starmap, &request).expect("route exists");
+        let plan = plan_route(starmap, &request).expect("route exists");
 
         assert!(plan.hop_count() >= 1);
         assert_eq!(plan.algorithm, LibRouteAlgorithm::AStar);
@@ -289,7 +289,7 @@ mod tests {
 
     #[test]
     fn test_plan_route_with_max_jump() {
-        let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+        let starmap = fixture_starmap();
         let request = LibRequest {
             start: "Nod".to_string(),
             goal: "Brana".to_string(),
@@ -300,7 +300,7 @@ mod tests {
                 ..RouteConstraints::default()
             },
         };
-        let plan = plan_route(&starmap, &request).expect("route exists");
+        let plan = plan_route(starmap, &request).expect("route exists");
 
         // Should find a spatial route
         assert!(plan.hop_count() >= 1);
@@ -308,9 +308,9 @@ mod tests {
 
     #[test]
     fn test_plan_route_unknown_system() {
-        let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+        let starmap = fixture_starmap();
         let request = LibRequest::bfs("NonExistentSystem12345", "Brana");
-        let result = plan_route(&starmap, &request);
+        let result = plan_route(starmap, &request);
 
         assert!(result.is_err());
         let err = result.unwrap_err();
@@ -324,7 +324,7 @@ mod tests {
 
     #[test]
     fn test_plan_route_avoided_goal() {
-        let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+        let starmap = fixture_starmap();
         let request = LibRequest {
             start: "Nod".to_string(),
             goal: "Brana".to_string(),
@@ -334,7 +334,7 @@ mod tests {
                 ..RouteConstraints::default()
             },
         };
-        let result = plan_route(&starmap, &request);
+        let result = plan_route(starmap, &request);
 
         // Should fail since goal is avoided
         assert!(result.is_err());
