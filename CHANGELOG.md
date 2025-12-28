@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- 2025-12-28 - Scetrov - [ci] - Add release workflow with multi-arch builds, cosign signing, and SBOM generation
 - 2025-12-28 - Scetrov - [refactor] - Extract CLI output formatting into separate modules (terminal.rs, output.rs)
 - 2025-12-28 - Scetrov - [refactor] - Add ColorPalette struct for terminal color management with detect/colored/plain modes
 - 2025-12-28 - Scetrov - [refactor] - Add EnhancedRenderer struct for enhanced format output with testable components

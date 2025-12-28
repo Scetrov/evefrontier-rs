@@ -1,0 +1,357 @@
+# Release workflow for EVE Frontier Rust workspace
+#
+# Triggers on version tags (v*) and performs:
+# 1. Multi-architecture builds (x86_64, aarch64)
+# 2. SHA256 checksum generation
+# 3. Keyless cosign signing (OIDC via GitHub Actions)
+# 4. SBOM generation (CycloneDX format)
+# 5. GitHub Release creation with all artifacts
+#
+# See docs/RELEASE.md for manual release procedures and verification commands.
+# Per ADR 0007: DevSecOps practices - artifact signing and attestations.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+# Restrict permissions at workflow level; jobs override as needed
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # =============================================================================
+  # Build job: Compile release binaries for multiple architectures
+  # =============================================================================
+  build:
+    name: Build (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            cross: false
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            cross: true
+
+    steps:
+      # Pin actions to full commit SHAs for supply chain security
+      # See: https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@a54c7afa936fefeb4456b2dd8068152669aa8203 # stable
+        with:
+          toolchain: 1.91.1
+          targets: ${{ matrix.target }}
+
+      - name: Cache cargo directories
+        uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4.1.2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-release-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-release-${{ matrix.target }}-
+
+      # Install cross-compilation tools for aarch64
+      - name: Install cross-compilation tools
+        if: matrix.cross
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu libc6-dev-arm64-cross
+
+      # Configure cargo for cross-compilation
+      - name: Configure cargo for cross-compilation
+        if: matrix.cross
+        run: |
+          mkdir -p .cargo
+          CONFIG_FILE=".cargo/config.toml"
+          if [ -f "$CONFIG_FILE" ] && grep -q '^\[target.aarch64-unknown-linux-gnu\]' "$CONFIG_FILE"; then
+            echo "Cross-compilation target already configured in $CONFIG_FILE; leaving existing configuration in place."
+          else
+            {
+              echo '[target.aarch64-unknown-linux-gnu]'
+              echo 'linker = "aarch64-linux-gnu-gcc"'
+            } >> "$CONFIG_FILE"
+          fi
+
+      - name: Build release binary
+        run: |
+          cargo build --release --locked --target ${{ matrix.target }} -p evefrontier-cli
+
+      - name: Prepare artifact
+        run: |
+          mkdir -p artifacts
+          cp target/${{ matrix.target }}/release/evefrontier-cli artifacts/evefrontier-cli-${{ matrix.target }}
+          chmod +x artifacts/evefrontier-cli-${{ matrix.target }}
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: binary-${{ matrix.target }}
+          path: artifacts/evefrontier-cli-${{ matrix.target }}
+          retention-days: 1
+
+  # =============================================================================
+  # Package job: Create tarballs and checksums
+  # =============================================================================
+  package:
+    name: Package artifacts
+    needs: build
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          # Extract version from tag (e.g., v0.1.0 -> 0.1.0)
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Extracted version: $VERSION"
+
+      - name: Download all binary artifacts
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        with:
+          path: binaries
+          pattern: binary-*
+          merge-multiple: true
+
+      - name: Create release tarballs
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          mkdir -p release
+
+          # Create tarball for x86_64
+          tar -czvf "release/evefrontier-cli-${VERSION}-linux-x86_64.tar.gz" \
+            -C binaries evefrontier-cli-x86_64-unknown-linux-gnu \
+            --transform "s/evefrontier-cli-x86_64-unknown-linux-gnu/evefrontier-cli/"
+
+          # Create tarball for aarch64
+          tar -czvf "release/evefrontier-cli-${VERSION}-linux-aarch64.tar.gz" \
+            -C binaries evefrontier-cli-aarch64-unknown-linux-gnu \
+            --transform "s/evefrontier-cli-aarch64-unknown-linux-gnu/evefrontier-cli/"
+
+      - name: Generate SHA256 checksums
+        run: |
+          cd release
+          sha256sum *.tar.gz > SHA256SUMS
+          echo "Generated checksums:"
+          cat SHA256SUMS
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: release-artifacts
+          path: release/
+          retention-days: 1
+
+  # =============================================================================
+  # Sign job: Keyless cosign signing with OIDC
+  # =============================================================================
+  sign:
+    name: Sign artifacts
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # Required for keyless signing via OIDC
+
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        with:
+          name: release-artifacts
+          path: release
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@dc72c7d5c4d10cd6bcb8cf6e3fd625a9e5e537da # v3.7.0
+
+      - name: Sign artifacts with cosign (keyless)
+        run: |
+          cd release
+          VERSION="${{ needs.package.outputs.version }}"
+
+          # Sign each tarball using keyless signing (OIDC identity from GitHub Actions)
+          # cosign v3+ uses --bundle format (combines signature, certificate, timestamps)
+          for tarball in *.tar.gz; do
+            echo "Signing $tarball..."
+            cosign sign-blob --yes \
+              --bundle "${tarball}.bundle" \
+              "$tarball"
+          done
+
+          echo "Signatures created:"
+          ls -la *.bundle
+
+      - name: Upload signed artifacts
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: signed-artifacts
+          path: release/
+          retention-days: 1
+
+  # =============================================================================
+  # SBOM job: Generate Software Bill of Materials
+  # =============================================================================
+  sbom:
+    name: Generate SBOM
+    needs: package
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@a54c7afa936fefeb4456b2dd8068152669aa8203 # stable
+        with:
+          toolchain: 1.91.1
+
+      - name: Install cargo-sbom
+        run: cargo install cargo-sbom@0.9.1 --locked
+
+      - name: Generate SBOM (CycloneDX format)
+        run: |
+          VERSION="${{ needs.package.outputs.version }}"
+          cargo sbom --output-format cyclonedx > "evefrontier-${VERSION}.sbom.json"
+          echo "SBOM generated:"
+          head -50 "evefrontier-${VERSION}.sbom.json"
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: sbom
+          path: "*.sbom.json"
+          retention-days: 1
+
+  # =============================================================================
+  # Release job: Create GitHub Release with all artifacts
+  # =============================================================================
+  release:
+    name: Create GitHub Release
+    needs: [package, sign, sbom]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Required to create releases
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Download signed artifacts
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        with:
+          name: signed-artifacts
+          path: release
+
+      - name: Download SBOM
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        with:
+          name: sbom
+          path: release
+
+      - name: List release artifacts
+        run: |
+          echo "Release artifacts:"
+          ls -la release/
+
+      - name: Extract release notes from CHANGELOG
+        id: changelog
+        run: |
+          VERSION="${{ needs.package.outputs.version }}"
+          REPO="${{ github.repository }}"
+          REF_NAME="${{ github.ref_name }}"
+          REF="${{ github.ref }}"
+
+          # Extract the Unreleased section or version-specific section from CHANGELOG.md
+          # Uses awk for robustness - handles sections at end of file without trailing ## marker
+          if grep -q "## \[${VERSION}\]" CHANGELOG.md; then
+            # Extract version-specific section
+            awk -v ver="## [${VERSION}]" '
+              $0 ~ ver { in_section = 1; next }
+              in_section && /^## / { exit }
+              in_section { print }
+            ' CHANGELOG.md > release_notes.md
+          elif grep -q "## Unreleased" CHANGELOG.md; then
+            # Extract Unreleased section
+            awk '
+              /^## Unreleased/ { in_section = 1; next }
+              in_section && /^## / { exit }
+              in_section { print }
+            ' CHANGELOG.md > release_notes.md
+          else
+            # Fallback to auto-generated notes when no matching section is found
+            echo "Release ${VERSION}" > release_notes.md
+            echo "" >> release_notes.md
+            echo "See [CHANGELOG.md](https://github.com/${REPO}/blob/main/CHANGELOG.md) for details." >> release_notes.md
+          fi
+
+          # If the extracted section is empty or whitespace-only, fall back to auto-generated notes
+          if ! grep -q '[^[:space:]]' release_notes.md 2>/dev/null; then
+            echo "Release ${VERSION}" > release_notes.md
+            echo "" >> release_notes.md
+            echo "See [CHANGELOG.md](https://github.com/${REPO}/blob/main/CHANGELOG.md) for details." >> release_notes.md
+          fi
+
+          # Append verification instructions (using unquoted heredoc for variable expansion)
+          cat >> release_notes.md << 'RELEASE_NOTES_EOF'
+
+          ---
+
+          ## Verification
+
+          ### SHA256 Checksums
+
+          ```bash
+          # Download and verify checksums
+          sha256sum -c SHA256SUMS --ignore-missing
+          ```
+
+          ### cosign Signature Verification
+
+          ```bash
+          # Verify using keyless signature (cosign v3+ bundle format)
+          cosign verify-blob \
+            --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
+            --bundle <tarball>.bundle \
+            <tarball>
+          ```
+
+          See [docs/RELEASE.md](https://github.com/Scetrov/evefrontier-rs/blob/main/docs/RELEASE.md) for detailed verification instructions.
+          RELEASE_NOTES_EOF
+
+          echo "Release notes:"
+          cat release_notes.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.2.1
+        with:
+          name: "v${{ needs.package.outputs.version }}"
+          body_path: release_notes.md
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          files: |
+            release/*.tar.gz
+            release/*.bundle
+            release/SHA256SUMS
+            release/*.sbom.json
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

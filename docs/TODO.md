@@ -279,8 +279,15 @@ Tasks are grouped by domain; checkboxes track completion status.
   - Documents cross-compilation (x86_64/aarch64), spatial index inclusion
   - Includes CI integration patterns for GitHub Actions
   - Contains rollback/revocation procedures and troubleshooting guide
-- [ ] Implement CI release job with artifact signing (cosign/GPG) and attestation generation per
+- [x] Implement CI release job with artifact signing (cosign/GPG) and attestation generation per
       [ADR 0007](adrs/0007-devsecops-practices.md).
+  - Created `.github/workflows/release.yml` triggered on `v*` tags
+  - Multi-architecture builds: x86_64 and aarch64 Linux targets
+  - SHA256 checksums generated for all tarballs
+  - Keyless cosign signing using GitHub Actions OIDC identity
+  - SBOM generation in CycloneDX format via cargo-sbom
+  - Automated GitHub Release creation with all artifacts
+  - All actions pinned to full commit SHAs for supply chain security
 - [ ] Add architecture diagrams or sequence diagrams illustrating data flow between downloader,
       loader, graph, CLI, and Lambda components.
 - [x] Provide onboarding steps in `docs/INITIAL_SETUP.md` once the workspace scaffolding stabilizes
