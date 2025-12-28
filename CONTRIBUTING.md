@@ -261,7 +261,11 @@ The repository uses Nx to orchestrate Rust build, test, lint, and clippy tasks a
 - evefrontier-lambda-scout-gates
 - evefrontier-lambda-scout-range
 
-> **Note:** When referring to "all 6 crates", this means all workspace members listed above. "All Lambda crates" refers to the 4 crates under `crates/evefrontier-lambda-*` (including the shared crate), while "Lambda functions" refers specifically to the 3 function crates (`route`, `scout-gates`, `scout-range`). Be explicit in PRs and documentation to avoid confusion.
+> [!NOTE]
+> When referring to "all 6 crates", this means all workspace members listed above. "All Lambda
+> crates" refers to the 4 crates under `crates/evefrontier-lambda-*` (including the shared crate),
+> while "Lambda functions" refers specifically to the 3 function crates (`route`, `scout-gates`,
+> `scout-range`). Be explicit in PRs and documentation to avoid confusion.
 
 Nx provides:
 - **Task dependencies**: Tests automatically run after builds complete (`test` depends on `build`)
@@ -389,8 +393,7 @@ cargo test --workspace
 
 ## Security
 
-If you discover a security vulnerability, do NOT open a public issue. Instead, report it privately
-to `security@EXAMPLE.COM` (replace with the maintainers' contact). See `SECURITY.md` for details.
+If you discover a security vulnerability, please report it using GitHub's private security advisory system.
 
 ## Contact
 
@@ -429,10 +432,10 @@ Environment
 
   nvm use # automatically uses version from .nvmrc
 
-> Note: If your environment policy mandates current LTS prior to October 2025,
-> use Node 22 LTS and update `.nvmrc` accordingly. The workspace scripts and Nx
-> tooling are compatible with Node 22+, but the repository standard is Node 24
-> LTS to align with modern features and CI configuration.
+> [!NOTE]
+> If your environment policy mandates current LTS prior to October 2025, use Node 22 LTS and
+> update `.nvmrc` accordingly. The workspace scripts and Nx tooling are compatible with Node 22+,
+> but the repository standard is Node 24 LTS to align with modern features and CI configuration.
 
 - Install `pnpm` (recommended using corepack for version consistency):
 

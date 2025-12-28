@@ -344,25 +344,62 @@ impl OutputFormat {
                 }
             }
             OutputFormat::Enhanced => {
-                // Enhanced format with system details shown between steps
+                // Enhanced format with inverted tag labels and system details
                 // Color definitions for enhanced mode
                 let supports_color = std::env::var_os("NO_COLOR").is_none()
                     && std::env::var("TERM")
                         .map(|t| !t.eq_ignore_ascii_case("dumb"))
                         .unwrap_or(true);
 
-                let (white_bold, gray, cyan, green, blue, reset) = if supports_color {
+                // Tag colors use reverse video (inverted) + bold for visibility
+                // Format: \x1b[1;7m for bold+reverse, then foreground color
+                let (
+                    tag_strt,
+                    tag_gate,
+                    tag_jump,
+                    tag_goal,
+                    white_bold,
+                    gray,
+                    cyan,
+                    green,
+                    blue,
+                    orange,
+                    red,
+                    reset,
+                ) = if supports_color {
                     (
-                        "\x1b[1;97m", // bright bold white
-                        "\x1b[90m",   // gray
-                        "\x1b[36m",   // cyan for temp
-                        "\x1b[32m",   // green for planets
-                        "\x1b[34m",   // blue for moons
-                        "\x1b[0m",    // reset
+                        "\x1b[1;7;32m",   // bold reverse green background for STRT
+                        "\x1b[1;7;36m",   // bold reverse cyan background for GATE
+                        "\x1b[1;7;33m",   // bold reverse yellow background for JUMP
+                        "\x1b[1;7;35m",   // bold reverse magenta background for GOAL
+                        "\x1b[1;97m",     // bright bold white for system names
+                        "\x1b[90m",       // gray for tree lines
+                        "\x1b[36m",       // cyan for temp
+                        "\x1b[32m",       // green for planets
+                        "\x1b[34m",       // blue for moons
+                        "\x1b[38;5;208m", // orange for warm systems (>20K)
+                        "\x1b[31m",       // red for hot systems (>50K)
+                        "\x1b[0m",        // reset
                     )
                 } else {
-                    ("", "", "", "", "", "")
+                    ("", "", "", "", "", "", "", "", "", "", "", "")
                 };
+
+                // Helper to format numbers with thousand separators
+                fn format_with_separators(n: u64) -> String {
+                    if n < 1000 {
+                        return n.to_string();
+                    }
+                    let s = n.to_string();
+                    let mut result = String::new();
+                    for (i, c) in s.chars().rev().enumerate() {
+                        if i > 0 && i % 3 == 0 {
+                            result.push(',');
+                        }
+                        result.push(c);
+                    }
+                    result.chars().rev().collect()
+                }
 
                 let hops = summary.hops;
                 let start = summary.start.name.as_deref().unwrap_or("<unknown>");
@@ -375,37 +412,94 @@ impl OutputFormat {
                 let len = summary.steps.len();
                 for (i, step) in summary.steps.iter().enumerate() {
                     let name = step.name.as_deref().unwrap_or("<unknown>");
-                    let icon = "◯";
+                    let is_last = i + 1 == len;
 
-                    // Print the system name with distance info if not the first step
-                    if let (Some(distance), Some(_method)) = (step.distance, step.method.as_deref())
-                    {
-                        println!(
-                            " {} {}{}{} ({:.0}ly jump)",
-                            icon, white_bold, name, reset, distance
-                        );
+                    // Determine the tag based on position and method
+                    // Tags have spaces on both sides for padding within the colored background
+                    let (tag_color, tag_text) = if i == 0 {
+                        (tag_strt, " STRT ")
+                    } else if is_last {
+                        (tag_goal, " GOAL ")
                     } else {
-                        println!(" {} {}{}{}", icon, white_bold, name, reset);
+                        match step.method.as_deref() {
+                            Some("gate") => (tag_gate, " GATE "),
+                            Some("jump") => (tag_jump, " JUMP "),
+                            _ => (tag_jump, " JUMP "),
+                        }
+                    };
+
+                    // Determine jump type label for the brackets
+                    let jump_type = match step.method.as_deref() {
+                        Some("gate") => "gate",
+                        Some("jump") => "jump",
+                        _ => "",
+                    };
+
+                    // Determine circle color based on temperature
+                    // >50K = red, >20K = orange, else default (no color)
+                    let temp = step.min_external_temp.unwrap_or(0.0);
+                    let circle = if temp > 50.0 {
+                        format!("{}●{}", red, reset)
+                    } else if temp > 20.0 {
+                        format!("{}●{}", orange, reset)
+                    } else {
+                        "●".to_string()
+                    };
+
+                    // Print the tag and system name with optional distance and jump type
+                    if let Some(distance) = step.distance {
+                        let dist_str = format_with_separators(distance as u64);
+                        if !jump_type.is_empty() {
+                            println!(
+                                "{}{}{} {} {}{}{} ({}, {}ly)",
+                                tag_color,
+                                tag_text,
+                                reset,
+                                circle,
+                                white_bold,
+                                name,
+                                reset,
+                                jump_type,
+                                dist_str
+                            );
+                        } else {
+                            println!(
+                                "{}{}{} {} {}{}{} ({}ly)",
+                                tag_color,
+                                tag_text,
+                                reset,
+                                circle,
+                                white_bold,
+                                name,
+                                reset,
+                                dist_str
+                            );
+                        }
+                    } else {
+                        println!(
+                            "{}{}{} {} {}{}{}",
+                            tag_color, tag_text, reset, circle, white_bold, name, reset
+                        );
                     }
 
                     // Print details line if not the last step
-                    if i + 1 < len {
+                    if !is_last {
                         // Build stat parts, omitting zeros
                         let mut parts: Vec<String> = Vec::new();
 
-                        // Temperature (always show if available)
+                        // Temperature (always show if available) - right-aligned to 6 chars for consistency
                         if let Some(t) = step.min_external_temp {
-                            parts.push(format!("{}min {:>7.2}K{}", cyan, t, reset));
+                            parts.push(format!("{}min {:>6.2}K{}", cyan, t, reset));
                         }
 
-                        // Planets (omit if zero)
+                        // Planets (omit if zero) - right-aligned count
                         let planets = step.planet_count.unwrap_or(0);
                         if planets > 0 {
                             let label = if planets == 1 { "Planet" } else { "Planets" };
                             parts.push(format!("{}{:>2} {}{}", green, planets, label, reset));
                         }
 
-                        // Moons (omit if zero)
+                        // Moons (omit if zero) - right-aligned count
                         let moons = step.moon_count.unwrap_or(0);
                         if moons > 0 {
                             let label = if moons == 1 { "Moon" } else { "Moons" };
@@ -414,17 +508,23 @@ impl OutputFormat {
 
                         if !parts.is_empty() {
                             println!(
-                                " {gray}│ [{reset}{}{gray}]{reset}",
-                                parts.join(&format!("{gray}, {reset}")),
+                                "       {gray}│{reset} {details}",
                                 gray = gray,
-                                reset = reset
+                                reset = reset,
+                                details = parts.join(&format!("{}, {}", gray, reset))
                             );
                         }
                     }
                 }
 
-                println!("\nTotal distance: {:.0}ly", summary.total_distance);
-                println!("Total ly jumped: {:.0}ly", summary.jump_distance);
+                println!(
+                    "\nTotal distance: {}ly",
+                    format_with_separators(summary.total_distance as u64)
+                );
+                println!(
+                    "Total ly jumped: {}ly",
+                    format_with_separators(summary.jump_distance as u64)
+                );
             }
         }
         Ok(())

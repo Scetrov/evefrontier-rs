@@ -219,7 +219,8 @@ Approximate monthly costs (us-east-1). Verify current pricing at
 | API Gateway          | 1M requests free   | ~$1.00/1M requests         |
 | CloudWatch Logs      | 5GB ingestion free | ~$0.50/GB                  |
 
-> **Note:** Pricing varies by region and changes over time. Always consult the AWS Pricing
-> Calculator for accurate cost estimates.
+> [!NOTE]
+> Pricing varies by region and changes over time. Always consult the AWS Pricing Calculator for
+> accurate cost estimates.
 
 For low-traffic use cases, the deployment typically remains within free tier limits.

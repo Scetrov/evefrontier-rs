@@ -74,7 +74,8 @@ Quick end-to-end tests using the **release** binary to validate:
 make test-smoke
 ```
 
-**Note**: Requires `jq` for JSON validation.
+> [!NOTE]
+> Requires `jq` for JSON validation.
 
 ### 3. CI Checks (`make ci`)
 
@@ -91,7 +92,8 @@ Runs the **same checks as the CI workflow** locally:
 make ci
 ```
 
-This is the **recommended command before pushing** to catch issues early.
+> [!TIP]
+> This is the **recommended command before pushing** to catch issues early.
 
 ## Pre-commit Hooks
 
@@ -103,11 +105,12 @@ before each commit:
 - Blocks commits if any check fails
 - Provides fast feedback (typically 5-10 seconds with warm cache)
 
-**To skip pre-commit hooks** (not recommended):
-
-```bash
-git commit --no-verify
-```
+> [!CAUTION]
+> To skip pre-commit hooks (not recommended):
+>
+> ```bash
+> git commit --no-verify
+> ```
 
 ## CI Workflow
 

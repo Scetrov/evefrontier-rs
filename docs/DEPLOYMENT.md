@@ -36,9 +36,10 @@ This guide covers deploying the EVE Frontier Lambda functions to AWS using Terra
 
 #### Deployment IAM Policy
 
-> **Security Note:** Avoid attaching broad AWS-managed policies like `AWSLambda_FullAccess` or
-> `IAMFullAccess` to deployment users/roles. These grant far more permissions than needed and
-> increase blast radius if credentials are compromised. Use a narrowly scoped custom policy instead.
+> [!CAUTION]
+> Avoid attaching broad AWS-managed policies like `AWSLambda_FullAccess` or `IAMFullAccess` to
+> deployment users/roles. These grant far more permissions than needed and increase blast radius if
+> credentials are compromised. Use a narrowly scoped custom policy instead.
 
 The deploying principal needs permissions for:
 
@@ -138,13 +139,12 @@ Example IAM policy. **Replace `<YOUR_REGION>` with your AWS region (e.g., `us-ea
 }
 ```
 
-> **⚠️ Security Note:** This policy grants `iam:CreateRole` and `iam:PutRolePolicy` on
-> `evefrontier-*` roles combined with `iam:PassRole`. In highly sensitive environments, consider:
+> [!WARNING]
+> This policy grants `iam:CreateRole` and `iam:PutRolePolicy` on `evefrontier-*` roles combined
+> with `iam:PassRole`. In highly sensitive environments, consider:
 >
 > - Using pre-created IAM roles instead of allowing Terraform to create them
-> - Applying
->   [IAM permissions boundaries](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html)
->   to limit what policies can be attached to created roles
+> - Applying [IAM permissions boundaries](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html) to limit what policies can be attached to created roles
 > - Restricting the deployment principal to a dedicated CI/CD pipeline with short-lived credentials
 >
 > These measures reduce the risk of privilege escalation if deployment credentials are compromised.
@@ -207,11 +207,12 @@ curl -X POST "${API}/route" -H "Content-Type: application/json" \
 
 Lambda runs on Amazon Linux 2023. For ARM64 deployment (recommended), you need cross-compilation.
 
-> **Note on Rust targets**: This guide uses `aarch64-unknown-linux-gnu` which dynamically links
-> against glibc. This works because the `provided.al2023` Lambda runtime includes glibc. An
-> alternative is `aarch64-unknown-linux-musl` which produces fully static binaries, but requires
-> musl toolchain setup and may have compatibility issues with some crates. For most use cases, the
-> `gnu` target is simpler and works well with Amazon Linux 2023.
+> [!TIP]
+> This guide uses `aarch64-unknown-linux-gnu` which dynamically links against glibc. This works
+> because the `provided.al2023` Lambda runtime includes glibc. An alternative is
+> `aarch64-unknown-linux-musl` which produces fully static binaries, but requires musl toolchain
+> setup and may have compatibility issues with some crates. For most use cases, the `gnu` target is
+> simpler and works well with Amazon Linux 2023.
 
 #### Ubuntu/Debian
 
@@ -516,8 +517,9 @@ Lambda functions use structured JSON logging via `tracing`:
 
 ### CloudWatch Insights Queries
 
-> **Note:** These queries assume JSON-formatted logs as shown above. Adjust field names and patterns
-> based on your actual log output structure.
+> [!NOTE]
+> These queries assume JSON-formatted logs as shown above. Adjust field names and patterns based
+> on your actual log output structure.
 
 ```sql
 -- Find slow requests (adjust field path based on actual log structure)
@@ -666,9 +668,10 @@ least-privilege policy template.
 - **IAM**: `CreateRole`, `GetRole`, `DeleteRole`, `PutRolePolicy`, `GetRolePolicy`,
   `DeleteRolePolicy`, `PassRole` (with condition)
 
-> **Security Note:** Never use wildcard action patterns like `lambda:*` or `iam:*` to resolve
-> permission errors. These effectively create admin-level access and increase blast radius if
-> credentials are compromised. Always diagnose and add only the specific missing permission.
+> [!CAUTION]
+> Never use wildcard action patterns like `lambda:*` or `iam:*` to resolve permission errors.
+> These effectively create admin-level access and increase blast radius if credentials are
+> compromised. Always diagnose and add only the specific missing permission.
 
 #### "CORS error in browser"
 
@@ -729,8 +732,9 @@ policy grants only CloudWatch Logs write permissions:
 }
 ```
 
-> **Note:** Log groups are created by Terraform, not Lambda. The Lambda execution role does not
-> include `logs:CreateLogGroup` because Terraform manages log group lifecycle. If log groups are
+> [!NOTE]
+> Log groups are created by Terraform, not Lambda. The Lambda execution role does not include
+> `logs:CreateLogGroup` because Terraform manages log group lifecycle. If log groups are
 > accidentally deleted, run `terraform apply` to recreate them.
 >
 > The placeholders `<REGION>`, `<ACCOUNT_ID>`, `<PROJECT_NAME>`, and `<ENV>` are resolved at
@@ -768,7 +772,8 @@ vpc_config = {
 }
 ```
 
-**Note**: VPC deployment requires NAT Gateway for outbound internet access (if needed).
+> [!NOTE]
+> VPC deployment requires NAT Gateway for outbound internet access (if needed).
 
 ### API Authentication
 
@@ -790,12 +795,12 @@ cd terraform/examples/complete
 terraform destroy
 ```
 
-**Warning**: This permanently deletes:
-
-- Lambda functions
-- API Gateway
-- CloudWatch Log Groups (and all logs)
-- IAM roles and policies
+> [!WARNING]
+> This permanently deletes:
+> - Lambda functions
+> - API Gateway
+> - CloudWatch Log Groups (and all logs)
+> - IAM roles and policies
 
 ---
 

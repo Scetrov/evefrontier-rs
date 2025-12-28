@@ -65,7 +65,8 @@ Route-only options (ignored by other subcommands):
   evefrontier-cli download --data-dir docs/fixtures --dataset e6c3
   ```
 
-> Note: The `download` subcommand always emits plain text regardless of `--format`.
+> [!NOTE]
+> The `download` subcommand always emits plain text regardless of `--format`.
 
 - Calculate a route between two systems using an existing dataset path:
 
@@ -425,9 +426,9 @@ The workspace provides three AWS Lambda functions for serverless route planning 
 Lambda is a thin wrapper around `evefrontier-lib` with optimized cold-start performance via bundled
 dataset and spatial index.
 
-> **Deployment**: For infrastructure setup and deployment instructions, see
-> [DEPLOYMENT.md](./DEPLOYMENT.md). This section covers API usage assuming functions are already
-> deployed.
+> [!TIP]
+> For infrastructure setup and deployment instructions, see [DEPLOYMENT.md](./DEPLOYMENT.md). This
+> section covers API usage assuming functions are already deployed.
 
 ### Lambda Function Overview
 

@@ -146,8 +146,9 @@ gpg --export your.email@example.com | curl -T - https://keys.openpgp.org
 gpg --keyserver hkps://keys.openpgp.org --send-keys ABCD1234EFGH5678
 ```
 
-> **Important**: Document your key fingerprint in the repository's `SECURITY.md` file so consumers
-> can verify signatures against a known good key.
+> [!IMPORTANT]
+> Document your key fingerprint in the repository's `SECURITY.md` file so consumers can verify
+> signatures against a known good key.
 
 ### cosign Installation
 
@@ -190,8 +191,9 @@ cosign generate-key-pair
 # - cosign.pub (public key - distribute with releases)
 ```
 
-> **Security**: Store `cosign.key` securely. Never commit it to the repository. For CI releases, use
-> keyless signing with OIDC instead.
+> [!WARNING]
+> Store `cosign.key` securely. Never commit it to the repository. For CI releases, use keyless
+> signing with OIDC instead.
 
 ### cargo-sbom Installation
 
@@ -206,7 +208,8 @@ cargo install cargo-sbom
 cargo sbom --help
 ```
 
-> **Alternative**: For CI environments, you can use [syft](https://github.com/anchore/syft) instead.
+> [!TIP]
+> For CI environments, you can use [syft](https://github.com/anchore/syft) instead.
 > Install from a pinned release with checksum verification:
 >
 > ```bash
@@ -431,8 +434,9 @@ cargo build --release -p evefrontier-cli
 # ~/.local/share/evefrontier/static_data.db.spatial.bin
 ```
 
-> **Note**: Include the spatial index in releases for major version bumps or when the underlying
-> dataset schema changes.
+> [!TIP]
+> Include the spatial index in releases for major version bumps or when the underlying dataset
+> schema changes.
 
 ### Package Assembly
 
@@ -499,9 +503,10 @@ cosign verify-blob --key cosign.pub \
   "evefrontier-cli-${VERSION}-linux-x86_64.tar.gz"
 ```
 
-> **Note**: This documentation standardizes on cosign v3's `--bundle` format throughout. The bundle
-> format combines the signature, certificate, and timestamps into a single `.bundle` file. Earlier
-> cosign versions used separate `.sig` files with `--signature` flag.
+> [!NOTE]
+> This documentation standardizes on cosign v3's `--bundle` format throughout. The bundle format
+> combines the signature, certificate, and timestamps into a single `.bundle` file. Earlier cosign
+> versions used separate `.sig` files with `--signature` flag.
 
 ### cosign Signatures (Keyless)
 
@@ -515,7 +520,8 @@ cosign sign-blob --yes \
   "evefrontier-cli-${VERSION}-linux-x86_64.tar.gz"
 ```
 
-> **Note**: cosign v3+ no longer requires `COSIGN_EXPERIMENTAL=1` for keyless signing.
+> [!NOTE]
+> cosign v3+ no longer requires `COSIGN_EXPERIMENTAL=1` for keyless signing.
 
 Keyless signatures are recorded in the Sigstore transparency log and can be verified using the
 certificate identity:
@@ -742,8 +748,9 @@ Future CI automation should implement the following patterns:
 
 ### GitHub Actions Workflow Structure
 
-> **Security Note**: Third-party actions are pinned to full commit SHAs to prevent supply chain
-> attacks. Update these intentionally as part of your dependency management process. See
+> [!WARNING]
+> Third-party actions are pinned to full commit SHAs to prevent supply chain attacks. Update these
+> intentionally as part of your dependency management process. See
 > [GitHub's security hardening guide](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-third-party-actions).
 
 ```yaml
@@ -829,13 +836,14 @@ jobs:
     gpg --batch --pinentry-mode loopback --armor --detach-sign SHA256SUMS
 ```
 
-> **Security Note**: The `gpg-preset-passphrase` approach avoids exposing the passphrase in process
-> listings that can occur with `echo | gpg --passphrase-fd`. For simpler setups where this isn't a
-> concern, you can use `--passphrase` directly:
+> [!TIP]
+> The `gpg-preset-passphrase` approach avoids exposing the passphrase in process listings that can
+> occur with `echo | gpg --passphrase-fd`. For simpler setups where this isn't a concern, you can
+> use `--passphrase` directly:
 >
 > ```yaml
-> gpg --batch --pinentry-mode loopback --passphrase "$GPG_PASSPHRASE" \ --armor --detach-sign
-> SHA256SUMS
+> gpg --batch --pinentry-mode loopback --passphrase "$GPG_PASSPHRASE" \
+>   --armor --detach-sign SHA256SUMS
 > ```
 
 ### Required Secrets
@@ -845,8 +853,9 @@ jobs:
 | `GPG_PRIVATE_KEY` | ASCII-armored private key |
 | `GPG_PASSPHRASE`  | Key passphrase            |
 
-> **Note**: For keyless cosign signing, no secrets are required - OIDC identity is provided by
-> GitHub Actions automatically.
+> [!NOTE]
+> For keyless cosign signing, no secrets are required - OIDC identity is provided by GitHub
+> Actions automatically.
 
 ---
 

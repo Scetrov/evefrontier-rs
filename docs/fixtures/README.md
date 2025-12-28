@@ -130,21 +130,23 @@ The CI workflow generates the fixture fresh for each test run to ensure:
 
 The git-tracked `minimal_static_data.db` is provided for convenience during local development. To ensure consistency:
 
-**Do not replace it by running download commands with `--data-dir docs/fixtures/`.**
+> [!IMPORTANT]
+> **Do not replace it by running download commands with `--data-dir docs/fixtures/`.**
+>
+> The fixture includes a `.release` marker file that prevents the CLI from attempting to
+> re-download when tests reference it.
 
-The fixture includes a `.release` marker file that prevents the CLI from attempting to re-download when tests reference it.
-
-## ⚠️ Important: Do Not Overwrite
-
-**This fixture is tracked in git and used by CI.** Accidental overwrites can break tests. To test with production data:
-
-```bash
-# Use a different directory for downloads
-evefrontier-cli download --data-dir /tmp/test-data
-
-# Or let it use the default cache location
-evefrontier-cli download
-```
+> [!WARNING]
+> **This fixture is tracked in git and used by CI.** Accidental overwrites can break tests. To
+> test with production data:
+>
+> ```bash
+> # Use a different directory for downloads
+> evefrontier-cli download --data-dir /tmp/test-data
+>
+> # Or let it use the default cache location
+> evefrontier-cli download
+> ```
 
 ## Test Usage
 

@@ -278,8 +278,8 @@ fn enhanced_format_shows_system_details() {
 
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains("🚥"))
-        .stdout(predicate::str::contains("🚀"))
-        .stdout(predicate::str::contains("Planet"))
-        .stdout(predicate::str::contains("Moon"));
+        .stdout(predicate::str::contains("●")) // Enhanced uses filled circle icon
+        .stdout(predicate::str::contains("STRT")) // Start tag
+        .stdout(predicate::str::contains("GOAL")) // Goal tag
+        .stdout(predicate::str::contains("Planet")); // System details
 }
