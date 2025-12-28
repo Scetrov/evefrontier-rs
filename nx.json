@@ -17,7 +17,7 @@
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["production", "^production"],
-      "outputs": ["{workspaceRoot}/target/debug", "{workspaceRoot}/target/release"],
+      "outputs": [],
       "cache": true,
       "parallel": false
     },

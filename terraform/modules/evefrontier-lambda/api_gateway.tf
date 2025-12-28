@@ -11,7 +11,7 @@
 
 resource "aws_apigatewayv2_api" "main" {
   name          = "${var.project_name}-api-${var.environment}"
-  description   = "EveFrontier API - Pathfinding and scouting for EVE Frontier"
+  description   = "EVE Frontier API - Pathfinding and scouting for EVE Frontier"
   protocol_type = "HTTP"
 
   cors_configuration {

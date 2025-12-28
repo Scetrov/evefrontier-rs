@@ -1,6 +1,6 @@
-# Deploying EveFrontier Lambda Functions
+# Deploying EVE Frontier Lambda Functions
 
-This guide covers deploying the EveFrontier Lambda functions to AWS using Terraform.
+This guide covers deploying the EVE Frontier Lambda functions to AWS using Terraform.
 
 ## Table of Contents
 
@@ -21,12 +21,12 @@ This guide covers deploying the EveFrontier Lambda functions to AWS using Terraf
 
 ### Required Tools
 
-| Tool | Version | Purpose |
-|------|---------|---------|
-| Terraform | >= 1.5.0 | Infrastructure deployment |
-| Rust | 1.91+ | Building Lambda binaries |
-| AWS CLI | v2 | AWS authentication |
-| Cross-compiler | Latest | ARM64 cross-compilation |
+| Tool           | Version  | Purpose                   |
+| -------------- | -------- | ------------------------- |
+| Terraform      | >= 1.5.0 | Infrastructure deployment |
+| Rust           | 1.91+    | Building Lambda binaries  |
+| AWS CLI        | v2       | AWS authentication        |
+| Cross-compiler | Latest   | ARM64 cross-compilation   |
 
 ### AWS Requirements
 
@@ -36,13 +36,15 @@ This guide covers deploying the EveFrontier Lambda functions to AWS using Terraf
 
 #### Deployment IAM Policy
 
-> **Security Note:** Avoid attaching broad AWS-managed policies like `AWSLambda_FullAccess` or
-> `IAMFullAccess` to deployment users/roles. These grant far more permissions than needed and
-> increase blast radius if credentials are compromised. Use a narrowly scoped custom policy instead.
+> [!CAUTION]
+> Avoid attaching broad AWS-managed policies like `AWSLambda_FullAccess` or `IAMFullAccess` to
+> deployment users/roles. These grant far more permissions than needed and increase blast radius if
+> credentials are compromised. Use a narrowly scoped custom policy instead.
 
 The deploying principal needs permissions for:
-- Managing EveFrontier Lambda functions
-- Managing EveFrontier API Gateway resources  
+
+- Managing EVE Frontier Lambda functions
+- Managing EVE Frontier API Gateway resources
 - Creating/managing CloudWatch log groups
 - Minimal IAM actions to create the Lambda execution role
 
@@ -137,11 +139,12 @@ Example IAM policy. **Replace `<YOUR_REGION>` with your AWS region (e.g., `us-ea
 }
 ```
 
-> **⚠️ Security Note:** This policy grants `iam:CreateRole` and `iam:PutRolePolicy` on
-> `evefrontier-*` roles combined with `iam:PassRole`. In highly sensitive environments, consider:
+> [!WARNING]
+> This policy grants `iam:CreateRole` and `iam:PutRolePolicy` on `evefrontier-*` roles combined
+> with `iam:PassRole`. In highly sensitive environments, consider:
+>
 > - Using pre-created IAM roles instead of allowing Terraform to create them
-> - Applying [IAM permissions boundaries](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html)
->   to limit what policies can be attached to created roles
+> - Applying [IAM permissions boundaries](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html) to limit what policies can be attached to created roles
 > - Restricting the deployment principal to a dedicated CI/CD pipeline with short-lived credentials
 >
 > These measures reduce the risk of privilege escalation if deployment credentials are compromised.
@@ -193,7 +196,7 @@ terraform apply
 # 4. Test
 API=$(terraform output -raw api_endpoint)
 curl -X POST "${API}/route" -H "Content-Type: application/json" \
-  -d '{"from": "Nod", "to": "Brana"}'
+  -d '{"from": "ER1-MM7", "to": "ENQ-PB6"}'
 ```
 
 ---
@@ -204,11 +207,12 @@ curl -X POST "${API}/route" -H "Content-Type: application/json" \
 
 Lambda runs on Amazon Linux 2023. For ARM64 deployment (recommended), you need cross-compilation.
 
-> **Note on Rust targets**: This guide uses `aarch64-unknown-linux-gnu` which dynamically links
-> against glibc. This works because the `provided.al2023` Lambda runtime includes glibc. An
-> alternative is `aarch64-unknown-linux-musl` which produces fully static binaries, but requires
-> musl toolchain setup and may have compatibility issues with some crates. For most use cases,
-> the `gnu` target is simpler and works well with Amazon Linux 2023.
+> [!TIP]
+> This guide uses `aarch64-unknown-linux-gnu` which dynamically links against glibc. This works
+> because the `provided.al2023` Lambda runtime includes glibc. An alternative is
+> `aarch64-unknown-linux-musl` which produces fully static binaries, but requires musl toolchain
+> setup and may have compatibility issues with some crates. For most use cases, the `gnu` target is
+> simpler and works well with Amazon Linux 2023.
 
 #### Ubuntu/Debian
 
@@ -283,11 +287,11 @@ cargo build --release --target x86_64-unknown-linux-gnu \
 
 Expected binary sizes with `bundle-data` feature:
 
-| Binary | Approximate Size |
-|--------|-----------------|
-| evefrontier-lambda-route | ~15-20 MB |
-| evefrontier-lambda-scout-gates | ~15-20 MB |
-| evefrontier-lambda-scout-range | ~15-20 MB |
+| Binary                         | Approximate Size |
+| ------------------------------ | ---------------- |
+| evefrontier-lambda-route       | ~15-20 MB        |
+| evefrontier-lambda-scout-gates | ~15-20 MB        |
+| evefrontier-lambda-scout-range | ~15-20 MB        |
 
 The large size is due to the bundled dataset and spatial index.
 
@@ -297,24 +301,24 @@ The large size is due to the bundled dataset and spatial index.
 
 ### Terraform Module Variables
 
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `environment` | string | `"dev"` | Environment name (dev, staging, prod) |
-| `project_name` | string | `"evefrontier"` | Prefix for all resources |
-| `route_binary_path` | string | **required** | Path to route Lambda binary |
-| `scout_gates_binary_path` | string | **required** | Path to scout-gates Lambda binary |
-| `scout_range_binary_path` | string | **required** | Path to scout-range Lambda binary |
-| `lambda_memory_mb` | number | `512` | Lambda memory (128-10240 MB) |
-| `lambda_timeout_seconds` | number | `10` | Lambda timeout (1-900 seconds) |
-| `lambda_architecture` | string | `"arm64"` | CPU architecture (arm64, x86_64) |
-| `log_retention_days` | number | `30` | CloudWatch log retention |
-| `log_level` | string | `"info"` | Log verbosity (trace, debug, info, warn, error) |
-| `api_stage_name` | string | `"v1"` | API Gateway stage name |
-| `cors_allowed_origins` | list | `["*"]` | CORS allowed origins |
-| `throttling_burst_limit` | number | `100` | API burst limit (req/sec) |
-| `throttling_rate_limit` | number | `50` | API rate limit (req/sec) |
-| `vpc_config` | object | `null` | Optional VPC configuration |
-| `tags` | map | `{}` | Additional resource tags |
+| Variable                  | Type   | Default         | Description                                     |
+| ------------------------- | ------ | --------------- | ----------------------------------------------- |
+| `environment`             | string | `"dev"`         | Environment name (dev, staging, prod)           |
+| `project_name`            | string | `"evefrontier"` | Prefix for all resources                        |
+| `route_binary_path`       | string | **required**    | Path to route Lambda binary                     |
+| `scout_gates_binary_path` | string | **required**    | Path to scout-gates Lambda binary               |
+| `scout_range_binary_path` | string | **required**    | Path to scout-range Lambda binary               |
+| `lambda_memory_mb`        | number | `512`           | Lambda memory (128-10240 MB)                    |
+| `lambda_timeout_seconds`  | number | `10`            | Lambda timeout (1-900 seconds)                  |
+| `lambda_architecture`     | string | `"arm64"`       | CPU architecture (arm64, x86_64)                |
+| `log_retention_days`      | number | `30`            | CloudWatch log retention                        |
+| `log_level`               | string | `"info"`        | Log verbosity (trace, debug, info, warn, error) |
+| `api_stage_name`          | string | `"v1"`          | API Gateway stage name                          |
+| `cors_allowed_origins`    | list   | `["*"]`         | CORS allowed origins                            |
+| `throttling_burst_limit`  | number | `100`           | API burst limit (req/sec)                       |
+| `throttling_rate_limit`   | number | `50`            | API rate limit (req/sec)                        |
+| `vpc_config`              | object | `null`          | Optional VPC configuration                      |
+| `tags`                    | map    | `{}`            | Additional resource tags                        |
 
 ### Example Configurations
 
@@ -409,11 +413,11 @@ terraform apply
 
 ### Endpoints
 
-| Method | Path | Lambda Function | Description |
-|--------|------|-----------------|-------------|
-| POST | `/route` | evefrontier-route | Calculate route between systems |
-| POST | `/scout-gates` | evefrontier-scout-gates | Find gate-connected neighbors |
-| POST | `/scout-range` | evefrontier-scout-range | Find systems within spatial range |
+| Method | Path           | Lambda Function         | Description                       |
+| ------ | -------------- | ----------------------- | --------------------------------- |
+| POST   | `/route`       | evefrontier-route       | Calculate route between systems   |
+| POST   | `/scout-gates` | evefrontier-scout-gates | Find gate-connected neighbors     |
+| POST   | `/scout-range` | evefrontier-scout-range | Find systems within spatial range |
 
 ### Request/Response Examples
 
@@ -425,8 +429,8 @@ See [USAGE.md](./USAGE.md#aws-lambda-functions) for detailed API documentation.
 curl -X POST "${API_ENDPOINT}/route" \
   -H "Content-Type: application/json" \
   -d '{
-    "from": "Nod",
-    "to": "Brana",
+    "from": "ER1-MM7",
+    "to": "ENQ-PB6",
     "algorithm": "astar",
     "max_jump_ly": 80,
     "avoid_systems": []
@@ -439,7 +443,7 @@ curl -X POST "${API_ENDPOINT}/route" \
 curl -X POST "${API_ENDPOINT}/scout-gates" \
   -H "Content-Type: application/json" \
   -d '{
-    "system": "Nod"
+    "system": "ER1-MM7"
   }'
 ```
 
@@ -449,7 +453,7 @@ curl -X POST "${API_ENDPOINT}/scout-gates" \
 curl -X POST "${API_ENDPOINT}/scout-range" \
   -H "Content-Type: application/json" \
   -d '{
-    "system": "Nod",
+    "system": "ER1-MM7",
     "radius_ly": 50,
     "max_temperature": 400.0
   }'
@@ -466,6 +470,7 @@ cors_allowed_origins = ["https://yourdomain.com", "https://api.yourdomain.com"]
 ### Rate Limiting
 
 Default throttling limits:
+
 - **Burst limit**: 100 requests/second
 - **Rate limit**: 50 requests/second (sustained)
 
@@ -484,12 +489,12 @@ throttling_rate_limit  = 200
 
 The module creates log groups for each Lambda function:
 
-| Log Group | Retention | Content |
-|-----------|-----------|---------|
-| `/aws/lambda/evefrontier-route-{env}` | Configurable | Route Lambda logs |
+| Log Group                                   | Retention    | Content                 |
+| ------------------------------------------- | ------------ | ----------------------- |
+| `/aws/lambda/evefrontier-route-{env}`       | Configurable | Route Lambda logs       |
 | `/aws/lambda/evefrontier-scout-gates-{env}` | Configurable | Scout-gates Lambda logs |
 | `/aws/lambda/evefrontier-scout-range-{env}` | Configurable | Scout-range Lambda logs |
-| `/aws/apigateway/evefrontier-api-{env}` | Configurable | API Gateway access logs |
+| `/aws/apigateway/evefrontier-api-{env}`     | Configurable | API Gateway access logs |
 
 ### Log Format
 
@@ -502,9 +507,9 @@ Lambda functions use structured JSON logging via `tracing`:
   "message": "Route calculated",
   "target": "evefrontier_lambda_route",
   "fields": {
-    "from": "Nod",
-    "to": "Brana",
-    "hops": 5,
+    "from": "ER1-MM7",
+    "to": "ENQ-PB6",
+    "hops": 2,
     "duration_ms": 42
   }
 }
@@ -512,8 +517,9 @@ Lambda functions use structured JSON logging via `tracing`:
 
 ### CloudWatch Insights Queries
 
-> **Note:** These queries assume JSON-formatted logs as shown above. Adjust field names and
-> patterns based on your actual log output structure.
+> [!NOTE]
+> These queries assume JSON-formatted logs as shown above. Adjust field names and patterns based
+> on your actual log output structure.
 
 ```sql
 -- Find slow requests (adjust field path based on actual log structure)
@@ -592,7 +598,8 @@ lambda_reserved_concurrency = 100
 
 ### Cost Optimization
 
-1. **ARM64 architecture**: Generally cheaper than x86_64 (see [AWS Lambda Pricing](https://aws.amazon.com/lambda/pricing/) for current rates in your region)
+1. **ARM64 architecture**: Generally cheaper than x86_64 (see
+   [AWS Lambda Pricing](https://aws.amazon.com/lambda/pricing/) for current rates in your region)
 2. **Right-size memory**: 512MB is sufficient for most workloads
 3. **Log retention**: Reduce `log_retention_days` for dev environments
 4. **Provisioned concurrency**: Only if cold starts are unacceptable
@@ -608,6 +615,7 @@ lambda_reserved_concurrency = 100
 **Cause**: Binary not named `bootstrap` or wrong architecture.
 
 **Solution**:
+
 ```bash
 # Verify binary name
 ls -la binaries/
@@ -623,6 +631,7 @@ file binaries/bootstrap-route
 **Cause**: Lambda timeout too short or cold start + processing exceeds limit.
 
 **Solution**:
+
 ```hcl
 lambda_timeout_seconds = 30  # Increase timeout
 lambda_memory_mb       = 1024  # More memory = faster CPU
@@ -638,6 +647,7 @@ least-privilege policy template.
 **Diagnosing the specific missing permission:**
 
 1. Check AWS CloudTrail for the denied API call:
+
    ```bash
    aws cloudtrail lookup-events \
      --lookup-attributes AttributeKey=EventName,AttributeValue=<API_CALL> \
@@ -650,23 +660,25 @@ least-privilege policy template.
 
 **Required permissions summary** (see Deployment IAM Policy for full details):
 
-- **Lambda**: `CreateFunction`, `UpdateFunctionCode`, `UpdateFunctionConfiguration`, `DeleteFunction`,
-  `GetFunction`, `GetFunctionConfiguration`, `AddPermission`, `RemovePermission`, `GetPolicy`,
-  `TagResource`, `UntagResource`
+- **Lambda**: `CreateFunction`, `UpdateFunctionCode`, `UpdateFunctionConfiguration`,
+  `DeleteFunction`, `GetFunction`, `GetFunctionConfiguration`, `AddPermission`, `RemovePermission`,
+  `GetPolicy`, `TagResource`, `UntagResource`
 - **API Gateway**: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`
 - **CloudWatch Logs**: `CreateLogGroup`, `DeleteLogGroup`, `DescribeLogGroups`, `PutRetentionPolicy`
-- **IAM**: `CreateRole`, `GetRole`, `DeleteRole`, `PutRolePolicy`, `GetRolePolicy`, `DeleteRolePolicy`,
-  `PassRole` (with condition)
+- **IAM**: `CreateRole`, `GetRole`, `DeleteRole`, `PutRolePolicy`, `GetRolePolicy`,
+  `DeleteRolePolicy`, `PassRole` (with condition)
 
-> **Security Note:** Never use wildcard action patterns like `lambda:*` or `iam:*` to resolve
-> permission errors. These effectively create admin-level access and increase blast radius if
-> credentials are compromised. Always diagnose and add only the specific missing permission.
+> [!CAUTION]
+> Never use wildcard action patterns like `lambda:*` or `iam:*` to resolve permission errors.
+> These effectively create admin-level access and increase blast radius if credentials are
+> compromised. Always diagnose and add only the specific missing permission.
 
 #### "CORS error in browser"
 
 **Cause**: Origin not in allowed list.
 
 **Solution**:
+
 ```hcl
 cors_allowed_origins = ["https://yourdomain.com"]
 ```
@@ -676,6 +688,7 @@ cors_allowed_origins = ["https://yourdomain.com"]
 **Cause**: First invocation loads bundled dataset into memory.
 
 **Solutions**:
+
 1. Increase memory (faster CPU allocation)
 2. Use provisioned concurrency
 3. Implement a "warmer" Lambda that pings periodically
@@ -697,8 +710,9 @@ Then check CloudWatch Logs for detailed traces.
 ### IAM Least Privilege
 
 The module creates a minimal IAM execution role policy for the Lambda functions. The actual policy
-can be found in [`terraform/modules/evefrontier-lambda/iam.tf`](../terraform/modules/evefrontier-lambda/iam.tf).
-The policy grants only CloudWatch Logs write permissions:
+can be found in
+[`terraform/modules/evefrontier-lambda/iam.tf`](../terraform/modules/evefrontier-lambda/iam.tf). The
+policy grants only CloudWatch Logs write permissions:
 
 ```json
 {
@@ -707,10 +721,7 @@ The policy grants only CloudWatch Logs write permissions:
     {
       "Sid": "CloudWatchLogsWrite",
       "Effect": "Allow",
-      "Action": [
-        "logs:CreateLogStream",
-        "logs:PutLogEvents"
-      ],
+      "Action": ["logs:CreateLogStream", "logs:PutLogEvents"],
       "Resource": [
         "arn:aws:logs:<REGION>:<ACCOUNT_ID>:log-group:/aws/lambda/<PROJECT_NAME>-route-<ENV>:*",
         "arn:aws:logs:<REGION>:<ACCOUNT_ID>:log-group:/aws/lambda/<PROJECT_NAME>-scout-gates-<ENV>:*",
@@ -721,14 +732,16 @@ The policy grants only CloudWatch Logs write permissions:
 }
 ```
 
-> **Note:** Log groups are created by Terraform, not Lambda. The Lambda execution role does not
-> include `logs:CreateLogGroup` because Terraform manages log group lifecycle. If log groups are
+> [!NOTE]
+> Log groups are created by Terraform, not Lambda. The Lambda execution role does not include
+> `logs:CreateLogGroup` because Terraform manages log group lifecycle. If log groups are
 > accidentally deleted, run `terraform apply` to recreate them.
 >
 > The placeholders `<REGION>`, `<ACCOUNT_ID>`, `<PROJECT_NAME>`, and `<ENV>` are resolved at
 > deployment time based on your AWS configuration and Terraform variables.
 
 Lambda functions have **no access** to:
+
 - S3 buckets
 - DynamoDB tables
 - Secrets Manager
@@ -739,6 +752,7 @@ Lambda functions have **no access** to:
 - Dataset is bundled at build time (no runtime downloads)
 - No API keys or credentials in Lambda environment
 - No database connections
+
 ### CORS
 
 For production:
@@ -758,7 +772,8 @@ vpc_config = {
 }
 ```
 
-**Note**: VPC deployment requires NAT Gateway for outbound internet access (if needed).
+> [!NOTE]
+> VPC deployment requires NAT Gateway for outbound internet access (if needed).
 
 ### API Authentication
 
@@ -780,11 +795,12 @@ cd terraform/examples/complete
 terraform destroy
 ```
 
-**Warning**: This permanently deletes:
-- Lambda functions
-- API Gateway
-- CloudWatch Log Groups (and all logs)
-- IAM roles and policies
+> [!WARNING]
+> This permanently deletes:
+> - Lambda functions
+> - API Gateway
+> - CloudWatch Log Groups (and all logs)
+> - IAM roles and policies
 
 ---
 

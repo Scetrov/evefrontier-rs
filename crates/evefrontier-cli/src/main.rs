@@ -1,6 +1,7 @@
 use std::fmt;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
@@ -8,16 +9,16 @@ use serde::Serialize;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 use evefrontier_lib::{
-    ensure_dataset, load_starmap, plan_route, spatial_index_path, DatasetRelease,
-    Error as RouteError, RouteAlgorithm, RouteConstraints, RouteOutputKind, RouteRenderMode,
-    RouteRequest, RouteSummary, SpatialIndex, Starmap,
+    ensure_dataset, load_starmap, plan_route, spatial_index_path, try_load_spatial_index,
+    DatasetRelease, Error as RouteError, RouteAlgorithm, RouteConstraints, RouteOutputKind,
+    RouteRenderMode, RouteRequest, RouteSummary, SpatialIndex,
 };
 
 #[derive(Parser, Debug)]
 #[command(
     author,
     version,
-    about = "EveFrontier dataset utilities",
+    about = "EVE Frontier dataset utilities",
     long_about = None,
     propagate_version = true,
     arg_required_else_help = true
@@ -44,7 +45,7 @@ struct GlobalOptions {
     #[arg(long, value_enum, default_value_t = OutputFormat::default(), global = true)]
     format: OutputFormat,
 
-    /// Suppress the EveFrontier CLI logo banner.
+    /// Suppress the EVE Frontier CLI logo banner.
     #[arg(long, action = ArgAction::SetTrue, global = true)]
     no_logo: bool,
 
@@ -90,6 +91,7 @@ impl RouteCommandArgs {
                 avoid_gates: self.options.avoid_gates,
                 max_temperature: self.options.max_temp,
             },
+            spatial_index: None, // Will be set separately after loading
         }
     }
 }
@@ -166,19 +168,28 @@ enum OutputFormat {
     Basic,
     /// Emoji-enhanced readable output per EXAMPLES.md.
     Emoji,
+    /// Enhanced format with system details (temp, planets, moons).
+    Enhanced,
     #[value(alias = "notepad")]
     Note,
 }
 
 impl OutputFormat {
     fn supports_banner(self) -> bool {
-        matches!(self, OutputFormat::Text | OutputFormat::Rich)
+        matches!(
+            self,
+            OutputFormat::Text | OutputFormat::Rich | OutputFormat::Emoji | OutputFormat::Enhanced
+        )
     }
 
     fn supports_footer(self) -> bool {
         matches!(
             self,
-            OutputFormat::Text | OutputFormat::Rich | OutputFormat::Emoji | OutputFormat::Basic
+            OutputFormat::Text
+                | OutputFormat::Rich
+                | OutputFormat::Emoji
+                | OutputFormat::Basic
+                | OutputFormat::Enhanced
         )
     }
 
@@ -332,6 +343,220 @@ impl OutputFormat {
                     println!("Jmp <a href=\"showinfo:5//{}\">{}</a>", step.id, name);
                 }
             }
+            OutputFormat::Enhanced => {
+                // Enhanced format with inverted tag labels and system details
+                // Color definitions for enhanced mode
+                let supports_color = std::env::var_os("NO_COLOR").is_none()
+                    && std::env::var("TERM")
+                        .map(|t| !t.eq_ignore_ascii_case("dumb"))
+                        .unwrap_or(true);
+
+                // Tag colors use reverse video (inverted) + bold for visibility
+                // Format: \x1b[1;7m for bold+reverse, then foreground color
+                let (
+                    tag_strt,
+                    tag_gate,
+                    tag_jump,
+                    tag_goal,
+                    white_bold,
+                    gray,
+                    cyan,
+                    green,
+                    blue,
+                    orange,
+                    red,
+                    reset,
+                ) = if supports_color {
+                    (
+                        "\x1b[1;7;32m",   // bold reverse green background for STRT
+                        "\x1b[1;7;36m",   // bold reverse cyan background for GATE
+                        "\x1b[1;7;33m",   // bold reverse yellow background for JUMP
+                        "\x1b[1;7;35m",   // bold reverse magenta background for GOAL
+                        "\x1b[1;97m",     // bright bold white for system names
+                        "\x1b[90m",       // gray for tree lines
+                        "\x1b[36m",       // cyan for temp
+                        "\x1b[32m",       // green for planets
+                        "\x1b[34m",       // blue for moons
+                        "\x1b[38;5;208m", // orange for warm systems (>20K)
+                        "\x1b[31m",       // red for hot systems (>50K)
+                        "\x1b[0m",        // reset
+                    )
+                } else {
+                    ("", "", "", "", "", "", "", "", "", "", "", "")
+                };
+
+                // Helper to format numbers with thousand separators
+                fn format_with_separators(n: u64) -> String {
+                    if n < 1000 {
+                        return n.to_string();
+                    }
+                    let s = n.to_string();
+                    let mut result = String::new();
+                    for (i, c) in s.chars().rev().enumerate() {
+                        if i > 0 && i % 3 == 0 {
+                            result.push(',');
+                        }
+                        result.push(c);
+                    }
+                    result.chars().rev().collect()
+                }
+
+                let hops = summary.hops;
+                let start = summary.start.name.as_deref().unwrap_or("<unknown>");
+                let goal = summary.goal.name.as_deref().unwrap_or("<unknown>");
+                println!(
+                    "Route from {}{}{} to {}{}{} ({} jumps):",
+                    white_bold, start, reset, white_bold, goal, reset, hops
+                );
+
+                let len = summary.steps.len();
+                for (i, step) in summary.steps.iter().enumerate() {
+                    let name = step.name.as_deref().unwrap_or("<unknown>");
+                    let is_last = i + 1 == len;
+
+                    // Determine the tag based on position and method
+                    // Tags have spaces on both sides for padding within the colored background
+                    let (tag_color, tag_text) = if i == 0 {
+                        (tag_strt, " STRT ")
+                    } else if is_last {
+                        (tag_goal, " GOAL ")
+                    } else {
+                        match step.method.as_deref() {
+                            Some("gate") => (tag_gate, " GATE "),
+                            Some("jump") => (tag_jump, " JUMP "),
+                            _ => (tag_jump, " JUMP "),
+                        }
+                    };
+
+                    // Determine jump type label for the brackets
+                    let jump_type = match step.method.as_deref() {
+                        Some("gate") => "gate",
+                        Some("jump") => "jump",
+                        _ => "",
+                    };
+
+                    // Determine circle color based on temperature
+                    // >50K = red, >20K = orange, else default (no color)
+                    let temp = step.min_external_temp.unwrap_or(0.0);
+                    let circle = if temp > 50.0 {
+                        format!("{}●{}", red, reset)
+                    } else if temp > 20.0 {
+                        format!("{}●{}", orange, reset)
+                    } else {
+                        "●".to_string()
+                    };
+
+                    // Print the tag and system name with optional distance and jump type
+                    if let Some(distance) = step.distance {
+                        let dist_str = format_with_separators(distance as u64);
+                        if !jump_type.is_empty() {
+                            println!(
+                                "{}{}{} {} {}{}{} ({}, {}ly)",
+                                tag_color,
+                                tag_text,
+                                reset,
+                                circle,
+                                white_bold,
+                                name,
+                                reset,
+                                jump_type,
+                                dist_str
+                            );
+                        } else {
+                            println!(
+                                "{}{}{} {} {}{}{} ({}ly)",
+                                tag_color,
+                                tag_text,
+                                reset,
+                                circle,
+                                white_bold,
+                                name,
+                                reset,
+                                dist_str
+                            );
+                        }
+                    } else {
+                        println!(
+                            "{}{}{} {} {}{}{}",
+                            tag_color, tag_text, reset, circle, white_bold, name, reset
+                        );
+                    }
+
+                    // Print details line if not the last step
+                    if !is_last {
+                        // Build stat parts, omitting zeros
+                        let mut parts: Vec<String> = Vec::new();
+
+                        // Temperature (always show if available) - right-aligned to 6 chars for consistency
+                        if let Some(t) = step.min_external_temp {
+                            parts.push(format!("{}min {:>6.2}K{}", cyan, t, reset));
+                        }
+
+                        // Planets (omit if zero) - right-aligned count
+                        let planets = step.planet_count.unwrap_or(0);
+                        if planets > 0 {
+                            let label = if planets == 1 { "Planet" } else { "Planets" };
+                            parts.push(format!("{}{:>2} {}{}", green, planets, label, reset));
+                        }
+
+                        // Moons (omit if zero) - right-aligned count
+                        let moons = step.moon_count.unwrap_or(0);
+                        if moons > 0 {
+                            let label = if moons == 1 { "Moon" } else { "Moons" };
+                            parts.push(format!("{}{:>2} {}{}", blue, moons, label, reset));
+                        }
+
+                        if !parts.is_empty() {
+                            println!(
+                                "       {gray}│{reset} {details}",
+                                gray = gray,
+                                reset = reset,
+                                details = parts.join(&format!("{}, {}", gray, reset))
+                            );
+                        }
+                    }
+                }
+
+                // Footer with route summary statistics
+                let gate_distance = summary.total_distance - summary.jump_distance;
+                let total_str = format_with_separators(summary.total_distance as u64);
+                let gates_str = format_with_separators(gate_distance as u64);
+                let jumps_str = format_with_separators(summary.jump_distance as u64);
+
+                // Find max width for right-alignment (add 2 for "ly" suffix)
+                let max_width = total_str.len().max(gates_str.len()).max(jumps_str.len());
+
+                println!();
+                println!(
+                    "{gray}───────────────────────────────────────{reset}",
+                    gray = gray,
+                    reset = reset
+                );
+                println!(
+                    "  {cyan}Total Distance:{reset}  {white}{:>width$}ly{reset}",
+                    total_str,
+                    cyan = cyan,
+                    white = white_bold,
+                    reset = reset,
+                    width = max_width
+                );
+                println!(
+                    "  {green}Via Gates:{reset}       {white}{:>width$}ly{reset}",
+                    gates_str,
+                    green = green,
+                    white = white_bold,
+                    reset = reset,
+                    width = max_width
+                );
+                println!(
+                    "  {orange}Via Jumps:{reset}       {white}{:>width$}ly{reset}",
+                    jumps_str,
+                    orange = orange,
+                    white = white_bold,
+                    reset = reset,
+                    width = max_width
+                );
+            }
         }
         Ok(())
     }
@@ -446,14 +671,14 @@ fn main() -> Result<()> {
 fn handle_download(context: &AppContext) -> Result<()> {
     let release = context.dataset_release();
     let paths = ensure_dataset(context.target_path(), release.clone())
-        .context("failed to locate or download the EveFrontier dataset")?;
+        .context("failed to locate or download the EVE Frontier dataset")?;
     let output = DownloadOutput::new(&paths.database, &release);
     context.output_format().render_download(&output)
 }
 
 fn handle_index_build(context: &AppContext, args: &IndexBuildArgs) -> Result<()> {
     let paths = ensure_dataset(context.target_path(), context.dataset_release())
-        .context("failed to locate or download the EveFrontier dataset")?;
+        .context("failed to locate or download the EVE Frontier dataset")?;
 
     let index_path = spatial_index_path(&paths.database);
 
@@ -503,8 +728,25 @@ fn handle_route_command(
     args: &RouteCommandArgs,
     kind: RouteOutputKind,
 ) -> Result<()> {
-    let starmap = load_starmap_from_context(context)?;
-    let request = args.to_request();
+    let paths = ensure_dataset(context.target_path(), context.dataset_release())
+        .context("failed to locate or download the EVE Frontier dataset")?;
+    let starmap = load_starmap(&paths.database)
+        .with_context(|| format!("failed to load dataset from {}", paths.database.display()))?;
+
+    // Only load the spatial index when the selected algorithm can make use of it.
+    // BFS does not use spatial indexing, so we avoid unnecessary I/O in that case.
+    let needs_spatial_index = !matches!(args.options.algorithm, RouteAlgorithmArg::Bfs);
+    let spatial_index = if needs_spatial_index {
+        try_load_spatial_index(&paths.database).map(Arc::new)
+    } else {
+        None
+    };
+
+    let mut request = args.to_request();
+    if let Some(index) = spatial_index {
+        request = request.with_spatial_index(index);
+    }
+
     let plan = match plan_route(&starmap, &request) {
         Ok(plan) => plan,
         Err(err) => return Err(handle_route_failure(&request, err)),
@@ -581,14 +823,6 @@ fn format_route_not_found_message(
     message
 }
 
-fn load_starmap_from_context(context: &AppContext) -> Result<Starmap> {
-    let paths = ensure_dataset(context.target_path(), context.dataset_release())
-        .context("failed to locate or download the EveFrontier dataset")?;
-    let starmap = load_starmap(&paths.database)
-        .with_context(|| format!("failed to load dataset from {}", paths.database.display()))?;
-    Ok(starmap)
-}
-
 fn init_tracing() {
     let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
     let subscriber = FmtSubscriber::builder()
@@ -646,36 +880,40 @@ fn print_logo() {
         }
     }
 
-    let (orange, reset) = if supports_color() {
-        (ORANGE_RAW, RESET_RAW)
+    let (orange, cyan, reset) = if supports_color() {
+        (ORANGE_RAW, "\x1b[36m", RESET_RAW)
     } else {
-        ("", "")
+        ("", "", "")
     };
     let use_unicode = supports_unicode();
-    const TITLE: &str = "EveFrontier CLI";
-    const WIDTH: usize = 30;
 
-    let (top_left, top_right, bottom_left, bottom_right, horizontal, vertical) = if use_unicode {
-        ("╭", "╮", "╰", "╯", "─", "│")
+    if use_unicode {
+        // Sci-fi glitch/neon style banner with cyan border and orange text
+        // Inner width = 50 chars (48 dashes in borders)
+        // Using rounded corners (╭╮╰╯) for a softer look
+        println!(
+            "{cyan}╭────────────────────────────────────────────────╮{reset}
+{cyan}│{orange} ░█▀▀░█░█░█▀▀░░░█▀▀░█▀▄░█▀█░█▀█░▀█▀░▀█▀░█▀▀░█▀▄ {cyan}│{reset}
+{cyan}│{orange} ░█▀▀░▀▄▀░█▀▀░░░█▀▀░█▀▄░█░█░█░█░░█░░░█░░█▀▀░█▀▄ {cyan}│{reset}
+{cyan}│{orange} ░▀▀▀░░▀░░▀▀▀░░░▀░░░▀░▀░▀▀▀░▀░▀░░▀░░▀▀▀░▀▀▀░▀░▀ {cyan}│{reset}
+{cyan}├────────────────────────────────────────────────┤{reset}
+{cyan}│{orange}                    [ C L I ]                   {cyan}│{reset}
+{cyan}╰────────────────────────────────────────────────╯{reset}",
+            cyan = cyan,
+            orange = orange,
+            reset = reset
+        );
     } else {
-        ("+", "+", "+", "+", "-", "|")
-    };
-
-    let horizontal_line = horizontal.repeat(WIDTH);
-    let centered = format!("{:^width$}", TITLE, width = WIDTH);
-
-    println!(
-        "{color}{tl}{line}{tr}\n{v}{text}{v}\n{bl}{line}{br}{reset}",
-        color = orange,
-        tl = top_left,
-        tr = top_right,
-        bl = bottom_left,
-        br = bottom_right,
-        line = horizontal_line.as_str(),
-        v = vertical,
-        text = centered.as_str(),
-        reset = reset
-    );
+        // Fallback ASCII banner
+        println!(
+            "{color}+--------------------------------------------------+
+|  EVE FRONTIER                                    |
+|  >> PATHFINDER COMMAND LINE INTERFACE            |
++--------------------------------------------------+{reset}",
+            color = orange,
+            reset = reset
+        );
+    }
 }
 
 fn print_footer(elapsed: std::time::Duration) {

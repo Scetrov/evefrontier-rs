@@ -22,7 +22,7 @@
 //! - `index_load_ms`: Time to decompress and load spatial index
 //! - `total_init_ms`: Total initialization time
 
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 use std::time::Instant;
 
 use rusqlite::Connection;
@@ -73,7 +73,7 @@ impl From<rusqlite::Error> for InitError {
 /// across all invocations.
 pub struct LambdaRuntime {
     starmap: Starmap,
-    spatial_index: SpatialIndex,
+    spatial_index: Arc<SpatialIndex>,
 }
 
 impl LambdaRuntime {
@@ -85,6 +85,11 @@ impl LambdaRuntime {
     /// Access the loaded spatial index.
     pub fn spatial_index(&self) -> &SpatialIndex {
         &self.spatial_index
+    }
+
+    /// Get a shared reference to the spatial index for use in route requests.
+    pub fn spatial_index_arc(&self) -> Arc<SpatialIndex> {
+        Arc::clone(&self.spatial_index)
     }
 }
 
@@ -150,7 +155,7 @@ pub fn init_runtime(db_bytes: &'static [u8], index_bytes: &'static [u8]) -> &'st
 
         Ok(LambdaRuntime {
             starmap,
-            spatial_index,
+            spatial_index: Arc::new(spatial_index),
         })
     });
 

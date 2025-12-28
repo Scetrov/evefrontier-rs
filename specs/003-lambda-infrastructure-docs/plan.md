@@ -167,7 +167,7 @@ output "log_group_names" {}
 ### DEPLOYMENT.md Structure
 
 ```markdown
-# Deploying EveFrontier Lambda Functions
+# Deploying EVE Frontier Lambda Functions
 
 ## Prerequisites
 - AWS account with appropriate permissions

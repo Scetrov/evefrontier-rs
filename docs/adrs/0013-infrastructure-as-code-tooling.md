@@ -10,7 +10,7 @@ Accepted
 
 ## Context
 
-The EveFrontier project includes AWS Lambda functions (`evefrontier-lambda-route`,
+The EVE Frontier project includes AWS Lambda functions (`evefrontier-lambda-route`,
 `evefrontier-lambda-scout-gates`, `evefrontier-lambda-scout-range`) that require deployment
 infrastructure. We need to choose an Infrastructure as Code (IaC) tool for:
 

@@ -1,6 +1,7 @@
 use std::fmt;
 
 use std::collections::HashSet;
+use std::sync::Arc;
 
 use serde::Serialize;
 
@@ -13,9 +14,10 @@ use crate::graph::{
 use crate::path::{
     find_route_a_star, find_route_bfs, find_route_dijkstra, PathConstraints as SearchConstraints,
 };
+use crate::spatial::SpatialIndex;
 
 /// Supported routing algorithms.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum RouteAlgorithm {
     /// Breadth-first search (unweighted graph).
@@ -23,6 +25,7 @@ pub enum RouteAlgorithm {
     /// Dijkstra's algorithm (weighted graph).
     Dijkstra,
     /// A* search (heuristic guided).
+    #[default]
     #[serde(rename = "a-star")]
     AStar,
 }
@@ -65,6 +68,9 @@ pub struct RouteRequest {
     pub goal: String,
     pub algorithm: RouteAlgorithm,
     pub constraints: RouteConstraints,
+    /// Pre-loaded spatial index for faster graph construction.
+    /// If `None`, the index will be built on demand (with a warning for large datasets).
+    pub spatial_index: Option<Arc<SpatialIndex>>,
 }
 
 impl RouteRequest {
@@ -75,7 +81,14 @@ impl RouteRequest {
             goal: goal.into(),
             algorithm: RouteAlgorithm::Bfs,
             constraints: RouteConstraints::default(),
+            spatial_index: None,
         }
+    }
+
+    /// Attach a pre-loaded spatial index to the request.
+    pub fn with_spatial_index(mut self, index: Arc<SpatialIndex>) -> Self {
+        self.spatial_index = Some(index);
+        self
     }
 }
 
@@ -128,7 +141,12 @@ pub fn plan_route(starmap: &Starmap, request: &RouteRequest) -> Result<RoutePlan
         });
     }
 
-    let graph = select_graph(starmap, request.algorithm, &constraints);
+    let graph = select_graph(
+        starmap,
+        request.algorithm,
+        &constraints,
+        request.spatial_index.as_ref().cloned(),
+    );
 
     let route = match request.algorithm {
         RouteAlgorithm::Bfs => {
@@ -193,10 +211,11 @@ fn select_graph(
     starmap: &Starmap,
     algorithm: RouteAlgorithm,
     constraints: &SearchConstraints,
+    spatial_index: Option<Arc<SpatialIndex>>,
 ) -> Graph {
     // Build options for indexed graph construction
     let options = GraphBuildOptions {
-        spatial_index: None, // Will auto-build if needed
+        spatial_index,
         max_jump: constraints.max_jump,
         max_temperature: constraints.max_temperature,
     };

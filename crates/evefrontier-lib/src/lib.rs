@@ -1,6 +1,6 @@
-//! EveFrontier library entry points.
+//! EVE Frontier library entry points.
 //!
-//! This crate exposes helpers to locate the EveFrontier dataset, load the
+//! This crate exposes helpers to locate the EVE Frontier dataset, load the
 //! starmap into memory, build graph representations, and run pathfinding
 //! algorithms. Higher-level consumers (CLI, Lambdas) should only depend on the
 //! functions exported here instead of reimplementing behavior.
@@ -35,6 +35,7 @@
 //!     goal: "Brana".to_string(),
 //!     algorithm: RouteAlgorithm::AStar,
 //!     constraints: RouteConstraints::default(),
+//!     spatial_index: None,
 //! };
 //!
 //! // 4. Plan the route

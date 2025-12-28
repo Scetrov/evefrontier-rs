@@ -68,6 +68,8 @@ fn empty_metadata() -> SystemMetadata {
         star_temperature: None,
         star_luminosity: None,
         min_external_temp: None,
+        planet_count: None,
+        moon_count: None,
     }
 }
 

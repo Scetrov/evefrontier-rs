@@ -76,5 +76,6 @@ When a new dataset release is available:
 
 ## Security Note
 
-These files are gitignored to avoid committing large binary files to the repository.
-Each developer/CI environment must set up these files independently.
+> [!IMPORTANT]
+> These files are gitignored to avoid committing large binary files to the repository. Each
+> developer/CI environment must set up these files independently.

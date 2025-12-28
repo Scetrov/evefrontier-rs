@@ -1,7 +1,7 @@
 # =============================================================================
 # Lambda Function Resources
 # =============================================================================
-# Creates the three EveFrontier Lambda functions:
+# Creates the three EVE Frontier Lambda functions:
 # - route: Pathfinding between solar systems
 # - scout-gates: Find gate-connected neighbors
 # - scout-range: Find systems within spatial range
@@ -81,7 +81,7 @@ data "archive_file" "scout_range" {
 
 resource "aws_lambda_function" "route" {
   function_name = "${var.project_name}-route-${var.environment}"
-  description   = "EveFrontier pathfinding - calculates routes between solar systems"
+  description   = "EVE Frontier pathfinding - calculates routes between solar systems"
 
   role = aws_iam_role.lambda_execution.arn
 
@@ -127,7 +127,7 @@ resource "aws_lambda_function" "route" {
 
 resource "aws_lambda_function" "scout_gates" {
   function_name = "${var.project_name}-scout-gates-${var.environment}"
-  description   = "EveFrontier scout - finds gate-connected neighboring systems"
+  description   = "EVE Frontier scout - finds gate-connected neighboring systems"
 
   role = aws_iam_role.lambda_execution.arn
 
@@ -171,7 +171,7 @@ resource "aws_lambda_function" "scout_gates" {
 
 resource "aws_lambda_function" "scout_range" {
   function_name = "${var.project_name}-scout-range-${var.environment}"
-  description   = "EveFrontier scout - finds systems within spatial range using KD-tree index"
+  description   = "EVE Frontier scout - finds systems within spatial range using KD-tree index"
 
   role = aws_iam_role.lambda_execution.arn
 

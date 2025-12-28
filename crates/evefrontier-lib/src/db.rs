@@ -54,6 +54,8 @@ pub struct SystemMetadata {
     pub star_temperature: Option<f64>,
     pub star_luminosity: Option<f64>,
     pub min_external_temp: Option<f64>,
+    pub planet_count: Option<u32>,
+    pub moon_count: Option<u32>,
 }
 
 impl SystemMetadata {
@@ -67,6 +69,8 @@ impl SystemMetadata {
             star_temperature: None,
             star_luminosity: None,
             min_external_temp: None,
+            planet_count: None,
+            moon_count: None,
         }
     }
 }
@@ -261,6 +265,9 @@ pub fn load_starmap_from_connection(connection: &Connection) -> Result<Starmap> 
 
     // Calculate minimum external temperatures for systems (if celestial data available)
     calculate_min_external_temps(connection, &mut systems)?;
+
+    // Load planet and moon counts for systems (if tables exist)
+    load_celestial_counts(connection, &mut systems)?;
 
     let mut name_to_id = HashMap::new();
     for system in systems.values() {
@@ -549,12 +556,15 @@ fn calculate_min_external_temps(
             continue; // Skip systems without luminosity data
         };
 
+        // Zero or negative luminosity is valid for special stellar objects (e.g., black holes)
+        // where temperature calculations don't apply. Log at debug level and skip calculations.
         if luminosity <= 0.0 {
-            warn!(
-                system_id,
+            tracing::debug!(
+                system_id = *system_id,
                 system_name = %system.name,
                 luminosity,
-                "invalid star luminosity; skipping temperature calculation"
+                "non-positive star luminosity; skipping external temperature calculation \
+                 (expected for black holes, otherwise check data quality)"
             );
             continue;
         }
@@ -597,6 +607,62 @@ fn calculate_min_external_temps(
                         "failed to calculate minimum external temperature"
                     );
                 }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Load planet and moon counts for each system.
+///
+/// This function queries the Planets and Moons tables (if they exist) and populates
+/// the `planet_count` and `moon_count` fields in `SystemMetadata`.
+///
+/// Uses a UNION query when both tables exist to minimize database round-trips.
+fn load_celestial_counts(
+    connection: &Connection,
+    systems: &mut HashMap<SystemId, System>,
+) -> Result<()> {
+    let planets_exist = table_exists(connection, "Planets")?;
+    let moons_exist = table_exists(connection, "Moons")?;
+
+    // Build a UNION query when both tables exist for better performance
+    let sql = match (planets_exist, moons_exist) {
+        (true, true) => {
+            "SELECT solarSystemId, COUNT(*) as cnt, 'planet' as celestial_type \
+             FROM Planets GROUP BY solarSystemId \
+             UNION ALL \
+             SELECT solarSystemId, COUNT(*) as cnt, 'moon' as celestial_type \
+             FROM Moons GROUP BY solarSystemId"
+        }
+        (true, false) => {
+            "SELECT solarSystemId, COUNT(*) as cnt, 'planet' as celestial_type \
+             FROM Planets GROUP BY solarSystemId"
+        }
+        (false, true) => {
+            "SELECT solarSystemId, COUNT(*) as cnt, 'moon' as celestial_type \
+             FROM Moons GROUP BY solarSystemId"
+        }
+        (false, false) => return Ok(()), // No tables to query
+    };
+
+    let mut stmt = connection.prepare(sql)?;
+    let rows = stmt.query_map([], |row| {
+        Ok((
+            row.get::<_, SystemId>(0)?,
+            row.get::<_, u32>(1)?,
+            row.get::<_, String>(2)?,
+        ))
+    })?;
+
+    for row in rows {
+        let (system_id, count, celestial_type) = row?;
+        if let Some(system) = systems.get_mut(&system_id) {
+            match celestial_type.as_str() {
+                "planet" => system.metadata.planet_count = Some(count),
+                "moon" => system.metadata.moon_count = Some(count),
+                _ => {} // Ignore unknown types
             }
         }
     }
@@ -653,6 +719,8 @@ fn row_to_system(row: &Row<'_>) -> rusqlite::Result<System> {
                 .ok()
                 .flatten(),
             min_external_temp: None, // Calculated in a separate pass
+            planet_count: None,      // Loaded in a separate pass
+            moon_count: None,        // Loaded in a separate pass
         },
         position,
     })

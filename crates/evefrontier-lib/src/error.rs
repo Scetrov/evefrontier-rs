@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use thiserror::Error;
 
-/// Convenient result alias for the EveFrontier library.
+/// Convenient result alias for the EVE Frontier library.
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// Top-level library error type.

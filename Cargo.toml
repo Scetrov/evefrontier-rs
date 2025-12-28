@@ -75,10 +75,10 @@ pre-commit = """
 
 [workspace.package]
 edition = "2021"
-authors = ["EveFrontier Contributors"]
+authors = ["Scetrov"]
 license = "MIT"
 repository = "https://github.com/scetrov/evefrontier-rs"
-description = "Workspace for EveFrontier pathfinding library, CLI, and AWS Lambda functions."
+description = "Workspace for EVE Frontier pathfinding library, CLI, and AWS Lambda functions."
 
 [workspace.dependencies]
 anyhow = "1.0.100"

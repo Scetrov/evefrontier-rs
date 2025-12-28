@@ -1,4 +1,4 @@
-//! Shared infrastructure for EveFrontier AWS Lambda functions.
+//! Shared infrastructure for EVE Frontier AWS Lambda functions.
 //!
 //! This crate provides common functionality used across all Lambda handlers:
 //!

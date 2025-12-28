@@ -52,6 +52,12 @@ pub struct RouteStep {
     /// Minimum external temperature for the system (Kelvin), if available.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub min_external_temp: Option<f64>,
+    /// Number of planets in this system.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub planet_count: Option<u32>,
+    /// Number of moons in this system.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub moon_count: Option<u32>,
 }
 
 impl RouteStep {
@@ -112,6 +118,16 @@ impl RouteSummary {
                 .get(&system_id)
                 .and_then(|s| s.metadata.min_external_temp);
 
+            let planet_count = starmap
+                .systems
+                .get(&system_id)
+                .and_then(|s| s.metadata.planet_count);
+
+            let moon_count = starmap
+                .systems
+                .get(&system_id)
+                .and_then(|s| s.metadata.moon_count);
+
             steps.push(RouteStep {
                 index,
                 id: system_id,
@@ -119,6 +135,8 @@ impl RouteSummary {
                 distance,
                 method,
                 min_external_temp,
+                planet_count,
+                moon_count,
             });
         }
 

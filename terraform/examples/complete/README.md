@@ -1,6 +1,7 @@
-# Complete Example: EveFrontier Lambda Deployment
+# Complete Example: EVE Frontier Lambda Deployment
 
-This example demonstrates a complete deployment of the EveFrontier Lambda functions with HTTP API Gateway.
+This example demonstrates a complete deployment of the EVE Frontier Lambda functions with HTTP API
+Gateway.
 
 ## Prerequisites
 
@@ -134,7 +135,7 @@ environment = "prod"
 # In the module call, override defaults:
 module "evefrontier" {
   # ...
-  
+
   cors_allowed_origins   = ["https://yourdomain.com"]
   throttling_burst_limit = 500
   throttling_rate_limit  = 200
@@ -177,7 +178,8 @@ module "evefrontier" {
 
 ### Cold Start Issues
 
-First request after deployment may be slow due to cold start. The bundled dataset loads into memory on first invocation.
+First request after deployment may be slow due to cold start. The bundled dataset loads into memory
+on first invocation.
 
 ## Architecture
 
@@ -206,15 +208,19 @@ First request after deployment may be slow due to cold start. The bundled datase
 
 ## Cost Estimation
 
-Approximate monthly costs (us-east-1). Verify current pricing at [AWS Lambda Pricing](https://aws.amazon.com/lambda/pricing/) and [API Gateway Pricing](https://aws.amazon.com/api-gateway/pricing/):
+Approximate monthly costs (us-east-1). Verify current pricing at
+[AWS Lambda Pricing](https://aws.amazon.com/lambda/pricing/) and
+[API Gateway Pricing](https://aws.amazon.com/api-gateway/pricing/):
 
-| Component | Free Tier | Beyond Free Tier (example) |
-|-----------|-----------|----------------------------|
-| Lambda (1M requests) | 1M requests free | ~$0.20/1M requests |
-| Lambda (GB-seconds) | 400K GB-s free | ~$0.0000166667/GB-s |
-| API Gateway | 1M requests free | ~$1.00/1M requests |
-| CloudWatch Logs | 5GB ingestion free | ~$0.50/GB |
+| Component            | Free Tier          | Beyond Free Tier (example) |
+| -------------------- | ------------------ | -------------------------- |
+| Lambda (1M requests) | 1M requests free   | ~$0.20/1M requests         |
+| Lambda (GB-seconds)  | 400K GB-s free     | ~$0.0000166667/GB-s        |
+| API Gateway          | 1M requests free   | ~$1.00/1M requests         |
+| CloudWatch Logs      | 5GB ingestion free | ~$0.50/GB                  |
 
-> **Note:** Pricing varies by region and changes over time. Always consult the AWS Pricing Calculator for accurate cost estimates.
+> [!NOTE]
+> Pricing varies by region and changes over time. Always consult the AWS Pricing Calculator for
+> accurate cost estimates.
 
 For low-traffic use cases, the deployment typically remains within free tier limits.

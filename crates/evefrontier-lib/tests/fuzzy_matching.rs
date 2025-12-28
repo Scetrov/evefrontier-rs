@@ -84,6 +84,7 @@ fn avoided_system_typo_includes_suggestions() {
             avoid_systems: vec!["2L2".to_string()], // Partial system name
             ..Default::default()
         },
+        spatial_index: None,
     };
 
     let err = plan_route(&starmap, &request).expect_err("should fail with unknown avoided system");

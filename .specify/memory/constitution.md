@@ -15,7 +15,7 @@ SYNC IMPACT REPORT: Constitution v1.1.0
 - Follow-up TODOs: None
 -->
 
-# EveFrontier Rust Workspace Constitution
+# EVE Frontier Rust Workspace Constitution
 
 ## Core Principles
 

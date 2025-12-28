@@ -1,4 +1,4 @@
-# EveFrontier Rust Workspace
+# EVE Frontier Rust Workspace
 
 [![Crates.io](https://img.shields.io/crates/v/evefrontier-lib.svg)](https://crates.io/crates/evefrontier-lib)
 [![Docs.rs](https://docs.rs/evefrontier-lib/badge.svg)](https://docs.rs/evefrontier-lib)
@@ -7,37 +7,46 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Maintenance](https://img.shields.io/badge/maintenance-active-green.svg)](#)
 
-A comprehensive Rust workspace for working with EVE Frontier static datasets, providing pathfinding and navigation tools for the game world.
+A comprehensive Rust workspace for working with EVE Frontier static datasets, providing pathfinding
+and navigation tools for the game world.
 
 ## 📦 Workspace Structure
 
 This repository contains multiple crates organized as a Cargo workspace:
 
 ### Core Library
+
 - **`evefrontier-lib`** — Reusable library providing:
   - Dataset downloading and caching
   - Starmap loading with schema detection
   - Graph construction for gate, spatial, and hybrid routing
-  - Pathfinding algorithms (BFS, Dijkstra, A*)
+  - Pathfinding algorithms (BFS, Dijkstra, A\*)
   - KD-tree spatial indexing for efficient neighbor queries
   - Temperature-aware routing constraints
 
 ### Applications
+
 - **`evefrontier-cli`** — Command-line interface exposing:
   - `download` — Download and cache dataset releases
   - `route` — Compute routes between systems with advanced options
   - `index-build` — Precompute spatial index for faster queries
-  
+
 ### AWS Lambda Crates
+
 - **Lambda function crates:**
   - **`evefrontier-lambda-route`** — Route planning endpoint
   - **`evefrontier-lambda-scout-gates`** — Gate-connected neighbors query
   - **`evefrontier-lambda-scout-range`** — Systems within jump range query
 - **Shared/infrastructure crate:**
-  - **`evefrontier-lambda-shared`** — Common Lambda infrastructure (runtime, error handling, tracing)
+  - **`evefrontier-lambda-shared`** — Common Lambda infrastructure (runtime, error handling,
+    tracing)
 
-> Note: The workspace contains 6 crates in total: the core library (`evefrontier-lib`), CLI (`evefrontier-cli`), 3 Lambda function crates, and 1 shared Lambda infrastructure crate.
+> [!NOTE]
+> The workspace contains 6 crates in total: the core library (`evefrontier-lib`), CLI
+> (`evefrontier-cli`), 3 Lambda function crates, and 1 shared Lambda infrastructure crate.
+
 ### Documentation
+
 - [`docs/INITIAL_SETUP.md`](docs/INITIAL_SETUP.md) — Configuration and data path resolution
 - [`docs/USAGE.md`](docs/USAGE.md) — Comprehensive usage examples
 - [`docs/adrs/`](docs/adrs/) — Architectural Decision Records
@@ -74,14 +83,16 @@ pnpm nx run-many --target=test --all
 cargo run -p evefrontier-cli -- download
 
 # Compute a route
-cargo run -p evefrontier-cli -- route --from "Nod" --to "Brana"
+cargo run -p evefrontier-cli -- route --from "ER1-MM7" --to "ENQ-PB6"
 
 # Or install globally
 cargo install --path crates/evefrontier-cli
-evefrontier-cli route --from "Nod" --to "Brana"
+evefrontier-cli route --from "ER1-MM7" --to "ENQ-PB6"
 ```
 
-The CLI automatically downloads the latest dataset on first use. Use `--data-dir` to specify a custom location, or set `EVEFRONTIER_DATA_DIR`. See [`docs/INITIAL_SETUP.md`](docs/INITIAL_SETUP.md) for data path resolution details.
+The CLI automatically downloads the latest dataset on first use. Use `--data-dir` to specify a
+custom location, or set `EVEFRONTIER_DATA_DIR`. See [`docs/INITIAL_SETUP.md`](docs/INITIAL_SETUP.md)
+for data path resolution details.
 
 ## Developer Tooling (pnpm 10 + Nx)
 
@@ -135,7 +146,8 @@ NX_DAEMON=false pnpm nx run-many --target=test --all
 pnpm nx reset
 ```
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) for complete Nx documentation and task orchestration details.
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for complete Nx documentation and task orchestration
+details.
 
 ## CLI Usage
 
@@ -146,19 +158,19 @@ The CLI supports multiple output formats for the `route` subcommand via the `--f
 - **JSON** for machine-readable output and integrations:
 
 ```bash
-evefrontier-cli --format json route --from "Nod" --to "Brana"
+evefrontier-cli --format json route --from "ER1-MM7" --to "ENQ-PB6"
 ```
 
 - **Basic** for minimal path-only output with +/|/- prefixes:
 
 ```bash
-evefrontier-cli --format basic route --from "Nod" --to "Brana"
+evefrontier-cli --format basic route --from "ER1-MM7" --to "ENQ-PB6"
 ```
 
 - **Note** for in-game EVE notes with clickable system links:
 
 ```bash
-evefrontier-cli --format note route --from "Nod" --to "Brana"
+evefrontier-cli --format note route --from "ER1-MM7" --to "ENQ-PB6"
 ```
 
 - **Text** (default) for human-readable output, or **Rich** for Markdown-style formatting
@@ -170,31 +182,31 @@ The `route` subcommand supports advanced pathfinding options:
 - **Algorithm selection** (`--algorithm <bfs|dijkstra|a-star>`):
 
 ```bash
-evefrontier-cli route --from "Nod" --to "Brana" --algorithm dijkstra
+evefrontier-cli route --from "ER1-MM7" --to "ENQ-PB6" --algorithm dijkstra
 ```
 
 - **Maximum jump distance** (`--max-jump <LIGHT-YEARS>`):
 
 ```bash
-evefrontier-cli route --from "Nod" --to "Brana" --max-jump 80.0
+evefrontier-cli route --from "ER1-MM7" --to "ENQ-PB6" --max-jump 80.0
 ```
 
 - **System avoidance** (`--avoid <SYSTEM>`, repeatable):
 
 ```bash
-evefrontier-cli route --from "Nod" --to "Brana" --avoid "H:2L2S"
+evefrontier-cli route --from "ER1-MM7" --to "ENQ-PB6" --avoid "IFM-228"
 ```
 
 - **Gate-free routing** (`--avoid-gates`):
 
 ```bash
-evefrontier-cli route --from "Nod" --to "Brana" --avoid-gates
+evefrontier-cli route --from "ER1-MM7" --to "ENQ-PB6" --avoid-gates
 ```
 
 - **Temperature limit for spatial jumps** (`--max-temp <KELVIN>`):
 
 ```bash
-evefrontier-cli route --from "Nod" --to "Brana" --max-temp 5000.0
+evefrontier-cli route --from "ER1-MM7" --to "ENQ-PB6" --max-temp 5000.0
 ```
 
 Prevents spatial jumps to systems with high external temperatures. Gate jumps are unaffected.
@@ -215,14 +227,13 @@ The index enables efficient nearest-neighbor and radius queries with temperature
 ## Library API Highlights
 
 - `ensure_dataset` — resolves the dataset path using CLI arguments, environment variables, or
-  platform-specific defaults, downloads the requested dataset release (latest by default), and 
+  platform-specific defaults, downloads the requested dataset release (latest by default), and
   caches it under the OS cache directory. Returns both database and spatial index paths.
 - `load_starmap` — loads systems and jumps from the SQLite database with basic schema detection.
 - `plan_route` — converts system names into IDs, validates routing options, and plans a route using
-  BFS, Dijkstra, or A* while applying distance, avoidance, gate, and temperature
-  constraints. Lower-level helpers such as `build_graph`/`find_route_bfs` remain available when
-  needed.
-- `build_spatial_index` / `load_spatial_index` — create and load KD-tree spatial indexes for 
+  BFS, Dijkstra, or A\* while applying distance, avoidance, gate, and temperature constraints.
+  Lower-level helpers such as `build_graph`/`find_route_bfs` remain available when needed.
+- `build_spatial_index` / `load_spatial_index` — create and load KD-tree spatial indexes for
   efficient neighbor queries with temperature awareness.
 
 Example:
@@ -236,8 +247,8 @@ let conn = Connection::open(&paths.database)?;
 let starmap = load_starmap(&conn)?;
 
 let request = RouteRequest {
-    start: "Nod".to_string(),
-    goal: "Brana".to_string(),
+    start: "ER1-MM7".to_string(),
+    goal: "ENQ-PB6".to_string(),
     algorithm: RouteAlgorithm::AStar,
     constraints: RouteConstraints {
         max_jump: Some(80.0),
@@ -260,9 +271,11 @@ The workspace includes AWS Lambda functions for serverless deployment:
 - **Gate neighbors** (`evefrontier-lambda-scout-gates`) — GET gate-connected systems
 - **Range neighbors** (`evefrontier-lambda-scout-range`) — GET systems within jump range
 
-All Lambda functions use the same `evefrontier-lib` core and include bundled datasets for fast cold starts.
+All Lambda functions use the same `evefrontier-lib` core and include bundled datasets for fast cold
+starts.
 
-See [`docs/TODO.md`](docs/TODO.md) for deployment documentation (infrastructure setup is in progress).
+See [`docs/TODO.md`](docs/TODO.md) for deployment documentation (infrastructure setup is in
+progress).
 
 ## Contributing
 

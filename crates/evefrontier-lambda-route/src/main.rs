@@ -104,6 +104,7 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Response, Error> {
             avoid_gates: request.avoid_gates,
             max_temperature: request.max_temperature,
         },
+        spatial_index: Some(runtime.spatial_index_arc()),
     };
 
     // Plan the route
@@ -265,6 +266,7 @@ mod tests {
             goal: "Brana".to_string(),
             algorithm: LibRouteAlgorithm::Dijkstra,
             constraints: RouteConstraints::default(),
+            spatial_index: None,
         };
         let plan = plan_route(starmap, &request).expect("route exists");
 
@@ -280,6 +282,7 @@ mod tests {
             goal: "Brana".to_string(),
             algorithm: LibRouteAlgorithm::AStar,
             constraints: RouteConstraints::default(),
+            spatial_index: None,
         };
         let plan = plan_route(starmap, &request).expect("route exists");
 
@@ -299,6 +302,7 @@ mod tests {
                 avoid_gates: true,
                 ..RouteConstraints::default()
             },
+            spatial_index: None,
         };
         let plan = plan_route(starmap, &request).expect("route exists");
 
@@ -333,6 +337,7 @@ mod tests {
                 avoid_systems: vec!["Brana".to_string()],
                 ..RouteConstraints::default()
             },
+            spatial_index: None,
         };
         let result = plan_route(starmap, &request);
 
