@@ -6,6 +6,14 @@ authors.workspace = true
 description = "Command-line interface for EVE Frontier dataset and pathfinding tools."
 license = "MIT"
 
+[lib]
+name = "evefrontier_cli"
+path = "src/lib.rs"
+
+[[bin]]
+name = "evefrontier-cli"
+path = "src/main.rs"
+
 [dependencies]
 anyhow.workspace = true
 clap.workspace = true

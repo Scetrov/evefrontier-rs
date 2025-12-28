@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- 2025-12-28 - Scetrov - [refactor] - Extract CLI output formatting into separate modules (terminal.rs, output.rs)
+- 2025-12-28 - Scetrov - [refactor] - Add ColorPalette struct for terminal color management with detect/colored/plain modes
+- 2025-12-28 - Scetrov - [refactor] - Add EnhancedRenderer struct for enhanced format output with testable components
+- 2025-12-28 - Scetrov - [test] - Add unit tests for format_with_separators and ColorPalette
+- 2025-12-28 - Scetrov - [test] - Add unit tests for EnhancedRenderer temperature circle coloring
 - 2025-12-28 - Scetrov - [fix] - Address PR #29 review comments: standardize authors to use workspace inheritance, fix spatial_index_arc() return type
 - 2025-12-28 - Scetrov - [feature] - Add enhanced output format with system details (planets, moons, temperature)
 - 2025-12-28 - Scetrov - [feature] - Add planet_count and moon_count to SystemMetadata loaded from Planets/Moons tables
