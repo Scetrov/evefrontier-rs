@@ -125,7 +125,7 @@ Tasks are organized by document sections to enable incremental progress.
 - [x] T033 [P] Test documented commands execute correctly (minimum: `git tag -s`, `gpg --verify`, `sha256sum -c`)
 - [x] T034 Update `docs/TODO.md` to mark release documentation task complete
 - [x] T035 Add CHANGELOG.md entry for release documentation feature
-- [ ] T036 Create PR with all changes for review
+- [x] T036 Create PR with all changes for review
 
 ---
 
