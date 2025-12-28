@@ -83,11 +83,11 @@ pnpm nx run-many --target=test --all
 cargo run -p evefrontier-cli -- download
 
 # Compute a route
-cargo run -p evefrontier-cli -- route --from "Nod" --to "Brana"
+cargo run -p evefrontier-cli -- route --from "ER1-MM7" --to "ENQ-PB6"
 
 # Or install globally
 cargo install --path crates/evefrontier-cli
-evefrontier-cli route --from "Nod" --to "Brana"
+evefrontier-cli route --from "ER1-MM7" --to "ENQ-PB6"
 ```
 
 The CLI automatically downloads the latest dataset on first use. Use `--data-dir` to specify a
@@ -158,19 +158,19 @@ The CLI supports multiple output formats for the `route` subcommand via the `--f
 - **JSON** for machine-readable output and integrations:
 
 ```bash
-evefrontier-cli --format json route --from "Nod" --to "Brana"
+evefrontier-cli --format json route --from "ER1-MM7" --to "ENQ-PB6"
 ```
 
 - **Basic** for minimal path-only output with +/|/- prefixes:
 
 ```bash
-evefrontier-cli --format basic route --from "Nod" --to "Brana"
+evefrontier-cli --format basic route --from "ER1-MM7" --to "ENQ-PB6"
 ```
 
 - **Note** for in-game EVE notes with clickable system links:
 
 ```bash
-evefrontier-cli --format note route --from "Nod" --to "Brana"
+evefrontier-cli --format note route --from "ER1-MM7" --to "ENQ-PB6"
 ```
 
 - **Text** (default) for human-readable output, or **Rich** for Markdown-style formatting
@@ -182,31 +182,31 @@ The `route` subcommand supports advanced pathfinding options:
 - **Algorithm selection** (`--algorithm <bfs|dijkstra|a-star>`):
 
 ```bash
-evefrontier-cli route --from "Nod" --to "Brana" --algorithm dijkstra
+evefrontier-cli route --from "ER1-MM7" --to "ENQ-PB6" --algorithm dijkstra
 ```
 
 - **Maximum jump distance** (`--max-jump <LIGHT-YEARS>`):
 
 ```bash
-evefrontier-cli route --from "Nod" --to "Brana" --max-jump 80.0
+evefrontier-cli route --from "ER1-MM7" --to "ENQ-PB6" --max-jump 80.0
 ```
 
 - **System avoidance** (`--avoid <SYSTEM>`, repeatable):
 
 ```bash
-evefrontier-cli route --from "Nod" --to "Brana" --avoid "H:2L2S"
+evefrontier-cli route --from "ER1-MM7" --to "ENQ-PB6" --avoid "IFM-228"
 ```
 
 - **Gate-free routing** (`--avoid-gates`):
 
 ```bash
-evefrontier-cli route --from "Nod" --to "Brana" --avoid-gates
+evefrontier-cli route --from "ER1-MM7" --to "ENQ-PB6" --avoid-gates
 ```
 
 - **Temperature limit for spatial jumps** (`--max-temp <KELVIN>`):
 
 ```bash
-evefrontier-cli route --from "Nod" --to "Brana" --max-temp 5000.0
+evefrontier-cli route --from "ER1-MM7" --to "ENQ-PB6" --max-temp 5000.0
 ```
 
 Prevents spatial jumps to systems with high external temperatures. Gate jumps are unaffected.
@@ -247,8 +247,8 @@ let conn = Connection::open(&paths.database)?;
 let starmap = load_starmap(&conn)?;
 
 let request = RouteRequest {
-    start: "Nod".to_string(),
-    goal: "Brana".to_string(),
+    start: "ER1-MM7".to_string(),
+    goal: "ENQ-PB6".to_string(),
     algorithm: RouteAlgorithm::AStar,
     constraints: RouteConstraints {
         max_jump: Some(80.0),

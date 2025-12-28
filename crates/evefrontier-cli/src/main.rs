@@ -517,13 +517,44 @@ impl OutputFormat {
                     }
                 }
 
+                // Footer with route summary statistics
+                let gate_distance = summary.total_distance - summary.jump_distance;
+                let total_str = format_with_separators(summary.total_distance as u64);
+                let gates_str = format_with_separators(gate_distance as u64);
+                let jumps_str = format_with_separators(summary.jump_distance as u64);
+
+                // Find max width for right-alignment (add 2 for "ly" suffix)
+                let max_width = total_str.len().max(gates_str.len()).max(jumps_str.len());
+
+                println!();
                 println!(
-                    "\nTotal distance: {}ly",
-                    format_with_separators(summary.total_distance as u64)
+                    "{gray}───────────────────────────────────────{reset}",
+                    gray = gray,
+                    reset = reset
                 );
                 println!(
-                    "Total ly jumped: {}ly",
-                    format_with_separators(summary.jump_distance as u64)
+                    "  {cyan}Total Distance:{reset}  {white}{:>width$}ly{reset}",
+                    total_str,
+                    cyan = cyan,
+                    white = white_bold,
+                    reset = reset,
+                    width = max_width
+                );
+                println!(
+                    "  {green}Via Gates:{reset}       {white}{:>width$}ly{reset}",
+                    gates_str,
+                    green = green,
+                    white = white_bold,
+                    reset = reset,
+                    width = max_width
+                );
+                println!(
+                    "  {orange}Via Jumps:{reset}       {white}{:>width$}ly{reset}",
+                    jumps_str,
+                    orange = orange,
+                    white = white_bold,
+                    reset = reset,
+                    width = max_width
                 );
             }
         }

@@ -196,7 +196,7 @@ terraform apply
 # 4. Test
 API=$(terraform output -raw api_endpoint)
 curl -X POST "${API}/route" -H "Content-Type: application/json" \
-  -d '{"from": "Nod", "to": "Brana"}'
+  -d '{"from": "ER1-MM7", "to": "ENQ-PB6"}'
 ```
 
 ---
@@ -429,8 +429,8 @@ See [USAGE.md](./USAGE.md#aws-lambda-functions) for detailed API documentation.
 curl -X POST "${API_ENDPOINT}/route" \
   -H "Content-Type: application/json" \
   -d '{
-    "from": "Nod",
-    "to": "Brana",
+    "from": "ER1-MM7",
+    "to": "ENQ-PB6",
     "algorithm": "astar",
     "max_jump_ly": 80,
     "avoid_systems": []
@@ -443,7 +443,7 @@ curl -X POST "${API_ENDPOINT}/route" \
 curl -X POST "${API_ENDPOINT}/scout-gates" \
   -H "Content-Type: application/json" \
   -d '{
-    "system": "Nod"
+    "system": "ER1-MM7"
   }'
 ```
 
@@ -453,7 +453,7 @@ curl -X POST "${API_ENDPOINT}/scout-gates" \
 curl -X POST "${API_ENDPOINT}/scout-range" \
   -H "Content-Type: application/json" \
   -d '{
-    "system": "Nod",
+    "system": "ER1-MM7",
     "radius_ly": 50,
     "max_temperature": 400.0
   }'
@@ -507,9 +507,9 @@ Lambda functions use structured JSON logging via `tracing`:
   "message": "Route calculated",
   "target": "evefrontier_lambda_route",
   "fields": {
-    "from": "Nod",
-    "to": "Brana",
-    "hops": 5,
+    "from": "ER1-MM7",
+    "to": "ENQ-PB6",
+    "hops": 2,
     "duration_ms": 42
   }
 }

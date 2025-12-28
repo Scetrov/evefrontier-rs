@@ -68,53 +68,53 @@ Route-only options (ignored by other subcommands):
 > [!NOTE]
 > The `download` subcommand always emits plain text regardless of `--format`.
 
-- Calculate a route between two systems using an existing dataset path:
+- Calculate a route between two systems using the downloaded dataset:
 
   ```pwsh
-  evefrontier-cli route --from "Y:170N" --to "BetaTest" --data-dir docs/fixtures/minimal_static_data.db
+  evefrontier-cli route --from "ER1-MM7" --to "ENQ-PB6"
   ```
 
 - Request structured JSON output suitable for downstream tooling:
 
   ```bash
-  evefrontier-cli route --from "Y:170N" --to "BetaTest" --format json
+  evefrontier-cli route --from "ER1-MM7" --to "ENQ-PB6" --format json
   ```
 
 - Get in-game note format with clickable system links:
 
   ```bash
-  evefrontier-cli route --from "Y:170N" --to "BetaTest" --format note
+  evefrontier-cli route --from "ER1-MM7" --to "ENQ-PB6" --format note
   ```
 
 - Use different pathfinding algorithms:
 
   ```bash
   # Breadth-first search (unweighted, gate-only)
-  evefrontier-cli route --from "Y:170N" --to "BetaTest" --algorithm bfs
+  evefrontier-cli route --from "ER1-MM7" --to "ENQ-PB6" --algorithm bfs
 
   # Dijkstra (weighted distance optimization)
-  evefrontier-cli route --from "Y:170N" --to "BetaTest" --algorithm dijkstra
+  evefrontier-cli route --from "ER1-MM7" --to "ENQ-PB6" --algorithm dijkstra
 
   # A* (default, uses coordinates as heuristic)
-  evefrontier-cli route --from "Y:170N" --to "BetaTest" --algorithm a-star
+  evefrontier-cli route --from "ER1-MM7" --to "ENQ-PB6" --algorithm a-star
   ```
 
 - Limit jump distance and avoid specific systems:
 
   ```bash
-  evefrontier-cli route --from "Y:170N" --to "BetaTest" --max-jump 5.0 --avoid "AlphaTest"
+  evefrontier-cli route --from "ER1-MM7" --to "ENQ-PB6" --max-jump 80.0 --avoid "IFM-228"
   ```
 
 - Use spatial-only routing (no gates):
 
   ```bash
-  evefrontier-cli route --from "Y:170N" --to "BetaTest" --avoid-gates
+  evefrontier-cli route --from "ER1-MM7" --to "ENQ-PB6" --avoid-gates
   ```
 
 - Filter by maximum system temperature for spatial jumps:
 
   ```bash
-  evefrontier-cli route --from "Y:170N" --to "BetaTest" --max-temp 5000.0
+  evefrontier-cli route --from "ER1-MM7" --to "ENQ-PB6" --max-temp 5000.0
   ```
 
   Prevents routing through systems with star temperature above the threshold via spatial jumps
@@ -124,7 +124,7 @@ Route-only options (ignored by other subcommands):
 
   ```bash
   export EVEFRONTIER_DATA_DIR="$HOME/.local/share/evefrontier"
-  evefrontier-cli route --from "Y:170N" --to "BetaTest"
+  evefrontier-cli route --from "ER1-MM7" --to "ENQ-PB6"
   ```
 
 ### `download`
@@ -145,7 +145,7 @@ combining gates + spatial jumps). If the dataset is not already present, the CLI
 automatically before computing the route.
 
 ```pwsh
-evefrontier-cli route --from "Y:170N" --to "BetaTest" --data-dir docs/fixtures/minimal_static_data.db
+evefrontier-cli route --from "ER1-MM7" --to "ENQ-PB6"
 ```
 
 ### Routing options
@@ -237,8 +237,12 @@ cargo test --workspace
 ```
 
 The library test suite uses the bundled fixture located at `docs/fixtures/minimal_static_data.db`.
-You can reuse the same file when running the CLI by passing
-`--data-dir docs/fixtures/minimal_static_data.db`.
+This fixture is pinned to the e6c3 dataset release and uses legacy system names (Nod, Brana, etc.)
+for deterministic testing. The fixture is protected from accidental overwrites.
+
+> [!NOTE]
+> The test fixture uses system names from the e6c3 release (Nod, Brana, H:2L2S, etc.).
+> The production dataset uses different names. See `docs/fixtures/README.md` for details.
 
 ### Local dataset overrides
 
@@ -277,8 +281,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 3. Plan a route
     let request = RouteRequest {
-        start: "Nod".to_string(),
-        goal: "Brana".to_string(),
+        start: "ER1-MM7".to_string(),
+        goal: "ENQ-PB6".to_string(),
         algorithm: RouteAlgorithm::AStar,
         constraints: RouteConstraints::default(),
     };
@@ -301,24 +305,24 @@ use evefrontier_lib::{RouteRequest, RouteAlgorithm};
 
 // Breadth-first search (shortest hop count, unweighted)
 let request_bfs = RouteRequest {
-    start: "Nod".to_string(),
-    goal: "Brana".to_string(),
+    start: "ER1-MM7".to_string(),
+    goal: "ENQ-PB6".to_string(),
     algorithm: RouteAlgorithm::Bfs,
     constraints: Default::default(),
 };
 
 // Dijkstra (shortest distance in light-years)
 let request_dijkstra = RouteRequest {
-    start: "Nod".to_string(),
-    goal: "Brana".to_string(),
+    start: "ER1-MM7".to_string(),
+    goal: "ENQ-PB6".to_string(),
     algorithm: RouteAlgorithm::Dijkstra,
     constraints: Default::default(),
 };
 
 // A* with heuristic (default, usually fastest)
 let request_astar = RouteRequest {
-    start: "Nod".to_string(),
-    goal: "Brana".to_string(),
+    start: "ER1-MM7".to_string(),
+    goal: "ENQ-PB6".to_string(),
     algorithm: RouteAlgorithm::AStar,
     constraints: Default::default(),
 };
@@ -332,12 +336,12 @@ You can constrain routes by maximum jump distance, avoided systems, or temperatu
 use evefrontier_lib::{RouteRequest, RouteAlgorithm, RouteConstraints};
 
 let request = RouteRequest {
-    start: "Nod".to_string(),
-    goal: "Brana".to_string(),
+    start: "ER1-MM7".to_string(),
+    goal: "ENQ-PB6".to_string(),
     algorithm: RouteAlgorithm::AStar,
     constraints: RouteConstraints {
         max_jump: Some(80.0),  // Max 80 ly per jump
-        avoid_systems: vec!["H:2L2S".to_string()],  // Avoid this system
+        avoid_systems: vec!["IFM-228".to_string()],  // Avoid this system
         avoid_gates: false,  // Allow gate usage
         max_temperature: Some(50.0),  // Exclude hot systems
     },
@@ -454,11 +458,11 @@ Computes routes between two systems using configurable algorithms and constraint
 
 ```json
 {
-  "from": "Nod",
-  "to": "Brana",
+  "from": "ER1-MM7",
+  "to": "ENQ-PB6",
   "algorithm": "a-star",
   "max_jump": 80.0,
-  "avoid": ["H:2L2S"],
+  "avoid": ["IFM-228"],
   "avoid_gates": false,
   "max_temperature": 50.0
 }
@@ -481,11 +485,11 @@ Computes routes between two systems using configurable algorithms and constraint
 ```json
 {
   "content_type": "application/json",
-  "hops": 3,
+  "hops": 2,
   "gates": 2,
-  "jumps": 1,
+  "jumps": 0,
   "algorithm": "a-star",
-  "route": ["Nod", "D:2NAS", "Brana"]
+  "route": ["ER1-MM7", "IFM-228", "ENQ-PB6"]
 }
 ```
 
@@ -499,7 +503,7 @@ into the top level._
   "type": "https://evefrontier.example/problems/unknown-system",
   "title": "Unknown System",
   "status": 404,
-  "detail": "System 'InvalidName' not found in dataset. Did you mean: Nod, Brana?",
+  "detail": "System 'InvalidName' not found in dataset. Did you mean: ER1-MM7, ENQ-PB6?",
   "instance": "/route/req-abc123"
 }
 ```
@@ -515,8 +519,8 @@ import json
 lambda_client = boto3.client('lambda', region_name='us-east-1')
 
 payload = {
-    "from": "Nod",
-    "to": "Brana",
+    "from": "ER1-MM7",
+    "to": "ENQ-PB6",
     "algorithm": "a-star",
     "max_jump": 80.0
 }
@@ -540,8 +544,8 @@ const { LambdaClient, InvokeCommand } = require("@aws-sdk/client-lambda");
 const client = new LambdaClient({ region: "us-east-1" });
 
 const payload = {
-  from: "Nod",
-  to: "Brana",
+  from: "ER1-MM7",
+  to: "ENQ-PB6",
   algorithm: "a-star",
   max_jump: 80.0
 };
@@ -563,8 +567,8 @@ curl -X POST https://api.example.com/route \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -d '{
-    "from": "Nod",
-    "to": "Brana",
+    "from": "ER1-MM7",
+    "to": "ENQ-PB6",
     "algorithm": "a-star"
   }'
 ```
@@ -577,7 +581,7 @@ Returns gate-connected neighbors of a system.
 
 ```json
 {
-  "system": "Nod"
+  "system": "ER1-MM7"
 }
 ```
 
@@ -592,17 +596,17 @@ Returns gate-connected neighbors of a system.
 ```json
 {
   "content_type": "application/json",
-  "system": "Nod",
-  "system_id": 30011392,
-  "count": 2,
+  "system": "ER1-MM7",
+  "system_id": 30001178,
+  "count": 4,
   "neighbors": [
     {
-      "name": "D:2NAS",
-      "id": 30011393
+      "name": "IFM-228",
+      "id": 30001177
     },
     {
-      "name": "G:3OA0",
-      "id": 30011394
+      "name": "E85-NR6",
+      "id": 30001179
     }
   ]
 }
@@ -616,7 +620,7 @@ into the top level._
 **AWS SDK (Python):**
 
 ```python
-payload = {"system": "Nod"}
+payload = {"system": "ER1-MM7"}
 
 response = lambda_client.invoke(
     FunctionName='evefrontier-lambda-scout-gates',
@@ -637,7 +641,7 @@ for neighbor in neighbors:
 curl -X POST https://api.example.com/scout-gates \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_TOKEN" \
-  -d '{"system": "Nod"}'
+  -d '{"system": "ER1-MM7"}'
 ```
 
 ### Scout Range Lambda
@@ -648,7 +652,7 @@ Returns systems within spatial range with optional temperature filtering.
 
 ```json
 {
-  "system": "Nod",
+  "system": "ER1-MM7",
   "limit": 50,
   "radius": 100.0,
   "max_temperature": 50.0
@@ -669,25 +673,25 @@ Returns systems within spatial range with optional temperature filtering.
 ```json
 {
   "content_type": "application/json",
-  "system": "Nod",
-  "system_id": 30011392,
+  "system": "ER1-MM7",
+  "system_id": 30001178,
   "count": 3,
   "systems": [
     {
-      "name": "D:2NAS",
-      "id": 30011393,
+      "name": "IFM-228",
+      "id": 30001177,
       "distance_ly": 25.4,
-      "min_temp_k": 30.0
+      "min_temp_k": 2.45
     },
     {
-      "name": "Brana",
-      "id": 30011395,
+      "name": "ENQ-PB6",
+      "id": 30001176,
       "distance_ly": 67.8,
-      "min_temp_k": 45.2
+      "min_temp_k": 22.1
     },
     {
-      "name": "G:3OA0",
-      "id": 30011394,
+      "name": "E85-NR6",
+      "id": 30001179,
       "distance_ly": 88.3
     }
   ]
@@ -710,7 +714,7 @@ into the top level._
 
 ```python
 payload = {
-    "system": "Nod",
+    "system": "ER1-MM7",
     "radius": 100.0,
     "max_temperature": 50.0,
     "limit": 10
@@ -737,7 +741,7 @@ curl -X POST https://api.example.com/scout-range \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -d '{
-    "system": "Nod",
+    "system": "ER1-MM7",
     "radius": 100.0,
     "max_temperature": 50.0
   }'
