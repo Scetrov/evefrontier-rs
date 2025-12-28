@@ -168,6 +168,8 @@ enum OutputFormat {
     Basic,
     /// Emoji-enhanced readable output per EXAMPLES.md.
     Emoji,
+    /// Enhanced format with system details (temp, planets, moons).
+    Enhanced,
     #[value(alias = "notepad")]
     Note,
 }
@@ -180,7 +182,11 @@ impl OutputFormat {
     fn supports_footer(self) -> bool {
         matches!(
             self,
-            OutputFormat::Text | OutputFormat::Rich | OutputFormat::Emoji | OutputFormat::Basic
+            OutputFormat::Text
+                | OutputFormat::Rich
+                | OutputFormat::Emoji
+                | OutputFormat::Basic
+                | OutputFormat::Enhanced
         )
     }
 
@@ -333,6 +339,49 @@ impl OutputFormat {
                     let name = step.name.as_deref().unwrap_or("<unknown>");
                     println!("Jmp <a href=\"showinfo:5//{}\">{}</a>", step.id, name);
                 }
+            }
+            OutputFormat::Enhanced => {
+                // Enhanced format with system details shown between steps
+                let hops = summary.hops;
+                let start = summary.start.name.as_deref().unwrap_or("<unknown>");
+                let goal = summary.goal.name.as_deref().unwrap_or("<unknown>");
+                println!("Route from {} to {} ({} jumps):", start, goal, hops);
+
+                let len = summary.steps.len();
+                for (i, step) in summary.steps.iter().enumerate() {
+                    let name = step.name.as_deref().unwrap_or("<unknown>");
+                    let icon = if i == 0 { "🚥" } else { "🚀" };
+
+                    // Print the system name with distance info if not the first step
+                    if let (Some(distance), Some(_method)) =
+                        (step.distance, step.method.as_deref())
+                    {
+                        println!(" {} {} ({:.0}ly jump)", icon, name, distance);
+                    } else {
+                        println!(" {} {}", icon, name);
+                    }
+
+                    // Print details line if not the last step
+                    if i + 1 < len {
+                        let temp_str = step
+                            .min_external_temp
+                            .map(|t| format!("min {:.2}K", t))
+                            .unwrap_or_else(|| "temp N/A".to_string());
+                        let planets = step.planet_count.unwrap_or(0);
+                        let moons = step.moon_count.unwrap_or(0);
+                        println!(
+                            " | [{}, {} Planet{}, {} Moon{}]",
+                            temp_str,
+                            planets,
+                            if planets == 1 { "" } else { "s" },
+                            moons,
+                            if moons == 1 { "" } else { "s" }
+                        );
+                    }
+                }
+
+                println!("\nTotal distance: {:.0}ly", summary.total_distance);
+                println!("Total ly jumped: {:.0}ly", summary.jump_distance);
             }
         }
         Ok(())

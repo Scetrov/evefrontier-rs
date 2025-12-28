@@ -264,3 +264,22 @@ fn missing_to_argument_shows_error() {
         .failure()
         .stderr(predicate::str::contains("--to"));
 }
+
+#[test]
+fn enhanced_format_shows_system_details() {
+    let (mut cmd, _temp) = prepare_command();
+    cmd.arg("--format")
+        .arg("enhanced")
+        .arg("route")
+        .arg("--from")
+        .arg("Nod")
+        .arg("--to")
+        .arg("Brana");
+
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("🚥"))
+        .stdout(predicate::str::contains("🚀"))
+        .stdout(predicate::str::contains("Planet"))
+        .stdout(predicate::str::contains("Moon"));
+}

@@ -54,6 +54,8 @@ pub struct SystemMetadata {
     pub star_temperature: Option<f64>,
     pub star_luminosity: Option<f64>,
     pub min_external_temp: Option<f64>,
+    pub planet_count: Option<u32>,
+    pub moon_count: Option<u32>,
 }
 
 impl SystemMetadata {
@@ -67,6 +69,8 @@ impl SystemMetadata {
             star_temperature: None,
             star_luminosity: None,
             min_external_temp: None,
+            planet_count: None,
+            moon_count: None,
         }
     }
 }
@@ -261,6 +265,9 @@ pub fn load_starmap_from_connection(connection: &Connection) -> Result<Starmap> 
 
     // Calculate minimum external temperatures for systems (if celestial data available)
     calculate_min_external_temps(connection, &mut systems)?;
+
+    // Load planet and moon counts for systems (if tables exist)
+    load_celestial_counts(connection, &mut systems)?;
 
     let mut name_to_id = HashMap::new();
     for system in systems.values() {
@@ -600,6 +607,49 @@ fn calculate_min_external_temps(
     Ok(())
 }
 
+/// Load planet and moon counts for each system.
+///
+/// This function queries the Planets and Moons tables (if they exist) and populates
+/// the `planet_count` and `moon_count` fields in `SystemMetadata`.
+fn load_celestial_counts(
+    connection: &Connection,
+    systems: &mut HashMap<SystemId, System>,
+) -> Result<()> {
+    // Check if Planets table exists
+    if table_exists(connection, "Planets")? {
+        let sql = "SELECT solarSystemId, COUNT(*) as cnt FROM Planets GROUP BY solarSystemId";
+        let mut stmt = connection.prepare(sql)?;
+        let rows = stmt.query_map([], |row| {
+            Ok((row.get::<_, SystemId>(0)?, row.get::<_, u32>(1)?))
+        })?;
+
+        for row in rows {
+            let (system_id, count) = row?;
+            if let Some(system) = systems.get_mut(&system_id) {
+                system.metadata.planet_count = Some(count);
+            }
+        }
+    }
+
+    // Check if Moons table exists
+    if table_exists(connection, "Moons")? {
+        let sql = "SELECT solarSystemId, COUNT(*) as cnt FROM Moons GROUP BY solarSystemId";
+        let mut stmt = connection.prepare(sql)?;
+        let rows = stmt.query_map([], |row| {
+            Ok((row.get::<_, SystemId>(0)?, row.get::<_, u32>(1)?))
+        })?;
+
+        for row in rows {
+            let (system_id, count) = row?;
+            if let Some(system) = systems.get_mut(&system_id) {
+                system.metadata.moon_count = Some(count);
+            }
+        }
+    }
+
+    Ok(())
+}
+
 fn row_to_system(row: &Row<'_>) -> rusqlite::Result<System> {
     // Use named column aliases produced by the SELECT in `load_static_systems`
     const COL_ID: &str = "system_id";
@@ -649,6 +699,8 @@ fn row_to_system(row: &Row<'_>) -> rusqlite::Result<System> {
                 .ok()
                 .flatten(),
             min_external_temp: None, // Calculated in a separate pass
+            planet_count: None,      // Loaded in a separate pass
+            moon_count: None,        // Loaded in a separate pass
         },
         position,
     })

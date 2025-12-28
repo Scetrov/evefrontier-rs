@@ -25,6 +25,23 @@ Dst <a href="showinfo:5//30000639">M:4R8T</a>
 Jmp <a href="showinfo:5//30007664">Z:46S0</a>
 ```
 
+## Route with emoji++ view
+
+
+```
+$ evefrontier-cli route --from EKB-F37 --to ECS-9R2 --format enhanced
+Route from EKB-F37 to ECS-9R2 (6 jumps):
+ 🚥 EKB-F37
+ | [min 0.97K, 3 Planets, 6 Moons]
+ 🚀 IR7-L76 (75ly jump)
+ | [min 4.03K, 4 Planets, 15 Moons]
+
+Total distance: 460ly
+Total ly jumped: 460ly
+
+Completed in 6.53s
+```
+
 ## Route with Emoji
 
 ```
