@@ -62,7 +62,7 @@ impl RouteConstraints {
 }
 
 /// High-level route planning request.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct RouteRequest {
     pub start: String,
     pub goal: String,
@@ -145,7 +145,7 @@ pub fn plan_route(starmap: &Starmap, request: &RouteRequest) -> Result<RoutePlan
         starmap,
         request.algorithm,
         &constraints,
-        request.spatial_index.clone(),
+        request.spatial_index.as_ref().cloned(),
     );
 
     let route = match request.algorithm {

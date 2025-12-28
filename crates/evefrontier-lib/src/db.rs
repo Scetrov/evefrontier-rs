@@ -557,8 +557,15 @@ fn calculate_min_external_temps(
         };
 
         // Zero or negative luminosity is valid for special stellar objects (e.g., black holes)
-        // where temperature calculations don't apply. Skip silently.
+        // where temperature calculations don't apply. Log at debug level and skip calculations.
         if luminosity <= 0.0 {
+            tracing::debug!(
+                system_id = *system_id,
+                system_name = %system.name,
+                luminosity,
+                "non-positive star luminosity; skipping external temperature calculation \
+                 (expected for black holes, otherwise check data quality)"
+            );
             continue;
         }
 
@@ -611,38 +618,51 @@ fn calculate_min_external_temps(
 ///
 /// This function queries the Planets and Moons tables (if they exist) and populates
 /// the `planet_count` and `moon_count` fields in `SystemMetadata`.
+///
+/// Uses a UNION query when both tables exist to minimize database round-trips.
 fn load_celestial_counts(
     connection: &Connection,
     systems: &mut HashMap<SystemId, System>,
 ) -> Result<()> {
-    // Check if Planets table exists
-    if table_exists(connection, "Planets")? {
-        let sql = "SELECT solarSystemId, COUNT(*) as cnt FROM Planets GROUP BY solarSystemId";
-        let mut stmt = connection.prepare(sql)?;
-        let rows = stmt.query_map([], |row| {
-            Ok((row.get::<_, SystemId>(0)?, row.get::<_, u32>(1)?))
-        })?;
+    let planets_exist = table_exists(connection, "Planets")?;
+    let moons_exist = table_exists(connection, "Moons")?;
 
-        for row in rows {
-            let (system_id, count) = row?;
-            if let Some(system) = systems.get_mut(&system_id) {
-                system.metadata.planet_count = Some(count);
-            }
+    // Build a UNION query when both tables exist for better performance
+    let sql = match (planets_exist, moons_exist) {
+        (true, true) => {
+            "SELECT solarSystemId, COUNT(*) as cnt, 'planet' as celestial_type \
+             FROM Planets GROUP BY solarSystemId \
+             UNION ALL \
+             SELECT solarSystemId, COUNT(*) as cnt, 'moon' as celestial_type \
+             FROM Moons GROUP BY solarSystemId"
         }
-    }
+        (true, false) => {
+            "SELECT solarSystemId, COUNT(*) as cnt, 'planet' as celestial_type \
+             FROM Planets GROUP BY solarSystemId"
+        }
+        (false, true) => {
+            "SELECT solarSystemId, COUNT(*) as cnt, 'moon' as celestial_type \
+             FROM Moons GROUP BY solarSystemId"
+        }
+        (false, false) => return Ok(()), // No tables to query
+    };
 
-    // Check if Moons table exists
-    if table_exists(connection, "Moons")? {
-        let sql = "SELECT solarSystemId, COUNT(*) as cnt FROM Moons GROUP BY solarSystemId";
-        let mut stmt = connection.prepare(sql)?;
-        let rows = stmt.query_map([], |row| {
-            Ok((row.get::<_, SystemId>(0)?, row.get::<_, u32>(1)?))
-        })?;
+    let mut stmt = connection.prepare(sql)?;
+    let rows = stmt.query_map([], |row| {
+        Ok((
+            row.get::<_, SystemId>(0)?,
+            row.get::<_, u32>(1)?,
+            row.get::<_, String>(2)?,
+        ))
+    })?;
 
-        for row in rows {
-            let (system_id, count) = row?;
-            if let Some(system) = systems.get_mut(&system_id) {
-                system.metadata.moon_count = Some(count);
+    for row in rows {
+        let (system_id, count, celestial_type) = row?;
+        if let Some(system) = systems.get_mut(&system_id) {
+            match celestial_type.as_str() {
+                "planet" => system.metadata.planet_count = Some(count),
+                "moon" => system.metadata.moon_count = Some(count),
+                _ => {} // Ignore unknown types
             }
         }
     }

@@ -733,8 +733,14 @@ fn handle_route_command(
     let starmap = load_starmap(&paths.database)
         .with_context(|| format!("failed to load dataset from {}", paths.database.display()))?;
 
-    // Try to load a pre-built spatial index to speed up routing
-    let spatial_index = try_load_spatial_index(&paths.database).map(Arc::new);
+    // Only load the spatial index when the selected algorithm can make use of it.
+    // BFS does not use spatial indexing, so we avoid unnecessary I/O in that case.
+    let needs_spatial_index = !matches!(args.options.algorithm, RouteAlgorithmArg::Bfs);
+    let spatial_index = if needs_spatial_index {
+        try_load_spatial_index(&paths.database).map(Arc::new)
+    } else {
+        None
+    };
 
     let mut request = args.to_request();
     if let Some(index) = spatial_index {
