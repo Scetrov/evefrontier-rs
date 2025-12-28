@@ -176,7 +176,10 @@ enum OutputFormat {
 
 impl OutputFormat {
     fn supports_banner(self) -> bool {
-        matches!(self, OutputFormat::Text | OutputFormat::Rich)
+        matches!(
+            self,
+            OutputFormat::Text | OutputFormat::Rich | OutputFormat::Emoji | OutputFormat::Enhanced
+        )
     }
 
     fn supports_footer(self) -> bool {
@@ -342,10 +345,32 @@ impl OutputFormat {
             }
             OutputFormat::Enhanced => {
                 // Enhanced format with system details shown between steps
+                // Color definitions for enhanced mode
+                let supports_color = std::env::var_os("NO_COLOR").is_none()
+                    && std::env::var("TERM")
+                        .map(|t| !t.eq_ignore_ascii_case("dumb"))
+                        .unwrap_or(true);
+
+                let (white_bold, gray, cyan, green, blue, reset) = if supports_color {
+                    (
+                        "\x1b[1;97m", // bright bold white
+                        "\x1b[90m",   // gray
+                        "\x1b[36m",   // cyan for temp
+                        "\x1b[32m",   // green for planets
+                        "\x1b[34m",   // blue for moons
+                        "\x1b[0m",    // reset
+                    )
+                } else {
+                    ("", "", "", "", "", "")
+                };
+
                 let hops = summary.hops;
                 let start = summary.start.name.as_deref().unwrap_or("<unknown>");
                 let goal = summary.goal.name.as_deref().unwrap_or("<unknown>");
-                println!("Route from {} to {} ({} jumps):", start, goal, hops);
+                println!(
+                    "Route from {}{}{} to {}{}{} ({} jumps):",
+                    white_bold, start, reset, white_bold, goal, reset, hops
+                );
 
                 let len = summary.steps.len();
                 for (i, step) in summary.steps.iter().enumerate() {
@@ -355,26 +380,33 @@ impl OutputFormat {
                     // Print the system name with distance info if not the first step
                     if let (Some(distance), Some(_method)) = (step.distance, step.method.as_deref())
                     {
-                        println!(" {} {} ({:.0}ly jump)", icon, name, distance);
+                        println!(
+                            " {} {}{}{} ({:.0}ly jump)",
+                            icon, white_bold, name, reset, distance
+                        );
                     } else {
-                        println!(" {} {}", icon, name);
+                        println!(" {} {}{}{}", icon, white_bold, name, reset);
                     }
 
                     // Print details line if not the last step
                     if i + 1 < len {
                         let temp_str = step
                             .min_external_temp
-                            .map(|t| format!("min {:.2}K", t))
-                            .unwrap_or_else(|| "temp N/A".to_string());
+                            .map(|t| format!("{}min {:.2}K{}", cyan, t, gray))
+                            .unwrap_or_else(|| format!("{}temp N/A{}", gray, gray));
                         let planets = step.planet_count.unwrap_or(0);
                         let moons = step.moon_count.unwrap_or(0);
                         println!(
-                            " │ [{}, {} Planet{}, {} Moon{}]",
+                            " {gray}│ [{reset}{}{gray}, {green}{} Planet{}{gray}, {blue}{} Moon{}{gray}]{reset}",
                             temp_str,
                             planets,
                             if planets == 1 { "" } else { "s" },
                             moons,
-                            if moons == 1 { "" } else { "s" }
+                            if moons == 1 { "" } else { "s" },
+                            gray = gray,
+                            green = green,
+                            blue = blue,
+                            reset = reset
                         );
                     }
                 }
@@ -713,11 +745,11 @@ fn print_logo() {
         println!(
             "{cyan}╭────────────────────────────────────────────────╮{reset}
 {cyan}│{orange} ░█▀▀░█░█░█▀▀░░░█▀▀░█▀▄░█▀█░█▀█░▀█▀░▀█▀░█▀▀░█▀▄ {cyan}│{reset}
-{cyan}│{orange} ░█▀▀░▀▄▀░█▀▀░░░█▀▀░█▀▄░█░█░█░█░░█░░░█░░█▀▀░█▀▄  {cyan}│{reset}
-{cyan}│{orange} ░▀▀▀░░▀░░▀▀▀░░░▀░░░▀░▀░▀▀▀░▀░▀░░▀░░▀▀▀░▀▀▀░▀░▀  {cyan}│{reset}
-{cyan}├─────────────────────────────────────────────────┤{reset}
-{cyan}│{orange}                      [ C L I ]                  {cyan}│{reset}
-{cyan}╰─────────────────────────────────────────────────╯{reset}",
+{cyan}│{orange} ░█▀▀░▀▄▀░█▀▀░░░█▀▀░█▀▄░█░█░█░█░░█░░░█░░█▀▀░█▀▄ {cyan}│{reset}
+{cyan}│{orange} ░▀▀▀░░▀░░▀▀▀░░░▀░░░▀░▀░▀▀▀░▀░▀░░▀░░▀▀▀░▀▀▀░▀░▀ {cyan}│{reset}
+{cyan}├────────────────────────────────────────────────┤{reset}
+{cyan}│{orange}                    [ C L I ]                   {cyan}│{reset}
+{cyan}╰────────────────────────────────────────────────╯{reset}",
             cyan = cyan,
             orange = orange,
             reset = reset
