@@ -3,6 +3,9 @@
 All notable changes to this project will be documented in this file.
 
 ## Unreleased
+- 2025-12-29 - auto-llm:copilot - [testing] - Added 44 Lambda unit tests across 3 Lambda crates (route: 15, scout-gates: 13, scout-range: 16)
+- 2025-12-29 - auto-llm:copilot - [testing] - Created test_utils module in evefrontier-lambda-shared for shared test fixtures and helpers
+- 2025-12-29 - auto-llm:copilot - [testing] - Added RouteAlgorithm to evefrontier-lambda-shared public exports for test accessibility
 - 2025-12-28 - auto-llm:copilot - [docs] - Amended Constitution to v1.1.0: Added mandatory branch creation requirement to planning workflows
 - 2025-12-28 - auto-llm:copilot - [docs] - Added `.github/prompts/address-pr-comments.prompt.md` AI prompt template for automated PR review comment resolution
 - 2025-12-28 - auto-llm:copilot - [docs] - Fixed cargo audit documentation to accurately describe default behavior (fails on RustSec advisories, allows yanked warnings)

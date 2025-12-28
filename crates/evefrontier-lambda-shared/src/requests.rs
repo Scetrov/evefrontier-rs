@@ -275,4 +275,72 @@ mod tests {
         let algo: RouteAlgorithm = serde_json::from_str(json).unwrap();
         assert_eq!(algo, RouteAlgorithm::Bfs);
     }
+
+    #[test]
+    fn test_route_algorithm_to_lib_conversion() {
+        use evefrontier_lib::RouteAlgorithm as LibAlgorithm;
+
+        let bfs: LibAlgorithm = RouteAlgorithm::Bfs.into();
+        assert!(matches!(bfs, LibAlgorithm::Bfs));
+
+        let dijkstra: LibAlgorithm = RouteAlgorithm::Dijkstra.into();
+        assert!(matches!(dijkstra, LibAlgorithm::Dijkstra));
+
+        let astar: LibAlgorithm = RouteAlgorithm::AStar.into();
+        assert!(matches!(astar, LibAlgorithm::AStar));
+    }
+
+    #[test]
+    fn test_route_algorithm_default() {
+        let algo = RouteAlgorithm::default();
+        assert_eq!(algo, RouteAlgorithm::AStar);
+    }
+
+    #[test]
+    fn test_scout_range_default_limit() {
+        let json = r#"{"system": "Nod"}"#;
+        let req: ScoutRangeRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(req.limit, 10); // default_limit()
+    }
+
+    #[test]
+    fn test_route_request_with_all_constraints() {
+        let req = RouteRequest {
+            from: "Nod".to_string(),
+            to: "Brana".to_string(),
+            algorithm: RouteAlgorithm::Dijkstra,
+            max_jump: Some(50.0),
+            avoid: vec!["System1".to_string(), "System2".to_string()],
+            avoid_gates: true,
+            max_temperature: Some(100.0),
+        };
+        assert!(req.validate("req-constraints").is_ok());
+    }
+
+    #[test]
+    fn test_route_request_negative_temperature() {
+        let req = RouteRequest {
+            from: "Nod".to_string(),
+            to: "Brana".to_string(),
+            algorithm: RouteAlgorithm::AStar,
+            max_jump: None,
+            avoid: vec![],
+            avoid_gates: false,
+            max_temperature: Some(-50.0),
+        };
+        let err = req.validate("req-neg-temp").unwrap_err();
+        assert!(err.detail.unwrap().contains("max_temperature"));
+    }
+
+    #[test]
+    fn test_scout_range_negative_radius() {
+        let req = ScoutRangeRequest {
+            system: "Nod".to_string(),
+            limit: 10,
+            radius: Some(-100.0),
+            max_temperature: None,
+        };
+        let err = req.validate("req-neg-radius").unwrap_err();
+        assert!(err.detail.unwrap().contains("radius"));
+    }
 }

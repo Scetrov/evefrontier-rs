@@ -178,3 +178,287 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Response, Error> {
 
     Ok(Response::Success(LambdaResponse::new(response)))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use evefrontier_lambda_shared::{ScoutRangeRequest, Validate};
+    use evefrontier_lib::{load_starmap, SpatialIndex};
+    use serde_json::json;
+    use std::path::PathBuf;
+
+    fn fixture_path() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/fixtures/minimal_static_data.db")
+    }
+
+    fn fixture_starmap() -> evefrontier_lib::Starmap {
+        load_starmap(&fixture_path()).expect("fixture loads")
+    }
+
+    fn fixture_spatial_index(starmap: &evefrontier_lib::Starmap) -> SpatialIndex {
+        SpatialIndex::build(starmap)
+    }
+
+    // ==================== Request Parsing Tests ====================
+
+    #[test]
+    fn test_parse_valid_range_request() {
+        let json = json!({
+            "system": "Nod"
+        });
+        let request: ScoutRangeRequest = serde_json::from_value(json).unwrap();
+        assert_eq!(request.system, "Nod");
+        assert_eq!(request.limit, 10); // default
+        assert!(request.radius.is_none());
+        assert!(request.max_temperature.is_none());
+    }
+
+    #[test]
+    fn test_parse_range_request_with_all_fields() {
+        let json = json!({
+            "system": "Brana",
+            "limit": 5,
+            "radius": 100.0,
+            "max_temperature": 50000.0
+        });
+        let request: ScoutRangeRequest = serde_json::from_value(json).unwrap();
+        assert_eq!(request.system, "Brana");
+        assert_eq!(request.limit, 5);
+        assert_eq!(request.radius, Some(100.0));
+        assert_eq!(request.max_temperature, Some(50000.0));
+    }
+
+    #[test]
+    fn test_parse_range_request_missing_system() {
+        let json = json!({});
+        let result: Result<ScoutRangeRequest, _> = serde_json::from_value(json);
+        assert!(result.is_err());
+    }
+
+    // ==================== Validation Tests ====================
+
+    #[test]
+    fn test_validate_valid_request() {
+        let request = ScoutRangeRequest {
+            system: "Nod".to_string(),
+            limit: 10,
+            radius: None,
+            max_temperature: None,
+        };
+        assert!(request.validate("test-req").is_ok());
+    }
+
+    #[test]
+    fn test_validate_empty_system() {
+        let request = ScoutRangeRequest {
+            system: "".to_string(),
+            limit: 10,
+            radius: None,
+            max_temperature: None,
+        };
+        let err = request.validate("test-req").unwrap_err();
+        assert_eq!(err.status, 400);
+    }
+
+    #[test]
+    fn test_validate_limit_zero() {
+        let request = ScoutRangeRequest {
+            system: "Nod".to_string(),
+            limit: 0,
+            radius: None,
+            max_temperature: None,
+        };
+        let err = request.validate("test-req").unwrap_err();
+        assert_eq!(err.status, 400);
+        assert!(err.detail.as_ref().is_some_and(|d| d.contains("limit")));
+    }
+
+    #[test]
+    fn test_validate_limit_exceeds_max() {
+        let request = ScoutRangeRequest {
+            system: "Nod".to_string(),
+            limit: 101,
+            radius: None,
+            max_temperature: None,
+        };
+        let err = request.validate("test-req").unwrap_err();
+        assert_eq!(err.status, 400);
+        assert!(err.detail.as_ref().is_some_and(|d| d.contains("100")));
+    }
+
+    #[test]
+    fn test_validate_negative_radius() {
+        let request = ScoutRangeRequest {
+            system: "Nod".to_string(),
+            limit: 10,
+            radius: Some(-50.0),
+            max_temperature: None,
+        };
+        let err = request.validate("test-req").unwrap_err();
+        assert_eq!(err.status, 400);
+        assert!(err.detail.as_ref().is_some_and(|d| d.contains("radius")));
+    }
+
+    #[test]
+    fn test_validate_negative_temperature() {
+        let request = ScoutRangeRequest {
+            system: "Nod".to_string(),
+            limit: 10,
+            radius: None,
+            max_temperature: Some(-100.0),
+        };
+        let err = request.validate("test-req").unwrap_err();
+        assert_eq!(err.status, 400);
+        assert!(err
+            .detail
+            .as_ref()
+            .is_some_and(|d| d.contains("temperature")));
+    }
+
+    // ==================== Spatial Query Tests (using fixture) ====================
+
+    #[test]
+    fn test_spatial_index_build() {
+        let starmap = fixture_starmap();
+        let index = fixture_spatial_index(&starmap);
+
+        // Fixture has 8 systems
+        assert!(!index.is_empty(), "Spatial index should have entries");
+    }
+
+    #[test]
+    fn test_nearest_systems_from_nod() {
+        let starmap = fixture_starmap();
+        let index = fixture_spatial_index(&starmap);
+
+        let system_id = starmap.system_id_by_name("Nod").expect("Nod exists");
+        let system = starmap.systems.get(&system_id).expect("Nod in starmap");
+        let position = system.position.expect("Nod has position");
+
+        let query = NeighbourQuery {
+            k: 5,
+            radius: None,
+            max_temperature: None,
+        };
+        let results = index.nearest_filtered([position.x, position.y, position.z], &query);
+
+        // Should find at least some nearby systems
+        assert!(!results.is_empty(), "Should find nearby systems");
+
+        // First result should be Nod itself (distance ~0)
+        let (first_id, first_distance) = results[0];
+        assert_eq!(first_id, system_id, "First result should be origin system");
+        assert!(
+            first_distance < 0.001,
+            "Origin distance should be near zero"
+        );
+    }
+
+    #[test]
+    fn test_nearest_systems_with_radius_filter() {
+        let starmap = fixture_starmap();
+        let index = fixture_spatial_index(&starmap);
+
+        let system_id = starmap.system_id_by_name("Nod").expect("Nod exists");
+        let system = starmap.systems.get(&system_id).expect("Nod in starmap");
+        let position = system.position.expect("Nod has position");
+
+        // Small radius should return fewer systems
+        let query_small = NeighbourQuery {
+            k: 10,
+            radius: Some(1.0), // Very small radius
+            max_temperature: None,
+        };
+        let results_small =
+            index.nearest_filtered([position.x, position.y, position.z], &query_small);
+
+        let query_large = NeighbourQuery {
+            k: 10,
+            radius: Some(1000.0), // Large radius
+            max_temperature: None,
+        };
+        let results_large =
+            index.nearest_filtered([position.x, position.y, position.z], &query_large);
+
+        // Large radius should find at least as many as small radius
+        assert!(
+            results_large.len() >= results_small.len(),
+            "Large radius should find more or equal systems"
+        );
+    }
+
+    #[test]
+    fn test_lookup_unknown_system() {
+        let starmap = fixture_starmap();
+        let result = starmap.system_id_by_name("NonExistentSystem12345");
+        assert!(result.is_none());
+    }
+
+    // ==================== Response Construction Tests ====================
+
+    #[test]
+    fn test_scout_range_response_serialization() {
+        let response = ScoutRangeResponse {
+            system: "Nod".to_string(),
+            system_id: 12345,
+            count: 2,
+            systems: vec![
+                NearbySystem {
+                    name: "Brana".to_string(),
+                    id: 54321,
+                    distance_ly: 42.5,
+                    min_temp_k: Some(3500.0),
+                },
+                NearbySystem {
+                    name: "H:2L2S".to_string(),
+                    id: 67890,
+                    distance_ly: 78.3,
+                    min_temp_k: None,
+                },
+            ],
+        };
+
+        let json = serde_json::to_value(&response).unwrap();
+        assert_eq!(json["system"], "Nod");
+        assert_eq!(json["system_id"], 12345);
+        assert_eq!(json["count"], 2);
+        assert!(json["systems"].is_array());
+        assert_eq!(json["systems"].as_array().unwrap().len(), 2);
+
+        // Check first system
+        assert_eq!(json["systems"][0]["name"], "Brana");
+        assert_eq!(json["systems"][0]["distance_ly"], 42.5);
+        assert_eq!(json["systems"][0]["min_temp_k"], 3500.0);
+
+        // Check second system - min_temp_k should be omitted (skip_serializing_if)
+        assert_eq!(json["systems"][1]["name"], "H:2L2S");
+        assert!(json["systems"][1]["min_temp_k"].is_null());
+    }
+
+    #[test]
+    fn test_response_enum_success_serialization() {
+        let inner = ScoutRangeResponse {
+            system: "Nod".to_string(),
+            system_id: 1,
+            count: 0,
+            systems: vec![],
+        };
+        let response = Response::Success(LambdaResponse::new(inner));
+        let json = serde_json::to_value(&response).unwrap();
+
+        // LambdaResponse uses #[serde(flatten)] on data, so fields are at root level
+        assert_eq!(json["content_type"], "application/json");
+        assert_eq!(json["system"], "Nod");
+        assert_eq!(json["system_id"], 1);
+    }
+
+    #[test]
+    fn test_response_enum_error_serialization() {
+        let error = ProblemDetails::unknown_system("BadSystem", &["Nod".to_string()], "req-123");
+        let response = Response::Error(error);
+        let json = serde_json::to_value(&response).unwrap();
+
+        assert_eq!(json["status"], 404);
+        assert!(json["title"].as_str().unwrap().contains("Unknown"));
+    }
+}

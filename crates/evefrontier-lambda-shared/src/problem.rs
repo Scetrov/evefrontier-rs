@@ -198,6 +198,7 @@ pub fn from_lib_error(error: &LibError, request_id: &str) -> ProblemDetails {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
 
     #[test]
     fn test_problem_details_serialization() {
@@ -228,5 +229,84 @@ mod tests {
         let suggestions = vec!["Nod".to_string(), "Node".to_string()];
         let problem = ProblemDetails::unknown_system("Nodd", &suggestions, "req-789");
         assert!(problem.detail.unwrap().contains("Did you mean: Nod, Node?"));
+    }
+
+    #[test]
+    fn test_unknown_system_without_suggestions() {
+        let problem = ProblemDetails::unknown_system("Nodd", &[], "req-001");
+        let detail = problem.detail.unwrap();
+        assert!(detail.contains("System 'Nodd' not found"));
+        assert!(!detail.contains("Did you mean"));
+    }
+
+    #[test]
+    fn test_route_not_found() {
+        let problem = ProblemDetails::route_not_found("Nod", "Brana", "req-002");
+        assert_eq!(problem.status, 404);
+        assert_eq!(problem.type_uri, PROBLEM_ROUTE_NOT_FOUND);
+        assert!(problem.detail.unwrap().contains("from 'Nod' to 'Brana'"));
+    }
+
+    #[test]
+    fn test_internal_error() {
+        let problem = ProblemDetails::internal_error("Database corruption", "req-003");
+        assert_eq!(problem.status, 500);
+        assert_eq!(problem.type_uri, PROBLEM_INTERNAL_ERROR);
+    }
+
+    #[test]
+    fn test_service_unavailable() {
+        let problem = ProblemDetails::service_unavailable("Spatial index missing", "req-004");
+        assert_eq!(problem.status, 503);
+        assert_eq!(problem.type_uri, PROBLEM_SERVICE_UNAVAILABLE);
+    }
+
+    #[test]
+    fn test_from_lib_error_unknown_system() {
+        let lib_err = LibError::UnknownSystem {
+            name: "BadSystem".to_string(),
+            suggestions: vec!["Nod".to_string()],
+        };
+        let problem = from_lib_error(&lib_err, "req-005");
+        assert_eq!(problem.status, 404);
+        assert_eq!(problem.type_uri, PROBLEM_UNKNOWN_SYSTEM);
+        assert!(problem.detail.unwrap().contains("BadSystem"));
+    }
+
+    #[test]
+    fn test_from_lib_error_route_not_found() {
+        let lib_err = LibError::RouteNotFound {
+            start: "Nod".to_string(),
+            goal: "Brana".to_string(),
+        };
+        let problem = from_lib_error(&lib_err, "req-006");
+        assert_eq!(problem.status, 404);
+        assert_eq!(problem.type_uri, PROBLEM_ROUTE_NOT_FOUND);
+    }
+
+    #[test]
+    fn test_from_lib_error_dataset_not_found() {
+        let lib_err = LibError::DatasetNotFound {
+            path: PathBuf::from("/nonexistent/path.db"),
+        };
+        let problem = from_lib_error(&lib_err, "req-007");
+        assert_eq!(problem.status, 503);
+        assert_eq!(problem.type_uri, PROBLEM_SERVICE_UNAVAILABLE);
+    }
+
+    #[test]
+    fn test_from_lib_error_unsupported_schema() {
+        let lib_err = LibError::UnsupportedSchema;
+        let problem = from_lib_error(&lib_err, "req-008");
+        assert_eq!(problem.status, 500);
+        assert_eq!(problem.type_uri, PROBLEM_INTERNAL_ERROR);
+    }
+
+    #[test]
+    fn test_problem_display() {
+        let problem = ProblemDetails::bad_request("Test error", "req-009");
+        let display = format!("{}", problem);
+        assert!(display.contains("Invalid Request"));
+        assert!(display.contains("Test error"));
     }
 }
