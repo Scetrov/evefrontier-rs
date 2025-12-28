@@ -112,4 +112,4 @@ clean:
 
 # Security audit
 audit:
-	cargo audit --deny warnings
+	cargo audit

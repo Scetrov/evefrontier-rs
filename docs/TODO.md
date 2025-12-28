@@ -4,6 +4,16 @@ This TODO list captures the remaining work required to implement the EveFrontier
 Lambda functions, and supporting infrastructure described throughout the documentation and ADRs.
 Tasks are grouped by domain; checkboxes track completion status.
 
+## 🔥 High Priority - Dependency Issues
+
+- [ ] **BLOCKED**: `kiddo 5.2.3` depends on yanked `cmov 0.3.1`
+  - Issue: `cmov 0.3.1` was yanked after `kiddo 5.2.3` release (Dec 2024)
+  - `cmov 0.4.3` exists but is a major version bump (API may have changed)
+  - Waiting for `kiddo` maintainer to release 5.2.4+ with updated `cmov` dependency
+  - **Workaround**: Removed `--deny warnings` flag from audit; default `cargo audit` behavior fails on security advisories but allows yanked/unmaintained warnings
+  - **Tracking**: Monitor https://github.com/sdd/kiddo/issues for `cmov` update
+  - **Impact**: Pre-commit hooks fail on security vulnerabilities (RustSec advisories) but allow yanked dependencies as warnings
+
 ## 🔥 High Priority - Test & Documentation Fixes
 
 - [x] **CRITICAL**: Ensure test fixture protection is maintained
