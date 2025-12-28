@@ -27,7 +27,6 @@ Jmp <a href="showinfo:5//30007664">Z:46S0</a>
 
 ## Route with emoji++ view
 
-
 ```
 $ evefrontier-cli route --from EKB-F37 --to ECS-9R2 --format enhanced
 Route from EKB-F37 to ECS-9R2 (6 jumps):

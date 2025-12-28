@@ -104,7 +104,7 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Response, Error> {
             avoid_gates: request.avoid_gates,
             max_temperature: request.max_temperature,
         },
-        spatial_index: runtime.spatial_index_arc(),
+        spatial_index: Some(runtime.spatial_index_arc()),
     };
 
     // Plan the route

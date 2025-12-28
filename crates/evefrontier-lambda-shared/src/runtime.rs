@@ -88,8 +88,8 @@ impl LambdaRuntime {
     }
 
     /// Get a shared reference to the spatial index for use in route requests.
-    pub fn spatial_index_arc(&self) -> Option<Arc<SpatialIndex>> {
-        Some(Arc::clone(&self.spatial_index))
+    pub fn spatial_index_arc(&self) -> Arc<SpatialIndex> {
+        Arc::clone(&self.spatial_index)
     }
 }
 

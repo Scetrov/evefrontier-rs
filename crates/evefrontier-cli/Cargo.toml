@@ -2,7 +2,7 @@
 name = "evefrontier-cli"
 version = "0.1.0"
 edition = "2021"
-authors = ["EVE Frontier Contributors"]
+authors.workspace = true
 description = "Command-line interface for EVE Frontier dataset and pathfinding tools."
 license = "MIT"
 
