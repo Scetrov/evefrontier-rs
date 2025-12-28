@@ -267,8 +267,13 @@ Tasks are grouped by domain; checkboxes track completion status.
   - Performance metrics and memory usage guidelines
   - Configuration, secrets, and IAM permissions documentation
   - Deployment considerations with build commands and Lambda settings
-- [ ] Document release and signing procedures in `docs/RELEASE.md`, including cosign/GPG commands
+- [x] Document release and signing procedures in `docs/RELEASE.md`, including cosign/GPG commands
       and attestation steps ([ADR 0007](adrs/0007-devsecops-practices.md)).
+  - Created comprehensive 870-line release procedures document
+  - Covers GPG-signed tags, cosign binary signatures, SBOM generation (CycloneDX)
+  - Documents cross-compilation (x86_64/aarch64), spatial index inclusion
+  - Includes CI integration patterns for GitHub Actions
+  - Contains rollback/revocation procedures and troubleshooting guide
 - [ ] Implement CI release job with artifact signing (cosign/GPG) and attestation generation per
       [ADR 0007](adrs/0007-devsecops-practices.md).
 - [ ] Add architecture diagrams or sequence diagrams illustrating data flow between downloader,
@@ -279,7 +284,9 @@ Tasks are grouped by domain; checkboxes track completion status.
       subcommand documentation with examples - Documented when to rebuild and temperature-aware
       filtering
 - [ ] Add ADR for any deviations from original KD-tree design if implementation adjustments occur.
-- [ ] Add `docs/RELEASE.md` section describing inclusion of spatial index artifact.
+- [x] Add `docs/RELEASE.md` section describing inclusion of spatial index artifact.
+  - Spatial Index Generation subsection added with `index-build` command usage
+  - Package Assembly subsection includes spatial index in tarball creation
 - [x] Add Rust-specific badges to README (crates.io, docs.rs, maintenance status, license, build
       status).
 - [ ] Publish `evefrontier-lib` to crates.io (prerequisite for badges).

@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 
 ## Unreleased
+- 2025-12-30 - auto-llm:copilot - [docs] - Created comprehensive docs/RELEASE.md (870+ lines) documenting complete release workflow
+- 2025-12-30 - auto-llm:copilot - [docs] - Documented GPG-signed tags with key setup, generation, and keyserver publication
+- 2025-12-30 - auto-llm:copilot - [docs] - Added cosign binary signing procedures: key-based for local releases, keyless (OIDC) for CI
+- 2025-12-30 - auto-llm:copilot - [docs] - Added SBOM generation guide using cargo-sbom (CycloneDX format)
+- 2025-12-30 - auto-llm:copilot - [docs] - Documented cross-compilation procedures for x86_64 and aarch64 Linux targets
+- 2025-12-30 - auto-llm:copilot - [docs] - Added spatial index generation section for release artifacts
+- 2025-12-30 - auto-llm:copilot - [docs] - Added consumer verification procedures for tags, artifacts, and SBOMs
+- 2025-12-30 - auto-llm:copilot - [docs] - Documented rollback and signature revocation procedures
+- 2025-12-30 - auto-llm:copilot - [docs] - Added CI integration patterns for GitHub Actions release workflows
+- 2025-12-30 - auto-llm:copilot - [docs] - Added troubleshooting guide for GPG, cosign, and build issues
 - 2025-12-29 - auto-llm:copilot - [testing] - Added 44 Lambda unit tests across 3 Lambda crates (route: 15, scout-gates: 13, scout-range: 16)
 - 2025-12-29 - auto-llm:copilot - [testing] - Created test_utils module in evefrontier-lambda-shared for shared test fixtures and helpers
 - 2025-12-29 - auto-llm:copilot - [testing] - Added RouteAlgorithm to evefrontier-lambda-shared public exports for test accessibility
