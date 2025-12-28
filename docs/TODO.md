@@ -1,6 +1,6 @@
 # Project TODOs
 
-This TODO list captures the remaining work required to implement the EveFrontier CLI, library, AWS
+This TODO list captures the remaining work required to implement the EVE Frontier CLI, library, AWS
 Lambda functions, and supporting infrastructure described throughout the documentation and ADRs.
 Tasks are grouped by domain; checkboxes track completion status.
 
@@ -10,9 +10,11 @@ Tasks are grouped by domain; checkboxes track completion status.
   - Issue: `cmov 0.3.1` was yanked after `kiddo 5.2.3` release (Dec 2024)
   - `cmov 0.4.3` exists but is a major version bump (API may have changed)
   - Waiting for `kiddo` maintainer to release 5.2.4+ with updated `cmov` dependency
-  - **Workaround**: Removed `--deny warnings` flag from audit; default `cargo audit` behavior fails on security advisories but allows yanked/unmaintained warnings
-  - **Tracking**: Monitor https://github.com/sdd/kiddo/issues for `cmov` update
-  - **Impact**: Pre-commit hooks fail on security vulnerabilities (RustSec advisories) but allow yanked dependencies as warnings
+  - **Workaround**: Removed `--deny warnings` flag from audit; default `cargo audit` behavior fails
+    on security advisories but allows yanked/unmaintained warnings
+  - **Tracking**: Monitor [Kiddo](https://github.com/sdd/kiddo/issues) for `cmov` update
+  - **Impact**: Pre-commit hooks fail on security vulnerabilities (RustSec advisories) but allow
+    yanked dependencies as warnings
 
 ## 🔥 High Priority - Test & Documentation Fixes
 
@@ -195,9 +197,12 @@ Tasks are grouped by domain; checkboxes track completion status.
 - [x] Add Lambda-focused tests (unit tests and, if possible, integration tests using
       `lambda_runtime::run` mocks).
   - Added 44 unit tests across three Lambda crates
-  - Route Lambda: 15 tests covering request parsing, validation, route planning, response serialization
-  - Scout-Gates Lambda: 13 tests covering request parsing, validation, gate lookup, response serialization
-  - Scout-Range Lambda: 16 tests covering request parsing, validation, spatial queries, response serialization
+  - Route Lambda: 15 tests covering request parsing, validation, route planning, response
+    serialization
+  - Scout-Gates Lambda: 13 tests covering request parsing, validation, gate lookup, response
+    serialization
+  - Scout-Range Lambda: 16 tests covering request parsing, validation, spatial queries, response
+    serialization
   - Added test utilities module in `evefrontier-lambda-shared` for shared fixtures
   - All tests use `docs/fixtures/minimal_static_data.db` fixture
 - [x] Integrate KD-tree spatial index loading at cold start if artifact bundled.

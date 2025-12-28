@@ -2,8 +2,8 @@
 name = "evefrontier-lib"
 version = "0.1.0"
 edition = "2021"
-authors = ["EveFrontier Contributors"]
-description = "Core library for EveFrontier dataset handling and pathfinding."
+authors = ["EVE Frontier Contributors"]
+description = "Core library for EVE Frontier dataset handling and pathfinding."
 license = "MIT"
 
 [dependencies]

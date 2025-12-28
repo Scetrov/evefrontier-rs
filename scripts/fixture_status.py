@@ -112,7 +112,7 @@ def cmd_verify() -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Manage EveFrontier fixture metadata")
+    parser = argparse.ArgumentParser(description="Manage EVE Frontier fixture metadata")
     parser.add_argument(
         "command",
         choices=["status", "record", "verify"],

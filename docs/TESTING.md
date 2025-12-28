@@ -1,6 +1,6 @@
 # Testing Guide
 
-This document describes the testing strategy for the EveFrontier project, which provides a unified
+This document describes the testing strategy for the EVE Frontier project, which provides a unified
 testing framework used both locally and in CI.
 
 ## Overview
@@ -41,17 +41,19 @@ Located in `crates/*/tests/` directories, these tests provide comprehensive cove
 
 - **Dataset tests** (`dataset_*.rs`) - Download, caching, fixture protection
 - **Graph tests** (`graph.rs`) - Graph construction for routing
-- **Routing tests** (`routing.rs`) - Pathfinding algorithms (BFS, Dijkstra, A*)
+- **Routing tests** (`routing.rs`) - Pathfinding algorithms (BFS, Dijkstra, A\*)
 - **CLI tests** (`route_commands.rs`) - Command-line interface behavior
 - **Output tests** (`output.rs`) - Serialization formats (JSON, text, note)
 - **Fuzzy matching tests** (`fuzzy_matching.rs`) - System name suggestions
 
 **Test Fixture**: Uses real e6c3 data with 8 systems:
+
 - Nod, Brana, D:2NAS, G:3OA0, H:2L2S, J:35IA, Y:3R7E, E1J-M5G
 - 12 jump gates, 26 planets, 43 moons
 - Located at: `docs/fixtures/minimal_static_data.db`
 
 **Run with:**
+
 ```bash
 cargo test --workspace
 # or
@@ -61,11 +63,13 @@ make test
 ### 2. Smoke Tests (`make test-smoke`)
 
 Quick end-to-end tests using the **release** binary to validate:
+
 1. Download command functionality
 2. Basic route planning (Nod → Brana)
 3. JSON output structure validation
 
 **Run with:**
+
 ```bash
 make test-smoke
 ```
@@ -82,6 +86,7 @@ Runs the **same checks as the CI workflow** locally:
 4. ✅ **Tests** - `cargo test --workspace`
 
 **Run with:**
+
 ```bash
 make ci
 ```
@@ -90,8 +95,8 @@ This is the **recommended command before pushing** to catch issues early.
 
 ## Pre-commit Hooks
 
-The project uses [rusty-hook](https://github.com/swellaby/rusty-hook) to run CI checks
-automatically before each commit:
+The project uses [rusty-hook](https://github.com/swellaby/rusty-hook) to run CI checks automatically
+before each commit:
 
 - Auto-installs on first `cargo build`
 - Runs the same checks as `make ci`
@@ -99,6 +104,7 @@ automatically before each commit:
 - Provides fast feedback (typically 5-10 seconds with warm cache)
 
 **To skip pre-commit hooks** (not recommended):
+
 ```bash
 git commit --no-verify
 ```
@@ -108,10 +114,12 @@ git commit --no-verify
 The GitHub Actions CI workflow (`.github/workflows/ci.yml`) runs two jobs:
 
 ### Job 1: Build and Test
+
 - Builds the workspace
 - Runs all tests
 
 ### Job 2: Validate Documentation Examples
+
 - Builds release binary
 - Runs CLI examples from README/USAGE docs
 - Validates JSON output structure
@@ -151,9 +159,9 @@ make bench
 cargo bench -p evefrontier-lib
 ```
 
-Benchmarks run against the same pinned fixture (Nod ↔ Brana) and cover BFS, Dijkstra,
-and A* (hybrid and spatial) planners. Use them when tuning graph/pathfinding code to
-catch regressions early.
+Benchmarks run against the same pinned fixture (Nod ↔ Brana) and cover BFS, Dijkstra, and A\*
+(hybrid and spatial) planners. Use them when tuning graph/pathfinding code to catch regressions
+early.
 
 ### Before Pushing
 
@@ -203,6 +211,7 @@ If CI fails but local tests pass:
 ### Caching Strategy
 
 CI caches:
+
 - `~/.cargo/registry` - Downloaded crates
 - `~/.cargo/git` - Git dependencies
 - `target/` - Build artifacts
@@ -218,8 +227,8 @@ Cache key: `cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}`
 
 ### "Unknown system 'X'" in smoke tests
 
-The smoke test fixture uses **real e6c3 system names**. Old examples may reference synthetic
-systems like "Y:170N" or "BetaTest". Update to use real names:
+The smoke test fixture uses **real e6c3 system names**. Old examples may reference synthetic systems
+like "Y:170N" or "BetaTest". Update to use real names:
 
 ```bash
 # ❌ Old (won't work)

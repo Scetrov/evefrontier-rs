@@ -26,6 +26,7 @@ fn dijkstra_route_plan_succeeds() {
         goal: "Brana".to_string(),
         algorithm: RouteAlgorithm::Dijkstra,
         constraints: RouteConstraints::default(),
+        spatial_index: None,
     };
 
     let plan = plan_route(&starmap, &request).expect("route exists");
@@ -46,6 +47,7 @@ fn a_star_respects_max_jump_constraint() {
             avoid_gates: true,
             ..RouteConstraints::default()
         },
+        spatial_index: None,
     };
 
     let plan = plan_route(&starmap, &request).expect("route exists");
@@ -67,6 +69,7 @@ fn avoided_goal_rejects_route() {
             avoid_systems: vec!["Brana".to_string()],
             ..RouteConstraints::default()
         },
+        spatial_index: None,
     };
 
     let error = plan_route(&starmap, &request).expect_err("avoided goal");
@@ -92,6 +95,7 @@ fn temperature_limit_blocks_hot_systems() {
             max_temperature: Some(4_000.0),
             ..RouteConstraints::default()
         },
+        spatial_index: None,
     };
 
     let error = plan_route(&starmap, &request).expect_err("temperature filtered");
@@ -110,6 +114,7 @@ fn avoid_gates_switches_to_spatial_graph() {
             avoid_gates: true,
             ..RouteConstraints::default()
         },
+        spatial_index: None,
     };
 
     let plan = plan_route(&starmap, &request).expect("spatial route exists");

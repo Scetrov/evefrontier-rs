@@ -1,6 +1,6 @@
 # Release Procedures
 
-This document describes the complete release workflow for the EveFrontier Rust workspace, including
+This document describes the complete release workflow for the EVE Frontier Rust workspace, including
 artifact signing, SBOM generation, and verification procedures. All releases **MUST** follow these
 procedures to comply with the [Constitution v1.1.0](../README.md) and
 [ADR 0007](adrs/0007-devsecops-practices.md).
@@ -72,7 +72,7 @@ procedures to comply with the [Constitution v1.1.0](../README.md) and
 
 ## Overview
 
-EveFrontier follows a security-first release process with multiple layers of verification:
+EVE Frontier follows a security-first release process with multiple layers of verification:
 
 1. **GPG-signed tags**: Every release tag is signed with the maintainer's GPG key
 2. **Artifact checksums**: SHA256 checksums for all release files
@@ -257,7 +257,7 @@ Use this checklist before creating any release:
 
 ### Semantic Versioning
 
-EveFrontier follows [Semantic Versioning 2.0.0](https://semver.org/):
+EVE Frontier follows [Semantic Versioning 2.0.0](https://semver.org/):
 
 | Change Type | Version Bump | Examples                                    |
 | ----------- | ------------ | ------------------------------------------- |

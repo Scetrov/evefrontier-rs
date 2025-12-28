@@ -1,4 +1,4 @@
-# Contributing to EveFrontier
+# Contributing to EVE Frontier Rust
 
 Thanks for your interest in contributing! This document explains the preferred workflow for filing
 issues, submitting PRs, and running tests locally.

@@ -1,6 +1,7 @@
 use std::fmt;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
@@ -8,16 +9,16 @@ use serde::Serialize;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 use evefrontier_lib::{
-    ensure_dataset, load_starmap, plan_route, spatial_index_path, DatasetRelease,
-    Error as RouteError, RouteAlgorithm, RouteConstraints, RouteOutputKind, RouteRenderMode,
-    RouteRequest, RouteSummary, SpatialIndex, Starmap,
+    ensure_dataset, load_starmap, plan_route, spatial_index_path, try_load_spatial_index,
+    DatasetRelease, Error as RouteError, RouteAlgorithm, RouteConstraints, RouteOutputKind,
+    RouteRenderMode, RouteRequest, RouteSummary, SpatialIndex,
 };
 
 #[derive(Parser, Debug)]
 #[command(
     author,
     version,
-    about = "EveFrontier dataset utilities",
+    about = "EVE Frontier dataset utilities",
     long_about = None,
     propagate_version = true,
     arg_required_else_help = true
@@ -44,7 +45,7 @@ struct GlobalOptions {
     #[arg(long, value_enum, default_value_t = OutputFormat::default(), global = true)]
     format: OutputFormat,
 
-    /// Suppress the EveFrontier CLI logo banner.
+    /// Suppress the EVE Frontier CLI logo banner.
     #[arg(long, action = ArgAction::SetTrue, global = true)]
     no_logo: bool,
 
@@ -90,6 +91,7 @@ impl RouteCommandArgs {
                 avoid_gates: self.options.avoid_gates,
                 max_temperature: self.options.max_temp,
             },
+            spatial_index: None, // Will be set separately after loading
         }
     }
 }
@@ -446,14 +448,14 @@ fn main() -> Result<()> {
 fn handle_download(context: &AppContext) -> Result<()> {
     let release = context.dataset_release();
     let paths = ensure_dataset(context.target_path(), release.clone())
-        .context("failed to locate or download the EveFrontier dataset")?;
+        .context("failed to locate or download the EVE Frontier dataset")?;
     let output = DownloadOutput::new(&paths.database, &release);
     context.output_format().render_download(&output)
 }
 
 fn handle_index_build(context: &AppContext, args: &IndexBuildArgs) -> Result<()> {
     let paths = ensure_dataset(context.target_path(), context.dataset_release())
-        .context("failed to locate or download the EveFrontier dataset")?;
+        .context("failed to locate or download the EVE Frontier dataset")?;
 
     let index_path = spatial_index_path(&paths.database);
 
@@ -503,8 +505,19 @@ fn handle_route_command(
     args: &RouteCommandArgs,
     kind: RouteOutputKind,
 ) -> Result<()> {
-    let starmap = load_starmap_from_context(context)?;
-    let request = args.to_request();
+    let paths = ensure_dataset(context.target_path(), context.dataset_release())
+        .context("failed to locate or download the EVE Frontier dataset")?;
+    let starmap = load_starmap(&paths.database)
+        .with_context(|| format!("failed to load dataset from {}", paths.database.display()))?;
+
+    // Try to load a pre-built spatial index to speed up routing
+    let spatial_index = try_load_spatial_index(&paths.database).map(Arc::new);
+
+    let mut request = args.to_request();
+    if let Some(index) = spatial_index {
+        request = request.with_spatial_index(index);
+    }
+
     let plan = match plan_route(&starmap, &request) {
         Ok(plan) => plan,
         Err(err) => return Err(handle_route_failure(&request, err)),
@@ -581,14 +594,6 @@ fn format_route_not_found_message(
     message
 }
 
-fn load_starmap_from_context(context: &AppContext) -> Result<Starmap> {
-    let paths = ensure_dataset(context.target_path(), context.dataset_release())
-        .context("failed to locate or download the EveFrontier dataset")?;
-    let starmap = load_starmap(&paths.database)
-        .with_context(|| format!("failed to load dataset from {}", paths.database.display()))?;
-    Ok(starmap)
-}
-
 fn init_tracing() {
     let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
     let subscriber = FmtSubscriber::builder()
@@ -652,7 +657,7 @@ fn print_logo() {
         ("", "")
     };
     let use_unicode = supports_unicode();
-    const TITLE: &str = "EveFrontier CLI";
+    const TITLE: &str = "EVE Frontier CLI";
     const WIDTH: usize = 30;
 
     let (top_left, top_right, bottom_left, bottom_right, horizontal, vertical) = if use_unicode {

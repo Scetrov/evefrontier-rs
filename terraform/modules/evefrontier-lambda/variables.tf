@@ -1,7 +1,7 @@
 # =============================================================================
 # Input Variables for evefrontier-lambda Module
 # =============================================================================
-# All configurable parameters for deploying the EveFrontier Lambda functions.
+# All configurable parameters for deploying the EVE Frontier Lambda functions.
 # Variables are grouped by category for clarity.
 # =============================================================================
 

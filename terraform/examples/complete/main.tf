@@ -1,7 +1,7 @@
 # =============================================================================
-# Complete Example: EveFrontier Lambda Deployment
+# Complete Example: EVE Frontier Lambda Deployment
 # =============================================================================
-# This example demonstrates a complete deployment of the EveFrontier Lambda
+# This example demonstrates a complete deployment of the EVE Frontier Lambda
 # functions with API Gateway.
 # =============================================================================
 
@@ -64,7 +64,7 @@ variable "binaries_path" {
 }
 
 # -----------------------------------------------------------------------------
-# EveFrontier Lambda Module
+# EVE Frontier Lambda Module
 # -----------------------------------------------------------------------------
 
 module "evefrontier" {

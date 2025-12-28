@@ -2,7 +2,7 @@
 
 These guidelines supplement the instructions in `.github/copilot-instructions.md` and
 `CONTRIBUTING.md`. Use them as a quick reference when reviewing or writing code for the
-EveFrontier workspace.
+EVE Frontier workspace.
 
 ## Control flow
 

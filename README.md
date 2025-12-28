@@ -1,4 +1,4 @@
-# EveFrontier Rust Workspace
+# EVE Frontier Rust Workspace
 
 [![Crates.io](https://img.shields.io/crates/v/evefrontier-lib.svg)](https://crates.io/crates/evefrontier-lib)
 [![Docs.rs](https://docs.rs/evefrontier-lib/badge.svg)](https://docs.rs/evefrontier-lib)

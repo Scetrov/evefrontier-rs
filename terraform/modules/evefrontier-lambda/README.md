@@ -1,6 +1,6 @@
-# EveFrontier Lambda Module
+# EVE Frontier Lambda Module
 
-Terraform module for deploying [EveFrontier](https://github.com/Scetrov/evefrontier-rs) Lambda functions with API Gateway.
+Terraform module for deploying [EVE Frontier](https://github.com/Scetrov/evefrontier-rs) Lambda functions with API Gateway.
 
 ## Features
 

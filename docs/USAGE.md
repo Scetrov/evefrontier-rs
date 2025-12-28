@@ -1,4 +1,4 @@
-# EveFrontier CLI, Lambda & Library — Usage
+# EVE Frontier CLI, Lambda & Library — Usage
 
 This document describes how to build and use the `evefrontier-cli` workspace and its library crate
 `evefrontier-lib`. Lambda crates will reuse the same APIs once they are implemented. Refer to
@@ -37,7 +37,8 @@ Developer invocation (build-and-run via cargo):
 cargo run -p evefrontier-cli -- <subcommand> [args]
 ```
 
-Note: The examples below use the installed/release binary invocation. For development, prefix commands with `cargo run -p evefrontier-cli --`.
+Note: The examples below use the installed/release binary invocation. For development, prefix
+commands with `cargo run -p evefrontier-cli --`.
 
 Global options accepted by all subcommands:
 
@@ -127,9 +128,9 @@ Route-only options (ignored by other subcommands):
 
 ### `download`
 
-Ensures the requested dataset is present on disk and reports the resolved path. The command downloads
-the specified dataset release (or reuses the cached copy) and writes it to the resolved location. When
-`--dataset` is omitted the downloader uses the latest release from
+Ensures the requested dataset is present on disk and reports the resolved path. The command
+downloads the specified dataset release (or reuses the cached copy) and writes it to the resolved
+location. When `--dataset` is omitted the downloader uses the latest release from
 [`Scetrov/evefrontier_datasets`](https://github.com/Scetrov/evefrontier_datasets).
 
 ```pwsh
@@ -138,9 +139,9 @@ evefrontier-cli download --data-dir docs/fixtures
 
 ### `route`
 
-Computes a route between two system names using the selected algorithm (default: A* hybrid
-graph combining gates + spatial jumps). If the dataset is not already present, the CLI
-downloads it automatically before computing the route.
+Computes a route between two system names using the selected algorithm (default: A\* hybrid graph
+combining gates + spatial jumps). If the dataset is not already present, the CLI downloads it
+automatically before computing the route.
 
 ```pwsh
 evefrontier-cli route --from "Y:170N" --to "BetaTest" --data-dir docs/fixtures/minimal_static_data.db
@@ -150,24 +151,24 @@ evefrontier-cli route --from "Y:170N" --to "BetaTest" --data-dir docs/fixtures/m
 
 The routing subcommands accept several flags that map directly to the library's route planner:
 
-- `--algorithm <bfs|dijkstra|a-star>` — select the pathfinding algorithm. `a-star` (default)
-  uses coordinates as a heuristic over a hybrid graph. `dijkstra` optimises weighted distance.
-  `bfs` performs an unweighted gate-only traversal.
+- `--algorithm <bfs|dijkstra|a-star>` — select the pathfinding algorithm. `a-star` (default) uses
+  coordinates as a heuristic over a hybrid graph. `dijkstra` optimises weighted distance. `bfs`
+  performs an unweighted gate-only traversal.
 - `--max-jump <LIGHT-YEARS>` — limit the maximum distance of an individual jump. Direct edges that
   exceed the threshold are pruned, encouraging multi-hop routes when necessary.
 - `--avoid <SYSTEM>` — avoid specific systems by name. Repeat the flag to provide more than one
   entry. Avoiding the start or destination results in a clear error.
-- `--avoid-gates` — restrict the search to spatial traversal only (omit gate edges). If
-  system coordinates are absent the spatial graph may be sparse.
-- `--max-temp <KELVIN>` — constrain the maximum star temperature for **spatial jumps only**. 
-  Spatial jumps to systems with star temperature exceeding this threshold are blocked (ships 
-  would overheat). Gate jumps are unaffected by temperature. Systems without temperature data 
-  are treated as safe.
+- `--avoid-gates` — restrict the search to spatial traversal only (omit gate edges). If system
+  coordinates are absent the spatial graph may be sparse.
+- `--max-temp <KELVIN>` — constrain the maximum star temperature for **spatial jumps only**. Spatial
+  jumps to systems with star temperature exceeding this threshold are blocked (ships would
+  overheat). Gate jumps are unaffected by temperature. Systems without temperature data are treated
+  as safe.
 
 ### `index-build`
 
-Precomputes a KD-tree spatial index for efficient neighbor queries during routing. The index
-file is saved alongside the database with a `.spatial.bin` extension.
+Precomputes a KD-tree spatial index for efficient neighbor queries during routing. The index file is
+saved alongside the database with a `.spatial.bin` extension.
 
 ```bash
 evefrontier-cli index-build --data-dir docs/fixtures/minimal_static_data.db
@@ -179,9 +180,9 @@ Options:
 
 - `--force` — overwrite an existing spatial index file if present.
 
-The spatial index accelerates Dijkstra and A* routing algorithms by efficiently finding
-nearby systems within a given radius. Without a pre-built index, the CLI will build one
-automatically (with a warning) when spatial/hybrid routing is requested.
+The spatial index accelerates Dijkstra and A\* routing algorithms by efficiently finding nearby
+systems within a given radius. Without a pre-built index, the CLI will build one automatically (with
+a warning) when spatial/hybrid routing is requested.
 
 **When to rebuild the index:**
 
@@ -189,8 +190,8 @@ automatically (with a warning) when spatial/hybrid routing is requested.
 - After modifying temperature data in the dataset
 - When switching between dataset versions
 
-The index includes per-system minimum external temperature, enabling temperature-aware
-filtering during neighbor queries.
+The index includes per-system minimum external temperature, enabling temperature-aware filtering
+during neighbor queries.
 
 ## Configuration & data path resolution
 
@@ -214,9 +215,9 @@ Key library entrypoints (in `crates/evefrontier-lib`):
   fixture data or custom paths. `ensure_e6c3_dataset` is still available as a shorthand for
   `DatasetRelease::tag("e6c3")`.
 - `load_starmap(db_path: &Path)` — loads systems and jumps into memory with schema detection for the
-  `SolarSystems`/`Jumps` schema. Each `System` entry includes optional metadata (region, constellation,
-  and security status when available) plus coordinates (when exposed by the dataset) so callers do
-  not need to perform additional lookups.
+  `SolarSystems`/`Jumps` schema. Each `System` entry includes optional metadata (region,
+  constellation, and security status when available) plus coordinates (when exposed by the dataset)
+  so callers do not need to perform additional lookups.
 - `build_gate_graph`, `build_spatial_graph`, and `build_hybrid_graph` — construct gate-only,
   spatial-only, or mixed graphs from the `Starmap` depending on the routing mode. These helpers
   return a `Graph` that tracks edge types and distances.
@@ -235,7 +236,8 @@ cargo test --workspace
 ```
 
 The library test suite uses the bundled fixture located at `docs/fixtures/minimal_static_data.db`.
-You can reuse the same file when running the CLI by passing `--data-dir docs/fixtures/minimal_static_data.db`.
+You can reuse the same file when running the CLI by passing
+`--data-dir docs/fixtures/minimal_static_data.db`.
 
 ### Local dataset overrides
 
@@ -406,13 +408,13 @@ let starmap = load_starmap(fixture_path)?;
 
 ### Performance Considerations
 
-- **Starmap Loading**: Loading the dataset into memory (`load_starmap`) is a one-time cost.
-  Reuse the `Starmap` instance for multiple route computations.
+- **Starmap Loading**: Loading the dataset into memory (`load_starmap`) is a one-time cost. Reuse
+  the `Starmap` instance for multiple route computations.
 
 - **Algorithm Selection**:
   - BFS: Fastest for short routes, unweighted
   - Dijkstra: Accurate distance optimization, slightly slower
-  - A*: Best balance of speed and accuracy for most use cases
+  - A\*: Best balance of speed and accuracy for most use cases
 
 - **Constraint Impact**: Each constraint (avoided systems, max jump, etc.) may increase route
   computation time. Use sparingly for best performance.
@@ -429,13 +431,14 @@ dataset and spatial index.
 
 ### Lambda Function Overview
 
-| Function | Endpoint | Description |
-|----------|----------|-------------|
-| `evefrontier-lambda-route` | `/route` | Compute routes between systems with algorithm selection |
-| `evefrontier-lambda-scout-gates` | `/scout-gates` | Find gate-connected neighbors of a system |
+| Function                         | Endpoint       | Description                                                  |
+| -------------------------------- | -------------- | ------------------------------------------------------------ |
+| `evefrontier-lambda-route`       | `/route`       | Compute routes between systems with algorithm selection      |
+| `evefrontier-lambda-scout-gates` | `/scout-gates` | Find gate-connected neighbors of a system                    |
 | `evefrontier-lambda-scout-range` | `/scout-range` | Find systems within spatial range with temperature filtering |
 
 All Lambda functions:
+
 - Accept JSON requests and return JSON responses
 - Use RFC 9457 Problem Details for structured error responses
 - Support tracing for CloudWatch Logs integration
@@ -461,6 +464,7 @@ Computes routes between two systems using configurable algorithms and constraint
 ```
 
 **Fields:**
+
 - `from` (required): Starting system name
 - `to` (required): Destination system name
 - `algorithm` (optional): `"bfs"`, `"dijkstra"`, or `"a-star"` (default: `"a-star"`)
@@ -472,6 +476,7 @@ Computes routes between two systems using configurable algorithms and constraint
 #### Response Schema
 
 **Success (HTTP 200):**
+
 ```json
 {
   "content_type": "application/json",
@@ -483,9 +488,11 @@ Computes routes between two systems using configurable algorithms and constraint
 }
 ```
 
-*Note: The `LambdaResponse` wrapper uses `#[serde(flatten)]`, so response fields are merged directly into the top level.*
+_Note: The `LambdaResponse` wrapper uses `#[serde(flatten)]`, so response fields are merged directly
+into the top level._
 
 **Error (HTTP 400/404/500):**
+
 ```json
 {
   "type": "https://evefrontier.example/problems/unknown-system",
@@ -499,6 +506,7 @@ Computes routes between two systems using configurable algorithms and constraint
 #### Invocation Examples
 
 **AWS SDK (Python):**
+
 ```python
 import boto3
 import json
@@ -524,6 +532,7 @@ print(f"Hops: {result['data']['hops']}")
 ```
 
 **AWS SDK (JavaScript/Node.js):**
+
 ```javascript
 const { LambdaClient, InvokeCommand } = require("@aws-sdk/client-lambda");
 
@@ -538,7 +547,7 @@ const payload = {
 
 const command = new InvokeCommand({
   FunctionName: "evefrontier-route",
-  Payload: JSON.stringify(payload),
+  Payload: JSON.stringify(payload)
 });
 
 const response = await client.send(command);
@@ -547,6 +556,7 @@ console.log(`Route: ${result.data.route}`);
 ```
 
 **curl (via API Gateway):**
+
 ```bash
 curl -X POST https://api.example.com/route \
   -H "Content-Type: application/json" \
@@ -571,11 +581,13 @@ Returns gate-connected neighbors of a system.
 ```
 
 **Fields:**
+
 - `system` (required): System name to find neighbors for
 
 #### Response Schema
 
 **Success (HTTP 200):**
+
 ```json
 {
   "content_type": "application/json",
@@ -595,11 +607,13 @@ Returns gate-connected neighbors of a system.
 }
 ```
 
-*Note: The `LambdaResponse` wrapper uses `#[serde(flatten)]`, so response fields are merged directly into the top level.*
+_Note: The `LambdaResponse` wrapper uses `#[serde(flatten)]`, so response fields are merged directly
+into the top level._
 
 #### Invocation Examples
 
 **AWS SDK (Python):**
+
 ```python
 payload = {"system": "Nod"}
 
@@ -617,6 +631,7 @@ for neighbor in neighbors:
 ```
 
 **curl (via API Gateway):**
+
 ```bash
 curl -X POST https://api.example.com/scout-gates \
   -H "Content-Type: application/json" \
@@ -640,6 +655,7 @@ Returns systems within spatial range with optional temperature filtering.
 ```
 
 **Fields:**
+
 - `system` (required): Center system name
 - `limit` (optional): Maximum number of results (default: 50)
 - `radius` (optional): Maximum distance in light-years (no limit if omitted)
@@ -648,6 +664,7 @@ Returns systems within spatial range with optional temperature filtering.
 #### Response Schema
 
 **Success (HTTP 200):**
+
 ```json
 {
   "content_type": "application/json",
@@ -676,16 +693,20 @@ Returns systems within spatial range with optional temperature filtering.
 }
 ```
 
-*Note: The `LambdaResponse` wrapper uses `#[serde(flatten)]`, so response fields are merged directly into the top level.*
+_Note: The `LambdaResponse` wrapper uses `#[serde(flatten)]`, so response fields are merged directly
+into the top level._
 
 **Notes:**
+
 - Results are ordered by distance (closest first)
 - `min_temp_k` field is included only if temperature data is available in the dataset
-- KD-tree spatial index is used for efficient neighbor queries (sub-millisecond for typical datasets)
+- KD-tree spatial index is used for efficient neighbor queries (sub-millisecond for typical
+  datasets)
 
 #### Invocation Examples
 
 **AWS SDK (Python):**
+
 ```python
 payload = {
     "system": "Nod",
@@ -709,6 +730,7 @@ for system in systems:
 ```
 
 **curl (via API Gateway):**
+
 ```bash
 curl -X POST https://api.example.com/scout-range \
   -H "Content-Type: application/json" \
@@ -728,7 +750,8 @@ cold-start performance. Initialization happens once per Lambda container lifecyc
 #### Initialization Sequence
 
 1. **Tracing Setup**: JSON-formatted CloudWatch Logs integration
-2. **Database Loading**: Zero-copy deserialization from bundled bytes (`rusqlite::deserialize_bytes`)
+2. **Database Loading**: Zero-copy deserialization from bundled bytes
+   (`rusqlite::deserialize_bytes`)
 3. **Spatial Index Loading**: KD-tree deserialized from bundled compressed bytes
 4. **Starmap Construction**: In-memory graph built from database tables
 
@@ -763,9 +786,11 @@ Typical cold-start metrics (logged via tracing):
 
 #### Environment Variables
 
-Currently, Lambda functions do not require environment configuration. All data is bundled at build time.
+Currently, Lambda functions do not require environment configuration. All data is bundled at build
+time.
 
 **Future configuration options** (when implemented):
+
 - `LOG_LEVEL`: Tracing verbosity (`debug`, `info`, `warn`, `error`)
 - `DATASET_VERSION`: Override bundled dataset version (if dynamic loading enabled)
 
@@ -774,19 +799,23 @@ Currently, Lambda functions do not require environment configuration. All data i
 Lambda functions require minimal IAM permissions:
 
 **Required:**
+
 - `logs:CreateLogGroup`
 - `logs:CreateLogStream`
 - `logs:PutLogEvents`
 
 **If using API Gateway:**
+
 - Configure authentication (API keys, Cognito, IAM, or custom authorizers)
 
 **Future requirements** (when secrets are needed):
+
 - `secretsmanager:GetSecretValue` (if API tokens or credentials are externalized)
 
 #### Deployment Considerations
 
 1. **Build with bundled data**:
+
    ```bash
    cargo build --release -p evefrontier-lambda-route --features bundle-data
    cargo build --release -p evefrontier-lambda-scout-gates --features bundle-data
@@ -837,8 +866,8 @@ pnpm nx run scripts:verify-all
 
 ### Fixture Management
 
-The test fixture at `docs/fixtures/minimal_static_data.db` is pinned and verified against
-recorded metadata. This ensures deterministic test results across different environments.
+The test fixture at `docs/fixtures/minimal_static_data.db` is pinned and verified against recorded
+metadata. This ensures deterministic test results across different environments.
 
 **Verify fixture integrity:**
 
@@ -880,5 +909,3 @@ This creates a virtual environment at `scripts/.venv/` and installs packages fro
 `scripts/requirements.txt`.
 
 For detailed script documentation, see `scripts/README.md`.
-
-

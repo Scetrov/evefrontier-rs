@@ -4,7 +4,7 @@ version = "0.1.0"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
-description = "Shared infrastructure for EveFrontier AWS Lambda functions"
+description = "Shared infrastructure for EVE Frontier AWS Lambda functions"
 
 [features]
 default = []

@@ -549,13 +549,9 @@ fn calculate_min_external_temps(
             continue; // Skip systems without luminosity data
         };
 
+        // Zero or negative luminosity is valid for special stellar objects (e.g., black holes)
+        // where temperature calculations don't apply. Skip silently.
         if luminosity <= 0.0 {
-            warn!(
-                system_id,
-                system_name = %system.name,
-                luminosity,
-                "invalid star luminosity; skipping temperature calculation"
-            );
             continue;
         }
 
