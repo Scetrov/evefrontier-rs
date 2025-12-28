@@ -3,6 +3,8 @@
 All notable changes to this project will be documented in this file.
 
 ## Unreleased
+- 2025-12-28 - auto-llm:copilot - [docs] - Amended Constitution to v1.1.0: Added mandatory branch creation requirement to planning workflows
+- 2025-12-28 - auto-llm:copilot - [docs] - Added `.github/prompts/address-pr-comments.prompt.md` AI prompt template for automated PR review comment resolution
 - 2025-12-28 - auto-llm:copilot - [docs] - Fixed cargo audit documentation to accurately describe default behavior (fails on RustSec advisories, allows yanked warnings)
 - 2025-12-28 - auto-llm:copilot - [chore] - Updated kiddo dependency from 5.2.2 to 5.2.3 (patch release)
 - 2025-12-28 - auto-llm:copilot - [chore] - Changed cargo audit to allow yanked dependency warnings (only fail on actual CVEs)
