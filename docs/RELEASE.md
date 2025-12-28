@@ -767,8 +767,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       # Pin actions to full commit SHAs for supply chain security
-      # IMPORTANT: Verify SHA-to-version mappings before copying these examples.
-      # Use: gh api repos/{owner}/{repo}/git/refs/tags/{tag} to confirm SHAs match claimed versions.
+      # IMPORTANT: The SHAs below were verified at time of writing (Dec 2024).
+      # Before using, verify they still match the claimed versions:
+      #   gh api repos/{owner}/{repo}/git/refs/tags/{tag} --jq '.object.sha'
+      # Actions may release new versions - update SHAs intentionally as part of dependency management.
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: dtolnay/rust-toolchain@a54c7afa936fefeb4456b2dd8068152669aa8203 # stable
       - run: cargo build --release --target ${{ matrix.target }}
@@ -809,15 +811,32 @@ jobs:
 ### GPG Key Management in CI
 
 ```yaml
-- name: Import GPG key
+- name: Import GPG key and sign
   env:
     GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
     GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
   run: |
+    # Import the private key
     echo "$GPG_PRIVATE_KEY" | gpg --batch --import
-    echo "$GPG_PASSPHRASE" | gpg --batch --passphrase-fd 0 \
-      --pinentry-mode loopback --armor --detach-sign SHA256SUMS
+
+    # Get the key grip for gpg-preset-passphrase
+    KEY_GRIP=$(gpg --list-secret-keys --with-keygrip | grep -A1 '\[S\]' | grep Keygrip | awk '{print $3}')
+
+    # Start gpg-agent and preset the passphrase (avoids exposing passphrase in process list)
+    gpg-connect-agent "PRESET_PASSPHRASE $KEY_GRIP -1 $(echo -n "$GPG_PASSPHRASE" | xxd -p -c 256)" /bye
+
+    # Sign without interactive passphrase prompt
+    gpg --batch --pinentry-mode loopback --armor --detach-sign SHA256SUMS
 ```
+
+> **Security Note**: The `gpg-preset-passphrase` approach avoids exposing the passphrase in process
+> listings that can occur with `echo | gpg --passphrase-fd`. For simpler setups where this isn't a
+> concern, you can use `--passphrase` directly:
+>
+> ```yaml
+> gpg --batch --pinentry-mode loopback --passphrase "$GPG_PASSPHRASE" \ --armor --detach-sign
+> SHA256SUMS
+> ```
 
 ### Required Secrets
 
@@ -844,12 +863,12 @@ jobs:
 
 ### cosign Issues
 
-| Issue                  | Solution                                                                 |
-| ---------------------- | ------------------------------------------------------------------------ |
-| "cosign: no key"       | Generate with `cosign generate-key-pair`                                 |
-| Keyless signing fails  | For v2: set `COSIGN_EXPERIMENTAL=1`; for v3+: verify OIDC setup and logs |
-| OIDC token error       | Verify `id-token: write` permission in workflow                          |
-| Transparency log error | Check network connectivity to rekor.sigstore.dev                         |
+| Issue                  | Solution                                                                                                                                                                                                                                                                                                                                                                                     |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| "cosign: no key"       | Generate with `cosign generate-key-pair`                                                                                                                                                                                                                                                                                                                                                     |
+| Keyless signing fails  | **cosign v2**: Set `export COSIGN_EXPERIMENTAL=1` and retry. **cosign v3+**: Ensure workflow has `id-token: write` permission, `COSIGN_EXPERIMENTAL` is **unset**, and rerun with `COSIGN_LOG_LEVEL=debug` to inspect OIDC logs. If `COSIGN_OIDC_ISSUER` is set, verify it matches GitHub Actions issuer (`https://token.actions.githubusercontent.com`) and that runner has network access. |
+| OIDC token error       | Verify `id-token: write` permission at job or workflow level; confirm running in GitHub Actions (or supported OIDC provider)                                                                                                                                                                                                                                                                 |
+| Transparency log error | Check network connectivity to rekor.sigstore.dev                                                                                                                                                                                                                                                                                                                                             |
 
 ### Build Issues
 
