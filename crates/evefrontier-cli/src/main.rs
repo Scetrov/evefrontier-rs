@@ -708,16 +708,16 @@ fn print_logo() {
 
     if use_unicode {
         // Sci-fi glitch/neon style banner with cyan border and orange text
-        // The text content is 46 chars wide, borders add 2 = 48 total per line
+        // Inner width = 50 chars (48 dashes in borders)
         // Using rounded corners (╭╮╰╯) for a softer look
         println!(
-            "{cyan}╭──────────────────────────────────────────────╮{reset}
-{cyan}│{orange} ░█▀▀░█░█░█▀▀░░░█▀▀░█▀▄░█▀█░█▀█░▀█▀░▀█▀░█▀▀░█▀▄ {cyan}│{reset}
-{cyan}│{orange} ░█▀▀░▀▄▀░█▀▀░░░█▀▀░█▀▄░█░█░█░█░░█░░░█░░█▀▀░█▀▄ {cyan}│{reset}
-{cyan}│{orange} ░▀▀▀░░▀░░▀▀▀░░░▀░░░▀░▀░▀▀▀░▀░▀░░▀░░▀▀▀░▀▀▀░▀░▀ {cyan}│{reset}
-{cyan}├──────────────────────────────────────────────┤{reset}
-{cyan}│{orange}                    [ C L I ]                   {cyan}│{reset}
-{cyan}╰──────────────────────────────────────────────╯{reset}",
+            "{cyan}╭──────────────────────────────────────────────────╮{reset}
+{cyan}│{orange} ░█▀▀░█░█░█▀▀░░░█▀▀░█▀▄░█▀█░█▀█░▀█▀░▀█▀░█▀▀░█▀▄  {cyan}│{reset}
+{cyan}│{orange} ░█▀▀░▀▄▀░█▀▀░░░█▀▀░█▀▄░█░█░█░█░░█░░░█░░█▀▀░█▀▄  {cyan}│{reset}
+{cyan}│{orange} ░▀▀▀░░▀░░▀▀▀░░░▀░░░▀░▀░▀▀▀░▀░▀░░▀░░▀▀▀░▀▀▀░▀░▀  {cyan}│{reset}
+{cyan}├──────────────────────────────────────────────────┤{reset}
+{cyan}│{orange}                      [ C L I ]                     {cyan}│{reset}
+{cyan}╰──────────────────────────────────────────────────╯{reset}",
             cyan = cyan,
             orange = orange,
             reset = reset
