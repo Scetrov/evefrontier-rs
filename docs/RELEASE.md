@@ -163,8 +163,8 @@ brew install cosign
 # Linux (via Go)
 go install github.com/sigstore/cosign/v2/cmd/cosign@latest
 
-# Linux (binary download)
-COSIGN_VERSION="v2.2.4"
+# Linux (binary download - check https://github.com/sigstore/cosign/releases for latest)
+COSIGN_VERSION="v3.0.1"
 curl -LO "https://github.com/sigstore/cosign/releases/download/${COSIGN_VERSION}/cosign-linux-amd64"
 chmod +x cosign-linux-amd64
 sudo mv cosign-linux-amd64 /usr/local/bin/cosign
@@ -477,18 +477,18 @@ gpg --verify SHA256SUMS.asc SHA256SUMS
 For local releases, use your cosign key pair:
 
 ```bash
-# Sign each tarball
+# Sign each tarball (cosign v3+ uses --bundle format)
 cosign sign-blob --key cosign.key \
-  "evefrontier-cli-${VERSION}-linux-x86_64.tar.gz" \
-  > "evefrontier-cli-${VERSION}-linux-x86_64.tar.gz.sig"
+  --bundle "evefrontier-cli-${VERSION}-linux-x86_64.tar.gz.bundle" \
+  "evefrontier-cli-${VERSION}-linux-x86_64.tar.gz"
 
 cosign sign-blob --key cosign.key \
-  "evefrontier-cli-${VERSION}-linux-aarch64.tar.gz" \
-  > "evefrontier-cli-${VERSION}-linux-aarch64.tar.gz.sig"
+  --bundle "evefrontier-cli-${VERSION}-linux-aarch64.tar.gz.bundle" \
+  "evefrontier-cli-${VERSION}-linux-aarch64.tar.gz"
 
 # Verify signatures
 cosign verify-blob --key cosign.pub \
-  --signature "evefrontier-cli-${VERSION}-linux-x86_64.tar.gz.sig" \
+  --bundle "evefrontier-cli-${VERSION}-linux-x86_64.tar.gz.bundle" \
   "evefrontier-cli-${VERSION}-linux-x86_64.tar.gz"
 ```
 
@@ -499,10 +499,12 @@ For CI releases, use keyless signing with OIDC:
 ```bash
 # Keyless signing (requires OIDC identity provider)
 # This is typically done in GitHub Actions
-COSIGN_EXPERIMENTAL=1 cosign sign-blob --yes \
-  "evefrontier-cli-${VERSION}-linux-x86_64.tar.gz" \
-  > "evefrontier-cli-${VERSION}-linux-x86_64.tar.gz.sig"
+cosign sign-blob --yes \
+  --bundle "evefrontier-cli-${VERSION}-linux-x86_64.tar.gz.bundle" \
+  "evefrontier-cli-${VERSION}-linux-x86_64.tar.gz"
 ```
+
+> **Note**: cosign v3+ no longer requires `COSIGN_EXPERIMENTAL=1` for keyless signing.
 
 Keyless signatures are recorded in the Sigstore transparency log and can be verified using the
 certificate identity:
@@ -560,9 +562,9 @@ syft . -o cyclonedx-json > "evefrontier-v${VERSION}.sbom.json"
 4. Copy release notes from CHANGELOG.md
 5. Upload all artifacts:
    - `evefrontier-cli-${VERSION}-linux-x86_64.tar.gz`
-   - `evefrontier-cli-${VERSION}-linux-x86_64.tar.gz.sig`
+   - `evefrontier-cli-${VERSION}-linux-x86_64.tar.gz.bundle`
    - `evefrontier-cli-${VERSION}-linux-aarch64.tar.gz`
-   - `evefrontier-cli-${VERSION}-linux-aarch64.tar.gz.sig`
+   - `evefrontier-cli-${VERSION}-linux-aarch64.tar.gz.bundle`
    - `SHA256SUMS`
    - `SHA256SUMS.asc`
    - `evefrontier-v${VERSION}.sbom.json`
@@ -646,12 +648,12 @@ gpg --verify SHA256SUMS.asc SHA256SUMS
 # Verify checksums
 sha256sum -c SHA256SUMS --ignore-missing
 
-# Verify cosign signature (key-based)
+# Verify cosign signature (key-based, cosign v3+ bundle format)
 curl -LO https://github.com/Scetrov/evefrontier-rs/releases/download/v0.2.0/cosign.pub
-curl -LO https://github.com/Scetrov/evefrontier-rs/releases/download/v0.2.0/evefrontier-cli-0.2.0-linux-x86_64.tar.gz.sig
+curl -LO https://github.com/Scetrov/evefrontier-rs/releases/download/v0.2.0/evefrontier-cli-0.2.0-linux-x86_64.tar.gz.bundle
 
 cosign verify-blob --key cosign.pub \
-  --signature evefrontier-cli-0.2.0-linux-x86_64.tar.gz.sig \
+  --bundle evefrontier-cli-0.2.0-linux-x86_64.tar.gz.bundle \
   evefrontier-cli-0.2.0-linux-x86_64.tar.gz
 ```
 
