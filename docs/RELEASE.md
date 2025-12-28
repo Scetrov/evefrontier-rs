@@ -46,7 +46,8 @@ procedures to comply with the [Constitution v1.1.0](../README.md) and
   - [GitHub Release Creation](#github-release-creation)
     - [Create the Release](#create-the-release)
     - [Release Notes Template](#release-notes-template)
-    - [cosign Signature](#cosign-signature)
+  - [Verification](#verification)
+    - [Tag Verification](#tag-verification)
     - [Artifact Verification](#artifact-verification)
     - [SBOM Inspection](#sbom-inspection)
   - [Rollback \& Revocation](#rollback--revocation)
@@ -197,10 +198,19 @@ cargo install cargo-sbom
 
 # Verify installation
 cargo sbom --help
-
-# Alternative: syft (for CI environments)
-# curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
 ```
+
+> **Alternative**: For CI environments, you can use [syft](https://github.com/anchore/syft) instead.
+> Install from a pinned release with checksum verification:
+>
+> ```bash
+> SYFT_VERSION="1.18.1"
+> curl -LO "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_amd64.tar.gz"
+> curl -LO "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_checksums.txt"
+> sha256sum -c syft_${SYFT_VERSION}_checksums.txt --ignore-missing
+> tar -xzf syft_${SYFT_VERSION}_linux_amd64.tar.gz syft
+> sudo mv syft /usr/local/bin/
+> ```
 
 ---
 
@@ -589,7 +599,6 @@ syft . -o cyclonedx-json > "evefrontier-v${VERSION}.sbom.json"
 gpg --verify SHA256SUMS.asc SHA256SUMS
 sha256sum -c SHA256SUMS
 ```
-````
 
 ### cosign Signature
 
@@ -599,8 +608,7 @@ cosign verify-blob --key cosign.pub \
   evefrontier-cli-0.2.0-linux-x86_64.tar.gz
 ```
 
-**Full Changelog**: [v0.1.0...v0.2.0](https://github.com/Scetrov/evefrontier-rs/compare/v0.1.0...v0.2.0)
-
+**Full Changelog**: https://github.com/Scetrov/evefrontier-rs/compare/v0.1.0...v0.2.0
 ````
 
 ---
@@ -620,7 +628,7 @@ git tag -v v0.2.0
 
 # Import maintainer's public key (if not already imported)
 gpg --keyserver hkps://keys.openpgp.org --recv-keys ABCD1234EFGH5678
-````
+```
 
 ### Artifact Verification
 
@@ -721,6 +729,10 @@ Future CI automation should implement the following patterns:
 
 ### GitHub Actions Workflow Structure
 
+> **Security Note**: Third-party actions are pinned to full commit SHAs to prevent supply chain
+> attacks. Update these intentionally as part of your dependency management process.
+> See [GitHub's security hardening guide](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-third-party-actions).
+
 ```yaml
 name: Release
 
@@ -741,10 +753,11 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      # Pin actions to full commit SHAs for supply chain security
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: dtolnay/rust-toolchain@a54c7afa936fefeb4456b2dd8068152669aa8203 # stable
       - run: cargo build --release --target ${{ matrix.target }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
         with:
           name: binary-${{ matrix.target }}
           path: target/${{ matrix.target }}/release/evefrontier-cli
@@ -755,8 +768,8 @@ jobs:
     permissions:
       id-token: write # For keyless signing
     steps:
-      - uses: sigstore/cosign-installer@v3
-      - uses: actions/download-artifact@v4
+      - uses: sigstore/cosign-installer@dc72c7d5c4d10cd6bcb8cf6e3fd625a9e5e537da # v3.7.0
+      - uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
 
       # Keyless signing
       - run: |
@@ -768,7 +781,7 @@ jobs:
     needs: sign
     runs-on: ubuntu-latest
     steps:
-      - uses: softprops/action-gh-release@v1
+      - uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.2.1
         with:
           files: |
             *.tar.gz
