@@ -353,8 +353,7 @@ impl OutputFormat {
                     let icon = if i == 0 { "🚥" } else { "🚀" };
 
                     // Print the system name with distance info if not the first step
-                    if let (Some(distance), Some(_method)) =
-                        (step.distance, step.method.as_deref())
+                    if let (Some(distance), Some(_method)) = (step.distance, step.method.as_deref())
                     {
                         println!(" {} {} ({:.0}ly jump)", icon, name, distance);
                     } else {

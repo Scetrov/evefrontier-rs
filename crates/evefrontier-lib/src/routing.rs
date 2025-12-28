@@ -141,7 +141,12 @@ pub fn plan_route(starmap: &Starmap, request: &RouteRequest) -> Result<RoutePlan
         });
     }
 
-    let graph = select_graph(starmap, request.algorithm, &constraints, request.spatial_index.clone());
+    let graph = select_graph(
+        starmap,
+        request.algorithm,
+        &constraints,
+        request.spatial_index.clone(),
+    );
 
     let route = match request.algorithm {
         RouteAlgorithm::Bfs => {
