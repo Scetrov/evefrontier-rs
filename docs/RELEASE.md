@@ -732,8 +732,8 @@ Future CI automation should implement the following patterns:
 ### GitHub Actions Workflow Structure
 
 > **Security Note**: Third-party actions are pinned to full commit SHAs to prevent supply chain
-> attacks. Update these intentionally as part of your dependency management process.
-> See [GitHub's security hardening guide](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-third-party-actions).
+> attacks. Update these intentionally as part of your dependency management process. See
+> [GitHub's security hardening guide](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-third-party-actions).
 
 ```yaml
 name: Release
@@ -876,13 +876,13 @@ jobs:
 
 ### Tools
 
-| Tool       | Purpose                          | Installation                          |
-| ---------- | -------------------------------- | ------------------------------------- |
-| GPG        | Tag and artifact signing         | System package manager                |
+| Tool       | Purpose                          | Installation                         |
+| ---------- | -------------------------------- | ------------------------------------ |
+| GPG        | Tag and artifact signing         | System package manager               |
 | cosign     | Binary signing with transparency | `brew install cosign` or [GitHub][1] |
-| cargo-sbom | SBOM generation                  | `cargo install cargo-sbom`            |
-| syft       | Alternative SBOM tool            | [GitHub][2]                           |
-| sha256sum  | Checksum generation              | GNU coreutils (pre-installed)         |
+| cargo-sbom | SBOM generation                  | `cargo install cargo-sbom`           |
+| syft       | Alternative SBOM tool            | [GitHub][2]                          |
+| sha256sum  | Checksum generation              | GNU coreutils (pre-installed)        |
 
 [1]: https://github.com/sigstore/cosign/releases
 [2]: https://github.com/anchore/syft/releases
