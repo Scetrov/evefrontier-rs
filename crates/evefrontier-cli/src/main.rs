@@ -651,36 +651,38 @@ fn print_logo() {
         }
     }
 
-    let (orange, reset) = if supports_color() {
-        (ORANGE_RAW, RESET_RAW)
+    let (orange, cyan, reset) = if supports_color() {
+        (ORANGE_RAW, "\x1b[36m", RESET_RAW)
     } else {
-        ("", "")
+        ("", "", "")
     };
     let use_unicode = supports_unicode();
-    const TITLE: &str = "EVE Frontier CLI";
-    const WIDTH: usize = 30;
 
-    let (top_left, top_right, bottom_left, bottom_right, horizontal, vertical) = if use_unicode {
-        ("╭", "╮", "╰", "╯", "─", "│")
+    if use_unicode {
+        // Sci-fi glitch/neon style banner with cyan border and orange text
+        println!(
+            "{cyan}┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃{orange}  ░█▀▀░█░█░█▀▀░░░█▀▀░█▀▄░█▀█░█▀█░▀█▀░▀█▀░█▀▀░█▀▄  {cyan}┃
+┃{orange}  ░█▀▀░▀▄▀░█▀▀░░░█▀▀░█▀▄░█░█░█░█░░█░░░█░░█▀▀░█▀▄  {cyan}┃
+┃{orange}  ░▀▀▀░░▀░░▀▀▀░░░▀░░░▀░▀░▀▀▀░▀░▀░░▀░░▀▀▀░▀▀▀░▀░▀  {cyan}┃
+┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
+┃{orange}                    [ C L I ]                    {cyan}┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛{reset}",
+            cyan = cyan,
+            orange = orange,
+            reset = reset
+        );
     } else {
-        ("+", "+", "+", "+", "-", "|")
-    };
-
-    let horizontal_line = horizontal.repeat(WIDTH);
-    let centered = format!("{:^width$}", TITLE, width = WIDTH);
-
-    println!(
-        "{color}{tl}{line}{tr}\n{v}{text}{v}\n{bl}{line}{br}{reset}",
-        color = orange,
-        tl = top_left,
-        tr = top_right,
-        bl = bottom_left,
-        br = bottom_right,
-        line = horizontal_line.as_str(),
-        v = vertical,
-        text = centered.as_str(),
-        reset = reset
-    );
+        // Fallback ASCII banner
+        println!(
+            "{color}+--------------------------------------------------+
+|  EVE FRONTIER                                    |
+|  >> PATHFINDER COMMAND LINE INTERFACE            |
++--------------------------------------------------+{reset}",
+            color = orange,
+            reset = reset
+        );
+    }
 }
 
 fn print_footer(elapsed: std::time::Duration) {
