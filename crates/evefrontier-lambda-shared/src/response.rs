@@ -59,9 +59,9 @@ impl<T> From<T> for LambdaResponse<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde::Serialize;
+    use serde::{Deserialize, Serialize};
 
-    #[derive(Debug, Serialize)]
+    #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
     struct TestData {
         value: i32,
     }
@@ -79,5 +79,43 @@ mod tests {
     fn test_custom_content_type() {
         let response = LambdaResponse::with_content_type(TestData { value: 1 }, "text/plain");
         assert_eq!(response.content_type, "text/plain");
+    }
+
+    #[test]
+    fn test_response_from_trait() {
+        let data = TestData { value: 99 };
+        let response: LambdaResponse<TestData> = data.clone().into();
+        assert_eq!(response.data, data);
+        assert_eq!(response.content_type, "application/json");
+    }
+
+    #[test]
+    fn test_response_flatten_serialization() {
+        // Verify that #[serde(flatten)] works correctly
+        #[derive(Debug, Serialize)]
+        struct RouteResult {
+            hops: usize,
+            route: Vec<String>,
+        }
+
+        let result = RouteResult {
+            hops: 3,
+            route: vec!["Nod".to_string(), "Brana".to_string()],
+        };
+        let response = LambdaResponse::new(result);
+        let json = serde_json::to_string(&response).unwrap();
+
+        // Fields should be at the top level, not nested under "data"
+        assert!(json.contains("\"hops\":3"));
+        assert!(json.contains("\"route\":["));
+        assert!(!json.contains("\"data\":{"));
+    }
+
+    #[test]
+    fn test_response_deserialization() {
+        let json = r#"{"value":42,"content_type":"application/json"}"#;
+        let response: LambdaResponse<TestData> = serde_json::from_str(json).unwrap();
+        assert_eq!(response.data.value, 42);
+        assert_eq!(response.content_type, "application/json");
     }
 }

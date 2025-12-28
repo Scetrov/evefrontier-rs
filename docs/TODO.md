@@ -192,8 +192,14 @@ Tasks are grouped by domain; checkboxes track completion status.
   - Module includes: Lambda functions, HTTP API Gateway v2, IAM roles, CloudWatch Logs
   - Example configuration at `terraform/examples/complete/`
   - Comprehensive deployment guide in `docs/DEPLOYMENT.md`
-- [ ] Add Lambda-focused tests (unit tests and, if possible, integration tests using
+- [x] Add Lambda-focused tests (unit tests and, if possible, integration tests using
       `lambda_runtime::run` mocks).
+  - Added 44 unit tests across three Lambda crates
+  - Route Lambda: 15 tests covering request parsing, validation, route planning, response serialization
+  - Scout-Gates Lambda: 13 tests covering request parsing, validation, gate lookup, response serialization
+  - Scout-Range Lambda: 16 tests covering request parsing, validation, spatial queries, response serialization
+  - Added test utilities module in `evefrontier-lambda-shared` for shared fixtures
+  - All tests use `docs/fixtures/minimal_static_data.db` fixture
 - [x] Integrate KD-tree spatial index loading at cold start if artifact bundled.
   - `SpatialIndex::load_from_bytes()` and `load_from_reader()` added to library
   - Lambda runtime loads spatial index from bundled bytes at cold start

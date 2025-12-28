@@ -142,3 +142,179 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Response, Error> {
 
     Ok(Response::Success(LambdaResponse::new(response)))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use evefrontier_lambda_shared::{test_utils, ScoutGatesRequest, Validate};
+    use serde_json::json;
+
+    // Use shared test utilities for fixture loading to ensure consistency across Lambda test suites.
+    fn fixture_starmap() -> &'static evefrontier_lib::Starmap {
+        test_utils::fixture_starmap()
+    }
+
+    // ==================== Request Parsing Tests ====================
+
+    #[test]
+    fn test_parse_valid_gates_request() {
+        let json = json!({
+            "system": "Nod"
+        });
+        let request: ScoutGatesRequest = serde_json::from_value(json).unwrap();
+        assert_eq!(request.system, "Nod");
+    }
+
+    #[test]
+    fn test_parse_gates_request_missing_system() {
+        let json = json!({});
+        let result: Result<ScoutGatesRequest, _> = serde_json::from_value(json);
+        assert!(result.is_err());
+    }
+
+    // ==================== Validation Tests ====================
+
+    #[test]
+    fn test_validate_valid_request() {
+        let request = ScoutGatesRequest {
+            system: "Nod".to_string(),
+        };
+        assert!(request.validate("test-req").is_ok());
+    }
+
+    #[test]
+    fn test_validate_empty_system() {
+        let request = ScoutGatesRequest {
+            system: "".to_string(),
+        };
+        let err = request.validate("test-req").unwrap_err();
+        assert_eq!(err.status, 400);
+    }
+
+    #[test]
+    fn test_validate_whitespace_only_system() {
+        let request = ScoutGatesRequest {
+            system: "   ".to_string(),
+        };
+        let err = request.validate("test-req").unwrap_err();
+        assert_eq!(err.status, 400);
+    }
+
+    // ==================== Gate Lookup Tests (using fixture) ====================
+
+    #[test]
+    fn test_lookup_system_with_gates_nod() {
+        let starmap = fixture_starmap();
+        let system_id = starmap.system_id_by_name("Nod").expect("Nod exists");
+
+        // Get neighbors from adjacency list
+        let neighbors = starmap.adjacency.get(&system_id);
+        assert!(neighbors.is_some(), "Nod should have gate connections");
+
+        let neighbor_ids = neighbors.unwrap();
+        assert!(
+            !neighbor_ids.is_empty(),
+            "Nod should have at least one gate"
+        );
+    }
+
+    #[test]
+    fn test_lookup_system_brana_gates() {
+        let starmap = fixture_starmap();
+        let system_id = starmap.system_id_by_name("Brana").expect("Brana exists");
+
+        // Get neighbors from adjacency list
+        let neighbors = starmap.adjacency.get(&system_id);
+        assert!(neighbors.is_some(), "Brana should have gate connections");
+    }
+
+    #[test]
+    fn test_lookup_unknown_system() {
+        let starmap = fixture_starmap();
+        let result = starmap.system_id_by_name("NonExistentSystem12345");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_fuzzy_suggestions_for_unknown_system() {
+        let starmap = fixture_starmap();
+        let suggestions = starmap.fuzzy_system_matches("Nodd", 3); // typo of "Nod"
+                                                                   // Should suggest "Nod" as a close match
+        assert!(
+            !suggestions.is_empty(),
+            "Should provide suggestions for typos"
+        );
+    }
+
+    #[test]
+    fn test_neighbor_resolution() {
+        let starmap = fixture_starmap();
+        let system_id = starmap.system_id_by_name("Nod").expect("Nod exists");
+
+        // Get neighbors and resolve their names
+        if let Some(neighbor_ids) = starmap.adjacency.get(&system_id) {
+            for &neighbor_id in neighbor_ids {
+                let name = starmap.system_name(neighbor_id);
+                assert!(
+                    name.is_some(),
+                    "All neighbor IDs should resolve to system names"
+                );
+            }
+        }
+    }
+
+    // ==================== Response Construction Tests ====================
+
+    #[test]
+    fn test_scout_gates_response_serialization() {
+        let response = ScoutGatesResponse {
+            system: "Nod".to_string(),
+            system_id: 12345,
+            count: 2,
+            neighbors: vec![
+                Neighbor {
+                    name: "Brana".to_string(),
+                    id: 54321,
+                },
+                Neighbor {
+                    name: "H:2L2S".to_string(),
+                    id: 67890,
+                },
+            ],
+        };
+
+        let json = serde_json::to_value(&response).unwrap();
+        assert_eq!(json["system"], "Nod");
+        assert_eq!(json["system_id"], 12345);
+        assert_eq!(json["count"], 2);
+        assert!(json["neighbors"].is_array());
+        assert_eq!(json["neighbors"].as_array().unwrap().len(), 2);
+    }
+
+    #[test]
+    fn test_response_enum_success_serialization() {
+        let inner = ScoutGatesResponse {
+            system: "Nod".to_string(),
+            system_id: 1,
+            count: 0,
+            neighbors: vec![],
+        };
+        let response = Response::Success(LambdaResponse::new(inner));
+        let json = serde_json::to_value(&response).unwrap();
+
+        // LambdaResponse uses #[serde(flatten)] on data, so fields are at root level
+        assert_eq!(json["content_type"], "application/json");
+        assert_eq!(json["system"], "Nod");
+        assert_eq!(json["system_id"], 1);
+    }
+
+    #[test]
+    fn test_response_enum_error_serialization() {
+        let error = ProblemDetails::unknown_system("BadSystem", &["Nod".to_string()], "req-123");
+        let response = Response::Error(error);
+        let json = serde_json::to_value(&response).unwrap();
+
+        assert_eq!(json["status"], 404);
+        assert!(json["title"].as_str().unwrap().contains("Unknown"));
+    }
+}

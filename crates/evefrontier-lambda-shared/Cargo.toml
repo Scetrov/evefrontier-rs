@@ -6,6 +6,11 @@ authors.workspace = true
 license.workspace = true
 description = "Shared infrastructure for EveFrontier AWS Lambda functions"
 
+[features]
+default = []
+# Enable test utilities for cross-crate testing
+test-utils = ["dep:tempfile"]
+
 [dependencies]
 evefrontier-lib = { path = "../evefrontier-lib" }
 serde.workspace = true
@@ -16,6 +21,8 @@ tracing-subscriber = { workspace = true, features = ["json"] }
 http.workspace = true
 lambda_runtime.workspace = true
 rusqlite = { workspace = true, features = ["bundled", "serialize"] }
+tempfile = { workspace = true, optional = true }
 
 [dev-dependencies]
 tokio.workspace = true
+tempfile.workspace = true
