@@ -73,20 +73,13 @@ pub fn fixture_index_bytes() -> &'static [u8] {
     static BYTES: OnceLock<Vec<u8>> = OnceLock::new();
     BYTES.get_or_init(|| {
         let index = fixture_spatial_index();
-        // Save to a temp file and read back since SpatialIndex uses file-based save.
-        // Use a per-process filename to reduce collision risk between concurrent test runs.
-        let temp_path =
-            std::env::temp_dir().join(format!("test_spatial_index-{}.bin", std::process::id()));
-        index.save(&temp_path).expect("index save should succeed");
-        let bytes = std::fs::read(&temp_path).expect("index read should succeed");
-        // Best-effort cleanup: remove the temporary file after reading its contents.
-        if let Err(err) = std::fs::remove_file(&temp_path) {
-            eprintln!(
-                "warning: failed to remove temporary spatial index file {:?}: {}",
-                temp_path, err
-            );
-        }
-        bytes
+        // Use tempfile crate for RAII-based cleanup that guarantees file removal
+        // when the NamedTempFile is dropped, even in failure scenarios.
+        let temp_file = tempfile::NamedTempFile::new().expect("failed to create temporary file");
+        let temp_path = temp_file.path();
+        index.save(temp_path).expect("index save should succeed");
+        // Read bytes before temp_file is dropped (which deletes the file)
+        std::fs::read(temp_path).expect("index read should succeed")
     })
 }
 
