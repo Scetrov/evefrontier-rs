@@ -17,12 +17,14 @@ static DIJKSTRA_REQUEST: Lazy<RouteRequest> = Lazy::new(|| RouteRequest {
     goal: "Brana".to_string(),
     algorithm: RouteAlgorithm::Dijkstra,
     constraints: RouteConstraints::default(),
+    spatial_index: None,
 });
 static ASTAR_HYBRID_REQUEST: Lazy<RouteRequest> = Lazy::new(|| RouteRequest {
     start: "Nod".to_string(),
     goal: "Brana".to_string(),
     algorithm: RouteAlgorithm::AStar,
     constraints: RouteConstraints::default(),
+    spatial_index: None,
 });
 static ASTAR_SPATIAL_REQUEST: Lazy<RouteRequest> = Lazy::new(|| RouteRequest {
     start: "Nod".to_string(),
@@ -33,6 +35,7 @@ static ASTAR_SPATIAL_REQUEST: Lazy<RouteRequest> = Lazy::new(|| RouteRequest {
         avoid_gates: true,
         ..RouteConstraints::default()
     },
+    spatial_index: None,
 });
 
 fn benchmark_pathfinding(c: &mut Criterion) {
