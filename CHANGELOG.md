@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 
 ## Unreleased
+
+- 2025-12-28 - Scetrov - [fix] - Address PR #29 review comments: standardize authors to use workspace inheritance, fix spatial_index_arc() return type
+- 2025-12-28 - Scetrov - [feature] - Add enhanced output format with system details (planets, moons, temperature)
+- 2025-12-28 - Scetrov - [feature] - Add planet_count and moon_count to SystemMetadata loaded from Planets/Moons tables
+- 2025-12-28 - Scetrov - [style] - Update CLI banner with sci-fi glitch/neon style, cyan border and orange text
+- 2025-12-28 - Scetrov - [fix] - Load spatial index for route commands (reduces route time from ~14.7s to ~6.7s)
+- 2025-12-28 - Scetrov - [fix] - Suppress invalid star luminosity warning for black hole systems (IDs 30000001-30000003)
+- 2025-12-28 - Scetrov - [refactor] - Add spatial_index field to RouteRequest for pre-loaded index injection
+- 2025-12-28 - Scetrov - [style] - Standardize branding from "EveFrontier" to "EVE Frontier" across codebase
 - 2025-12-30 - auto-llm:copilot - [docs] - Created comprehensive docs/RELEASE.md (870+ lines) documenting complete release workflow
 - 2025-12-30 - auto-llm:copilot - [docs] - Documented GPG-signed tags with key setup, generation, and keyserver publication
 - 2025-12-30 - auto-llm:copilot - [docs] - Added cosign binary signing procedures: key-based for local releases, keyless (OIDC) for CI
