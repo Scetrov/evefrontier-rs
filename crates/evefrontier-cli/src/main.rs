@@ -390,24 +390,36 @@ impl OutputFormat {
 
                     // Print details line if not the last step
                     if i + 1 < len {
-                        let temp_str = step
-                            .min_external_temp
-                            .map(|t| format!("{}min {:.2}K{}", cyan, t, gray))
-                            .unwrap_or_else(|| format!("{}temp N/A{}", gray, gray));
+                        // Build stat parts, omitting zeros
+                        let mut parts: Vec<String> = Vec::new();
+
+                        // Temperature (always show if available)
+                        if let Some(t) = step.min_external_temp {
+                            parts.push(format!("{}min {:>7.2}K{}", cyan, t, reset));
+                        }
+
+                        // Planets (omit if zero)
                         let planets = step.planet_count.unwrap_or(0);
+                        if planets > 0 {
+                            let label = if planets == 1 { "Planet" } else { "Planets" };
+                            parts.push(format!("{}{:>2} {}{}", green, planets, label, reset));
+                        }
+
+                        // Moons (omit if zero)
                         let moons = step.moon_count.unwrap_or(0);
-                        println!(
-                            " {gray}│ [{reset}{}{gray}, {green}{} Planet{}{gray}, {blue}{} Moon{}{gray}]{reset}",
-                            temp_str,
-                            planets,
-                            if planets == 1 { "" } else { "s" },
-                            moons,
-                            if moons == 1 { "" } else { "s" },
-                            gray = gray,
-                            green = green,
-                            blue = blue,
-                            reset = reset
-                        );
+                        if moons > 0 {
+                            let label = if moons == 1 { "Moon" } else { "Moons" };
+                            parts.push(format!("{}{:>2} {}{}", blue, moons, label, reset));
+                        }
+
+                        if !parts.is_empty() {
+                            println!(
+                                " {gray}│ [{reset}{}{gray}]{reset}",
+                                parts.join(&format!("{gray}, {reset}")),
+                                gray = gray,
+                                reset = reset
+                            );
+                        }
                     }
                 }
 
