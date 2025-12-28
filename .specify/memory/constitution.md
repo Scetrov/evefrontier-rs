@@ -1,15 +1,18 @@
 <!--
-SYNC IMPACT REPORT: Constitution v1.0.0
+SYNC IMPACT REPORT: Constitution v1.1.0
 ===========================================
-- Version: 1.0.0 (initial ratification)
-- New principles: 7 (TDD-First, Library-First, ADR Documentation, Clean Code, Security-First, Testing Tiers, Refactoring & Technical Debt)
-- Governance structure: Amendments via RFC-style ADR, version semver, ratification required
+- Version change: 1.0.0 → 1.1.0
+- Modified sections:
+  - "Branching & PR Workflow" expanded with planning branch requirement
+- Added sections:
+  - None (expanded existing section)
+- Removed sections:
+  - None
 - Templates requiring updates:
-  ✅ plan-template.md (ensure TDD & ADR checks)
-  ✅ spec-template.md (require test scenarios)
-  ✅ tasks-template.md (add TDD, ADR, security task types)
-  ✅ commands/speckit.constitution.prompt.md (updated context)
-- No intentionally deferred placeholders
+  ✅ plan-template.md (branch field already present; workflow guidance aligned)
+  ✅ spec-template.md (no changes needed)
+  ✅ tasks-template.md (no changes needed)
+- Follow-up TODOs: None
 -->
 
 # EveFrontier Rust Workspace Constitution
@@ -175,8 +178,12 @@ refactorings are easier to review and less risky than large rewrites.
 
 ### Branching & PR Workflow
 
-- Feature branches MUST use naming: `feature/<short-description>` or `fix/<short-description>`
-  (e.g., `feature/fuzzy-system-match`)
+- **Planning MUST include branch creation**: Before implementation begins, developers MUST create
+  and switch to a feature branch with a descriptive name. This applies to both manual workflows
+  and AI-assisted planning (e.g., `/speckit.plan` MUST create or switch to the feature branch).
+- Feature branches MUST use naming: `feature/<short-description>`, `fix/<short-description>`, or
+  `docs/<spec-number>-<short-description>` (e.g., `feature/fuzzy-system-match`, `docs/003-lambda-infrastructure-docs`)
+- Branch names MUST be lowercase, hyphen-separated, and descriptive of the change scope
 - All PRs MUST include a descriptive title and link to related issues
 - PRs MUST pass all CI checks (format, clippy, tests, security audit) before review is requested
 - PRs MUST include updated `CHANGELOG.md` entry under Unreleased with date, author, and [manual] or
@@ -262,6 +269,6 @@ Repeated exceptions indicate the Constitution should be amended.
 
 ---
 
-**Version**: 1.0.0 | **Ratified**: 2025-12-05 | **Last Amended**: 2025-12-05
+**Version**: 1.1.0 | **Ratified**: 2025-12-05 | **Last Amended**: 2025-12-28
 
 For runtime development guidance, see `.github/copilot-instructions.md` and `CONTRIBUTING.md`.
