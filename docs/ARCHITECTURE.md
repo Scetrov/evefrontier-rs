@@ -46,9 +46,9 @@ graph LR
 
         subgraph Lambdas["AWS Lambda Functions"]
             SHARED[evefrontier-lambda-shared]
-            ROUTE[lambda-route]
-            GATES[lambda-scout-gates]
-            RANGE[lambda-scout-range]
+            ROUTE[evefrontier-lambda-route]
+            GATES[evefrontier-lambda-scout-gates]
+            RANGE[evefrontier-lambda-scout-range]
         end
     end
 
@@ -129,7 +129,7 @@ graph TD
 | `graph.rs`       | Build adjacency graphs                 | `build_gate_graph`, `build_spatial_graph`, `build_hybrid_graph` |
 | `path.rs`        | Pathfinding algorithms                 | `find_route_bfs`, `find_route_dijkstra`, `find_route_a_star`    |
 | `routing.rs`     | High-level route planning              | `plan_route`, `RouteRequest`, `RoutePlan`                       |
-| `spatial.rs`     | KD-tree spatial index                  | `SpatialIndex`, `build_spatial_index`, `load_spatial_index`     |
+| `spatial.rs`     | KD-tree spatial index                  | `SpatialIndex`, `SpatialIndex::build`, `try_load_spatial_index` |
 | `output.rs`      | Output formatting                      | `RouteSummary`, `RouteStep`, `RouteOutputKind`                  |
 | `temperature.rs` | Temperature constraint helpers         | Temperature filtering predicates                                |
 

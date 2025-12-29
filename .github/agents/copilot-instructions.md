@@ -1,6 +1,6 @@
 # evefrontier-rs Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2025-12-28
+Partially auto-generated from feature plans; manual additions allowed between MANUAL ADDITIONS markers. Last updated: 2025-12-29
 
 ## Active Technologies
 - Markdown with Mermaid syntax (no Rust code changes required) + Mermaid (renders natively in GitHub, VS Code, most Markdown viewers) (006-architecture-diagrams)
