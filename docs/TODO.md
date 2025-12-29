@@ -288,8 +288,12 @@ Tasks are grouped by domain; checkboxes track completion status.
   - SBOM generation in CycloneDX format via cargo-sbom
   - Automated GitHub Release creation with all artifacts
   - All actions pinned to full commit SHAs for supply chain security
-- [ ] Add architecture diagrams or sequence diagrams illustrating data flow between downloader,
+- [x] Add architecture diagrams or sequence diagrams illustrating data flow between downloader,
       loader, graph, CLI, and Lambda components.
+  - Created comprehensive `docs/ARCHITECTURE.md` with 7 Mermaid diagrams
+  - Component Overview, Module Dependencies, Dataset Download Flow
+  - Starmap Load Flow, Route Planning Flow, CLI Sequence, Lambda Cold-Start Sequence
+  - Cross-referenced from README.md and docs/README.md
 - [x] Provide onboarding steps in `docs/INITIAL_SETUP.md` once the workspace scaffolding stabilizes
       (update as tasks complete).
 - [x] Extend `docs/USAGE.md` with KD-tree index usage and build instructions. - Added `index-build`
