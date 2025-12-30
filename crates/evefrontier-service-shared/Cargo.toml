@@ -33,5 +33,8 @@ metrics-exporter-prometheus = "0.16"
 # Observability: Request ID generation
 uuid = { version = "1.11", features = ["v7"] }
 
+# Observability: Timestamp formatting
+chrono.workspace = true
+
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
