@@ -1,0 +1,41 @@
+# Clippy Configuration for evefrontier-rs
+# See: https://doc.rust-lang.org/clippy/lint_configuration.html
+#
+# This configuration sets thresholds for code complexity lints.
+# Per TODO.md, we target cognitive complexity < 15.
+#
+# Note: The complexity lints (cognitive_complexity, too_many_lines) are in the
+# 'restriction' or 'pedantic' category and need to be explicitly enabled via
+# CLI flags or attributes. The configuration here only sets the thresholds.
+# Use `pnpm nx run-many -t complexity` or the CI job to check complexity.
+
+# Cognitive complexity threshold (replaces deprecated cyclomatic_complexity)
+# Default is 25, we set it to 15 for stricter maintainability requirements.
+# This lint is in the 'restriction' category and must be explicitly enabled.
+cognitive-complexity-threshold = 15
+
+# Maximum number of lines in a function body (default: 100)
+# Helps ensure functions remain focused and readable.
+# This lint is in the 'pedantic' category and must be explicitly enabled.
+too-many-lines-threshold = 100
+
+# Maximum nesting depth for control flow statements (default: 4)
+# Note: excessive_nesting is enabled by default in the 'complexity' category.
+# Setting to 8 to accommodate existing code patterns while still catching
+# egregiously nested code. Consider reducing this threshold as code is refactored.
+excessive-nesting-threshold = 8
+
+# Maximum number of arguments a function can have (default: 7)
+# Too many arguments suggest the function may need refactoring.
+too-many-arguments-threshold = 8
+
+# Maximum struct fields (used by struct_excessive_bools)
+# Default is 3, we allow up to 4 bool fields before warning.
+max-struct-bools = 4
+
+# Maximum function parameters that can be bools (used by fn_params_excessive_bools)
+# Default is 3, we allow up to 3 bool parameters.
+max-fn-params-bools = 3
+
+# MSRV (Minimum Supported Rust Version) - matches .rust-toolchain
+msrv = "1.91.1"

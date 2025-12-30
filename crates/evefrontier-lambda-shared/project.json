@@ -33,6 +33,13 @@
         "command": "cargo clippy -p evefrontier-lambda-shared --all-targets -- -D warnings",
         "cwd": "{workspaceRoot}"
       }
+    },
+    "complexity": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "cargo clippy -p evefrontier-lambda-shared --all-targets -- -W clippy::cognitive_complexity -W clippy::too_many_lines -W clippy::excessive_nesting -D warnings",
+        "cwd": "{workspaceRoot}"
+      }
     }
   }
 }

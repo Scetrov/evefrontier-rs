@@ -483,6 +483,18 @@ Local checks
 
   cargo clippy --all-targets --all-features -- -D warnings
 
+- Run code complexity analysis (checks against configured thresholds in `clippy.toml`):
+
+  pnpm nx run-many -t complexity --exclude evefrontier-rs
+
+  Or using cargo directly:
+
+  cargo clippy --workspace --all-targets -- \
+    -W clippy::cognitive_complexity \
+    -W clippy::too_many_lines \
+    -W clippy::excessive_nesting \
+    -D warnings
+
 - Format and lint markdown:
 
   pnpm install pnpm run lint:md

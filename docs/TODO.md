@@ -323,39 +323,70 @@ Tasks are grouped by domain; checkboxes track completion status.
 - [ ] Build Terraform deployment solution to deploy the Lambda functions and document per
       [ADR 0007](adrs/0007-devsecops-practices.md) secrets management requirements.
 - [ ] Bake AWS deployment into GitHub CI runner using GitHub Secrets as a secrets source.
-- [ ] Add Rust based cyclomatic compexity scanning to ensure that code complexity remains within
+- [x] Add Rust based cyclomatic complexity scanning to ensure that code complexity remains within
       acceptable bounds (i.e. < 15)
+  - Created `clippy.toml` with complexity thresholds: cognitive_complexity=15, too_many_lines=100,
+    excessive_nesting=8, too_many_arguments=8
+  - Added `complexity-check` CI job to `.github/workflows/ci.yml` with clippy lints enabled
+  - Added `complexity` Nx target to all 6 Rust crates in `project.json` files
+  - Updated `nx.json` targetDefaults and cacheableOperations to include complexity checks
+  - Documented complexity rules in `docs/CODING_GUIDELINES.md` with thresholds and remediation tips
+  - Added complexity check command examples to `CONTRIBUTING.md`
 
 ## Docker Microservices & Kubernetes Deployment
 
-- [ ] Create ADR documenting containerization and Kubernetes deployment strategy, covering security
+- [x] Create ADR documenting containerization and Kubernetes deployment strategy, covering security
       practices, image signing, and operational requirements.
-- [ ] Create Dockerfiles for each microservice (route, scout-gates, scout-range) using multi-stage
+  - Created `docs/adrs/0014-containerization-strategy.md`
+- [x] Create Dockerfiles for each microservice (route, scout-gates, scout-range) using multi-stage
       builds with Distroless base images for minimal runtime containers.
-- [ ] Ensure microservice scope aligns with Lambda function boundaries: each container should
+  - Created multi-stage Dockerfiles for all three microservices
+  - Base image: `gcr.io/distroless/cc-debian12:nonroot` (~20MB)
+  - Uses cargo-zigbuild for musl static linking
+- [x] Ensure microservice scope aligns with Lambda function boundaries: each container should
       implement a single, well-defined API endpoint matching its Lambda equivalent.
-- [ ] Configure Traefik as the API Gateway for the microservices stack:
-  - [ ] Define Traefik routing rules and middleware (rate limiting, authentication, etc.)
-  - [ ] Set up service discovery and load balancing configuration
-  - [ ] Document Traefik ingress configuration and TLS/certificate management
-- [ ] Create Helm chart for Kubernetes deployment:
-  - [ ] Chart structure with values.yaml for configuration (replicas, resource limits, etc.)
-  - [ ] Kubernetes manifests for deployments, services, and config maps
-  - [ ] Traefik ingress resources and routing configuration
-  - [ ] Health check and readiness probe definitions
-  - [ ] Documentation for chart installation and configuration options
-- [ ] Add CI/CD pipeline for building and publishing Docker images per
+  - `evefrontier-service-route`, `evefrontier-service-scout-gates`, `evefrontier-service-scout-range`
+  - All use `evefrontier-service-shared` for common HTTP infrastructure (axum-based)
+- [x] Configure Traefik as the API Gateway for the microservices stack:
+  - [x] Define Traefik routing rules and middleware (rate limiting, authentication, etc.)
+    - Traefik IngressRoute in `charts/evefrontier/templates/ingress.yaml`
+    - Rate limiting and CORS middleware in `charts/evefrontier/templates/middleware.yaml`
+  - [x] Set up service discovery and load balancing configuration
+    - Kubernetes Services with ClusterIP, path-based routing via IngressRoute
+  - [x] Document Traefik ingress configuration and TLS/certificate management
+    - Documented in `charts/evefrontier/README.md`
+- [x] Create Helm chart for Kubernetes deployment:
+  - [x] Chart structure with values.yaml for configuration (replicas, resource limits, etc.)
+    - `charts/evefrontier/Chart.yaml` and `charts/evefrontier/values.yaml`
+  - [x] Kubernetes manifests for deployments, services, and config maps
+    - `deployment-*.yaml`, `service-*.yaml`, `configmap.yaml`, `pvc.yaml`
+  - [x] Traefik ingress resources and routing configuration
+    - `ingress.yaml` with both IngressRoute (Traefik) and standard Ingress support
+  - [x] Health check and readiness probe definitions
+    - Liveness (`/health/live`) and readiness (`/health/ready`) probes configured
+  - [x] Documentation for chart installation and configuration options
+    - Comprehensive `charts/evefrontier/README.md` with examples
+- [x] Add CI/CD pipeline for building and publishing Docker images per
       [ADR 0007](adrs/0007-devsecops-practices.md):
-  - [ ] Multi-architecture builds (amd64, arm64) for container images
-  - [ ] Image scanning for vulnerabilities (e.g., Trivy, Grype) integrated into CI workflow
-  - [ ] Image signing with cosign for supply chain security
-  - [ ] Push to container registry with semantic versioning tags
-  - [ ] Generate and attach SBOM (Software Bill of Materials) to images
-- [ ] Document deployment procedures in `docs/DEPLOYMENT.md`:
-  - [ ] Local development with Docker Compose
-  - [ ] Kubernetes deployment using Helm
-  - [ ] Configuration and secrets management for containerized environments
+  - [x] Multi-architecture builds (amd64, arm64) for container images
+    - cargo-zigbuild for cross-compilation in `.github/workflows/docker-release.yml`
+  - [x] Image scanning for vulnerabilities (e.g., Trivy, Grype) integrated into CI workflow
+    - Trivy scan with CRITICAL,HIGH severity blocking
+  - [x] Image signing with cosign for supply chain security
+    - Keyless cosign signing using GitHub OIDC identity
+  - [x] Push to container registry with semantic versioning tags
+    - ghcr.io with v0.1.0, 0.1, 0, latest tags
+  - [x] Generate and attach SBOM (Software Bill of Materials) to images
+    - syft generates SPDX and CycloneDX SBOMs
+- [x] Document deployment procedures in `docs/DEPLOYMENT.md`:
+  - [x] Local development with Docker Compose
+    - `docker-compose.yml` with Traefik reverse proxy
+  - [x] Kubernetes deployment using Helm
+    - Helm installation instructions and examples
+  - [x] Configuration and secrets management for containerized environments
+    - values.yaml configuration, ConfigMap, ServiceAccount
   - [ ] Observability setup (metrics, logs, traces) for microservices
+    - Tracing infrastructure exists but metrics/observability documentation pending
 
 ---
 

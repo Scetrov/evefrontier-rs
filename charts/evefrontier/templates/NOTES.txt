@@ -1,0 +1,112 @@
+Thank you for installing {{ .Chart.Name }}.
+
+Your release is named {{ .Release.Name }}.
+
+=== SERVICES ===
+
+The following services have been deployed:
+
+{{- if .Values.route.enabled }}
+  - Route Service: {{ include "evefrontier.fullname" . }}-route
+    Replicas: {{ .Values.route.replicaCount }}
+{{- end }}
+
+{{- if .Values.scoutGates.enabled }}
+  - Scout Gates Service: {{ include "evefrontier.fullname" . }}-scout-gates
+    Replicas: {{ .Values.scoutGates.replicaCount }}
+{{- end }}
+
+{{- if .Values.scoutRange.enabled }}
+  - Scout Range Service: {{ include "evefrontier.fullname" . }}-scout-range
+    Replicas: {{ .Values.scoutRange.replicaCount }}
+{{- end }}
+
+=== ACCESS ===
+
+{{- if .Values.ingress.enabled }}
+
+Your services are accessible via ingress at:
+
+  Host: {{ .Values.ingress.host }}
+  
+  Endpoints:
+{{- if .Values.route.enabled }}
+    - POST https://{{ .Values.ingress.host }}/api/v1/route
+{{- end }}
+{{- if .Values.scoutGates.enabled }}
+    - POST https://{{ .Values.ingress.host }}/api/v1/scout/gates
+{{- end }}
+{{- if .Values.scoutRange.enabled }}
+    - POST https://{{ .Values.ingress.host }}/api/v1/scout/range
+{{- end }}
+
+{{- else }}
+
+Ingress is not enabled. To access the services, use port-forwarding:
+
+{{- if .Values.route.enabled }}
+
+  # Route Service
+  kubectl port-forward svc/{{ include "evefrontier.fullname" . }}-route 8080:{{ .Values.route.service.port }} -n {{ .Release.Namespace }}
+  curl -X POST http://localhost:8080/api/v1/route -H "Content-Type: application/json" -d '{"origin":"Nod","destination":"Brana"}'
+{{- end }}
+
+{{- if .Values.scoutGates.enabled }}
+
+  # Scout Gates Service
+  kubectl port-forward svc/{{ include "evefrontier.fullname" . }}-scout-gates 8081:{{ .Values.scoutGates.service.port }} -n {{ .Release.Namespace }}
+  curl -X POST http://localhost:8081/api/v1/scout/gates -H "Content-Type: application/json" -d '{"system":"Nod"}'
+{{- end }}
+
+{{- if .Values.scoutRange.enabled }}
+
+  # Scout Range Service
+  kubectl port-forward svc/{{ include "evefrontier.fullname" . }}-scout-range 8082:{{ .Values.scoutRange.service.port }} -n {{ .Release.Namespace }}
+  curl -X POST http://localhost:8082/api/v1/scout/range -H "Content-Type: application/json" -d '{"system":"Nod","radius":50}'
+{{- end }}
+
+{{- end }}
+
+=== HEALTH CHECKS ===
+
+All services expose health endpoints:
+
+  - GET /health/live  - Liveness probe (is the service running?)
+  - GET /health/ready - Readiness probe (is the service ready for traffic?)
+
+=== DATA ===
+
+{{- if .Values.persistence.enabled }}
+
+Persistent storage is enabled.
+  PVC: {{ include "evefrontier.pvcName" . }}
+  Size: {{ .Values.persistence.size }}
+  Mount Path: {{ .Values.persistence.mountPath }}
+
+Make sure the EVE Frontier dataset (static_data.db) is present at:
+  {{ .Values.global.dataPath }}
+
+{{- else }}
+
+WARNING: Persistence is disabled! Data will not survive pod restarts.
+Consider enabling persistence in your values.yaml:
+
+  persistence:
+    enabled: true
+    size: 1Gi
+
+{{- end }}
+
+=== TROUBLESHOOTING ===
+
+  # Check pod status
+  kubectl get pods -l "app.kubernetes.io/instance={{ .Release.Name }}" -n {{ .Release.Namespace }}
+
+  # View logs
+  kubectl logs -l "app.kubernetes.io/instance={{ .Release.Name }}" -n {{ .Release.Namespace }} --all-containers
+
+  # Check events
+  kubectl get events -n {{ .Release.Namespace }} --sort-by='.lastTimestamp'
+
+For more information, visit:
+  https://github.com/evefrontier/evefrontier-rs

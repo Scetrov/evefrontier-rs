@@ -1,0 +1,47 @@
+{
+  "name": "evefrontier-service-scout-gates",
+  "projectType": "application",
+  "sourceRoot": "crates/evefrontier-service-scout-gates/src",
+  "tags": ["scope:service", "type:app"],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "cargo build -p evefrontier-service-scout-gates",
+        "cwd": "{workspaceRoot}"
+      },
+      "outputs": ["{workspaceRoot}/target/debug/evefrontier-service-scout-gates"]
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["build"],
+      "options": {
+        "command": "cargo test -p evefrontier-service-scout-gates",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "cargo fmt -p evefrontier-service-scout-gates -- --check",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "clippy": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["build"],
+      "options": {
+        "command": "cargo clippy -p evefrontier-service-scout-gates --all-targets --all-features -- -D warnings",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "complexity": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["build"],
+      "options": {
+        "command": "cargo clippy -p evefrontier-service-scout-gates --all-targets -- -W clippy::cognitive_complexity -W clippy::too_many_lines",
+        "cwd": "{workspaceRoot}"
+      }
+    }
+  }
+}

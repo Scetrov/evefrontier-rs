@@ -54,6 +54,14 @@ procedures to comply with the [Constitution v1.1.0](../README.md) and
     - [Yanking a Release](#yanking-a-release)
     - [Revoking Signatures](#revoking-signatures)
     - [Emergency Response](#emergency-response)
+  - [Container Image Release](#container-image-release)
+    - [Automated CI/CD Workflow](#automated-cicd-workflow)
+    - [Published Images](#published-images)
+    - [Image Tags](#image-tags)
+    - [Manual Image Build (Local)](#manual-image-build-local)
+    - [Verifying Image Signatures](#verifying-image-signatures)
+    - [Inspecting Image SBOM](#inspecting-image-sbom)
+    - [Image Security](#image-security)
   - [CI Integration Notes](#ci-integration-notes)
     - [GitHub Actions Workflow Structure](#github-actions-workflow-structure)
     - [GPG Key Management in CI](#gpg-key-management-in-ci)
@@ -739,6 +747,97 @@ For security vulnerabilities:
 2. Coordinate with downstream users before public announcement
 3. Prepare a patch release before disclosing
 4. Update CHANGELOG.md with security advisory reference
+
+---
+
+## Container Image Release
+
+Container images for the microservices are automatically built and published to GitHub Container
+Registry (ghcr.io) when a version tag is pushed.
+
+### Automated CI/CD Workflow
+
+The `.github/workflows/docker-release.yml` workflow handles:
+
+1. **Multi-architecture builds**: x86_64 and aarch64 Linux
+2. **Vulnerability scanning**: Trivy with CRITICAL/HIGH severity blocking
+3. **Keyless signing**: cosign with GitHub OIDC identity
+4. **SBOM generation**: SPDX and CycloneDX formats with syft
+
+### Published Images
+
+| Image | Description |
+|-------|-------------|
+| `ghcr.io/rslater-cs/evefrontier-service-route` | Route planning service |
+| `ghcr.io/rslater-cs/evefrontier-service-scout-gates` | Gate neighbor discovery |
+| `ghcr.io/rslater-cs/evefrontier-service-scout-range` | Spatial range queries |
+
+### Image Tags
+
+- `v0.1.0` - Specific version
+- `0.1` - Minor version (latest patch)
+- `0` - Major version (latest minor)
+- `latest` - Latest stable release (non-prerelease only)
+
+### Manual Image Build (Local)
+
+```bash
+# Build for local testing
+docker build -t evefrontier-service-route:local -f crates/evefrontier-service-route/Dockerfile .
+
+# Build all services with Docker Compose
+docker compose build
+```
+
+### Verifying Image Signatures
+
+All images are signed using cosign with GitHub OIDC (keyless signing):
+
+```bash
+# Install cosign
+# macOS: brew install cosign
+# Linux: See https://docs.sigstore.dev/cosign/installation/
+
+# Verify image signature
+cosign verify \
+  --certificate-identity-regexp=".*" \
+  --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
+  ghcr.io/rslater-cs/evefrontier-service-route:v0.1.0
+
+# Verify all three images
+for svc in route scout-gates scout-range; do
+  echo "Verifying evefrontier-service-${svc}..."
+  cosign verify \
+    --certificate-identity-regexp=".*" \
+    --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
+    "ghcr.io/rslater-cs/evefrontier-service-${svc}:v0.1.0"
+done
+```
+
+### Inspecting Image SBOM
+
+SBOMs are generated in both SPDX and CycloneDX formats and attached as workflow artifacts:
+
+```bash
+# Download SBOMs from GitHub Actions artifacts
+gh run download <run-id> -n sbom-route
+
+# View SPDX SBOM
+cat sbom-route.spdx.json | jq '.packages[].name'
+
+# View CycloneDX SBOM
+cat sbom-route.cyclonedx.json | jq '.components[].name'
+```
+
+### Image Security
+
+The container images follow security best practices:
+
+- **Base image**: `gcr.io/distroless/cc-debian12:nonroot` (~20MB)
+- **User**: Runs as non-root user (UID 65532)
+- **Filesystem**: Read-only root filesystem
+- **Capabilities**: All capabilities dropped
+- **Scanning**: Trivy scans block on CRITICAL/HIGH vulnerabilities
 
 ---
 

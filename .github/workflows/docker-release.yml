@@ -1,0 +1,352 @@
+# Docker Container Image Build and Release Workflow
+#
+# This workflow builds, scans, signs, and publishes container images
+# for the EVE Frontier microservices when a version tag is pushed.
+#
+# Security features:
+# - Trivy vulnerability scanning (CRITICAL, HIGH severity)
+# - Cosign keyless signing using GitHub OIDC
+# - SBOM generation with syft
+# - Multi-architecture builds (amd64, arm64)
+#
+# Triggered on: Push of tags matching v*
+#
+# Required permissions:
+# - contents: read
+# - packages: write
+# - id-token: write (for cosign OIDC)
+# - security-events: write (for Trivy results)
+
+name: Docker Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Version tag to build (e.g., v0.1.0)'
+        required: true
+        type: string
+
+# Workflow-level permissions: minimal by default (principle of least privilege)
+# Each job explicitly declares the permissions it needs
+permissions: {}
+
+env:
+  REGISTRY: ghcr.io
+  # Use rslater-cs namespace until official org is available
+  IMAGE_PREFIX: ghcr.io/rslater-cs
+
+jobs:
+  build-binaries:
+    name: Build Binaries
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    
+    strategy:
+      matrix:
+        target:
+          - x86_64-unknown-linux-musl
+          - aarch64-unknown-linux-musl
+        include:
+          - target: x86_64-unknown-linux-musl
+            arch: amd64
+          - target: aarch64-unknown-linux-musl
+            arch: arm64
+    
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ inputs.tag }}"
+          else
+            VERSION="${{ github.ref_name }}"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Building version: ${VERSION}"
+      
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-action@1.91.1
+        with:
+          toolchain: stable
+          targets: ${{ matrix.target }}
+      
+      - name: Install cargo-zigbuild
+        run: |
+          cargo install cargo-zigbuild
+      
+      - name: Install zig
+        uses: goto-bus-stop/setup-zig@7ab2955eb728f5440978d5824358023be3a2802d # v2.2.1
+        with:
+          version: 0.13.0
+      
+      - name: Build services
+        run: |
+          cargo zigbuild --release --target ${{ matrix.target }} \
+            -p evefrontier-service-route \
+            -p evefrontier-service-scout-gates \
+            -p evefrontier-service-scout-range
+      
+      - name: Create artifact directory
+        run: |
+          mkdir -p artifacts/${{ matrix.arch }}
+          cp target/${{ matrix.target }}/release/evefrontier-service-route artifacts/${{ matrix.arch }}/
+          cp target/${{ matrix.target }}/release/evefrontier-service-scout-gates artifacts/${{ matrix.arch }}/
+          cp target/${{ matrix.target }}/release/evefrontier-service-scout-range artifacts/${{ matrix.arch }}/
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: binaries-${{ matrix.arch }}
+          path: artifacts/${{ matrix.arch }}
+          retention-days: 1
+
+  build-images:
+    name: Build and Push Images
+    needs: build-binaries
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      security-events: write
+    
+    strategy:
+      matrix:
+        service:
+          - route
+          - scout-gates
+          - scout-range
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      
+      - name: Download amd64 binaries
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: binaries-amd64
+          path: artifacts/amd64
+      
+      - name: Download arm64 binaries
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: binaries-arm64
+          path: artifacts/arm64
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
+      
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@902fa8ec7d6ecbf8d84d538b9b233a880e428804 # v5.7.0
+        with:
+          images: ${{ env.IMAGE_PREFIX }}/evefrontier-service-${{ matrix.service }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable=${{ !contains(github.ref, '-') }}
+      
+      - name: Create multi-arch Dockerfile
+        run: |
+          cat > Dockerfile.multiarch <<'EOF'
+          FROM gcr.io/distroless/cc-debian12:nonroot
+          ARG TARGETARCH
+          ARG SERVICE
+          COPY artifacts/${TARGETARCH}/evefrontier-service-${SERVICE} /service
+          USER 65532:65532
+          EXPOSE 8080
+          ENTRYPOINT ["/service"]
+          EOF
+      
+      - name: Build and push multi-arch image
+        uses: docker/build-push-action@1dc73863535b631f98b2378be8619f83b136f4a0 # v6.17.0
+        with:
+          context: .
+          file: Dockerfile.multiarch
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            SERVICE=${{ matrix.service }}
+      
+      - name: Get image digest
+        id: digest
+        run: |
+          DIGEST=$(docker buildx imagetools inspect ${{ env.IMAGE_PREFIX }}/evefrontier-service-${{ matrix.service }}:${{ needs.build-binaries.outputs.version }} --format '{{.Digest}}')
+          echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
+          echo "Image digest: ${DIGEST}"
+
+  scan-images:
+    name: Scan Images
+    needs: [build-binaries, build-images]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    
+    strategy:
+      matrix:
+        service:
+          - route
+          - scout-gates
+          - scout-range
+    
+    steps:
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@76071ef0d7ec797419534a183b498b4d6366cf37 # v0.31.0
+        with:
+          image-ref: '${{ env.IMAGE_PREFIX }}/evefrontier-service-${{ matrix.service }}:${{ needs.build-binaries.outputs.version }}'
+          format: 'sarif'
+          output: 'trivy-results-${{ matrix.service }}.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+      
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results-${{ matrix.service }}.sarif'
+          category: 'trivy-${{ matrix.service }}'
+
+  sign-images:
+    name: Sign Images
+    needs: [build-binaries, build-images, scan-images]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    
+    strategy:
+      matrix:
+        service:
+          - route
+          - scout-gates
+          - scout-range
+    
+    steps:
+      - name: Install cosign
+        uses: sigstore/cosign-installer@3454372f43399081ed03b604cb2d021dabca52bb # v3.8.2
+      
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Sign container image
+        env:
+          COSIGN_EXPERIMENTAL: "true"
+        run: |
+          cosign sign --yes ${{ env.IMAGE_PREFIX }}/evefrontier-service-${{ matrix.service }}:${{ needs.build-binaries.outputs.version }}
+
+  generate-sbom:
+    name: Generate SBOM
+    needs: [build-binaries, build-images]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    
+    strategy:
+      matrix:
+        service:
+          - route
+          - scout-gates
+          - scout-range
+    
+    steps:
+      - name: Install syft
+        uses: anchore/sbom-action/download-syft@e11c554f704a0b820cbf8c51673f6945e0731532 # v0.20.0
+      
+      - name: Generate SBOM
+        run: |
+          syft ${{ env.IMAGE_PREFIX }}/evefrontier-service-${{ matrix.service }}:${{ needs.build-binaries.outputs.version }} \
+            -o spdx-json=sbom-${{ matrix.service }}.spdx.json \
+            -o cyclonedx-json=sbom-${{ matrix.service }}.cyclonedx.json
+      
+      - name: Upload SBOM artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: sbom-${{ matrix.service }}
+          path: |
+            sbom-${{ matrix.service }}.spdx.json
+            sbom-${{ matrix.service }}.cyclonedx.json
+          retention-days: 90
+
+  summary:
+    name: Release Summary
+    needs: [build-binaries, build-images, scan-images, sign-images, generate-sbom]
+    runs-on: ubuntu-latest
+    permissions: {}
+    if: always()
+    
+    steps:
+      - name: Generate summary
+        run: |
+          VERSION="${{ needs.build-binaries.outputs.version }}"
+          
+          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+          # Docker Release Summary
+          
+          **Version**: ${VERSION}
+          **Registry**: ghcr.io
+          
+          ## Images
+          
+          | Service | Image | Status |
+          |---------|-------|--------|
+          | route | \`${{ env.IMAGE_PREFIX }}/evefrontier-service-route:${VERSION}\` | ${{ needs.build-images.result == 'success' && '✅' || '❌' }} |
+          | scout-gates | \`${{ env.IMAGE_PREFIX }}/evefrontier-service-scout-gates:${VERSION}\` | ${{ needs.build-images.result == 'success' && '✅' || '❌' }} |
+          | scout-range | \`${{ env.IMAGE_PREFIX }}/evefrontier-service-scout-range:${VERSION}\` | ${{ needs.build-images.result == 'success' && '✅' || '❌' }} |
+          
+          ## Security
+          
+          | Check | Status |
+          |-------|--------|
+          | Trivy Scan | ${{ needs.scan-images.result == 'success' && '✅ Passed' || '❌ Failed' }} |
+          | Cosign Signing | ${{ needs.sign-images.result == 'success' && '✅ Signed' || '❌ Failed' }} |
+          | SBOM Generation | ${{ needs.generate-sbom.result == 'success' && '✅ Generated' || '❌ Failed' }} |
+          
+          ## Verification
+          
+          To verify image signatures:
+          
+          \`\`\`bash
+          # Install cosign
+          # https://docs.sigstore.dev/cosign/installation/
+          
+          # Verify signature
+          cosign verify --certificate-identity-regexp=".*" --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \\
+            ${{ env.IMAGE_PREFIX }}/evefrontier-service-route:${VERSION}
+          \`\`\`
+          
+          ## Pull Commands
+          
+          \`\`\`bash
+          docker pull ${{ env.IMAGE_PREFIX }}/evefrontier-service-route:${VERSION}
+          docker pull ${{ env.IMAGE_PREFIX }}/evefrontier-service-scout-gates:${VERSION}
+          docker pull ${{ env.IMAGE_PREFIX }}/evefrontier-service-scout-range:${VERSION}
+          \`\`\`
+          EOF

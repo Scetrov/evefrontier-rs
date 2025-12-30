@@ -1,15 +1,15 @@
-# Deploying EVE Frontier Lambda Functions
+# Deploying EVE Frontier Services
 
-This guide covers deploying the EVE Frontier Lambda functions to AWS using Terraform.
+This guide covers deploying EVE Frontier services using Docker Compose, Kubernetes with Helm, and
+AWS Lambda with Terraform.
 
 ## Table of Contents
 
-- [Prerequisites](#prerequisites)
-- [Quick Start](#quick-start)
-- [Building Lambda Binaries](#building-lambda-binaries)
+- [Deployment Options](#deployment-options)
+- [Docker Compose (Local Development)](#docker-compose-local-development)
+- [Kubernetes with Helm](#kubernetes-with-helm)
+- [AWS Lambda with Terraform](#aws-lambda-with-terraform)
 - [Configuration Reference](#configuration-reference)
-- [Deployment](#deployment)
-- [API Gateway Configuration](#api-gateway-configuration)
 - [Monitoring & Logging](#monitoring--logging)
 - [Operations](#operations)
 - [Troubleshooting](#troubleshooting)
@@ -17,7 +17,197 @@ This guide covers deploying the EVE Frontier Lambda functions to AWS using Terra
 
 ---
 
-## Prerequisites
+## Deployment Options
+
+| Option | Use Case | Prerequisites |
+|--------|----------|---------------|
+| Docker Compose | Local development, testing | Docker, Docker Compose |
+| Kubernetes + Helm | Production, cloud-native | K8s cluster, Helm 3.8+, Traefik |
+| AWS Lambda + Terraform | Serverless, pay-per-use | AWS account, Terraform 1.5+ |
+
+---
+
+## Docker Compose (Local Development)
+
+### Prerequisites
+
+- Docker 24.0+
+- Docker Compose v2
+- EVE Frontier dataset (`static_data.db`)
+
+### Quick Start
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/rslater-cs/evefrontier-rs.git
+cd evefrontier-rs
+
+# 2. Download the dataset
+cargo run -p evefrontier-cli -- download
+
+# 3. Copy dataset to data directory
+mkdir -p data
+cp ~/.cache/evefrontier_datasets/static_data.db data/
+
+# 4. Start services
+docker compose up -d
+
+# 5. Verify services are running
+curl http://localhost/api/v1/route -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"origin": "Nod", "destination": "Brana"}'
+```
+
+### Docker Compose Architecture
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                        Traefik                                │
+│                    (Reverse Proxy)                            │
+│                    localhost:80                               │
+└──────────────────────┬───────────────────────────────────────┘
+                       │
+          ┌────────────┼────────────┐
+          │            │            │
+          ▼            ▼            ▼
+     ┌─────────┐ ┌───────────┐ ┌───────────┐
+     │  route  │ │scout-gates│ │scout-range│
+     │  :8080  │ │   :8080   │ │   :8080   │
+     └────┬────┘ └─────┬─────┘ └─────┬─────┘
+          │            │            │
+          └────────────┴────────────┘
+                       │
+                       ▼
+               ┌──────────────┐
+               │ static_data.db│
+               │   (volume)    │
+               └──────────────┘
+```
+
+### Endpoints (Docker Compose)
+
+| Endpoint | Description |
+|----------|-------------|
+| `POST /api/v1/route` | Route planning between systems |
+| `POST /api/v1/scout/gates` | Gate-connected neighbors |
+| `POST /api/v1/scout/range` | Systems within spatial radius |
+| `GET /health/live` | Liveness probe (per-service) |
+| `GET /health/ready` | Readiness probe (per-service) |
+
+### Stopping Services
+
+```bash
+docker compose down
+```
+
+### Building Images Locally
+
+```bash
+# Build all services
+docker compose build
+
+# Build specific service
+docker compose build route
+```
+
+---
+
+## Kubernetes with Helm
+
+### Prerequisites
+
+- Kubernetes 1.24+
+- Helm 3.8+
+- Traefik Ingress Controller (recommended)
+- Persistent Volume provisioner
+
+### Installation
+
+```bash
+# Add the Helm repository (when available)
+helm repo add evefrontier https://evefrontier.github.io/charts
+helm repo update
+
+# Install with default values
+helm install evefrontier evefrontier/evefrontier
+
+# Install from local chart
+helm install evefrontier ./charts/evefrontier
+
+# Install in specific namespace
+helm install evefrontier ./charts/evefrontier -n evefrontier --create-namespace
+```
+
+### Configuration
+
+See `charts/evefrontier/values.yaml` for all options. Key configurations:
+
+```yaml
+# Production example
+route:
+  replicaCount: 3
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 512Mi
+
+ingress:
+  enabled: true
+  className: traefik
+  host: evefrontier.example.com
+  tls:
+    enabled: true
+    secretName: evefrontier-tls
+  traefik:
+    entryPoint: websecure
+    rateLimit:
+      enabled: true
+      average: 100
+      burst: 50
+
+persistence:
+  enabled: true
+  size: 1Gi
+  storageClass: standard
+```
+
+### Accessing Services
+
+```bash
+# With ingress enabled
+curl -X POST https://evefrontier.example.com/api/v1/route \
+  -H "Content-Type: application/json" \
+  -d '{"origin": "Nod", "destination": "Brana"}'
+
+# Port-forward for development
+kubectl port-forward svc/evefrontier-route 8080:8080
+curl -X POST http://localhost:8080/api/v1/route \
+  -H "Content-Type: application/json" \
+  -d '{"origin": "Nod", "destination": "Brana"}'
+```
+
+### Upgrading
+
+```bash
+helm upgrade evefrontier ./charts/evefrontier -f values.yaml
+```
+
+### Uninstalling
+
+```bash
+helm uninstall evefrontier
+# PVCs are retained by default; delete manually if needed
+kubectl delete pvc -l app.kubernetes.io/name=evefrontier
+```
+
+---
+
+## AWS Lambda with Terraform
+
+### Prerequisites
 
 ### Required Tools
 

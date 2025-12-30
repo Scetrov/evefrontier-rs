@@ -1,0 +1,120 @@
+{{- if .Values.ingress.enabled }}
+{{- if eq .Values.ingress.className "traefik" }}
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ include "evefrontier.fullname" . }}
+  labels:
+    {{- include "evefrontier.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  entryPoints:
+    - {{ .Values.ingress.traefik.entryPoint }}
+  routes:
+    {{- if .Values.route.enabled }}
+    - match: Host(`{{ .Values.ingress.host }}`) && PathPrefix(`/api/v1/route`)
+      kind: Rule
+      services:
+        - name: {{ include "evefrontier.fullname" . }}-route
+          port: {{ .Values.route.service.port }}
+      {{- if .Values.ingress.traefik.middlewares }}
+      middlewares:
+        {{- range .Values.ingress.traefik.middlewares }}
+        - name: {{ . }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+    {{- if .Values.scoutGates.enabled }}
+    - match: Host(`{{ .Values.ingress.host }}`) && PathPrefix(`/api/v1/scout/gates`)
+      kind: Rule
+      services:
+        - name: {{ include "evefrontier.fullname" . }}-scout-gates
+          port: {{ .Values.scoutGates.service.port }}
+      {{- if .Values.ingress.traefik.middlewares }}
+      middlewares:
+        {{- range .Values.ingress.traefik.middlewares }}
+        - name: {{ . }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+    {{- if .Values.scoutRange.enabled }}
+    - match: Host(`{{ .Values.ingress.host }}`) && PathPrefix(`/api/v1/scout/range`)
+      kind: Rule
+      services:
+        - name: {{ include "evefrontier.fullname" . }}-scout-range
+          port: {{ .Values.scoutRange.service.port }}
+      {{- if .Values.ingress.traefik.middlewares }}
+      middlewares:
+        {{- range .Values.ingress.traefik.middlewares }}
+        - name: {{ . }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+    # Health check routes for monitoring
+    {{- if .Values.route.enabled }}
+    - match: Host(`{{ .Values.ingress.host }}`) && PathPrefix(`/health/route`)
+      kind: Rule
+      services:
+        - name: {{ include "evefrontier.fullname" . }}-route
+          port: {{ .Values.route.service.port }}
+    {{- end }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    secretName: {{ .Values.ingress.tls.secretName | default (printf "%s-tls" (include "evefrontier.fullname" .)) }}
+  {{- end }}
+{{- else }}
+# Standard Kubernetes Ingress (non-Traefik)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "evefrontier.fullname" . }}
+  labels:
+    {{- include "evefrontier.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.host | quote }}
+      secretName: {{ .Values.ingress.tls.secretName | default (printf "%s-tls" (include "evefrontier.fullname" .)) }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.host | quote }}
+      http:
+        paths:
+          {{- if .Values.route.enabled }}
+          - path: /api/v1/route
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "evefrontier.fullname" . }}-route
+                port:
+                  number: {{ .Values.route.service.port }}
+          {{- end }}
+          {{- if .Values.scoutGates.enabled }}
+          - path: /api/v1/scout/gates
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "evefrontier.fullname" . }}-scout-gates
+                port:
+                  number: {{ .Values.scoutGates.service.port }}
+          {{- end }}
+          {{- if .Values.scoutRange.enabled }}
+          - path: /api/v1/scout/range
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "evefrontier.fullname" . }}-scout-range
+                port:
+                  number: {{ .Values.scoutRange.service.port }}
+          {{- end }}
+{{- end }}
+{{- end }}
