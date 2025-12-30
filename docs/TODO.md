@@ -449,6 +449,9 @@ Tasks are grouped by domain; checkboxes track completion status.
       `choco install evefrontier-cli`.
 - [ ] Add Docker image for easy deployment in containerized environments via
       `docker pull evefrontier-cli`.
+- [ ] Build for Android via Termux for mobile device usage.
+- [ ] Ensure we are cross compiling for all major platforms (Linux, Windows, macOS) and CPU
+      architectures (x86_64, aarch64, RISCV).
 
 ---
 
