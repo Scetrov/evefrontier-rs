@@ -4,6 +4,11 @@ This TODO list captures the remaining work required to implement the EVE Frontie
 Lambda functions, and supporting infrastructure described throughout the documentation and ADRs.
 Tasks are grouped by domain; checkboxes track completion status.
 
+## High Priority - Container Repository
+
+- [ ] Container repository put images into the repo via `ghcr.io/scetrov/evefrontier-rs/*` instead of using `rslater-cs` or `scetrov/` (without evefrontier-rs).
+- [ ] All instances of incorrect GHCR references should be corrected 
+
 ## 🔥 High Priority - Dependency Issues
 
 - [ ] **BLOCKED**: `kiddo 5.2.3` depends on yanked `cmov 0.3.1`
@@ -318,8 +323,16 @@ Tasks are grouped by domain; checkboxes track completion status.
 - [ ] Add metrics or usage telemetry (if desired) with opt-in controls and documentation.
 - [ ] Plan for dataset update automation (scheduled job or manual release) and document operational
       runbooks.
-- [ ] Add CI to verify spatial index artifact freshness against dataset version.
-- [ ] Document operational procedure for regenerating spatial index after dataset updates.
+- [x] Add CI to verify spatial index artifact freshness against dataset version.
+  - Created `index-verify` CLI command with JSON and human-readable output
+  - Added `spatial-index-freshness` CI job to `.github/workflows/ci.yml`
+  - Implemented v2 spatial index format with embedded source metadata (checksum, release tag, timestamp)
+  - Full backward compatibility with v1 format loading
+- [x] Document operational procedure for regenerating spatial index after dataset updates.
+  - Added "Regenerating Spatial Index" section to `docs/USAGE.md`
+  - Added "Troubleshooting CI Failures" section with common causes and debugging steps
+  - Added "Spatial Index Format v2" section with format specification
+  - Added "Lambda Freshness Behavior" section explaining build-time verification
 - [ ] Build Terraform deployment solution to deploy the Lambda functions and document per
       [ADR 0007](adrs/0007-devsecops-practices.md) secrets management requirements.
 - [ ] Bake AWS deployment into GitHub CI runner using GitHub Secrets as a secrets source.
@@ -387,6 +400,25 @@ Tasks are grouped by domain; checkboxes track completion status.
     - values.yaml configuration, ConfigMap, ServiceAccount
   - [ ] Observability setup (metrics, logs, traces) for microservices
     - Tracing infrastructure exists but metrics/observability documentation pending
+- [ ] Generate quadlet files for systemd based container management with Podman
+  - [ ] Create quadlet files for each microservice with appropriate resource limits and restart
+        policies
+  - [ ] Document quadlet installation and management procedures in `docs/DEPLOYMENT.md`
+
+## Web-based Starmap Explorer
+
+- [ ] Design and implement a web-based starmap explorer using a modern frontend framework (e.g.,
+      React) that can be started with `evefrontier-cli serve` which starts both an API server and
+      serves the web app.
+- [ ] Display star systems, jump gates, and allow users to interactively plan routes using the same
+      algorithms as the CLI and Lambdas all based upon local data.
+
+## Known Issues / Tweaks
+
+ - [ ] The GOAL item in `enhanced` mode doesn't include a status line (min temp, planets, moons).
+ - [ ] `enhanced` should be the default not basic as it provides the clearest representation.
+ - [ ] Add LibrePay integration with a link in the README for donations/support, plus a once every 7
+       days reminder in the CLI footer.
 
 ---
 

@@ -11,9 +11,10 @@ mod output;
 mod terminal;
 
 use evefrontier_lib::{
-    ensure_dataset, load_starmap, plan_route, spatial_index_path, try_load_spatial_index,
-    DatasetRelease, Error as RouteError, RouteAlgorithm, RouteConstraints, RouteOutputKind,
-    RouteRequest, RouteSummary, SpatialIndex,
+    compute_dataset_checksum, ensure_dataset, load_starmap, plan_route, read_release_tag,
+    spatial_index_path, try_load_spatial_index, verify_freshness, DatasetMetadata, DatasetRelease,
+    Error as RouteError, FreshnessResult, RouteAlgorithm, RouteConstraints, RouteOutputKind,
+    RouteRequest, RouteSummary, SpatialIndex, VerifyDiagnostics, VerifyOutput,
 };
 
 #[derive(Parser, Debug)]
@@ -64,6 +65,8 @@ enum Command {
     Route(RouteCommandArgs),
     /// Build or rebuild the spatial index for faster routing.
     IndexBuild(IndexBuildArgs),
+    /// Verify that the spatial index is fresh (matches the current dataset).
+    IndexVerify(IndexVerifyArgs),
 }
 
 #[derive(Args, Debug, Clone)]
@@ -71,6 +74,21 @@ struct IndexBuildArgs {
     /// Force rebuild even if index already exists.
     #[arg(long, action = ArgAction::SetTrue)]
     force: bool,
+}
+
+#[derive(Args, Debug, Clone)]
+struct IndexVerifyArgs {
+    /// Output in JSON format instead of human-readable text.
+    #[arg(long, action = ArgAction::SetTrue)]
+    json: bool,
+
+    /// Only output on failure (quiet mode for scripts).
+    #[arg(short, long, action = ArgAction::SetTrue)]
+    quiet: bool,
+
+    /// Require release tag match in addition to checksum (strict mode).
+    #[arg(long, action = ArgAction::SetTrue)]
+    strict: bool,
 }
 
 #[derive(Args, Debug, Clone)]
@@ -328,6 +346,7 @@ fn main() -> Result<()> {
             handle_route_command(&context, &route_args, RouteOutputKind::Route)
         }
         Command::IndexBuild(args) => handle_index_build(&context, &args),
+        Command::IndexVerify(args) => handle_index_verify(&context, &args),
     };
 
     if result.is_ok() && context.should_show_footer() {
@@ -365,11 +384,29 @@ fn handle_index_build(context: &AppContext, args: &IndexBuildArgs) -> Result<()>
     let starmap = load_starmap(&paths.database)
         .with_context(|| format!("failed to load dataset from {}", paths.database.display()))?;
 
+    // Compute dataset checksum for freshness verification (v2 format)
+    println!("Computing dataset checksum...");
+    let checksum =
+        compute_dataset_checksum(&paths.database).context("failed to compute dataset checksum")?;
+
+    // Read release tag from marker file if present
+    let release_tag = read_release_tag(&paths.database);
+
+    // Create metadata for v2 format
+    let metadata = DatasetMetadata {
+        checksum,
+        release_tag: release_tag.clone(),
+        build_timestamp: std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs() as i64)
+            .unwrap_or(0),
+    };
+
     println!(
-        "Building spatial index for {} systems...",
+        "Building spatial index (v2) for {} systems...",
         starmap.systems.len()
     );
-    let index = SpatialIndex::build(&starmap);
+    let index = SpatialIndex::build_with_metadata(&starmap, metadata);
 
     let systems_with_temp = starmap
         .systems
@@ -386,11 +423,191 @@ fn handle_index_build(context: &AppContext, args: &IndexBuildArgs) -> Result<()>
 
     println!("Spatial index built successfully:");
     println!("  Path: {}", index_path.display());
+    println!("  Format: v2 (with metadata)");
     println!("  Systems indexed: {}", index.len());
     println!("  Systems with temperature: {}", systems_with_temp);
+    if let Some(ref tag) = release_tag {
+        println!("  Dataset release: {}", tag);
+    }
+    println!("  Dataset checksum: {}...", hex::encode(&checksum[..8]));
     println!("  File size: {} bytes", file_size);
 
     Ok(())
+}
+
+/// Exit codes for index-verify command (per contract)
+mod exit_codes {
+    pub const SUCCESS: i32 = 0;
+    pub const STALE: i32 = 1;
+    pub const MISSING: i32 = 2;
+    pub const FORMAT_ERROR: i32 = 3;
+    pub const DATASET_MISSING: i32 = 4;
+    pub const ERROR: i32 = 5;
+}
+
+fn handle_index_verify(context: &AppContext, args: &IndexVerifyArgs) -> Result<()> {
+    let start = std::time::Instant::now();
+
+    // Resolve paths
+    let paths = ensure_dataset(context.target_path(), context.dataset_release())
+        .context("failed to locate or download the EVE Frontier dataset")?;
+    let index_path = spatial_index_path(&paths.database);
+
+    // Run verification
+    let result = verify_freshness(&index_path, &paths.database);
+
+    // Compute diagnostics
+    let verification_time_ms = start.elapsed().as_millis() as u64;
+    let diagnostics = VerifyDiagnostics {
+        dataset_path: paths.database.display().to_string(),
+        index_path: index_path.display().to_string(),
+        dataset_size: std::fs::metadata(&paths.database).ok().map(|m| m.len()),
+        index_size: std::fs::metadata(&index_path).ok().map(|m| m.len()),
+        index_version: detect_index_version(&index_path),
+        verification_time_ms,
+    };
+
+    // Determine freshness and recommended action
+    let (is_fresh, recommended_action, exit_code) = match &result {
+        FreshnessResult::Fresh { .. } => (true, None, exit_codes::SUCCESS),
+        FreshnessResult::Stale { .. } => (
+            false,
+            Some("evefrontier-cli index-build".to_string()),
+            exit_codes::STALE,
+        ),
+        FreshnessResult::LegacyFormat { .. } => (
+            false,
+            Some("evefrontier-cli index-build --force".to_string()),
+            exit_codes::FORMAT_ERROR,
+        ),
+        FreshnessResult::Missing { .. } => (
+            false,
+            Some("evefrontier-cli index-build".to_string()),
+            exit_codes::MISSING,
+        ),
+        FreshnessResult::DatasetMissing { .. } => (
+            false,
+            Some("evefrontier-cli download".to_string()),
+            exit_codes::DATASET_MISSING,
+        ),
+        FreshnessResult::Error { .. } => (false, None, exit_codes::ERROR),
+    };
+
+    // Build output structure
+    let output = VerifyOutput {
+        result: result.clone(),
+        is_fresh,
+        recommended_action: recommended_action.clone(),
+        diagnostics: Some(diagnostics),
+    };
+
+    // Output based on format and quiet mode
+    if args.json {
+        // JSON output
+        let json = serde_json::to_string_pretty(&output)?;
+        if !args.quiet || !is_fresh {
+            println!("{}", json);
+        }
+    } else {
+        // Human-readable output
+        if !args.quiet || !is_fresh {
+            print_human_readable_result(&result, &output);
+        }
+    }
+
+    // Exit with appropriate code
+    if !is_fresh {
+        std::process::exit(exit_code);
+    }
+
+    Ok(())
+}
+
+/// Detect the version byte from a spatial index file header.
+fn detect_index_version(path: &std::path::Path) -> Option<u8> {
+    use std::io::Read;
+    let mut file = std::fs::File::open(path).ok()?;
+    let mut header = [0u8; 16];
+    file.read_exact(&mut header).ok()?;
+    if &header[0..4] == b"EFSI" {
+        Some(header[4])
+    } else {
+        None
+    }
+}
+
+/// Print human-readable verification result.
+fn print_human_readable_result(result: &FreshnessResult, output: &VerifyOutput) {
+    match result {
+        FreshnessResult::Fresh {
+            checksum,
+            release_tag,
+        } => {
+            println!("✓ Spatial index is fresh");
+            if let Some(tag) = release_tag {
+                println!("  Dataset:  {} ({}...)", tag, &checksum[..16]);
+            } else {
+                println!("  Dataset:  {}...", &checksum[..16]);
+            }
+            if let Some(ref diag) = output.diagnostics {
+                if let Some(version) = diag.index_version {
+                    println!("  Index:    v{} format", version);
+                }
+            }
+        }
+        FreshnessResult::Stale {
+            expected_checksum,
+            actual_checksum,
+            expected_tag,
+            actual_tag,
+        } => {
+            println!("✗ Spatial index is STALE");
+            println!("  Dataset checksum:  {}...", &actual_checksum[..16]);
+            println!("  Index source:      {}...", &expected_checksum[..16]);
+            if expected_tag.is_some() || actual_tag.is_some() {
+                println!(
+                    "  Expected tag: {:?}, Actual tag: {:?}",
+                    expected_tag, actual_tag
+                );
+            }
+            println!();
+            if let Some(ref action) = output.recommended_action {
+                println!("  Run '{}' to regenerate", action);
+            }
+        }
+        FreshnessResult::LegacyFormat {
+            index_path,
+            message,
+        } => {
+            println!("✗ Spatial index uses legacy format (v1)");
+            println!("  Index file: {}", index_path);
+            println!("  {}", message);
+            println!();
+            if let Some(ref action) = output.recommended_action {
+                println!("  Run '{}' to upgrade to v2", action);
+            }
+        }
+        FreshnessResult::Missing { expected_path } => {
+            println!("✗ Spatial index not found");
+            println!("  Expected: {}", expected_path);
+            println!();
+            if let Some(ref action) = output.recommended_action {
+                println!("  Run '{}' to create", action);
+            }
+        }
+        FreshnessResult::DatasetMissing { expected_path } => {
+            println!("✗ Dataset not found");
+            println!("  Expected: {}", expected_path);
+            println!();
+            if let Some(ref action) = output.recommended_action {
+                println!("  Run '{}' to download", action);
+            }
+        }
+        FreshnessResult::Error { message } => {
+            println!("✗ Verification error");
+            println!("  {}", message);
+        }
+    }
 }
 
 fn handle_route_command(
