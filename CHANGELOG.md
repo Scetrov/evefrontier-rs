@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- 2025-12-30 - auto-llm:copilot - [feature] - Implement comprehensive microservices observability infrastructure
+- 2025-12-30 - auto-llm:copilot - [feature] - Add Prometheus metrics wiring to scout-gates and scout-range services via record_request_metrics()
+- 2025-12-30 - auto-llm:copilot - [feature] - Add custom ServiceJsonFormat for JSON logging with service name injection and RFC3339 timestamps
+- 2025-12-30 - auto-llm:copilot - [feature] - Add CheckStatus enum and CheckResult struct for granular health check reporting
+- 2025-12-30 - auto-llm:copilot - [feature] - Enhanced /health/ready endpoint with detailed dependency checks (database, spatial_index)
+- 2025-12-30 - auto-llm:copilot - [docs] - Created comprehensive OBSERVABILITY.md guide for metrics, logging, and health checks
+- 2025-12-30 - auto-llm:copilot - [docs] - Added Grafana dashboard JSON (docs/dashboards/evefrontier-overview.json) with 4 panel rows
+- 2025-12-30 - auto-llm:copilot - [docs] - Added Prometheus alerting rules (docs/dashboards/alerting-rules.yaml) with critical/warning/info alerts
+- 2025-12-30 - auto-llm:copilot - [infra] - Updated Helm chart deployments with Prometheus scrape annotations and LOG_FORMAT/SERVICE_NAME env vars
+- 2025-12-30 - auto-llm:copilot - [refactor] - Implement FromStr trait for LogFormat per clippy recommendation (replaces from_str method)
 - 2025-12-30 - auto-llm:copilot - [feature] - Add Docker microservices architecture with three HTTP services (route, scout-gates, scout-range)
 - 2025-12-30 - auto-llm:copilot - [feature] - Add evefrontier-service-shared crate with axum 0.8 HTTP infrastructure, health checks, RFC 9457 problem details
 - 2025-12-30 - auto-llm:copilot - [feature] - Add multi-stage Dockerfiles using Distroless base images (~30MB runtime containers)

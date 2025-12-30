@@ -6,6 +6,7 @@
 //! # Endpoints
 //!
 //! - `POST /api/v1/scout/gates` - Find gate-connected neighbors
+//! - `GET /metrics` - Prometheus metrics endpoint
 //! - `GET /health/live` - Kubernetes liveness probe
 //! - `GET /health/ready` - Kubernetes readiness probe
 //!
@@ -13,6 +14,7 @@
 //!
 //! - `EVEFRONTIER_DATA_PATH` - Path to the static_data.db file (required)
 //! - `RUST_LOG` - Log level (default: info)
+//! - `LOG_FORMAT` - Log format: json (default) or text
 //! - `SERVICE_PORT` - HTTP port (default: 8080)
 
 use std::env;
@@ -26,12 +28,12 @@ use axum::{
     routing::{get, post},
 };
 use serde::Serialize;
-use tower_http::trace::TraceLayer;
 use tracing::{error, info};
 
 use evefrontier_service_shared::{
-    AppState, ProblemDetails, ScoutGatesRequest, ServiceResponse, Validate, health_live,
-    health_ready,
+    AppState, LoggingConfig, MetricsConfig, MetricsLayer, ProblemDetails, ScoutGatesRequest,
+    ServiceResponse, Validate, health_live, health_ready, init_logging, init_metrics,
+    metrics_handler, record_neighbors_returned, record_systems_queried,
 };
 
 /// Gate neighbor information.
@@ -73,21 +75,18 @@ impl IntoResponse for Response {
     }
 }
 
-/// Initialize tracing with JSON formatting for production.
-fn init_tracing() {
-    use tracing_subscriber::{EnvFilter, fmt, prelude::*};
-
-    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
-
-    tracing_subscriber::registry()
-        .with(filter)
-        .with(fmt::layer().json())
-        .init();
-}
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    init_tracing();
+    // Initialize logging (reads LOG_FORMAT from environment)
+    let logging_config = LoggingConfig::from_env().with_service("scout-gates");
+    init_logging(&logging_config);
+
+    // Initialize metrics
+    let metrics_config = MetricsConfig::from_env();
+    if let Err(e) = init_metrics(&metrics_config) {
+        // Log but don't fail - metrics are optional
+        tracing::warn!(error = %e, "failed to initialize metrics, continuing without metrics");
+    }
 
     // Load configuration from environment
     let data_path =
@@ -113,9 +112,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Build the router
     let app = Router::new()
         .route("/api/v1/scout/gates", post(scout_gates_handler))
+        .route("/metrics", get(metrics_handler))
         .route("/health/live", get(health_live))
         .route("/health/ready", get(health_ready))
-        .layer(TraceLayer::new_for_http())
+        .layer(MetricsLayer)
         .with_state(state);
 
     // Bind and serve
@@ -185,6 +185,10 @@ async fn scout_gates_handler(
         count: neighbors.len(),
         neighbors,
     };
+
+    // Record business metrics
+    record_systems_queried("gates", "scout-gates");
+    record_neighbors_returned(response.count, "gates");
 
     info!(
         request_id = %request_id,
