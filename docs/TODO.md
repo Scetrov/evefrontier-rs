@@ -150,6 +150,31 @@ Tasks are grouped by domain; checkboxes track completion status.
       `nearest_filtered()` and `within_radius_filtered()` apply predicates - (v2 future work:
       subtree temperature aggregates for branch pruning)
 
+## Ship Data & Fuel Calculations (ADR 0015)
+
+- [ ] Create `ship.rs` module with `ShipAttributes`, `ShipLoadout`, and `ShipCatalog` structs
+- [ ] Implement CSV parsing for `ship_data.csv` with validation (base_mass_kg, fuel_capacity,
+      cargo_capacity, specific_heat)
+- [ ] Add `calculate_jump_fuel_cost()` function implementing the fuel formula:
+      `(total_mass_kg / 10^5) × (fuel_quality / 100) × distance_ly`
+- [ ] Add `calculate_route_fuel()` for full route projection with static/dynamic mass modes
+- [ ] Implement `ShipLoadout::total_mass_kg()` combining hull + fuel + cargo mass
+- [ ] Extend GitHub downloader (`github.rs`) to fetch `ship_data.csv` from release assets
+- [ ] Add ship data caching alongside the database in `evefrontier_datasets/` cache directory
+- [ ] Extend `RouteStep` with optional `FuelProjection` struct (hop_cost, cumulative, remaining)
+- [ ] Extend `RouteSummary` with total_fuel, ship_name, and fuel_warning fields
+- [ ] Update output formatters to include fuel information in status line when ship specified
+- [ ] Add `--ship`, `--fuel-quality`, `--cargo-mass`, `--fuel-load` CLI options to `route` subcommand
+- [ ] Add `--dynamic-mass` flag to enable per-hop mass recalculation
+- [ ] Add `--list-ships` convenience option to display available ships
+- [ ] Extend Lambda request/response schemas with ship, loadout, and fuel parameters
+- [ ] Bundle `ship_data.csv` with Lambda deployment artifacts
+- [ ] Add ship data fixture for testing (subset of ships)
+- [ ] Write unit tests for fuel calculation formula with known test cases (static and dynamic modes)
+- [ ] Write integration tests for CLI fuel projection output
+- [ ] Update `USAGE.md` with fuel projection examples including cargo and dynamic mass
+- [ ] Future: Research and implement heat impact calculations (requires separate ADR)
+
 ## CLI (`evefrontier-cli`)
 
 - [x] Implement the CLI skeleton with Clap, including global `--data-dir`, `--format`, `--no-logo`,
