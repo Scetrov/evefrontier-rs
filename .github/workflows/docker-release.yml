@@ -71,6 +71,8 @@ jobs:
           else
             VERSION="${{ github.ref_name }}"
           fi
+          # Strip 'v' prefix to match docker/metadata-action semver output
+          VERSION="${VERSION#v}"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "Building version: ${VERSION}"
       
