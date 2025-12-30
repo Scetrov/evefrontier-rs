@@ -768,9 +768,9 @@ The `.github/workflows/docker-release.yml` workflow handles:
 
 | Image | Description |
 |-------|-------------|
-| `ghcr.io/rslater-cs/evefrontier-service-route` | Route planning service |
-| `ghcr.io/rslater-cs/evefrontier-service-scout-gates` | Gate neighbor discovery |
-| `ghcr.io/rslater-cs/evefrontier-service-scout-range` | Spatial range queries |
+| `ghcr.io/scetrov/evefrontier-rs/evefrontier-service-route` | Route planning service |
+| `ghcr.io/scetrov/evefrontier-rs/evefrontier-service-scout-gates` | Gate neighbor discovery |
+| `ghcr.io/scetrov/evefrontier-rs/evefrontier-service-scout-range` | Spatial range queries |
 
 ### Image Tags
 
@@ -802,7 +802,7 @@ All images are signed using cosign with GitHub OIDC (keyless signing):
 cosign verify \
   --certificate-identity-regexp=".*" \
   --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-  ghcr.io/rslater-cs/evefrontier-service-route:v0.1.0
+  ghcr.io/scetrov/evefrontier-rs/evefrontier-service-route:v0.1.0
 
 # Verify all three images
 for svc in route scout-gates scout-range; do
@@ -810,7 +810,7 @@ for svc in route scout-gates scout-range; do
   cosign verify \
     --certificate-identity-regexp=".*" \
     --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-    "ghcr.io/rslater-cs/evefrontier-service-${svc}:v0.1.0"
+    "ghcr.io/scetrov/evefrontier-rs/evefrontier-service-${svc}:v0.1.0"
 done
 ```
 

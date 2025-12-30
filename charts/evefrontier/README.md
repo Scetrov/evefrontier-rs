@@ -63,7 +63,7 @@ Each service (route, scoutGates, scoutRange) has the following configuration:
 |-----------|-------------|---------|
 | `<service>.enabled` | Enable the service | `true` |
 | `<service>.replicaCount` | Number of replicas | `1` |
-| `<service>.image.repository` | Image repository | `ghcr.io/rslater-cs/evefrontier-service-<name>` |
+| `<service>.image.repository` | Image repository | `ghcr.io/scetrov/evefrontier-rs/evefrontier-service-<name>` |
 | `<service>.image.tag` | Image tag (defaults to appVersion) | `""` |
 | `<service>.image.pullPolicy` | Image pull policy | `IfNotPresent` |
 | `<service>.service.type` | Kubernetes service type | `ClusterIP` |

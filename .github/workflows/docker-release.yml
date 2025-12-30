@@ -36,8 +36,7 @@ permissions: {}
 
 env:
   REGISTRY: ghcr.io
-  # Use rslater-cs namespace until official org is available
-  IMAGE_PREFIX: ghcr.io/rslater-cs
+  IMAGE_PREFIX: ghcr.io/scetrov/evefrontier-rs
 
 jobs:
   build-binaries:
