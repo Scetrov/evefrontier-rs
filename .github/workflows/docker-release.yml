@@ -75,9 +75,9 @@ jobs:
           echo "Building version: ${VERSION}"
       
       - name: Install Rust toolchain
-        uses: dtolnay/rust-action@1.91.1
+        uses: dtolnay/rust-toolchain@a54c7afa936fefeb4456b2dd8068152669aa8203 # stable
         with:
-          toolchain: stable
+          toolchain: 1.91.1
           targets: ${{ matrix.target }}
       
       - name: Install cargo-zigbuild
