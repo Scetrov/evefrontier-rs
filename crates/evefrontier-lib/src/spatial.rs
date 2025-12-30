@@ -78,11 +78,17 @@ use crate::error::{Error, Result};
 /// Magic bytes identifying a spatial index file.
 const INDEX_MAGIC: &[u8; 4] = b"EFSI";
 
-/// Current index format version.
+/// Current index format version (v1 without metadata).
 const INDEX_VERSION: u8 = 1;
+
+/// Index format version 2 (with source metadata).
+pub const INDEX_VERSION_V2: u8 = 2;
 
 /// Flag: index includes min_external_temp data.
 const FLAG_HAS_TEMPERATURE: u8 = 0x01;
+
+/// Flag: index includes source metadata section (v2 format).
+pub const FLAG_HAS_METADATA: u8 = 0x02;
 
 /// Header size in bytes.
 const HEADER_SIZE: usize = 16;
@@ -95,6 +101,157 @@ const COMPRESSION_LEVEL: i32 = 3;
 
 /// KD-tree bucket size (kiddo default).
 const BUCKET_SIZE: usize = 32;
+
+// =============================================================================
+// Source Metadata Types (v2 format)
+// =============================================================================
+
+/// Metadata about the source dataset used to build a spatial index.
+///
+/// Embedded in the spatial index file (v2 format) to enable freshness verification.
+/// The checksum provides cryptographic proof of the exact dataset version,
+/// while the tag provides human-readable identification.
+///
+/// # Example
+///
+/// ```
+/// use evefrontier_lib::spatial::DatasetMetadata;
+///
+/// let metadata = DatasetMetadata {
+///     checksum: [0u8; 32],
+///     release_tag: Some("e6c3".to_string()),
+///     build_timestamp: 1735500000,
+/// };
+/// ```
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DatasetMetadata {
+    /// SHA-256 checksum of the source dataset file.
+    ///
+    /// Computed by hashing the entire `.db` file contents.
+    /// This is the primary identifier for freshness verification.
+    pub checksum: [u8; 32],
+
+    /// Release tag from the `.db.release` marker file (e.g., "e6c3").
+    ///
+    /// May be None if the dataset was not downloaded via the standard
+    /// release mechanism (e.g., manually placed file).
+    pub release_tag: Option<String>,
+
+    /// Unix timestamp (seconds since epoch) when the index was built.
+    ///
+    /// Used for informational/debugging purposes only; not used for
+    /// freshness verification.
+    pub build_timestamp: i64,
+}
+
+/// Result of verifying spatial index freshness against the current dataset.
+///
+/// This enum represents all possible outcomes of comparing a spatial index's
+/// embedded source metadata against the current dataset file.
+///
+/// # Serialization
+///
+/// Uses serde's tagged enum format with `status` as the discriminant:
+/// - `{"status": "fresh", "checksum": "...", "release_tag": "..."}`
+/// - `{"status": "stale", "expected_checksum": "...", ...}`
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "status", rename_all = "snake_case")]
+pub enum FreshnessResult {
+    /// Index is fresh - source metadata matches current dataset.
+    Fresh {
+        /// The matching checksum (hex-encoded, 64 characters).
+        checksum: String,
+        /// The matching release tag, if present.
+        release_tag: Option<String>,
+    },
+
+    /// Index is stale - source metadata doesn't match current dataset.
+    Stale {
+        /// Expected checksum from current dataset (hex-encoded).
+        expected_checksum: String,
+        /// Actual checksum from index source metadata (hex-encoded).
+        actual_checksum: String,
+        /// Expected release tag, if available.
+        expected_tag: Option<String>,
+        /// Actual release tag from index, if available.
+        actual_tag: Option<String>,
+    },
+
+    /// Index is in legacy format (v1) without source metadata.
+    LegacyFormat {
+        /// Index file path.
+        index_path: String,
+        /// Human-readable message explaining the situation.
+        message: String,
+    },
+
+    /// Spatial index file is missing.
+    Missing {
+        /// Expected index file path.
+        expected_path: String,
+    },
+
+    /// Dataset file is missing.
+    DatasetMissing {
+        /// Expected dataset file path.
+        expected_path: String,
+    },
+
+    /// Error occurred during verification.
+    Error {
+        /// Error message.
+        message: String,
+    },
+}
+
+/// Structured output for the index-verify CLI command.
+///
+/// Supports both human-readable (default) and JSON (`--json` flag) formats.
+/// Contains the verification result plus optional diagnostic information.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VerifyOutput {
+    /// Verification result.
+    pub result: FreshnessResult,
+
+    /// Whether the index is considered fresh (for exit code determination).
+    pub is_fresh: bool,
+
+    /// Recommended action, if any.
+    pub recommended_action: Option<String>,
+
+    /// Additional diagnostic information.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub diagnostics: Option<VerifyDiagnostics>,
+}
+
+/// Diagnostic information for troubleshooting freshness issues.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VerifyDiagnostics {
+    /// Path to the dataset file checked.
+    pub dataset_path: String,
+
+    /// Path to the spatial index file checked.
+    pub index_path: String,
+
+    /// Dataset file size in bytes.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dataset_size: Option<u64>,
+
+    /// Index file size in bytes.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub index_size: Option<u64>,
+
+    /// Index format version.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub index_version: Option<u8>,
+
+    /// Time taken for verification in milliseconds.
+    pub verification_time_ms: u64,
+}
+
+// =============================================================================
+// Index Node and Query Types
+// =============================================================================
 
 /// Index node stored per system.
 ///
@@ -153,6 +310,200 @@ impl NeighbourQuery {
     }
 }
 
+// =============================================================================
+// Freshness Verification Functions
+// =============================================================================
+
+/// Compute SHA-256 checksum of a dataset file using streaming reads.
+///
+/// Reads the file in 64KB chunks to avoid loading large databases into memory.
+/// Returns the raw 32-byte checksum.
+///
+/// # Example
+///
+/// ```no_run
+/// use evefrontier_lib::spatial::compute_dataset_checksum;
+/// use std::path::Path;
+///
+/// let checksum = compute_dataset_checksum(Path::new("static_data.db"))?;
+/// println!("Checksum: {:02x?}", checksum);
+/// # Ok::<(), evefrontier_lib::Error>(())
+/// ```
+///
+/// # Errors
+///
+/// Returns an error if the file cannot be opened or read.
+pub fn compute_dataset_checksum(path: &Path) -> Result<[u8; 32]> {
+    let file = File::open(path).map_err(|e| {
+        if e.kind() == std::io::ErrorKind::NotFound {
+            Error::DatasetNotFound {
+                path: path.to_path_buf(),
+            }
+        } else {
+            Error::Io(e)
+        }
+    })?;
+
+    let mut reader = BufReader::with_capacity(64 * 1024, file);
+    let mut hasher = Sha256::new();
+    let mut buf = [0u8; 64 * 1024];
+
+    loop {
+        let bytes_read = reader.read(&mut buf)?;
+        if bytes_read == 0 {
+            break;
+        }
+        hasher.update(&buf[..bytes_read]);
+    }
+
+    Ok(hasher.finalize().into())
+}
+
+/// Read the release tag from a `.db.release` marker file.
+///
+/// The marker file is created by the downloader and contains lines like:
+/// ```text
+/// requested=latest
+/// resolved=e6c3
+/// ```
+///
+/// Returns `Some(tag)` if the marker exists and contains a `resolved=` line,
+/// `None` otherwise. Does not error on missing or malformed markers.
+///
+/// # Example
+///
+/// ```no_run
+/// use evefrontier_lib::spatial::read_release_tag;
+/// use std::path::Path;
+///
+/// let tag = read_release_tag(Path::new("static_data.db"));
+/// println!("Release tag: {:?}", tag); // Some("e6c3") or None
+/// ```
+pub fn read_release_tag(db_path: &Path) -> Option<String> {
+    let marker_path = db_path.with_extension("db.release");
+
+    let content = std::fs::read_to_string(&marker_path).ok()?;
+
+    for line in content.lines() {
+        if let Some(tag) = line.strip_prefix("resolved=") {
+            let trimmed = tag.trim();
+            if !trimmed.is_empty() {
+                return Some(trimmed.to_string());
+            }
+        }
+    }
+
+    None
+}
+
+/// Verify that a spatial index matches its source dataset.
+///
+/// This is the core function used by both the CLI `index-verify` command and CI jobs
+/// to ensure the spatial index is in sync with the dataset.
+///
+/// # Returns
+///
+/// - `Fresh` - Index exists, is v2 format, and checksums match
+/// - `Stale` - Index exists and is v2, but checksums differ (dataset changed)
+/// - `LegacyFormat` - Index exists but is v1 format (no embedded checksum)
+/// - `Missing` - Index file does not exist
+/// - `DatasetMissing` - Dataset file does not exist
+/// - `Error` - Error occurred during verification
+///
+/// # Example
+///
+/// ```no_run
+/// use evefrontier_lib::spatial::{verify_freshness, FreshnessResult};
+/// use std::path::Path;
+///
+/// let index_path = Path::new("static_data.db.spatial.bin");
+/// let db_path = Path::new("static_data.db");
+///
+/// match verify_freshness(index_path, db_path) {
+///     FreshnessResult::Fresh { .. } => println!("Index is fresh!"),
+///     FreshnessResult::Stale { .. } => println!("Index needs rebuild"),
+///     FreshnessResult::LegacyFormat { .. } => println!("Upgrade to v2 format"),
+///     other => println!("Issue: {:?}", other),
+/// }
+/// ```
+pub fn verify_freshness(index_path: &Path, db_path: &Path) -> FreshnessResult {
+    // Check dataset exists
+    if !db_path.exists() {
+        return FreshnessResult::DatasetMissing {
+            expected_path: db_path.display().to_string(),
+        };
+    }
+
+    // Check index exists
+    if !index_path.exists() {
+        return FreshnessResult::Missing {
+            expected_path: index_path.display().to_string(),
+        };
+    }
+
+    // Try to load the index and get metadata
+    let index = match SpatialIndex::load(index_path) {
+        Ok(idx) => idx,
+        Err(e) => {
+            return FreshnessResult::Error {
+                message: format!("failed to load index: {}", e),
+            };
+        }
+    };
+
+    // Check if index has metadata (v2 format)
+    let index_metadata = match index.source_metadata() {
+        Some(meta) => meta,
+        None => {
+            return FreshnessResult::LegacyFormat {
+                index_path: index_path.display().to_string(),
+                message: "Index is v1 format without embedded metadata. Rebuild with --metadata to enable freshness verification.".to_string(),
+            };
+        }
+    };
+
+    // Compute current dataset checksum
+    let actual_checksum = match compute_dataset_checksum(db_path) {
+        Ok(cs) => cs,
+        Err(e) => {
+            return FreshnessResult::Error {
+                message: format!("failed to compute dataset checksum: {}", e),
+            };
+        }
+    };
+
+    // Read current release tag
+    let actual_tag = read_release_tag(db_path);
+
+    // Format checksums as hex for output
+    let expected_checksum_hex = hex_encode(&index_metadata.checksum);
+    let actual_checksum_hex = hex_encode(&actual_checksum);
+
+    // Compare checksums
+    if index_metadata.checksum == actual_checksum {
+        FreshnessResult::Fresh {
+            checksum: actual_checksum_hex,
+            release_tag: actual_tag,
+        }
+    } else {
+        FreshnessResult::Stale {
+            expected_checksum: expected_checksum_hex,
+            actual_checksum: actual_checksum_hex,
+            expected_tag: index_metadata.release_tag.clone(),
+            actual_tag,
+        }
+    }
+}
+
+/// Convert bytes to lowercase hex string.
+fn hex_encode(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| format!("{:02x}", b)).collect()
+}
+
+// =============================================================================
+// Spatial Index Implementation
+// =============================================================================
+
 /// Precomputed spatial index for efficient nearest-neighbour queries.
 ///
 /// The index is built from a `Starmap` and can be serialized to disk for fast
@@ -166,6 +517,11 @@ pub struct SpatialIndex {
     temp_lookup: HashMap<SystemId, Option<f32>>,
     /// Fast lookup from system ID to node index.
     id_to_index: HashMap<SystemId, usize>,
+    /// Source dataset metadata (v2 format only).
+    ///
+    /// Present when index was built with `build_with_metadata()` or loaded from
+    /// a v2 format file. None for v1 format files or indexes built without metadata.
+    metadata: Option<DatasetMetadata>,
 }
 
 impl SpatialIndex {
@@ -216,7 +572,55 @@ impl SpatialIndex {
             nodes,
             temp_lookup,
             id_to_index,
+            metadata: None, // No metadata when built without build_with_metadata()
         }
+    }
+
+    /// Build a spatial index from a starmap with source metadata.
+    ///
+    /// The metadata is embedded in the index and written to disk when `save()` is called.
+    /// This enables freshness verification via `verify_freshness()`.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use evefrontier_lib::{load_starmap, SpatialIndex};
+    /// use evefrontier_lib::spatial::{DatasetMetadata, compute_dataset_checksum, read_release_tag};
+    /// use std::path::Path;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let db_path = Path::new("static_data.db");
+    /// let starmap = load_starmap(db_path)?;
+    ///
+    /// let checksum = compute_dataset_checksum(db_path)?;
+    /// let metadata = DatasetMetadata {
+    ///     checksum,
+    ///     release_tag: read_release_tag(db_path),
+    ///     build_timestamp: std::time::SystemTime::now()
+    ///         .duration_since(std::time::UNIX_EPOCH)
+    ///         .unwrap()
+    ///         .as_secs() as i64,
+    /// };
+    ///
+    /// let index = SpatialIndex::build_with_metadata(&starmap, metadata);
+    /// index.save(Path::new("static_data.db.spatial.bin"))?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn build_with_metadata(starmap: &Starmap, metadata: DatasetMetadata) -> Self {
+        let mut index = Self::build(starmap);
+        index.metadata = Some(metadata);
+        index
+    }
+
+    /// Returns the source dataset metadata embedded in this index.
+    ///
+    /// Returns `None` if:
+    /// - Index was built without metadata (using `build()` instead of `build_with_metadata()`)
+    /// - Index was loaded from a v1 format file
+    /// - Index was loaded from a v2 file without metadata section
+    pub fn source_metadata(&self) -> Option<&DatasetMetadata> {
+        self.metadata.as_ref()
     }
 
     /// Number of indexed systems.
@@ -393,10 +797,20 @@ impl SpatialIndex {
     ///
     /// Uses postcard for compact binary encoding and zstd for compression.
     /// Writes a versioned header and SHA-256 checksum for integrity verification.
+    ///
+    /// If the index was built with `build_with_metadata()`, writes v2 format with
+    /// embedded source metadata. Otherwise writes v1 format for backward compatibility.
     pub fn save(&self, path: &Path) -> Result<()> {
+        let version = if self.metadata.is_some() {
+            INDEX_VERSION_V2
+        } else {
+            INDEX_VERSION
+        };
+
         info!(
             path = %path.display(),
             nodes = self.nodes.len(),
+            version = version,
             "saving spatial index"
         );
 
@@ -414,34 +828,64 @@ impl SpatialIndex {
                 }
             })?;
 
-        // Compute checksum
-        let checksum = Sha256::digest(&compressed);
-
-        // Build header
+        // Build flags
         let has_temp = self.nodes.iter().any(|n| n.min_external_temp.is_some());
-        let flags = if has_temp { FLAG_HAS_TEMPERATURE } else { 0 };
+        let mut flags = if has_temp { FLAG_HAS_TEMPERATURE } else { 0 };
+        if self.metadata.is_some() {
+            flags |= FLAG_HAS_METADATA;
+        }
+
         let node_count = self.nodes.len() as u32;
 
+        // Build header
         let mut header = [0u8; HEADER_SIZE];
         header[0..4].copy_from_slice(INDEX_MAGIC);
-        header[4] = INDEX_VERSION;
+        header[4] = version;
         header[5] = flags;
         header[6..10].copy_from_slice(&node_count.to_le_bytes());
         // bytes 10-15 reserved
+
+        // Prepare metadata section if v2 format
+        let metadata_section = if let Some(ref meta) = self.metadata {
+            // Serialize metadata: checksum(32) + tag_len(u16) + tag_bytes + timestamp(i64)
+            let tag_bytes = meta
+                .release_tag
+                .as_ref()
+                .map(|s| s.as_bytes())
+                .unwrap_or(&[]);
+            let tag_len = tag_bytes.len() as u16;
+
+            let mut section = Vec::with_capacity(32 + 2 + tag_bytes.len() + 8);
+            section.extend_from_slice(&meta.checksum);
+            section.extend_from_slice(&tag_len.to_le_bytes());
+            section.extend_from_slice(tag_bytes);
+            section.extend_from_slice(&meta.build_timestamp.to_le_bytes());
+            section
+        } else {
+            Vec::new()
+        };
+
+        // Compute checksum over compressed data only (consistent with v1)
+        let checksum = Sha256::digest(&compressed);
 
         // Write file
         let file = File::create(path)?;
         let mut writer = BufWriter::new(file);
 
         writer.write_all(&header)?;
+        if !metadata_section.is_empty() {
+            writer.write_all(&metadata_section)?;
+        }
         writer.write_all(&compressed)?;
         writer.write_all(&checksum)?;
         writer.flush()?;
 
-        let file_size = HEADER_SIZE + compressed.len() + CHECKSUM_SIZE;
+        let file_size = HEADER_SIZE + metadata_section.len() + compressed.len() + CHECKSUM_SIZE;
         info!(
             file_size = file_size,
             compressed_size = compressed.len(),
+            version = version,
+            has_metadata = self.metadata.is_some(),
             "spatial index saved"
         );
 
@@ -451,6 +895,7 @@ impl SpatialIndex {
     /// Load a spatial index from a file.
     ///
     /// Validates the header, decompresses the body, and verifies the checksum.
+    /// Supports both v1 format (no metadata) and v2 format (with embedded metadata).
     pub fn load(path: &Path) -> Result<Self> {
         debug!(path = %path.display(), "loading spatial index");
 
@@ -477,22 +922,96 @@ impl SpatialIndex {
         }
 
         let version = header[4];
-        if version != INDEX_VERSION {
+        if version != INDEX_VERSION && version != INDEX_VERSION_V2 {
             return Err(Error::SpatialIndexLoad {
                 path: path.to_path_buf(),
                 message: format!(
-                    "unsupported version {} (expected {})",
-                    version, INDEX_VERSION
+                    "unsupported version {} (expected {} or {})",
+                    version, INDEX_VERSION, INDEX_VERSION_V2
                 ),
             });
         }
 
-        let _flags = header[5];
+        let flags = header[5];
+        let has_metadata = (flags & FLAG_HAS_METADATA) != 0;
         let node_count = u32::from_le_bytes(header[6..10].try_into().unwrap());
 
-        // Read compressed data (everything except header and checksum)
-        let metadata = std::fs::metadata(path)?;
-        let compressed_size = metadata.len() as usize - HEADER_SIZE - CHECKSUM_SIZE;
+        debug!(
+            version = version,
+            flags = flags,
+            has_metadata = has_metadata,
+            node_count = node_count,
+            "parsed spatial index header"
+        );
+
+        // Read metadata section if v2 format with metadata flag
+        let metadata = if version == INDEX_VERSION_V2 && has_metadata {
+            // Read checksum (32 bytes)
+            let mut checksum = [0u8; 32];
+            reader
+                .read_exact(&mut checksum)
+                .map_err(|e| Error::SpatialIndexLoad {
+                    path: path.to_path_buf(),
+                    message: format!("failed to read metadata checksum: {}", e),
+                })?;
+
+            // Read tag length (u16)
+            let mut tag_len_bytes = [0u8; 2];
+            reader
+                .read_exact(&mut tag_len_bytes)
+                .map_err(|e| Error::SpatialIndexLoad {
+                    path: path.to_path_buf(),
+                    message: format!("failed to read metadata tag length: {}", e),
+                })?;
+            let tag_len = u16::from_le_bytes(tag_len_bytes) as usize;
+
+            // Read tag bytes
+            let release_tag = if tag_len > 0 {
+                let mut tag_bytes = vec![0u8; tag_len];
+                reader
+                    .read_exact(&mut tag_bytes)
+                    .map_err(|e| Error::SpatialIndexLoad {
+                        path: path.to_path_buf(),
+                        message: format!("failed to read metadata tag: {}", e),
+                    })?;
+                Some(String::from_utf8_lossy(&tag_bytes).into_owned())
+            } else {
+                None
+            };
+
+            // Read timestamp (i64)
+            let mut timestamp_bytes = [0u8; 8];
+            reader
+                .read_exact(&mut timestamp_bytes)
+                .map_err(|e| Error::SpatialIndexLoad {
+                    path: path.to_path_buf(),
+                    message: format!("failed to read metadata timestamp: {}", e),
+                })?;
+            let build_timestamp = i64::from_le_bytes(timestamp_bytes);
+
+            Some(DatasetMetadata {
+                checksum,
+                release_tag,
+                build_timestamp,
+            })
+        } else {
+            None
+        };
+
+        // Calculate compressed data size
+        let file_metadata = std::fs::metadata(path)?;
+        let metadata_section_size = if metadata.is_some() {
+            let tag_len = metadata
+                .as_ref()
+                .and_then(|m| m.release_tag.as_ref())
+                .map(|s| s.len())
+                .unwrap_or(0);
+            32 + 2 + tag_len + 8 // checksum + tag_len + tag_bytes + timestamp
+        } else {
+            0
+        };
+        let compressed_size =
+            file_metadata.len() as usize - HEADER_SIZE - metadata_section_size - CHECKSUM_SIZE;
 
         let mut compressed = vec![0u8; compressed_size];
         reader
@@ -555,6 +1074,8 @@ impl SpatialIndex {
         info!(
             node_count = nodes.len(),
             systems_with_temp = temp_lookup.values().filter(|t| t.is_some()).count(),
+            version = version,
+            has_metadata = metadata.is_some(),
             "loaded spatial index"
         );
 
@@ -563,6 +1084,7 @@ impl SpatialIndex {
             nodes,
             temp_lookup,
             id_to_index,
+            metadata,
         })
     }
 
@@ -586,7 +1108,7 @@ impl SpatialIndex {
     /// Load a spatial index from any `Read + Seek` source.
     ///
     /// This is the underlying implementation shared by `load` (file) and
-    /// `load_from_bytes` (bundled data).
+    /// `load_from_bytes` (bundled data). Supports both v1 and v2 formats.
     pub fn load_from_reader<R: std::io::Read>(mut reader: R) -> Result<Self> {
         // Read and validate header
         let mut header = [0u8; HEADER_SIZE];
@@ -603,17 +1125,76 @@ impl SpatialIndex {
         }
 
         let version = header[4];
-        if version != INDEX_VERSION {
+        if version != INDEX_VERSION && version != INDEX_VERSION_V2 {
             return Err(Error::SpatialIndexDeserialize {
                 message: format!(
-                    "unsupported version {} (expected {})",
-                    version, INDEX_VERSION
+                    "unsupported version {} (expected {} or {})",
+                    version, INDEX_VERSION, INDEX_VERSION_V2
                 ),
             });
         }
 
-        let _flags = header[5];
+        let flags = header[5];
+        let has_metadata = (flags & FLAG_HAS_METADATA) != 0;
         let node_count = u32::from_le_bytes(header[6..10].try_into().unwrap());
+
+        debug!(
+            version = version,
+            flags = flags,
+            has_metadata = has_metadata,
+            node_count = node_count,
+            "parsed spatial index header from bytes"
+        );
+
+        // Read metadata section if v2 format with metadata flag
+        let metadata = if version == INDEX_VERSION_V2 && has_metadata {
+            // Read checksum (32 bytes)
+            let mut checksum = [0u8; 32];
+            reader
+                .read_exact(&mut checksum)
+                .map_err(|e| Error::SpatialIndexDeserialize {
+                    message: format!("failed to read metadata checksum: {}", e),
+                })?;
+
+            // Read tag length (u16)
+            let mut tag_len_bytes = [0u8; 2];
+            reader
+                .read_exact(&mut tag_len_bytes)
+                .map_err(|e| Error::SpatialIndexDeserialize {
+                    message: format!("failed to read metadata tag length: {}", e),
+                })?;
+            let tag_len = u16::from_le_bytes(tag_len_bytes) as usize;
+
+            // Read tag bytes
+            let release_tag = if tag_len > 0 {
+                let mut tag_bytes = vec![0u8; tag_len];
+                reader
+                    .read_exact(&mut tag_bytes)
+                    .map_err(|e| Error::SpatialIndexDeserialize {
+                        message: format!("failed to read metadata tag: {}", e),
+                    })?;
+                Some(String::from_utf8_lossy(&tag_bytes).into_owned())
+            } else {
+                None
+            };
+
+            // Read timestamp (i64)
+            let mut timestamp_bytes = [0u8; 8];
+            reader.read_exact(&mut timestamp_bytes).map_err(|e| {
+                Error::SpatialIndexDeserialize {
+                    message: format!("failed to read metadata timestamp: {}", e),
+                }
+            })?;
+            let build_timestamp = i64::from_le_bytes(timestamp_bytes);
+
+            Some(DatasetMetadata {
+                checksum,
+                release_tag,
+                build_timestamp,
+            })
+        } else {
+            None
+        };
 
         // Read remaining data (compressed + checksum)
         let mut remaining = Vec::new();
@@ -675,6 +1256,8 @@ impl SpatialIndex {
         info!(
             node_count = nodes.len(),
             systems_with_temp = temp_lookup.values().filter(|t| t.is_some()).count(),
+            version = version,
+            has_metadata = metadata.is_some(),
             "loaded spatial index from bytes"
         );
 
@@ -683,6 +1266,7 @@ impl SpatialIndex {
             nodes,
             temp_lookup,
             id_to_index,
+            metadata,
         })
     }
 }
@@ -776,6 +1360,7 @@ mod tests {
             nodes,
             temp_lookup,
             id_to_index,
+            metadata: None,
         };
 
         // Query from origin
@@ -809,6 +1394,7 @@ mod tests {
             nodes,
             temp_lookup,
             id_to_index,
+            metadata: None,
         };
 
         // Query with max_temp = 30K (should exclude system 2)
@@ -853,6 +1439,7 @@ mod tests {
             nodes,
             temp_lookup,
             id_to_index,
+            metadata: None,
         };
 
         let results = index.within_radius([0.0, 0.0, 0.0], 10.0);

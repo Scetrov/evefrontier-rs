@@ -194,6 +194,161 @@ a warning) when spatial/hybrid routing is requested.
 The index includes per-system minimum external temperature, enabling temperature-aware filtering
 during neighbor queries.
 
+### `index-verify`
+
+Verifies that the spatial index artifact is fresh (built from the current dataset version). This
+command compares the source metadata embedded in the spatial index file against the current
+dataset's checksum and release tag.
+
+```bash
+evefrontier-cli index-verify --data-dir docs/fixtures
+```
+
+Options:
+
+- `--json` — output in JSON format (suitable for CI automation)
+- `--quiet` — only output on failure (quiet mode for scripts)
+- `--strict` — require release tag match in addition to checksum
+
+Exit codes:
+
+| Code | Status         | Description                           |
+|------|----------------|---------------------------------------|
+| 0    | SUCCESS        | Index is fresh (matches dataset)      |
+| 1    | STALE          | Index doesn't match dataset           |
+| 2    | MISSING        | Spatial index file not found          |
+| 3    | FORMAT_ERROR   | Legacy v1 format or corrupt file      |
+| 4    | DATASET_MISSING| Dataset file not found                |
+| 5    | ERROR          | Unexpected error during verification  |
+
+**Examples:**
+
+```bash
+# Basic verification
+evefrontier-cli index-verify
+
+# CI-friendly JSON output
+evefrontier-cli index-verify --json
+
+# Quiet mode (only output on failure)
+evefrontier-cli index-verify --quiet || echo "Index is stale!"
+```
+
+### Regenerating the Spatial Index
+
+When the spatial index becomes stale (e.g., after downloading a new dataset version), you need to
+regenerate it to ensure routing accuracy. The CI pipeline validates freshness automatically.
+
+**Steps to regenerate:**
+
+1. **Download the latest dataset** (if needed):
+
+   ```bash
+   evefrontier-cli download
+   ```
+
+2. **Rebuild the spatial index**:
+
+   ```bash
+   evefrontier-cli index-build --force
+   ```
+
+3. **Verify freshness**:
+
+   ```bash
+   evefrontier-cli index-verify
+   ```
+
+**Automated regeneration in CI:**
+
+The CI workflow builds and verifies the spatial index on each run. If CI reports a stale index,
+follow these steps locally, commit the regenerated `.spatial.bin` file (if tracked), and push.
+
+### Troubleshooting CI Failures
+
+If the `spatial-index-freshness` CI job fails, it indicates the spatial index is out of sync with
+the dataset.
+
+**Common causes:**
+
+1. **Dataset was updated without rebuilding the index**
+   - Run `evefrontier-cli index-build --force` locally
+   - Commit any changes to tracked index files
+
+2. **Legacy v1 format index file**
+   - Older index files don't include source metadata
+   - Run `evefrontier-cli index-build --force` to upgrade to v2 format
+
+3. **Index file missing**
+   - Run `evefrontier-cli index-build` to create the index
+
+**Debugging steps:**
+
+```bash
+# Check the current status
+evefrontier-cli index-verify --json
+
+# Rebuild with metadata
+evefrontier-cli index-build --force
+
+# Re-verify
+evefrontier-cli index-verify
+```
+
+### Spatial Index Format v2
+
+The v2 spatial index format (introduced with freshness verification) embeds source dataset metadata
+directly in the index file, enabling automated freshness checks.
+
+**Format structure:**
+
+- **Header** (16 bytes): Magic (`EFSI`), version (2), flags, node count
+- **Metadata section** (variable): SHA-256 dataset checksum, release tag, build timestamp
+- **Compressed data**: KD-tree nodes serialized with postcard + zstd
+- **Checksum** (32 bytes): SHA-256 of compressed data for integrity
+
+**Feature flags** (byte 5 of header):
+
+| Bit | Flag              | Description                        |
+|-----|-------------------|------------------------------------|
+| 0   | HAS_TEMPERATURE   | Index includes temperature data    |
+| 1   | HAS_METADATA      | v2 format with source metadata     |
+
+**Backward compatibility:**
+
+- v2 loader can read v1 format files (no metadata section, version byte = 1)
+- v1 files trigger `LegacyFormat` result from `index-verify`
+- Use `index-build --force` to upgrade v1 files to v2 format
+
+### Lambda Freshness Behavior
+
+AWS Lambda deployments **do not perform runtime freshness verification**. Instead, freshness is
+validated at build-time when bundling the Lambda package.
+
+**Rationale:**
+
+- Lambda artifacts include the dataset and spatial index bundled via `include_bytes!`
+- Runtime verification would add latency to every cold start
+- Build-time verification ensures artifacts are consistent before deployment
+
+**CI Integration:**
+
+The `spatial-index-freshness` CI job verifies the fixture dataset and index before release. For
+production Lambda deployments:
+
+1. CI builds the Lambda with bundled artifacts
+2. CI runs `index-verify` against the same artifacts
+3. Only fresh builds are promoted to deployment
+
+**Local development:**
+
+When testing Lambda handlers locally, ensure your local dataset and index match:
+
+```bash
+evefrontier-cli index-build --force
+evefrontier-cli index-verify
+```
+
 ## Configuration & data path resolution
 
 The CLI resolves the data path in the following order:

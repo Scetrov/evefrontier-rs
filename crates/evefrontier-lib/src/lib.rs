@@ -105,5 +105,7 @@ pub use path::{
 };
 pub use routing::{plan_route, RouteAlgorithm, RouteConstraints, RoutePlan, RouteRequest};
 pub use spatial::{
-    spatial_index_path, try_load_spatial_index, IndexNode, NeighbourQuery, SpatialIndex,
+    compute_dataset_checksum, read_release_tag, spatial_index_path, try_load_spatial_index,
+    verify_freshness, DatasetMetadata, FreshnessResult, IndexNode, NeighbourQuery, SpatialIndex,
+    VerifyDiagnostics, VerifyOutput, FLAG_HAS_METADATA, INDEX_VERSION_V2,
 };

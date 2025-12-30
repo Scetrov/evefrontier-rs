@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- 2025-12-30 - auto-llm:copilot - [feature] - Add `index-verify` CLI command for spatial index freshness verification
+- 2025-12-30 - auto-llm:copilot - [feature] - Implement v2 spatial index format with embedded source metadata (checksum, release_tag, build_timestamp)
+- 2025-12-30 - auto-llm:copilot - [feature] - Add `verify_freshness()`, `compute_dataset_checksum()`, `read_release_tag()` library functions
+- 2025-12-30 - auto-llm:copilot - [feature] - Add `build_with_metadata()` to SpatialIndex for creating v2 format indexes
+- 2025-12-30 - auto-llm:copilot - [ci] - Add `spatial-index-freshness` CI job to validate index/dataset consistency
+- 2025-12-30 - auto-llm:copilot - [docs] - Document index-verify command, regeneration procedures, v2 format, and troubleshooting in USAGE.md
+- 2025-12-30 - auto-llm:copilot - [test] - Add 16 integration tests for spatial index metadata and freshness verification
+- 2025-12-30 - auto-llm:copilot - [test] - Add 7 CLI integration tests for index-verify command with assert_cmd
 - 2025-12-30 - auto-llm:copilot - [feature] - Implement comprehensive microservices observability infrastructure
 - 2025-12-30 - auto-llm:copilot - [feature] - Add Prometheus metrics wiring to scout-gates and scout-range services via record_request_metrics()
 - 2025-12-30 - auto-llm:copilot - [feature] - Add custom ServiceJsonFormat for JSON logging with service name injection and RFC3339 timestamps
