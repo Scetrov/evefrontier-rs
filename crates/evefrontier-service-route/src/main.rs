@@ -6,6 +6,7 @@
 //! # Endpoints
 //!
 //! - `POST /api/v1/route` - Compute a route between two systems
+//! - `GET /metrics` - Prometheus metrics endpoint
 //! - `GET /health/live` - Kubernetes liveness probe
 //! - `GET /health/ready` - Kubernetes readiness probe
 //!
@@ -13,6 +14,7 @@
 //!
 //! - `EVEFRONTIER_DATA_PATH` - Path to the static_data.db file (required)
 //! - `RUST_LOG` - Log level (default: info)
+//! - `LOG_FORMAT` - Log format: json (default) or text
 //! - `SERVICE_PORT` - HTTP port (default: 8080)
 
 use std::env;
@@ -26,7 +28,6 @@ use axum::{
     routing::{get, post},
 };
 use serde::Serialize;
-use tower_http::trace::TraceLayer;
 use tracing::{error, info};
 
 use evefrontier_lib::{
@@ -34,8 +35,9 @@ use evefrontier_lib::{
     plan_route,
 };
 use evefrontier_service_shared::{
-    AppState, ProblemDetails, RouteRequest, ServiceResponse, Validate, from_lib_error, health_live,
-    health_ready,
+    AppState, LoggingConfig, MetricsConfig, MetricsLayer, ProblemDetails, RouteRequest,
+    ServiceResponse, Validate, from_lib_error, health_live, health_ready, init_logging,
+    init_metrics, metrics_handler, record_route_calculated, record_route_failed, record_route_hops,
 };
 
 /// Route response returned to the caller.
@@ -70,21 +72,18 @@ impl IntoResponse for Response {
     }
 }
 
-/// Initialize tracing with JSON formatting for production.
-fn init_tracing() {
-    use tracing_subscriber::{EnvFilter, fmt, prelude::*};
-
-    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
-
-    tracing_subscriber::registry()
-        .with(filter)
-        .with(fmt::layer().json())
-        .init();
-}
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    init_tracing();
+    // Initialize logging (reads LOG_FORMAT from environment)
+    let logging_config = LoggingConfig::from_env().with_service("route");
+    init_logging(&logging_config);
+
+    // Initialize metrics
+    let metrics_config = MetricsConfig::from_env();
+    if let Err(e) = init_metrics(&metrics_config) {
+        // Log but don't fail - metrics are optional
+        tracing::warn!(error = %e, "failed to initialize metrics, continuing without metrics");
+    }
 
     // Load configuration from environment
     let data_path =
@@ -111,9 +110,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Build the router
     let app = Router::new()
         .route("/api/v1/route", post(route_handler))
+        .route("/metrics", get(metrics_handler))
         .route("/health/live", get(health_live))
         .route("/health/ready", get(health_ready))
-        .layer(TraceLayer::new_for_http())
+        .layer(MetricsLayer)
         .with_state(state);
 
     // Bind and serve
@@ -144,6 +144,7 @@ async fn route_handler(
 
     // Validate the request
     if let Err(problem) = request.validate(&request_id) {
+        record_route_failed("validation_error", "route");
         return Response::Error(*problem);
     }
 
@@ -168,6 +169,15 @@ async fn route_handler(
         Ok(plan) => plan,
         Err(e) => {
             error!(request_id = %request_id, error = %e, "route planning failed");
+            // Determine failure reason from error
+            let reason = if e.to_string().contains("Unknown system") {
+                "unknown_system"
+            } else if e.to_string().contains("No path") || e.to_string().contains("no path") {
+                "no_path"
+            } else {
+                "internal_error"
+            };
+            record_route_failed(reason, "route");
             return Response::Error(from_lib_error(&e, &request_id));
         }
     };
@@ -179,13 +189,20 @@ async fn route_handler(
         .filter_map(|&id| starmap.system_name(id).map(String::from))
         .collect();
 
+    let algorithm_name = plan.algorithm.to_string();
+    let hops = plan.hop_count();
+
     let response = RouteResponse {
-        hops: plan.hop_count(),
+        hops,
         gates: plan.gates,
         jumps: plan.jumps,
-        algorithm: plan.algorithm.to_string(),
+        algorithm: algorithm_name.clone(),
         route,
     };
+
+    // Record business metrics
+    record_route_calculated(&algorithm_name.to_lowercase(), "route");
+    record_route_hops(hops, &algorithm_name.to_lowercase());
 
     info!(
         request_id = %request_id,

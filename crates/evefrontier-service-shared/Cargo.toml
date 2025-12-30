@@ -17,11 +17,21 @@ serde.workspace = true
 serde_json.workspace = true
 once_cell.workspace = true
 tracing.workspace = true
-tracing-subscriber = { workspace = true, features = ["json"] }
+tracing-subscriber = { workspace = true, features = ["json", "env-filter"] }
 http.workspace = true
+http-body = "1.0"
 tokio.workspace = true
 axum = "0.8"
 tower-http = { version = "0.6", features = ["cors", "trace"] }
+tower = "0.5"
+pin-project-lite = "0.2"
+
+# Observability: Metrics
+metrics = "0.24"
+metrics-exporter-prometheus = "0.16"
+
+# Observability: Request ID generation
+uuid = { version = "1.11", features = ["v7"] }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
