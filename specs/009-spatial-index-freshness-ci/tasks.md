@@ -162,12 +162,12 @@
 
 **Purpose**: Final cleanup and validation
 
-- [ ] T050 Update `docs/TODO.md` to mark "Add CI to verify spatial index artifact freshness" as complete
-- [ ] T051 [P] Add CHANGELOG.md entry under Unreleased with feature description
-- [ ] T052 [P] Run `cargo clippy --workspace` and fix any warnings
-- [ ] T053 [P] Run `cargo fmt --all` and commit formatting changes
-- [ ] T054 Run `cargo test --workspace` to verify all tests pass
-- [ ] T055 Run quickstart.md validation: build index, verify freshness, test CI job locally
+- [X] T050 Update `docs/TODO.md` to mark "Add CI to verify spatial index artifact freshness" as complete
+- [X] T051 [P] Add CHANGELOG.md entry under Unreleased with feature description
+- [X] T052 [P] Run `cargo clippy --workspace` and fix any warnings
+- [X] T053 [P] Run `cargo fmt --all` and commit formatting changes
+- [X] T054 Run `cargo test --workspace` to verify all tests pass
+- [X] T055 Run quickstart.md validation: build index, verify freshness, test CI job locally
 
 ---
 

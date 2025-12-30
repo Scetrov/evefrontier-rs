@@ -61,32 +61,32 @@
 
 ### Tests for User Story 1
 
-- [X] T014 [P] [US1] Write test `test_metrics_endpoint_returns_prometheus_format` in `crates/evefrontier-service-shared/src/metrics.rs` (MUST FAIL first)
-- [X] T015 [P] [US1] Write test `test_http_request_counter_increments` in `crates/evefrontier-service-shared/src/metrics.rs` (MUST FAIL first)
-- [X] T016 [P] [US1] Write test `test_http_request_duration_histogram_records` in `crates/evefrontier-service-shared/src/metrics.rs` (MUST FAIL first)
-- [X] T017 [P] [US1] Write test `test_business_metric_routes_calculated` in `crates/evefrontier-service-shared/src/metrics.rs` (MUST FAIL first)
+- [ ] T014 [P] [US1] Write test `test_metrics_endpoint_returns_prometheus_format` in `crates/evefrontier-service-shared/src/metrics.rs` (MUST FAIL first)
+- [ ] T015 [P] [US1] Write test `test_http_request_counter_increments` in `crates/evefrontier-service-shared/src/metrics.rs` (MUST FAIL first)
+- [ ] T016 [P] [US1] Write test `test_http_request_duration_histogram_records` in `crates/evefrontier-service-shared/src/metrics.rs` (MUST FAIL first)
+- [ ] T017 [P] [US1] Write test `test_business_metric_routes_calculated` in `crates/evefrontier-service-shared/src/metrics.rs` (MUST FAIL first)
 
 ### Implementation for User Story 1
 
-- [X] T018 [US1] Implement `MetricsLayer` tower middleware in `crates/evefrontier-service-shared/src/middleware.rs` for http_requests_total counter (NOTE: normalize path labels - strip query params, use route template not actual path to bound cardinality per NFR-004)
-- [X] T019 [US1] Add http_request_duration_seconds histogram recording to `MetricsLayer` in `crates/evefrontier-service-shared/src/middleware.rs`
-- [X] T019a [P] [US1] Add http_request_size_bytes histogram recording to `MetricsLayer` for request body size
-- [X] T019b [P] [US1] Add http_response_size_bytes histogram recording to `MetricsLayer` for response body size
-- [X] T020 [US1] Implement `metrics_handler()` axum handler in `crates/evefrontier-service-shared/src/metrics.rs` returning Prometheus format
-- [X] T021 [P] [US1] Define business metric helper functions in `crates/evefrontier-service-shared/src/metrics.rs`: `record_route_calculated()`, `record_route_failed()`
-- [X] T021a [P] [US1] Define `record_route_hops()` helper in `crates/evefrontier-service-shared/src/metrics.rs` for evefrontier_route_hops histogram
-- [X] T022 [P] [US1] Define business metric helper functions in `crates/evefrontier-service-shared/src/metrics.rs`: `record_systems_queried()`, `record_neighbors_returned()`
-- [X] T023 [US1] Wire `/metrics` endpoint into `crates/evefrontier-service-route/src/main.rs` router
-- [X] T024 [US1] Wire `MetricsLayer` middleware into `crates/evefrontier-service-route/src/main.rs` router
-- [X] T025 [US1] Add `record_route_calculated()` call to route handler success path in `crates/evefrontier-service-route/src/main.rs`
-- [X] T025a [US1] Add `record_route_hops()` call to route handler success path in `crates/evefrontier-service-route/src/main.rs`
-- [X] T026 [US1] Add `record_route_failed()` call to route handler error path in `crates/evefrontier-service-route/src/main.rs`
-- [X] T027 [P] [US1] Wire `/metrics` endpoint and `MetricsLayer` into `crates/evefrontier-service-scout-gates/src/main.rs`
-- [X] T028 [P] [US1] Wire `/metrics` endpoint and `MetricsLayer` into `crates/evefrontier-service-scout-range/src/main.rs`
-- [X] T029 [US1] Add `record_systems_queried()` call to scout-gates handler in `crates/evefrontier-service-scout-gates/src/main.rs`
-- [X] T030 [US1] Add `record_systems_queried()` call to scout-range handler in `crates/evefrontier-service-scout-range/src/main.rs`
+- [ ] T018 [US1] Implement `MetricsLayer` tower middleware in `crates/evefrontier-service-shared/src/middleware.rs` for http_requests_total counter (NOTE: normalize path labels - strip query params, use route template not actual path to bound cardinality per NFR-004)
+- [ ] T019 [US1] Add http_request_duration_seconds histogram recording to `MetricsLayer` in `crates/evefrontier-service-shared/src/middleware.rs`
+- [ ] T019a [P] [US1] Add http_request_size_bytes histogram recording to `MetricsLayer` for request body size
+- [ ] T019b [P] [US1] Add http_response_size_bytes histogram recording to `MetricsLayer` for response body size
+- [ ] T020 [US1] Implement `metrics_handler()` axum handler in `crates/evefrontier-service-shared/src/metrics.rs` returning Prometheus format
+- [ ] T021 [P] [US1] Define business metric helper functions in `crates/evefrontier-service-shared/src/metrics.rs`: `record_route_calculated()`, `record_route_failed()`
+- [ ] T021a [P] [US1] Define `record_route_hops()` helper in `crates/evefrontier-service-shared/src/metrics.rs` for evefrontier_route_hops histogram
+- [ ] T022 [P] [US1] Define business metric helper functions in `crates/evefrontier-service-shared/src/metrics.rs`: `record_systems_queried()`, `record_neighbors_returned()`
+- [ ] T023 [US1] Wire `/metrics` endpoint into `crates/evefrontier-service-route/src/main.rs` router
+- [ ] T024 [US1] Wire `MetricsLayer` middleware into `crates/evefrontier-service-route/src/main.rs` router
+- [ ] T025 [US1] Add `record_route_calculated()` call to route handler success path in `crates/evefrontier-service-route/src/main.rs`
+- [ ] T025a [US1] Add `record_route_hops()` call to route handler success path in `crates/evefrontier-service-route/src/main.rs`
+- [ ] T026 [US1] Add `record_route_failed()` call to route handler error path in `crates/evefrontier-service-route/src/main.rs`
+- [ ] T027 [P] [US1] Wire `/metrics` endpoint and `MetricsLayer` into `crates/evefrontier-service-scout-gates/src/main.rs`
+- [ ] T028 [P] [US1] Wire `/metrics` endpoint and `MetricsLayer` into `crates/evefrontier-service-scout-range/src/main.rs`
+- [ ] T029 [US1] Add `record_systems_queried()` call to scout-gates handler in `crates/evefrontier-service-scout-gates/src/main.rs`
+- [ ] T030 [US1] Add `record_systems_queried()` call to scout-range handler in `crates/evefrontier-service-scout-range/src/main.rs`
 
-**Checkpoint**: `curl /metrics` returns valid Prometheus data with HTTP and business metrics ✅
+**Checkpoint**: `curl /metrics` returns valid Prometheus data with HTTP and business metrics
 
 ---
 
@@ -98,22 +98,22 @@
 
 ### Tests for User Story 2
 
-- [X] T031 [P] [US2] Write test `test_json_log_format_default` in `crates/evefrontier-service-shared/src/logging.rs` (MUST FAIL first)
-- [X] T032 [P] [US2] Write test `test_text_log_format_with_env` in `crates/evefrontier-service-shared/src/logging.rs` (MUST FAIL first)
-- [X] T033 [P] [US2] Write test `test_request_log_includes_correlation_id` in `crates/evefrontier-service-shared/src/middleware.rs` (MUST FAIL first)
+- [ ] T031 [P] [US2] Write test `test_json_log_format_default` in `crates/evefrontier-service-shared/src/logging.rs` (MUST FAIL first)
+- [ ] T032 [P] [US2] Write test `test_text_log_format_with_env` in `crates/evefrontier-service-shared/src/logging.rs` (MUST FAIL first)
+- [ ] T033 [P] [US2] Write test `test_request_log_includes_correlation_id` in `crates/evefrontier-service-shared/src/middleware.rs` (MUST FAIL first)
 
 ### Implementation for User Story 2
 
-- [X] T034 [US2] Enhance `init_logging()` in `crates/evefrontier-service-shared/src/logging.rs` to read `LOG_FORMAT` env var and configure json/text layers
-- [X] T035 [US2] Add `service` field injection to JSON logs in `crates/evefrontier-service-shared/src/logging.rs`
-- [X] T036 [US2] Implement request span creation with `request_id` field in `MetricsLayer` `crates/evefrontier-service-shared/src/middleware.rs`
-- [X] T037 [US2] Add `method`, `path`, `remote_addr` fields to request span in `crates/evefrontier-service-shared/src/middleware.rs`
-- [X] T038 [US2] Add response logging with `status`, `latency_ms` fields to `MetricsLayer` on_response callback
-- [X] T039 [US2] Replace `init_tracing()` with shared `init_logging()` in `crates/evefrontier-service-route/src/main.rs`
-- [X] T040 [P] [US2] Replace `init_tracing()` with shared `init_logging()` in `crates/evefrontier-service-scout-gates/src/main.rs`
-- [X] T041 [P] [US2] Replace `init_tracing()` with shared `init_logging()` in `crates/evefrontier-service-scout-range/src/main.rs`
+- [ ] T034 [US2] Enhance `init_logging()` in `crates/evefrontier-service-shared/src/logging.rs` to read `LOG_FORMAT` env var and configure json/text layers
+- [ ] T035 [US2] Add `service` field injection to JSON logs in `crates/evefrontier-service-shared/src/logging.rs`
+- [ ] T036 [US2] Implement request span creation with `request_id` field in `MetricsLayer` `crates/evefrontier-service-shared/src/middleware.rs`
+- [ ] T037 [US2] Add `method`, `path`, `remote_addr` fields to request span in `crates/evefrontier-service-shared/src/middleware.rs`
+- [ ] T038 [US2] Add response logging with `status`, `latency_ms` fields to `MetricsLayer` on_response callback
+- [ ] T039 [US2] Replace `init_tracing()` with shared `init_logging()` in `crates/evefrontier-service-route/src/main.rs`
+- [ ] T040 [P] [US2] Replace `init_tracing()` with shared `init_logging()` in `crates/evefrontier-service-scout-gates/src/main.rs`
+- [ ] T041 [P] [US2] Replace `init_tracing()` with shared `init_logging()` in `crates/evefrontier-service-scout-range/src/main.rs`
 
-**Checkpoint**: Logs are valid JSON with `request_id`, `method`, `path`, `status`, `latency_ms` fields ✅
+**Checkpoint**: Logs are valid JSON with `request_id`, `method`, `path`, `status`, `latency_ms` fields
 
 ---
 
@@ -125,15 +125,15 @@
 
 ### Implementation for User Story 3 (No tests needed - static JSON file)
 
-- [X] T042 [P] [US3] Create directory `docs/dashboards/`
-- [X] T043 [US3] Create Grafana dashboard JSON `docs/dashboards/evefrontier.json` with Overview row (request rate, error rate, p95 latency stats)
-- [X] T044 [US3] Add Traffic row to `docs/dashboards/evefrontier.json` with request rate by service and endpoint time series
-- [X] T045 [US3] Add Latency row to `docs/dashboards/evefrontier.json` with p50/p95/p99 time series and latency heatmap
-- [X] T046 [US3] Add Business Metrics row to `docs/dashboards/evefrontier.json` with routes by algorithm and systems queried panels
-- [X] T047 [US3] Add service variable to dashboard for filtering by service name
-- [X] T048 [P] [US3] Create example Prometheus alerting rules in `docs/dashboards/alerting-rules.yaml`
+- [ ] T042 [P] [US3] Create directory `docs/dashboards/`
+- [ ] T043 [US3] Create Grafana dashboard JSON `docs/dashboards/evefrontier.json` with Overview row (request rate, error rate, p95 latency stats)
+- [ ] T044 [US3] Add Traffic row to `docs/dashboards/evefrontier.json` with request rate by service and endpoint time series
+- [ ] T045 [US3] Add Latency row to `docs/dashboards/evefrontier.json` with p50/p95/p99 time series and latency heatmap
+- [ ] T046 [US3] Add Business Metrics row to `docs/dashboards/evefrontier.json` with routes by algorithm and systems queried panels
+- [ ] T047 [US3] Add service variable to dashboard for filtering by service name
+- [ ] T048 [P] [US3] Create example Prometheus alerting rules in `docs/dashboards/alerting-rules.yaml`
 
-**Checkpoint**: Dashboard imports into Grafana with 0 panel errors ✅
+**Checkpoint**: Dashboard imports into Grafana with 0 panel errors
 
 ---
 
@@ -145,18 +145,18 @@
 
 ### Tests for User Story 4
 
-- [X] T049 [P] [US4] Write test `test_health_ready_returns_checks_map` in `crates/evefrontier-service-shared/src/health.rs` (MUST FAIL first)
-- [X] T050 [P] [US4] Write test `test_health_ready_503_on_failure` in `crates/evefrontier-service-shared/src/health.rs` (MUST FAIL first)
+- [ ] T049 [P] [US4] Write test `test_health_ready_returns_checks_map` in `crates/evefrontier-service-shared/src/health.rs` (MUST FAIL first)
+- [ ] T050 [P] [US4] Write test `test_health_ready_503_on_failure` in `crates/evefrontier-service-shared/src/health.rs` (MUST FAIL first)
 
 ### Implementation for User Story 4
 
-- [X] T051 [US4] Add `CheckResult` struct to `crates/evefrontier-service-shared/src/health.rs` per data-model.md
-- [X] T052 [US4] Add `checks: Option<HashMap<String, CheckResult>>` field to `HealthStatus` in `crates/evefrontier-service-shared/src/health.rs`
-- [X] T053 [US4] Update `health_ready()` handler to populate checks map with database status in `crates/evefrontier-service-shared/src/health.rs`
-- [X] T054 [US4] Update `health_ready()` handler to populate checks map with spatial_index status in `crates/evefrontier-service-shared/src/health.rs`
-- [X] T055 [US4] Return HTTP 503 when any check fails in `health_ready()` handler
+- [ ] T051 [US4] Add `CheckResult` struct to `crates/evefrontier-service-shared/src/health.rs` per data-model.md
+- [ ] T052 [US4] Add `checks: Option<HashMap<String, CheckResult>>` field to `HealthStatus` in `crates/evefrontier-service-shared/src/health.rs`
+- [ ] T053 [US4] Update `health_ready()` handler to populate checks map with database status in `crates/evefrontier-service-shared/src/health.rs`
+- [ ] T054 [US4] Update `health_ready()` handler to populate checks map with spatial_index status in `crates/evefrontier-service-shared/src/health.rs`
+- [ ] T055 [US4] Return HTTP 503 when any check fails in `health_ready()` handler
 
-**Checkpoint**: `/health/ready` returns detailed checks and 503 on failure ✅
+**Checkpoint**: `/health/ready` returns detailed checks and 503 on failure
 
 ---
 
@@ -164,20 +164,18 @@
 
 **Purpose**: Documentation, Helm chart updates, and validation
 
-- [X] T056 [P] Create `docs/OBSERVABILITY.md` with overview of metrics, logging, and health check features
-- [X] T057 Add metrics endpoint documentation to `docs/OBSERVABILITY.md` with PromQL examples
-- [X] T058 Add logging configuration documentation to `docs/OBSERVABILITY.md` with LOG_FORMAT examples
-- [X] T059 Add troubleshooting section to `docs/OBSERVABILITY.md` per quickstart.md patterns
-- [X] T060 [P] Update `charts/evefrontier/values.yaml` with Prometheus scrape annotations: `prometheus.io/scrape: "true"`, `prometheus.io/port: "8080"`, `prometheus.io/path: "/metrics"`
-- [X] T061 [P] Update `charts/evefrontier/templates/deployment-route.yaml` to include Prometheus annotations from values
-- [X] T062 [P] Update `charts/evefrontier/templates/deployment-scout-gates.yaml` to include Prometheus annotations
-- [X] T063 [P] Update `charts/evefrontier/templates/deployment-scout-range.yaml` to include Prometheus annotations
-- [X] T064 Add observability section to `charts/evefrontier/README.md` with Prometheus integration instructions
-- [X] T065 Run `cargo test --workspace` to verify all tests pass
+- [ ] T056 [P] Create `docs/OBSERVABILITY.md` with overview of metrics, logging, and health check features
+- [ ] T057 Add metrics endpoint documentation to `docs/OBSERVABILITY.md` with PromQL examples
+- [ ] T058 Add logging configuration documentation to `docs/OBSERVABILITY.md` with LOG_FORMAT examples
+- [ ] T059 Add troubleshooting section to `docs/OBSERVABILITY.md` per quickstart.md patterns
+- [ ] T060 [P] Update `charts/evefrontier/values.yaml` with Prometheus scrape annotations: `prometheus.io/scrape: "true"`, `prometheus.io/port: "8080"`, `prometheus.io/path: "/metrics"`
+- [ ] T061 [P] Update `charts/evefrontier/templates/deployment-route.yaml` to include Prometheus annotations from values
+- [ ] T062 [P] Update `charts/evefrontier/templates/deployment-scout-gates.yaml` to include Prometheus annotations
+- [ ] T063 [P] Update `charts/evefrontier/templates/deployment-scout-range.yaml` to include Prometheus annotations
+- [ ] T064 Add observability section to `charts/evefrontier/README.md` with Prometheus integration instructions
+- [ ] T065 Run `cargo test --workspace` to verify all tests pass
 - [ ] T066 Run quickstart.md validation: start services, verify `/metrics`, verify JSON logs, verify `/health/ready`
 - [ ] T067 Update `docs/TODO.md` to mark "Observability setup" checkbox as complete
-
-**All phases complete** ✅
 
 ---
 

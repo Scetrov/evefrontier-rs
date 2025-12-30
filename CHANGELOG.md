@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- 2025-12-30 - auto-llm:copilot - [fix] - Fix CLI integration tests to use EVEFRONTIER_DATASET_SOURCE env var to avoid GitHub API rate limiting
+- 2025-12-30 - auto-llm:copilot - [refactor] - Update CLI tests to use cargo_bin_cmd! macro and TestEnv::command() pattern for consistent test setup
 - 2025-12-30 - auto-llm:copilot - [feature] - Add `index-verify` CLI command for spatial index freshness verification
 - 2025-12-30 - auto-llm:copilot - [feature] - Implement v2 spatial index format with embedded source metadata (checksum, release_tag, build_timestamp)
 - 2025-12-30 - auto-llm:copilot - [feature] - Add `verify_freshness()`, `compute_dataset_checksum()`, `read_release_tag()` library functions

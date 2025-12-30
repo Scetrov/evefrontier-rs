@@ -9,13 +9,22 @@ use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
 
+use assert_cmd::cargo::cargo_bin_cmd;
 use assert_cmd::Command;
 use predicates::prelude::*;
 use tempfile::TempDir;
 
 /// Path to the test fixture database.
 fn fixture_path() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/fixtures/minimal_static_data.db")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/fixtures/minimal_static_data.db")
+        .canonicalize()
+        .expect("fixture dataset present")
+}
+
+/// Create a CLI command with proper environment setup for testing.
+fn cli() -> Command {
+    cargo_bin_cmd!("evefrontier-cli")
 }
 
 /// Helper to create a temporary test environment.
@@ -24,6 +33,7 @@ struct TestEnv {
     data_dir: PathBuf,
     db_path: PathBuf,
     index_path: PathBuf,
+    cache_dir: PathBuf,
 }
 
 impl TestEnv {
@@ -31,8 +41,12 @@ impl TestEnv {
     fn new() -> Self {
         let temp_dir = TempDir::new().expect("create temp dir");
         let data_dir = temp_dir.path().to_path_buf();
+        let cache_dir = data_dir.join("cache");
         let db_path = data_dir.join("static_data.db");
         let index_path = data_dir.join("static_data.db.spatial.bin");
+
+        // Create cache directory
+        fs::create_dir_all(&cache_dir).expect("create cache dir");
 
         // Copy fixture database
         fs::copy(fixture_path(), &db_path).expect("copy fixture");
@@ -42,7 +56,17 @@ impl TestEnv {
             data_dir,
             db_path,
             index_path,
+            cache_dir,
         }
+    }
+
+    /// Create a command configured with proper environment for this test env.
+    fn command(&self) -> Command {
+        let mut cmd = cli();
+        cmd.env("EVEFRONTIER_DATASET_SOURCE", fixture_path())
+            .env("EVEFRONTIER_DATASET_CACHE_DIR", &self.cache_dir)
+            .env("RUST_LOG", "error");
+        cmd
     }
 
     /// Create a release marker file.
@@ -55,8 +79,7 @@ impl TestEnv {
 
     /// Build a v2 index using the CLI.
     fn build_v2_index(&self) {
-        Command::cargo_bin("evefrontier-cli")
-            .expect("binary exists")
+        self.command()
             .args([
                 "--data-dir",
                 self.data_dir.to_str().unwrap(),
@@ -87,8 +110,7 @@ fn test_index_verify_fresh() {
     env.create_release_marker("e6c3");
     env.build_v2_index();
 
-    Command::cargo_bin("evefrontier-cli")
-        .expect("binary exists")
+    env.command()
         .args(["--data-dir", env.data_dir.to_str().unwrap(), "index-verify"])
         .assert()
         .success()
@@ -115,8 +137,7 @@ fn test_index_verify_stale() {
             .expect("append data");
     }
 
-    Command::cargo_bin("evefrontier-cli")
-        .expect("binary exists")
+    env.command()
         .args(["--data-dir", env.data_dir.to_str().unwrap(), "index-verify"])
         .assert()
         .code(1) // STALE exit code
@@ -132,8 +153,7 @@ fn test_index_verify_missing() {
     let env = TestEnv::new();
     // Don't build an index
 
-    Command::cargo_bin("evefrontier-cli")
-        .expect("binary exists")
+    env.command()
         .args(["--data-dir", env.data_dir.to_str().unwrap(), "index-verify"])
         .assert()
         .code(2) // MISSING exit code
@@ -151,8 +171,8 @@ fn test_index_verify_json_output() {
     env.build_v2_index();
 
     // Disable logo and footer for clean JSON output
-    let output = Command::cargo_bin("evefrontier-cli")
-        .expect("binary exists")
+    let output = env
+        .command()
         .args([
             "--no-logo",
             "--no-footer",
@@ -196,8 +216,7 @@ fn test_index_verify_exit_codes() {
         let env = TestEnv::new();
         env.build_v2_index();
 
-        Command::cargo_bin("evefrontier-cli")
-            .expect("binary exists")
+        env.command()
             .args(["--data-dir", env.data_dir.to_str().unwrap(), "index-verify"])
             .assert()
             .code(0);
@@ -208,8 +227,7 @@ fn test_index_verify_exit_codes() {
         let env = TestEnv::new();
         // Don't build index
 
-        Command::cargo_bin("evefrontier-cli")
-            .expect("binary exists")
+        env.command()
             .args(["--data-dir", env.data_dir.to_str().unwrap(), "index-verify"])
             .assert()
             .code(2);
@@ -220,8 +238,7 @@ fn test_index_verify_exit_codes() {
         let env = TestEnv::new();
         env.build_v1_index();
 
-        Command::cargo_bin("evefrontier-cli")
-            .expect("binary exists")
+        env.command()
             .args(["--data-dir", env.data_dir.to_str().unwrap(), "index-verify"])
             .assert()
             .code(3);
@@ -234,8 +251,7 @@ fn test_index_verify_legacy_format() {
     let env = TestEnv::new();
     env.build_v1_index();
 
-    Command::cargo_bin("evefrontier-cli")
-        .expect("binary exists")
+    env.command()
         .args(["--data-dir", env.data_dir.to_str().unwrap(), "index-verify"])
         .assert()
         .code(3) // FORMAT_ERROR exit code
@@ -250,8 +266,7 @@ fn test_index_verify_quiet_mode() {
 
     // Quiet mode with fresh index should produce no output
     // Also disable logo and footer for a clean test
-    Command::cargo_bin("evefrontier-cli")
-        .expect("binary exists")
+    env.command()
         .args([
             "--no-logo",
             "--no-footer",
