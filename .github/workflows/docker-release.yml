@@ -191,12 +191,8 @@ jobs:
           build-args: |
             SERVICE=${{ matrix.service }}
       
-      - name: Get image digest
-        id: digest
-        run: |
-          DIGEST="${{ steps.build.outputs.digest }}"
-          echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
-          echo "Image digest: ${DIGEST}"
+      - name: Log image digest
+        run: echo "Image digest for ${{ matrix.service }}:${{ needs.build-binaries.outputs.version }} is ${{ steps.build.outputs.digest }}"
 
   scan-images:
     name: Scan Images
