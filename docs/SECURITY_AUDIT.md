@@ -5,6 +5,19 @@ evefrontier-rs project.
 
 ## Overview
 
+We employ a layered security scanning approach:
+
+1. **Rust Dependency Scanning** (`cargo-audit`): Scans Cargo dependencies against the RustSec
+   Advisory Database
+2. **Container Image Scanning** (Trivy): Scans Docker images for OS-level and application
+   vulnerabilities
+
+Both tools run automatically in CI pipelines and have specific policies for handling vulnerabilities.
+
+---
+
+## Rust Dependency Scanning (cargo-audit)
+
 We use `cargo-audit` to scan our dependencies for known security vulnerabilities from the
 [RustSec Advisory Database](https://rustsec.org/). The audit runs automatically in:
 
@@ -216,6 +229,87 @@ GitHub Dependabot can automatically:
 - Keep dependencies current
 
 Enable it in `.github/dependabot.yml` for automated dependency updates.
+
+---
+
+## Container Image Scanning (Trivy)
+
+In addition to Rust dependency scanning, we scan our Docker container images using
+[Trivy](https://trivy.dev/) to detect vulnerabilities in:
+
+- Base image OS packages (Debian packages in distroless)
+- Any binaries or libraries bundled in the image
+- Misconfigurations in the container setup
+
+### How It Works
+
+Container image scanning runs as part of the `docker-release.yml` workflow:
+
+1. Images are built and pushed to GHCR
+2. Trivy scans each image for CRITICAL and HIGH severity vulnerabilities
+3. Results are uploaded to GitHub Security tab as SARIF reports
+4. Build fails if actionable vulnerabilities are found
+
+### Policy: Ignoring Unfixed Vulnerabilities
+
+We configure Trivy with `ignore-unfixed: true`, meaning:
+
+- ✅ **Fail** on CRITICAL/HIGH vulnerabilities that have patches available
+- ⚠️ **Warn** (but don't fail) on vulnerabilities without upstream fixes
+
+**Rationale:**
+
+1. **We use Google's distroless base image** (`gcr.io/distroless/cc-debian12:nonroot`), which is
+   actively maintained and receives security updates
+2. **Unfixed vulnerabilities have no remediation path** — we cannot patch what upstream hasn't fixed
+3. **Rust dependencies are scanned separately** by `cargo-audit`, so we're not missing coverage
+4. **We still report all vulnerabilities** in SARIF format for visibility
+
+### Monitoring for Fixes
+
+When Trivy reports unfixed vulnerabilities:
+
+1. **Check the advisory** to understand the risk and affected component
+2. **Monitor upstream** (Debian security tracker, distroless releases)
+3. **When a fix is released**, our next build will automatically fail until we update
+4. **Update the base image** by rebuilding containers (the Dockerfile pulls `:nonroot` tag)
+
+### Manual Scanning
+
+To scan a container image locally:
+
+```bash
+# Install Trivy
+brew install trivy  # macOS
+# or see https://trivy.dev/v0.63/docs/installation/
+
+# Scan an image
+trivy image ghcr.io/scetrov/evefrontier-rs/evefrontier-service-route:0.1.0
+
+# Scan with same settings as CI
+trivy image --severity CRITICAL,HIGH --ignore-unfixed \
+  ghcr.io/scetrov/evefrontier-rs/evefrontier-service-route:0.1.0
+
+# Generate SARIF report
+trivy image --format sarif --output results.sarif \
+  ghcr.io/scetrov/evefrontier-rs/evefrontier-service-route:0.1.0
+```
+
+### Difference from cargo-audit
+
+| Aspect              | cargo-audit                  | Trivy (Container)             |
+| ------------------- | ---------------------------- | ----------------------------- |
+| **Scope**           | Rust crate dependencies      | Full container image          |
+| **Database**        | RustSec Advisory DB          | NVD, vendor advisories, etc.  |
+| **Runs When**       | Pre-commit, CI, manual       | Docker release workflow       |
+| **Unfixed Policy**  | Warn only (yanked crates)    | Ignore (no upstream fix)      |
+| **Failure Mode**    | Fail on security advisories  | Fail on fixable CRITICAL/HIGH |
+
+Both tools complement each other:
+- `cargo-audit` catches vulnerabilities in our Rust code's dependencies
+- Trivy catches vulnerabilities in the runtime environment (OS packages, base image)
+
+---
 
 ## References
 

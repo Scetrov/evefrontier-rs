@@ -218,6 +218,17 @@ jobs:
           output: 'trivy-results-${{ matrix.service }}.sarif'
           severity: 'CRITICAL,HIGH'
           exit-code: '1'
+          # NOTE: We ignore "unfixed" vulnerabilities in the container base image.
+          # - Rust dependencies are scanned separately with `cargo-audit`.
+          # - Trivy scans the full container image (including the distroless base).
+          # - "unfixed" here means no upstream vendor patch exists yet; we rely on
+          #   the Google-maintained distroless base image to ship security fixes.
+          # - We still fail the build on CRITICAL/HIGH issues when a fix is available.
+          #
+          # For the full security policy, rationale, and the process for monitoring
+          # when fixes become available, see:
+          #   - docs/SECURITY_AUDIT.md (container image scanning section)
+          #   - docs/adrs/0007-devsecops-practices.md (DevSecOps practices ADR)
           ignore-unfixed: true
       
       - name: Upload Trivy scan results
