@@ -4,6 +4,25 @@ This TODO list captures the remaining work required to implement the EVE Frontie
 Lambda functions, and supporting infrastructure described throughout the documentation and ADRs.
 Tasks are grouped by domain; checkboxes track completion status.
 
+## 📋 ADR Alignment Status
+
+**Last Updated:** 2025-12-30 (see `docs/adr-alignment-report_2025-12-30.md` for detailed analysis)
+
+**Overall Alignment:** ✅ **93%** (14/15 ADRs fully implemented; 1 deferred with clear plan)
+
+- ✅ **ADRs 0001-0014:** Fully or substantially implemented
+- ⚠️ **ADR 0015 (Fuel Calculations):** Proposed; deferred pending:
+  - Community validation of fuel formula
+  - Heat mechanic research and confirmation  
+  - Ship data CSV availability from evefrontier_datasets repository
+
+**Recommendations:**
+- Create ADR 0016 documenting web-based starmap explorer architecture (currently deferred)
+- Create ADR documenting NX orchestration strategy (implicit in current structure)
+- Create "Heat Mechanics Research" ADR once formula validated (prerequisite for ADR 0015 Phase 2)
+
+For detailed alignment report, see `docs/adr-alignment-report_2025-12-30.md`
+
 ## High Priority - Container Repository
 
 - [x] Container repository put images into the repo via `ghcr.io/scetrov/evefrontier-rs/*` instead
@@ -434,6 +453,41 @@ Tasks are grouped by domain; checkboxes track completion status.
   - [ ] Create quadlet files for each microservice with appropriate resource limits and restart
         policies
   - [ ] Document quadlet installation and management procedures in `docs/DEPLOYMENT.md`
+
+## Architecture Documentation (Recommended ADRs)
+
+The following ADR topics are recommended to formalize currently implicit architectural decisions:
+
+- [ ] **ADR 0016: Web-Based Starmap Explorer Architecture** (Currently deferred feature)
+  - [ ] Document frontend framework choice (React, Svelte, Vue, etc.)
+  - [ ] Define API contract between CLI server and web UI
+  - [ ] Specify deployment strategy (bundled with CLI vs. separate service)
+  - [ ] Define interactive route planning UX and algorithm exposure
+  - Currently blocked: Prioritize other work; design document deferred
+  - Related task: Implement web explorer under "Web-based Starmap Explorer" section below
+
+- [ ] **ADR 0017: NX Repository Orchestration Strategy** (Currently implicit in nx.json)
+  - [ ] Document rationale for Nx selection (build caching, task orchestration, developer experience)
+  - [ ] Specify target configuration patterns (input/output hashing, parallel execution)
+  - [ ] Document CI integration (task execution, artifact caching)
+  - [ ] Define custom task patterns for Rust crates and scripts
+  - Currently working: nx.json and project.json files are in place; ADR would formalize strategy
+
+- [ ] **ADR 0018: Heat Mechanics Research Summary** (Prerequisite for ADR 0015 Phase 2)
+  - [ ] Research and validate heat mechanic formulas from EVE Frontier game mechanics
+  - [ ] Document findings: thermal stress model, ship-specific heat tolerance, rate of heat accumulation
+  - [ ] Create validation test cases against observed in-game behavior
+  - [ ] Define implementation specification for heat calculations in RouteStep/RouteSummary
+  - Currently blocked: Pending community research and game mechanic validation
+  - Related task: This ADR must complete before implementing "Ship Data & Fuel Calculations Phase 4"
+
+- [ ] **ADR 0019: Lambda Architecture and Cold-Start Optimization** (Currently implicit in Lambda crates)
+  - [ ] Document cold-start constraints (binary size limits, initialization timing budgets)
+  - [ ] Specify spatial index bundling and lazy-loading strategy
+  - [ ] Define state initialization sequence (database loading, index deserialization, metrics setup)
+  - [ ] Justify architectural choices (e.g., why shared infrastructure in evefrontier-lambda-shared)
+  - [ ] Specify performance targets and monitoring strategy
+  - Currently working: Implementation is sound; ADR would clarify trade-offs and constraints
 
 ## Web-based Starmap Explorer
 
