@@ -230,7 +230,7 @@ jobs:
       - name: Generate SBOM (CycloneDX format)
         run: |
           VERSION="${{ needs.package.outputs.version }}"
-          cargo sbom --output-format cyclonedx > "evefrontier-${VERSION}.sbom.json"
+          cargo sbom --output-format cyclone_dx_json_1_4 > "evefrontier-${VERSION}.sbom.json"
           echo "SBOM generated:"
           head -50 "evefrontier-${VERSION}.sbom.json"
 
