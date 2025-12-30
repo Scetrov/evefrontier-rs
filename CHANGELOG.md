@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- 2025-12-30 - auto-llm:copilot - [feature] - Add Docker microservices architecture with three HTTP services (route, scout-gates, scout-range)
+- 2025-12-30 - auto-llm:copilot - [feature] - Add evefrontier-service-shared crate with axum 0.8 HTTP infrastructure, health checks, RFC 9457 problem details
+- 2025-12-30 - auto-llm:copilot - [feature] - Add multi-stage Dockerfiles using Distroless base images (~30MB runtime containers)
+- 2025-12-30 - auto-llm:copilot - [feature] - Add docker-compose.yml with Traefik reverse proxy for local development
+- 2025-12-30 - auto-llm:copilot - [feature] - Add complete Helm chart (charts/evefrontier/) with deployments, services, ingress, probes
+- 2025-12-30 - auto-llm:copilot - [ci] - Add docker-release.yml workflow with multi-arch builds, Trivy scanning, cosign signing, SBOM generation
+- 2025-12-30 - auto-llm:copilot - [adr] - Created ADR 0014: Containerization Strategy documenting Docker/Kubernetes architecture decisions
+- 2025-12-30 - auto-llm:copilot - [docs] - Updated README.md, DEPLOYMENT.md, RELEASE.md with Docker/Kubernetes deployment guidance
+- 2025-12-30 - auto-llm:copilot - [test] - Added 39 unit tests in evefrontier-service-shared covering health, problem details, request/response types
+- 2025-12-30 - auto-llm:copilot - [security] - Add explicit permissions blocks to docker-release workflow (principle of least privilege)
 - 2025-12-28 - Scetrov - [ci] - Add release workflow with multi-arch builds, cosign signing, and SBOM generation
 - 2025-12-28 - Scetrov - [refactor] - Extract CLI output formatting into separate modules (terminal.rs, output.rs)
 - 2025-12-28 - Scetrov - [refactor] - Add ColorPalette struct for terminal color management with detect/colored/plain modes
