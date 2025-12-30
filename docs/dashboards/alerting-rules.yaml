@@ -1,0 +1,129 @@
+# EVE Frontier Prometheus Alerting Rules
+#
+# Deploy to Prometheus AlertManager or use with Grafana Alerting.
+# See: https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/
+
+groups:
+  - name: evefrontier-critical
+    interval: 30s
+    rules:
+      # High Error Rate - triggers when >5% of requests fail with 5xx
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(http_requests_total{status=~"5xx"}[5m]))
+          / sum(rate(http_requests_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          service: evefrontier
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | printf \"%.2f\" }}% (threshold: 5%)"
+          runbook_url: "https://github.com/Scetrov/evefrontier-rs/blob/main/docs/RUNBOOKS.md#higherrorrate"
+
+      # Service Down - triggers when any service is unreachable
+      - alert: ServiceDown
+        expr: up{job=~"evefrontier-.*"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: evefrontier
+        annotations:
+          summary: "EVE Frontier service {{ $labels.job }} is down"
+          description: "The service {{ $labels.job }} has been down for more than 1 minute"
+          runbook_url: "https://github.com/Scetrov/evefrontier-rs/blob/main/docs/RUNBOOKS.md#servicedown"
+
+      # All Instances Down - triggers when all instances of a service are down
+      - alert: AllInstancesDown
+        expr: |
+          sum by (job) (up{job=~"evefrontier-.*"}) == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: evefrontier
+        annotations:
+          summary: "All instances of {{ $labels.job }} are down"
+          description: "No healthy instances available for {{ $labels.job }}"
+
+  - name: evefrontier-warning
+    interval: 60s
+    rules:
+      # High Latency - triggers when P95 latency exceeds 1 second
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (path, le)) > 1
+        for: 10m
+        labels:
+          severity: warning
+          service: evefrontier
+        annotations:
+          summary: "High latency detected for {{ $labels.path }}"
+          description: "P95 latency for {{ $labels.path }} is {{ $value | printf \"%.2f\" }}s (threshold: 1s)"
+          runbook_url: "https://github.com/Scetrov/evefrontier-rs/blob/main/docs/RUNBOOKS.md#highlatency"
+
+      # High Route Failure Rate - triggers when >10% of routes fail
+      - alert: HighRouteFailureRate
+        expr: |
+          sum(rate(evefrontier_routes_failed_total[5m]))
+          / (sum(rate(evefrontier_routes_calculated_total[5m]))
+             + sum(rate(evefrontier_routes_failed_total[5m]))) > 0.1
+        for: 15m
+        labels:
+          severity: warning
+          service: evefrontier
+        annotations:
+          summary: "High route failure rate"
+          description: "Route failure rate is {{ $value | printf \"%.2f\" }}% (threshold: 10%)"
+
+      # Elevated 4xx Rate - triggers when >20% of requests return 4xx
+      - alert: Elevated4xxRate
+        expr: |
+          sum(rate(http_requests_total{status="4xx"}[5m]))
+          / sum(rate(http_requests_total[5m])) > 0.2
+        for: 15m
+        labels:
+          severity: warning
+          service: evefrontier
+        annotations:
+          summary: "Elevated 4xx error rate"
+          description: "Client error rate is {{ $value | printf \"%.2f\" }}% (threshold: 20%)"
+
+      # Memory Usage High - triggers when memory exceeds 80% of limit
+      - alert: HighMemoryUsage
+        expr: |
+          (process_resident_memory_bytes{job=~"evefrontier-.*"}
+           / on(job) group_left container_spec_memory_limit_bytes) > 0.8
+        for: 10m
+        labels:
+          severity: warning
+          service: evefrontier
+        annotations:
+          summary: "High memory usage for {{ $labels.job }}"
+          description: "Memory usage is {{ $value | printf \"%.2f\" }}% of limit"
+
+  - name: evefrontier-info
+    interval: 300s
+    rules:
+      # Low Traffic - informational alert for low request volume
+      - alert: LowTraffic
+        expr: |
+          sum(rate(http_requests_total[30m])) < 0.01
+        for: 30m
+        labels:
+          severity: info
+          service: evefrontier
+        annotations:
+          summary: "Low traffic detected"
+          description: "Request rate is below 0.01 req/s for 30 minutes"
+
+      # No Routes Calculated - informational when no routes processed
+      - alert: NoRoutesCalculated
+        expr: |
+          sum(increase(evefrontier_routes_calculated_total[1h])) == 0
+        for: 1h
+        labels:
+          severity: info
+          service: evefrontier
+        annotations:
+          summary: "No routes calculated in the last hour"
+          description: "The route service has not processed any routes in 1 hour"

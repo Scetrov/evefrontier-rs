@@ -270,8 +270,11 @@ where
                         .record(duration_secs);
 
                         // Record response size if available
-                        if let Some(content_length) = response.headers().get(http::header::CONTENT_LENGTH) {
-                            if let Ok(size) = content_length.to_str().unwrap_or("0").parse::<f64>() {
+                        if let Some(content_length) =
+                            response.headers().get(http::header::CONTENT_LENGTH)
+                        {
+                            if let Ok(size) = content_length.to_str().unwrap_or("0").parse::<f64>()
+                            {
                                 metrics::histogram!(
                                     "http_response_size_bytes",
                                     "method" => this.method.clone(),
@@ -304,10 +307,7 @@ where
                         )
                         .record(duration_secs);
 
-                        tracing::error!(
-                            latency_ms = latency_ms,
-                            "request failed"
-                        );
+                        tracing::error!(latency_ms = latency_ms, "request failed");
                     }
                 }
 

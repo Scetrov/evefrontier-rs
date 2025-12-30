@@ -122,7 +122,9 @@ impl std::fmt::Display for MetricsError {
         match self {
             MetricsError::Disabled => write!(f, "metrics are disabled"),
             MetricsError::AlreadyInitialized => write!(f, "metrics recorder already initialized"),
-            MetricsError::InstallFailed(e) => write!(f, "failed to install metrics recorder: {}", e),
+            MetricsError::InstallFailed(e) => {
+                write!(f, "failed to install metrics recorder: {}", e)
+            }
         }
     }
 }

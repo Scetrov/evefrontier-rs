@@ -219,6 +219,67 @@ All services expose health endpoints:
 - `GET /health/live` - Liveness probe (is the service running?)
 - `GET /health/ready` - Readiness probe (is the service ready for traffic?)
 
+## Observability
+
+### Prometheus Metrics
+
+All services expose Prometheus metrics at `/metrics`. By default, pod annotations are added for automatic Prometheus discovery.
+
+**Configuration:**
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `prometheus.enabled` | Enable Prometheus scraping annotations | `true` |
+| `prometheus.port` | Metrics endpoint port | `8080` |
+| `prometheus.path` | Metrics endpoint path | `/metrics` |
+
+**Example Prometheus scrape config:**
+
+```yaml
+scrape_configs:
+  - job_name: 'evefrontier'
+    kubernetes_sd_configs:
+      - role: pod
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+```
+
+### Logging
+
+Services emit structured JSON logs by default.
+
+**Configuration:**
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `config.logLevel` | Log level (trace, debug, info, warn, error) | `info` |
+| `config.logFormat` | Log format (json, text) | `json` |
+
+**Example log entry (JSON format):**
+
+```json
+{"timestamp":"2025-12-30T10:15:30Z","level":"INFO","service":"route","message":"Request completed","status":200}
+```
+
+### Grafana Dashboard
+
+A pre-built Grafana dashboard is available at [`docs/dashboards/evefrontier-overview.json`](../../docs/dashboards/evefrontier-overview.json).
+
+Import it into Grafana to visualize:
+- Service health status
+- Request rates and latencies
+- Error rates
+- Route calculations and failures
+- Resource usage
+
+### Alerting Rules
+
+Prometheus alerting rules are available at [`docs/dashboards/alerting-rules.yaml`](../../docs/dashboards/alerting-rules.yaml).
+
+For more details, see the [Observability Guide](../../docs/OBSERVABILITY.md).
+
 ## Troubleshooting
 
 ### Check pod status

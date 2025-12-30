@@ -107,3 +107,4 @@ http = "1.4.0"
 axum = "0.8"
 tower-http = { version = "0.6", features = ["trace", "cors"] }
 axum-test = "17.0"
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }

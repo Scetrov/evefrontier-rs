@@ -147,10 +147,21 @@ ingress:
 config:
   # Log level (trace, debug, info, warn, error)
   logLevel: info
+  # Log format (json, text)
+  logFormat: json
   # Enable metrics endpoint
-  enableMetrics: "false"
+  enableMetrics: "true"
   # Enable distributed tracing
   enableTracing: "false"
+
+# Prometheus metrics configuration
+prometheus:
+  # Enable Prometheus scraping via pod annotations
+  enabled: true
+  # Metrics endpoint path
+  path: /metrics
+  # Metrics endpoint port
+  port: 8080
 
 # Persistent volume for the dataset
 persistence:
