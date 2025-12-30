@@ -261,18 +261,26 @@ mod tests {
 
     // Note: Testing supports_color() and supports_unicode() directly is challenging
     // because they read environment variables which are global process state.
-    // The following tests use serial test execution via the test harness to avoid
-    // race conditions, and save/restore environment variables.
+    // We use a static mutex to serialize all env-modifying tests to avoid race conditions.
+
+    use std::sync::Mutex;
+
+    /// Global mutex to serialize tests that modify environment variables.
+    /// Environment variables are process-global, so tests modifying them must not run in parallel.
+    static ENV_MUTEX: Mutex<()> = Mutex::new(());
 
     mod supports_color_tests {
         use super::*;
         use std::env;
 
         /// Helper to run a test with temporary environment variable changes.
+        /// Acquires the ENV_MUTEX to prevent parallel execution with other env-modifying tests.
         fn with_env_vars<F, R>(vars: &[(&str, Option<&str>)], f: F) -> R
         where
             F: FnOnce() -> R,
         {
+            let _guard = ENV_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+
             // Save original values
             let saved: Vec<_> = vars.iter().map(|(k, _)| (*k, env::var_os(k))).collect();
 
@@ -327,10 +335,13 @@ mod tests {
         use std::env;
 
         /// Helper to run a test with temporary environment variable changes.
+        /// Acquires the ENV_MUTEX to prevent parallel execution with other env-modifying tests.
         fn with_env_vars<F, R>(vars: &[(&str, Option<&str>)], f: F) -> R
         where
             F: FnOnce() -> R,
         {
+            let _guard = ENV_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+
             // Save original values
             let saved: Vec<_> = vars.iter().map(|(k, _)| (*k, env::var_os(k))).collect();
 

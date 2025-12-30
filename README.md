@@ -47,6 +47,7 @@ This repository contains multiple crates organized as a Cargo workspace:
 
 ### Documentation
 
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — System architecture diagrams and data flows
 - [`docs/INITIAL_SETUP.md`](docs/INITIAL_SETUP.md) — Configuration and data path resolution
 - [`docs/USAGE.md`](docs/USAGE.md) — Comprehensive usage examples
 - [`docs/adrs/`](docs/adrs/) — Architectural Decision Records
