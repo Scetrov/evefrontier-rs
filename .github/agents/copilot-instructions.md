@@ -4,7 +4,6 @@ Partially auto-generated from feature plans; manual additions allowed between MA
 
 ## Active Technologies
 - Markdown with Mermaid syntax (no Rust code changes required) + Mermaid (renders natively in GitHub, VS Code, most Markdown viewers) (006-architecture-diagrams)
-- N/A (documentation only) (006-architecture-diagrams)
 
 - Documentation (Markdown) with shell command examples + GPG, cosign, cargo-sbom, sha256sum (005-release-documentation)
 

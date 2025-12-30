@@ -98,7 +98,7 @@ graph TD
         temperature[temperature.rs<br/>Temp calculations]
     end
 
-    github --> dataset
+    dataset --> github
     dataset --> db
     db --> graph
     graph --> path

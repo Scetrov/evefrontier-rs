@@ -66,11 +66,11 @@ Without diagrams, understanding the system requires reading multiple source file
 
 ## Acceptance Criteria
 
-- [ ] `docs/ARCHITECTURE.md` exists with at least 4 diagrams (component, data flow, 2 sequence)
-- [ ] Diagrams render correctly in GitHub Markdown preview
-- [ ] `README.md` links to `docs/ARCHITECTURE.md` in the documentation section
-- [ ] Diagrams accurately reflect the current codebase structure
-- [ ] No external rendering tools required (Mermaid only)
+- [x] `docs/ARCHITECTURE.md` exists with at least 4 diagrams (component, data flow, 2 sequence)
+- [x] Diagrams render correctly in GitHub Markdown preview
+- [x] `README.md` links to `docs/ARCHITECTURE.md` in the documentation section
+- [x] Diagrams accurately reflect the current codebase structure
+- [x] No external rendering tools required (Mermaid only)
 
 ## Technical Notes
 
