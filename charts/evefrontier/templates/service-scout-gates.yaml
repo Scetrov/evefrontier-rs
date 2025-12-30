@@ -1,0 +1,17 @@
+{{- if .Values.scoutGates.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "evefrontier.fullname" . }}-scout-gates
+  labels:
+    {{- include "evefrontier.scoutGates.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.scoutGates.service.type }}
+  ports:
+    - port: {{ .Values.scoutGates.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "evefrontier.scoutGates.selectorLabels" . | nindent 4 }}
+{{- end }}

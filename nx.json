@@ -37,6 +37,11 @@
       "cache": true,
       "parallel": false
     },
+    "complexity": {
+      "inputs": ["default", "^production", "{workspaceRoot}/clippy.toml"],
+      "cache": true,
+      "parallel": false
+    },
     "audit": {
       "cache": false
     },
@@ -48,7 +53,7 @@
     "default": {
       "runner": "nx/tasks-runners/default",
       "options": {
-        "cacheableOperations": ["build", "test", "lint", "clippy"]
+        "cacheableOperations": ["build", "test", "lint", "clippy", "complexity"]
       }
     }
   },

@@ -1,0 +1,87 @@
+# Docker Compose configuration for EVE Frontier microservices
+# Usage: docker compose up -d
+#
+# For Podman users:
+#   podman compose up -d
+#   # Note: Traefik uses file provider instead of Docker socket
+#
+# Services:
+# - route: Route planning service (POST /api/v1/route)
+# - scout-gates: Gate neighbor lookup (POST /api/v1/scout/gates)
+# - scout-range: Spatial range search (POST /api/v1/scout/range)
+# - traefik: Reverse proxy and load balancer
+#
+# Endpoints after startup:
+# - http://localhost:8080/api/v1/route
+# - http://localhost:8080/api/v1/scout/gates
+# - http://localhost:8080/api/v1/scout/range
+# - http://localhost:8081 (Traefik dashboard)
+
+services:
+  # Traefik reverse proxy
+  traefik:
+    image: traefik:v3.2
+    command:
+      - "--api.insecure=true"
+      - "--api.dashboard=true"
+      - "--providers.file.filename=/etc/traefik/dynamic.yml"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "8080:80"       # Public HTTP endpoint
+      - "8081:8080"     # Traefik dashboard
+    volumes:
+      - ./traefik-dynamic.yml:/etc/traefik/dynamic.yml:ro
+    networks:
+      - evefrontier
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/api/rawdata"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # Route planning service
+  route:
+    build:
+      context: .
+      dockerfile: crates/evefrontier-service-route/Dockerfile
+    environment:
+      - EVEFRONTIER_DATA_PATH=/data/static_data.db
+      - RUST_LOG=info
+      - SERVICE_PORT=8080
+    volumes:
+      - ./data:/data:ro
+    networks:
+      - evefrontier
+
+  # Gate neighbor lookup service
+  scout-gates:
+    build:
+      context: .
+      dockerfile: crates/evefrontier-service-scout-gates/Dockerfile
+    environment:
+      - EVEFRONTIER_DATA_PATH=/data/static_data.db
+      - RUST_LOG=info
+      - SERVICE_PORT=8080
+    volumes:
+      - ./data:/data:ro
+    networks:
+      - evefrontier
+
+  # Spatial range search service
+  scout-range:
+    build:
+      context: .
+      dockerfile: crates/evefrontier-service-scout-range/Dockerfile
+    environment:
+      - EVEFRONTIER_DATA_PATH=/data/static_data.db
+      - RUST_LOG=info
+      - SERVICE_PORT=8080
+    volumes:
+      - ./data:/data:ro
+    networks:
+      - evefrontier
+
+networks:
+  evefrontier:
+    driver: bridge

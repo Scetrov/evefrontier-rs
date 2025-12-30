@@ -1,0 +1,48 @@
+# Traefik dynamic configuration for EVE Frontier services
+# This file is used by the file provider in docker-compose.yml
+# Compatible with both Docker and Podman
+
+http:
+  routers:
+    route:
+      rule: "PathPrefix(`/api/v1/route`)"
+      entryPoints:
+        - web
+      service: route
+
+    scout-gates:
+      rule: "PathPrefix(`/api/v1/scout/gates`)"
+      entryPoints:
+        - web
+      service: scout-gates
+
+    scout-range:
+      rule: "PathPrefix(`/api/v1/scout/range`)"
+      entryPoints:
+        - web
+      service: scout-range
+
+  services:
+    route:
+      loadBalancer:
+        servers:
+          - url: "http://route:8080"
+        healthCheck:
+          path: /health/live
+          interval: "10s"
+
+    scout-gates:
+      loadBalancer:
+        servers:
+          - url: "http://scout-gates:8080"
+        healthCheck:
+          path: /health/live
+          interval: "10s"
+
+    scout-range:
+      loadBalancer:
+        servers:
+          - url: "http://scout-range:8080"
+        healthCheck:
+          path: /health/live
+          interval: "10s"

@@ -1,0 +1,32 @@
+apiVersion: v2
+name: evefrontier
+description: EVE Frontier pathfinding microservices for Kubernetes
+
+# Chart type - application charts are collections of templates
+type: application
+
+# Chart version - increment this for chart changes
+version: 0.1.0
+
+# Application version - matches the Docker image tag
+appVersion: "0.1.0"
+
+keywords:
+  - eve-frontier
+  - pathfinding
+  - routing
+  - microservices
+
+home: https://github.com/rslater-cs/evefrontier-rs
+
+sources:
+  - https://github.com/rslater-cs/evefrontier-rs
+
+maintainers:
+  - name: EVE Frontier Team
+    url: https://github.com/rslater-cs/evefrontier-rs
+
+annotations:
+  # Helm chart testing with ct
+  artifacthub.io/category: gaming
+  artifacthub.io/license: MIT

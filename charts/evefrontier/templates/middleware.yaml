@@ -1,0 +1,67 @@
+{{- if and .Values.ingress.enabled (eq .Values.ingress.className "traefik") }}
+{{- if .Values.ingress.traefik.rateLimit.enabled }}
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ include "evefrontier.fullname" . }}-ratelimit
+  labels:
+    {{- include "evefrontier.labels" . | nindent 4 }}
+spec:
+  rateLimit:
+    average: {{ .Values.ingress.traefik.rateLimit.average }}
+    burst: {{ .Values.ingress.traefik.rateLimit.burst }}
+    period: {{ .Values.ingress.traefik.rateLimit.period }}
+    sourceCriterion:
+      ipStrategy:
+        depth: 1
+{{- end }}
+{{- if .Values.ingress.traefik.cors.enabled }}
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ include "evefrontier.fullname" . }}-cors
+  labels:
+    {{- include "evefrontier.labels" . | nindent 4 }}
+spec:
+  headers:
+    accessControlAllowMethods:
+      - GET
+      - POST
+      - OPTIONS
+    accessControlAllowHeaders:
+      - Content-Type
+      - Authorization
+    {{- with .Values.ingress.traefik.cors.allowOrigins }}
+    accessControlAllowOriginList:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    accessControlMaxAge: 86400
+    addVaryHeader: true
+{{- end }}
+{{- if .Values.ingress.traefik.headers.enabled }}
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ include "evefrontier.fullname" . }}-headers
+  labels:
+    {{- include "evefrontier.labels" . | nindent 4 }}
+spec:
+  headers:
+    # Security headers
+    frameDeny: true
+    contentTypeNosniff: true
+    browserXssFilter: true
+    referrerPolicy: "strict-origin-when-cross-origin"
+    {{- if .Values.ingress.traefik.headers.contentSecurityPolicy }}
+    contentSecurityPolicy: {{ .Values.ingress.traefik.headers.contentSecurityPolicy | quote }}
+    {{- end }}
+    {{- if .Values.ingress.traefik.headers.hsts }}
+    stsSeconds: 31536000
+    stsIncludeSubdomains: true
+    stsPreload: true
+    {{- end }}
+{{- end }}
+{{- end }}

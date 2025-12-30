@@ -41,9 +41,20 @@ This repository contains multiple crates organized as a Cargo workspace:
   - **`evefrontier-lambda-shared`** — Common Lambda infrastructure (runtime, error handling,
     tracing)
 
+### Docker Microservices
+
+- **Service crates (Docker/Kubernetes deployment):**
+  - **`evefrontier-service-route`** — HTTP route planning service
+  - **`evefrontier-service-scout-gates`** — HTTP gate neighbors service  
+  - **`evefrontier-service-scout-range`** — HTTP range query service
+- **Shared/infrastructure crate:**
+  - **`evefrontier-service-shared`** — Common HTTP infrastructure (axum handlers, health checks,
+    request/response types)
+
 > [!NOTE]
-> The workspace contains 6 crates in total: the core library (`evefrontier-lib`), CLI
-> (`evefrontier-cli`), 3 Lambda function crates, and 1 shared Lambda infrastructure crate.
+> The workspace contains 10 crates in total: the core library (`evefrontier-lib`), CLI
+> (`evefrontier-cli`), 3 Lambda function crates, 1 shared Lambda infrastructure crate, 3 Docker
+> microservice crates, and 1 shared HTTP infrastructure crate.
 
 ### Documentation
 
@@ -275,8 +286,40 @@ The workspace includes AWS Lambda functions for serverless deployment:
 All Lambda functions use the same `evefrontier-lib` core and include bundled datasets for fast cold
 starts.
 
-See [`docs/TODO.md`](docs/TODO.md) for deployment documentation (infrastructure setup is in
-progress).
+See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) for Terraform deployment instructions.
+
+## Docker & Kubernetes Deployment
+
+The workspace also includes containerized microservices for Docker Compose and Kubernetes:
+
+### Docker Compose (Local Development)
+
+```bash
+# Start all services with Traefik reverse proxy
+docker compose up -d
+
+# Test the services
+curl http://localhost/api/v1/route -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"origin": "Nod", "destination": "Brana"}'
+```
+
+### Kubernetes with Helm
+
+```bash
+# Install from local chart
+helm install evefrontier ./charts/evefrontier
+
+# With custom values
+helm install evefrontier ./charts/evefrontier -f values.yaml
+```
+
+The microservices use:
+- **Base image**: `gcr.io/distroless/cc-debian12` (~20MB runtime)
+- **Security**: Non-root user, read-only filesystem, dropped capabilities
+- **Ingress**: Traefik IngressRoute with optional rate limiting and CORS
+
+See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) for comprehensive Docker/Kubernetes documentation.
 
 ## Contributing
 

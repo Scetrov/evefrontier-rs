@@ -1,0 +1,29 @@
+[package]
+name = "evefrontier-service-scout-gates"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.91.1"
+description = "EVE Frontier gate scout HTTP microservice"
+license = "MIT"
+repository = "https://github.com/rslater-cs/evefrontier-rs"
+readme = "../../README.md"
+keywords = ["eve-frontier", "routing", "microservice"]
+
+[dependencies]
+evefrontier-lib = { path = "../evefrontier-lib" }
+evefrontier-service-shared = { path = "../evefrontier-service-shared" }
+
+axum = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+tower-http = { workspace = true, features = ["trace", "cors"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter", "json"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+axum-test = "17.0"
+
+[[bin]]
+name = "evefrontier-service-scout-gates"
+path = "src/main.rs"

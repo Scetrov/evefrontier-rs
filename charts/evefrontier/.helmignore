@@ -1,0 +1,32 @@
+# Patterns to ignore when building packages
+.DS_Store
+.git/
+.gitignore
+.vscode/
+*.swp
+*.bak
+*.tmp
+*.orig
+*.log
+
+# IDE/Editor directories
+.idea/
+*.iml
+
+# Testing files
+*_test.yaml
+tests/
+test/
+
+# Documentation (keep README.md)
+CONTRIBUTING.md
+CODE_OF_CONDUCT.md
+CHANGELOG.md
+
+# CI/CD files
+.github/
+.gitlab/
+Makefile
+
+# Development files
+*.md.backup

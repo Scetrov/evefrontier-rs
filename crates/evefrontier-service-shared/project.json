@@ -1,0 +1,45 @@
+{
+  "name": "evefrontier-service-shared",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "library",
+  "sourceRoot": "crates/evefrontier-service-shared/src",
+  "tags": ["type:library", "lang:rust", "scope:service"],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "cargo build -p evefrontier-service-shared --locked",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["build"],
+      "options": {
+        "command": "cargo test -p evefrontier-service-shared --locked",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "cargo fmt -p evefrontier-service-shared -- --check",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "clippy": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "cargo clippy -p evefrontier-service-shared --all-targets -- -D warnings",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "complexity": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "cargo clippy -p evefrontier-service-shared --all-targets -- -W clippy::cognitive_complexity -W clippy::too_many_lines -W clippy::excessive_nesting -D warnings",
+        "cwd": "{workspaceRoot}"
+      }
+    }
+  }
+}

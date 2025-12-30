@@ -6,6 +6,10 @@ members = [
     "crates/evefrontier-lambda-route",
     "crates/evefrontier-lambda-scout-gates",
     "crates/evefrontier-lambda-scout-range",
+    "crates/evefrontier-service-shared",
+    "crates/evefrontier-service-route",
+    "crates/evefrontier-service-scout-gates",
+    "crates/evefrontier-service-scout-range",
 ]
 resolver = "2"
 
@@ -100,3 +104,6 @@ rusty-hook = "0.11.2"
 lambda_runtime = "0.13"
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 http = "1.4.0"
+axum = "0.8"
+tower-http = { version = "0.6", features = ["trace", "cors"] }
+axum-test = "17.0"

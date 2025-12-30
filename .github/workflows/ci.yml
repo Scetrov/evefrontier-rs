@@ -140,6 +140,46 @@ jobs:
       - name: Run security audit
         run: cargo audit
 
+  complexity-check:
+    name: Code complexity analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: 1.91.1
+          components: clippy
+
+      - name: Cache cargo directories
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-
+
+      - name: Run complexity analysis with clippy
+        run: |
+          # Enable complexity-related lints from the restriction/pedantic categories
+          # cognitive_complexity: functions with complexity > 15 (configured in clippy.toml)
+          # too_many_lines: functions with > 100 lines
+          # excessive_nesting: nesting depth > 8
+          #
+          # Note: This is an informational check. Warnings are reported but don't fail the build.
+          # The --cap-lints=warn flag ensures we only warn (not error) on these complexity issues.
+          # Use this output to identify areas for refactoring.
+          cargo clippy --workspace --all-targets -- \
+            -W clippy::cognitive_complexity \
+            -W clippy::too_many_lines \
+            -W clippy::excessive_nesting \
+            --cap-lints=warn || true
+
   changelog-guard:
     name: Enforce CHANGELOG.md updates for code changes
     runs-on: ubuntu-latest

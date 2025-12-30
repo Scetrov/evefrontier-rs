@@ -1,0 +1,211 @@
+//! EVE Frontier route planning HTTP microservice.
+//!
+//! This service provides a REST API for computing routes between solar systems,
+//! supporting multiple algorithms and constraints.
+//!
+//! # Endpoints
+//!
+//! - `POST /api/v1/route` - Compute a route between two systems
+//! - `GET /health/live` - Kubernetes liveness probe
+//! - `GET /health/ready` - Kubernetes readiness probe
+//!
+//! # Configuration
+//!
+//! - `EVEFRONTIER_DATA_PATH` - Path to the static_data.db file (required)
+//! - `RUST_LOG` - Log level (default: info)
+//! - `SERVICE_PORT` - HTTP port (default: 8080)
+
+use std::env;
+use std::net::SocketAddr;
+
+use axum::{
+    Json, Router,
+    extract::State,
+    http::StatusCode,
+    response::IntoResponse,
+    routing::{get, post},
+};
+use serde::Serialize;
+use tower_http::trace::TraceLayer;
+use tracing::{error, info};
+
+use evefrontier_lib::{
+    RouteAlgorithm as LibAlgorithm, RouteConstraints as LibConstraints, RouteRequest as LibRequest,
+    plan_route,
+};
+use evefrontier_service_shared::{
+    AppState, ProblemDetails, RouteRequest, ServiceResponse, Validate, from_lib_error, health_live,
+    health_ready,
+};
+
+/// Route response returned to the caller.
+#[derive(Debug, Serialize)]
+struct RouteResponse {
+    /// Total number of hops in the route.
+    hops: usize,
+    /// Number of gate jumps.
+    gates: usize,
+    /// Number of spatial jumps.
+    jumps: usize,
+    /// Algorithm used.
+    algorithm: String,
+    /// Ordered list of system names in the route.
+    route: Vec<String>,
+}
+
+/// HTTP response - either success or RFC 9457 error.
+#[derive(Debug, Serialize)]
+#[serde(untagged)]
+enum Response {
+    Success(ServiceResponse<RouteResponse>),
+    Error(ProblemDetails),
+}
+
+impl IntoResponse for Response {
+    fn into_response(self) -> axum::response::Response {
+        match self {
+            Response::Success(data) => (StatusCode::OK, Json(data)).into_response(),
+            Response::Error(problem) => problem.into_response(),
+        }
+    }
+}
+
+/// Initialize tracing with JSON formatting for production.
+fn init_tracing() {
+    use tracing_subscriber::{EnvFilter, fmt, prelude::*};
+
+    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+
+    tracing_subscriber::registry()
+        .with(filter)
+        .with(fmt::layer().json())
+        .init();
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    init_tracing();
+
+    // Load configuration from environment
+    let data_path =
+        env::var("EVEFRONTIER_DATA_PATH").unwrap_or_else(|_| "/data/static_data.db".to_string());
+    let port: u16 = env::var("SERVICE_PORT")
+        .ok()
+        .and_then(|p| p.parse().ok())
+        .unwrap_or(8080);
+
+    info!(data_path = %data_path, port = port, "starting route service");
+
+    // Load application state
+    let state = AppState::load(&data_path).map_err(|e| {
+        error!(error = %e, path = %data_path, "failed to load application state");
+        e
+    })?;
+
+    info!(
+        systems = state.starmap().systems.len(),
+        spatial_index = state.has_spatial_index(),
+        "application state loaded"
+    );
+
+    // Build the router
+    let app = Router::new()
+        .route("/api/v1/route", post(route_handler))
+        .route("/health/live", get(health_live))
+        .route("/health/ready", get(health_ready))
+        .layer(TraceLayer::new_for_http())
+        .with_state(state);
+
+    // Bind and serve
+    let addr = SocketAddr::from(([0, 0, 0, 0], port));
+    info!(addr = %addr, "listening on");
+
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    axum::serve(listener, app).await?;
+
+    Ok(())
+}
+
+/// Handle POST /api/v1/route requests.
+async fn route_handler(
+    State(state): State<AppState>,
+    Json(request): Json<RouteRequest>,
+) -> Response {
+    // Generate a request ID for tracing
+    let request_id = generate_request_id();
+
+    info!(
+        request_id = %request_id,
+        from = %request.from,
+        to = %request.to,
+        algorithm = ?request.algorithm,
+        "handling route request"
+    );
+
+    // Validate the request
+    if let Err(problem) = request.validate(&request_id) {
+        return Response::Error(*problem);
+    }
+
+    let starmap = state.starmap();
+
+    // Convert to library request
+    let lib_request = LibRequest {
+        start: request.from.clone(),
+        goal: request.to.clone(),
+        algorithm: LibAlgorithm::from(request.algorithm),
+        constraints: LibConstraints {
+            max_jump: request.max_jump,
+            avoid_systems: request.avoid.clone(),
+            avoid_gates: request.avoid_gates,
+            max_temperature: request.max_temperature,
+        },
+        spatial_index: state.spatial_index_arc(),
+    };
+
+    // Plan the route
+    let plan = match plan_route(starmap, &lib_request) {
+        Ok(plan) => plan,
+        Err(e) => {
+            error!(request_id = %request_id, error = %e, "route planning failed");
+            return Response::Error(from_lib_error(&e, &request_id));
+        }
+    };
+
+    // Convert system IDs to names
+    let route: Vec<String> = plan
+        .steps
+        .iter()
+        .filter_map(|&id| starmap.system_name(id).map(String::from))
+        .collect();
+
+    let response = RouteResponse {
+        hops: plan.hop_count(),
+        gates: plan.gates,
+        jumps: plan.jumps,
+        algorithm: plan.algorithm.to_string(),
+        route,
+    };
+
+    info!(
+        request_id = %request_id,
+        hops = response.hops,
+        gates = response.gates,
+        jumps = response.jumps,
+        "route computed successfully"
+    );
+
+    Response::Success(ServiceResponse::new(response))
+}
+
+/// Generate a unique request ID for tracing.
+fn generate_request_id() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+
+    format!("req-{:x}", timestamp)
+}

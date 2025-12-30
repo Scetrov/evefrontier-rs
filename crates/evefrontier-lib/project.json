@@ -39,6 +39,13 @@
         "cwd": "{workspaceRoot}"
       }
     },
+    "complexity": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "cargo clippy -p evefrontier-lib --all-targets -- -W clippy::cognitive_complexity -W clippy::too_many_lines -W clippy::excessive_nesting -D warnings",
+        "cwd": "{workspaceRoot}"
+      }
+    },
     "doc": {
       "executor": "nx:run-commands",
       "options": {
