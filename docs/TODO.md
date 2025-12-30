@@ -6,8 +6,9 @@ Tasks are grouped by domain; checkboxes track completion status.
 
 ## High Priority - Container Repository
 
-- [ ] Container repository put images into the repo via `ghcr.io/scetrov/evefrontier-rs/*` instead of using `rslater-cs` or `scetrov/` (without evefrontier-rs).
-- [ ] All instances of incorrect GHCR references should be corrected 
+- [x] Container repository put images into the repo via `ghcr.io/scetrov/evefrontier-rs/*` instead
+      of using `rslater-cs` or `scetrov/` (without evefrontier-rs).
+- [x] All instances of incorrect GHCR references should be corrected
 
 ## 🔥 High Priority - Dependency Issues
 
@@ -326,7 +327,8 @@ Tasks are grouped by domain; checkboxes track completion status.
 - [x] Add CI to verify spatial index artifact freshness against dataset version.
   - Created `index-verify` CLI command with JSON and human-readable output
   - Added `spatial-index-freshness` CI job to `.github/workflows/ci.yml`
-  - Implemented v2 spatial index format with embedded source metadata (checksum, release tag, timestamp)
+  - Implemented v2 spatial index format with embedded source metadata (checksum, release tag,
+    timestamp)
   - Full backward compatibility with v1 format loading
 - [x] Document operational procedure for regenerating spatial index after dataset updates.
   - Added "Regenerating Spatial Index" section to `docs/USAGE.md`
@@ -358,7 +360,8 @@ Tasks are grouped by domain; checkboxes track completion status.
   - Uses cargo-zigbuild for musl static linking
 - [x] Ensure microservice scope aligns with Lambda function boundaries: each container should
       implement a single, well-defined API endpoint matching its Lambda equivalent.
-  - `evefrontier-service-route`, `evefrontier-service-scout-gates`, `evefrontier-service-scout-range`
+  - `evefrontier-service-route`, `evefrontier-service-scout-gates`,
+    `evefrontier-service-scout-range`
   - All use `evefrontier-service-shared` for common HTTP infrastructure (axum-based)
 - [x] Configure Traefik as the API Gateway for the microservices stack:
   - [x] Define Traefik routing rules and middleware (rate limiting, authentication, etc.)
@@ -400,6 +403,8 @@ Tasks are grouped by domain; checkboxes track completion status.
     - values.yaml configuration, ConfigMap, ServiceAccount
   - [ ] Observability setup (metrics, logs, traces) for microservices
     - Tracing infrastructure exists but metrics/observability documentation pending
+    - Prefer OpenTelemetry integration for future work, refactor existing tracing hooks to use OTEL
+      when feasible.
 - [ ] Generate quadlet files for systemd based container management with Podman
   - [ ] Create quadlet files for each microservice with appropriate resource limits and restart
         policies
@@ -415,10 +420,35 @@ Tasks are grouped by domain; checkboxes track completion status.
 
 ## Known Issues / Tweaks
 
- - [ ] The GOAL item in `enhanced` mode doesn't include a status line (min temp, planets, moons).
- - [ ] `enhanced` should be the default not basic as it provides the clearest representation.
- - [ ] Add LibrePay integration with a link in the README for donations/support, plus a once every 7
-       days reminder in the CLI footer.
+- [ ] The GOAL item in `enhanced` mode doesn't include a status line (min temp, planets, moons).
+- [ ] `enhanced` should be the default not basic as it provides the clearest representation.
+- [ ] Add LibrePay integration with a link in the README for donations/support, plus a once every 7
+      days reminder in the CLI footer.
+- [ ] Add support for generating fmap URLs based upon
+      [ROUTE_FEATURE.md](https://github.com/frontier-reapers/starmap/blob/main/docs/ROUTE_FEATURE.md)
+      specification.
+  - [ ] Write a comprehensive ADR describing both the encoder and decoder algorithms for fmap URLs.
+- [ ] Add support for avoiding systems by solarsystem ID, name or radius from solar system.
+- [ ] Add support for specifying some parameters (i.e. avoidance systems, algorithim, etc.) either
+      in `~/.config` or ENV_VARs
+
+## Packaging
+
+- [ ] Add `nixpkgs` packaging for easy installation on NixOS and other Nix-based systems.
+- [ ] Add Homebrew formula for macOS users to easily install via `brew install evefrontier-cli`.
+- [ ] Add Debian/Ubuntu packaging for installation via `apt-get install evefrontier-cli`.
+- [ ] Add Fedora/CentOS packaging for installation via `dnf install evefrontier-cli`.
+- [ ] Add Arch Linux packaging for installation via `pacman -S evefrontier-cli`.
+- [ ] Add Windows installer (MSI) for easy installation on Windows systems.
+- [ ] Add Snap package for easy installation on Linux systems via `snap install evefrontier-cli`.
+- [ ] Add Flatpak package for easy installation on Linux systems via
+      `flatpak install evefrontier-cli`.
+- [ ] Add Winget package for easy installation on Windows systems via
+      `winget install evefrontier-cli`.
+- [ ] Add Chocolatey package for easy installation on Windows systems via
+      `choco install evefrontier-cli`.
+- [ ] Add Docker image for easy deployment in containerized environments via
+      `docker pull evefrontier-cli`.
 
 ---
 

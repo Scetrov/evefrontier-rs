@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- 2025-12-30 - auto-llm:copilot - [fix] - Standardize GHCR container registry paths to `ghcr.io/scetrov/evefrontier-rs/*` across all config files, Helm charts, and documentation
 - 2025-12-30 - auto-llm:copilot - [fix] - Fix CLI integration tests to use EVEFRONTIER_DATASET_SOURCE env var to avoid GitHub API rate limiting
 - 2025-12-30 - auto-llm:copilot - [refactor] - Update CLI tests to use cargo_bin_cmd! macro and TestEnv::command() pattern for consistent test setup
 - 2025-12-30 - auto-llm:copilot - [feature] - Add `index-verify` CLI command for spatial index freshness verification

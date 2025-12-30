@@ -17,14 +17,14 @@ keywords:
   - routing
   - microservices
 
-home: https://github.com/rslater-cs/evefrontier-rs
+home: https://github.com/Scetrov/evefrontier-rs
 
 sources:
-  - https://github.com/rslater-cs/evefrontier-rs
+  - https://github.com/Scetrov/evefrontier-rs
 
 maintainers:
   - name: EVE Frontier Team
-    url: https://github.com/rslater-cs/evefrontier-rs
+    url: https://github.com/Scetrov/evefrontier-rs
 
 annotations:
   # Helm chart testing with ct

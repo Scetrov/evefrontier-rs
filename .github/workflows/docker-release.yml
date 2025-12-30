@@ -36,8 +36,7 @@ permissions: {}
 
 env:
   REGISTRY: ghcr.io
-  # Use rslater-cs namespace until official org is available
-  IMAGE_PREFIX: ghcr.io/rslater-cs
+  IMAGE_PREFIX: ghcr.io/scetrov/evefrontier-rs
 
 jobs:
   build-binaries:
@@ -337,8 +336,10 @@ jobs:
           # Install cosign
           # https://docs.sigstore.dev/cosign/installation/
           
-          # Verify signature
-          cosign verify --certificate-identity-regexp=".*" --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \\
+          # Verify signature (ensures image was built by this repository's release workflow)
+          cosign verify \\
+            --certificate-identity="https://github.com/${{ github.repository }}/.github/workflows/docker-release.yml@refs/tags/${VERSION}" \\
+            --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \\
             ${{ env.IMAGE_PREFIX }}/evefrontier-service-route:${VERSION}
           \`\`\`
           

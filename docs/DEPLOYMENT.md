@@ -39,7 +39,7 @@ AWS Lambda with Terraform.
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/rslater-cs/evefrontier-rs.git
+git clone https://github.com/Scetrov/evefrontier-rs.git
 cd evefrontier-rs
 
 # 2. Download the dataset

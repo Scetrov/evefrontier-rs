@@ -768,9 +768,9 @@ The `.github/workflows/docker-release.yml` workflow handles:
 
 | Image | Description |
 |-------|-------------|
-| `ghcr.io/rslater-cs/evefrontier-service-route` | Route planning service |
-| `ghcr.io/rslater-cs/evefrontier-service-scout-gates` | Gate neighbor discovery |
-| `ghcr.io/rslater-cs/evefrontier-service-scout-range` | Spatial range queries |
+| `ghcr.io/scetrov/evefrontier-rs/evefrontier-service-route` | Route planning service |
+| `ghcr.io/scetrov/evefrontier-rs/evefrontier-service-scout-gates` | Gate neighbor discovery |
+| `ghcr.io/scetrov/evefrontier-rs/evefrontier-service-scout-range` | Spatial range queries |
 
 ### Image Tags
 
@@ -791,7 +791,8 @@ docker compose build
 
 ### Verifying Image Signatures
 
-All images are signed using cosign with GitHub OIDC (keyless signing):
+All images are signed using cosign with GitHub OIDC (keyless signing). The verification ensures
+images were built by the official release workflow in this repository only.
 
 ```bash
 # Install cosign
@@ -799,20 +800,28 @@ All images are signed using cosign with GitHub OIDC (keyless signing):
 # Linux: See https://docs.sigstore.dev/cosign/installation/
 
 # Verify image signature
+# The --certificate-identity ensures the image was signed by the docker-release.yml workflow
+# in the Scetrov/evefrontier-rs repository (not by any other repository or workflow)
 cosign verify \
-  --certificate-identity-regexp=".*" \
+  --certificate-identity="https://github.com/Scetrov/evefrontier-rs/.github/workflows/docker-release.yml@refs/tags/v0.1.0" \
   --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-  ghcr.io/rslater-cs/evefrontier-service-route:v0.1.0
+  ghcr.io/scetrov/evefrontier-rs/evefrontier-service-route:v0.1.0
 
-# Verify all three images
+# Verify all three images (replace v0.1.0 with your target version)
+VERSION="v0.1.0"
 for svc in route scout-gates scout-range; do
   echo "Verifying evefrontier-service-${svc}..."
   cosign verify \
-    --certificate-identity-regexp=".*" \
+    --certificate-identity="https://github.com/Scetrov/evefrontier-rs/.github/workflows/docker-release.yml@refs/tags/${VERSION}" \
     --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-    "ghcr.io/rslater-cs/evefrontier-service-${svc}:v0.1.0"
+    "ghcr.io/scetrov/evefrontier-rs/evefrontier-service-${svc}:${VERSION}"
 done
 ```
+
+> **Security Note**: The `--certificate-identity` parameter is crucial for supply chain security.
+> It ensures that only images signed by the official `docker-release.yml` workflow in this
+> specific repository are accepted. Never use `--certificate-identity-regexp=".*"` as it would
+> accept signatures from any GitHub Actions workflow.
 
 ### Inspecting Image SBOM
 

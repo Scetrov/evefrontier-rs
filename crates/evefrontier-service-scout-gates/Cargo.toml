@@ -5,7 +5,7 @@ edition = "2024"
 rust-version = "1.91.1"
 description = "EVE Frontier gate scout HTTP microservice"
 license = "MIT"
-repository = "https://github.com/rslater-cs/evefrontier-rs"
+repository = "https://github.com/Scetrov/evefrontier-rs"
 readme = "../../README.md"
 keywords = ["eve-frontier", "routing", "microservice"]
 

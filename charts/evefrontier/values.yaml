@@ -14,7 +14,7 @@ route:
   replicaCount: 1
   
   image:
-    repository: ghcr.io/rslater-cs/evefrontier-service-route
+    repository: ghcr.io/scetrov/evefrontier-rs/evefrontier-service-route
     pullPolicy: IfNotPresent
     # Overrides the image tag (defaults to chart appVersion)
     tag: ""
@@ -49,7 +49,7 @@ scoutGates:
   replicaCount: 1
   
   image:
-    repository: ghcr.io/rslater-cs/evefrontier-service-scout-gates
+    repository: ghcr.io/scetrov/evefrontier-rs/evefrontier-service-scout-gates
     pullPolicy: IfNotPresent
     tag: ""
   
@@ -76,7 +76,7 @@ scoutRange:
   replicaCount: 1
   
   image:
-    repository: ghcr.io/rslater-cs/evefrontier-service-scout-range
+    repository: ghcr.io/scetrov/evefrontier-rs/evefrontier-service-scout-range
     pullPolicy: IfNotPresent
     tag: ""
   
