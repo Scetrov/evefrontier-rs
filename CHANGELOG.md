@@ -12,7 +12,7 @@ All notable changes to this project will be documented in this file.
   - Dataset downloader with GitHub release caching, atomic writes, and zip extraction
   - Starmap loader with runtime schema detection for multiple dataset formats
   - Graph builders for gate-only, spatial, and hybrid routing modes
-  - Pathfinding algorithms: BFS (unweighted), Dijkstra (weighted), A\* (heuristic-guided)
+  - Pathfinding algorithms: BFS (unweighted), Dijkstra (weighted), `A*` (heuristic-guided)
   - Route constraints: max jump distance, avoided systems, gate-free travel, temperature limits
   - KD-tree spatial index with postcard+zstd serialization and SHA-256 checksums
   - Temperature-aware nearest-neighbor queries with min_external_temp filtering
