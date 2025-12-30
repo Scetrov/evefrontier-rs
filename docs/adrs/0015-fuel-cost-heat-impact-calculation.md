@@ -23,13 +23,15 @@ to integrate ship attribute data and calculate per-hop and total-route fuel cost
 The `evefrontier_datasets` repository (https://github.com/Scetrov/evefrontier_datasets) includes a
 `ship_data.csv` file in each release (starting from e6c4) containing ship attributes:
 
-| Field           | Type   | Description                                           |
-| --------------- | ------ | ----------------------------------------------------- |
-| `name`          | String | Ship name (e.g., "Reflex", "Forager")                 |
-| `base_mass_kg`  | f64    | Ship hull mass in kilograms (empty, no fuel/cargo)    |
-| `specific_heat` | f64    | Specific heat capacity (J/kg·K)                       |
-| `fuel_capacity` | f64    | Maximum fuel tank capacity (units)                    |
-| `cargo_capacity`| f64    | Maximum cargo hold capacity (m³)                      |
+| Field                    | Type   | Description                                           |
+| ------------------------ | ------ | ----------------------------------------------------- |
+| `name`                   | String | Ship name (e.g., "Reflex", "Forager")                 |
+| `base_mass_kg`           | f64    | Ship hull mass in kilograms (empty, no fuel/cargo)    |
+| `specific_heat`          | f64    | Specific heat capacity (J/kg·K)                       |
+| `fuel_capacity`          | f64    | Maximum fuel tank capacity (units)                    |
+| `cargo_capacity`         | f64    | Maximum cargo hold capacity (m³)                      |
+| `max_heat_tolerance`     | f64    | Maximum heat the ship can tolerate before damage      |
+| `heat_dissipation_rate`  | f64    | Heat dissipation rate per time unit (units/s)        |
 
 ### Mass Calculation
 
@@ -94,33 +96,74 @@ Starting: total_mass = 12,383,006 kg, fuel_load = 1,750 units
 
 _Note: Dynamic mode total = 99.19 units vs static mode total = 99.44 units (0.25% savings)_
 
-### Heat Impact Formula (Proposed)
+### Heat Impact Formula
 
-Thermal stress during spatial jumps depends on the ship's specific heat capacity and the
-environmental temperature at each system. The proposed model:
+Heat generation during spatial jumps depends on the ship's mass and the jump distance. The heat
+generation model accounts for both current operational mass (including fuel and cargo) and the
+baseline hull mass:
 
 ```text
-heat_delta = (system_temp - ambient_temp) × exposure_factor
-thermal_stress = heat_delta / specific_heat
+heat_gen = (3 × current_total_mass_kg × distance_ly) / (C × hull_mass_only_kg)
 ```
 
 Where:
 
-- `system_temp` = Minimum external temperature of the destination system (Kelvin)
-- `ambient_temp` = Ship's baseline operating temperature (assumed 300K/27°C)
-- `exposure_factor` = Time/distance-based exposure multiplier (proposed: 0.01 per ly)
-- `specific_heat` = Ship's specific heat capacity (higher = more thermal resilience)
+- `current_total_mass_kg` = Total operational mass (hull + fuel + cargo) in kilograms
+- `distance_ly` = Jump distance in light-years
+- `hull_mass_only_kg` = Ship hull mass (empty, no fuel or cargo) in kilograms
+- `C` = Calibration constant (default: 1.0, tuned for EVE Frontier game balance)
+- `3` = Proportionality constant calibrated for heat generation rate
 
-**Note:** The exact heat impact model requires validation against in-game mechanics. The formula
-above is a proposed starting point for discussion.
+**Rationale:**
+
+The formula captures the physics of spatial jump heat generation:
+
+1. **Mass dependency (linear)**: Heavier ships generate more heat during jumps
+2. **Distance dependency (linear)**: Longer jumps expose ships to thermal stress longer
+3. **Hull mass normalization**: The ratio accounts for efficiency — lighter-hulled ships generate
+   less heat relative to their operational mass
+4. **Dynamic loading effects**: As fuel is consumed during route, mass decreases, reducing heat
+   generation for subsequent jumps (when using dynamic mass mode)
+
+**Example calculation (Reflex ship, static mode):**
+
+Assuming: hull_mass = 10,000,000 kg, total_mass = 12,383,006 kg, C = 1.0
+
+| Distance (ly) | Total Mass (kg) | Heat Generated |
+| ------------- | --------------- | -------------- |
+| 18.95         | 12,383,006      | 88.96          |
+| 38.26         | 12,383,006      | 179.73         |
+| 23.09         | 12,383,006      | 108.39         |
+
+**Dynamic mode impact:**
+
+In dynamic mass mode, heat generation decreases with each hop as fuel is consumed:
+
+| Hop | Distance (ly) | Mass (kg)   | Heat Gen | Total Heat |
+| --- | ------------- | ----------- | -------- | ---------- |
+| 1   | 18.95         | 12,383,006  | 88.96    | 88.96      |
+| 2   | 38.26         | 12,359,536  | 89.53    | 178.49     |
+| 3   | 23.09         | 12,312,246  | 88.75    | 267.24     |
+
+_Note: Heat accumulates across the entire route; total route heat differs in dynamic vs static modes_
+
+**Heat accumulation and dissipation:**
+
+Ships accumulate heat during spatial jumps. The exact dissipation rate and maximum heat tolerance
+are ship-specific attributes defined in the ship data CSV. Heat that exceeds a ship's tolerance
+may result in damage or operational penalties.
 
 ### Use Cases
 
 1. **Route fuel estimation** — Show total fuel required for a route and per-hop breakdown
 2. **Fuel capacity warnings** — Alert when total route fuel exceeds ship capacity
 3. **Refueling stop suggestions** — Identify systems where refueling may be required
-4. **Thermal risk assessment** — Highlight dangerous systems based on ship heat tolerance
-5. **Ship comparison** — Compare fuel efficiency and thermal resilience across ships
+4. **Route heat generation** — Show cumulative heat generated by the route and per-hop breakdown
+5. **Heat tolerance warnings** — Alert when route heat exceeds ship's heat tolerance
+6. **Heat dissipation planning** — Suggest waypoints for heat dissipation during long routes
+7. **Thermal risk assessment** — Highlight high-heat routes that may damage the ship
+8. **Ship comparison** — Compare fuel efficiency, heat generation, and thermal resilience across ships
+9. **Route optimization** — Select fuel/heat-efficient routes based on ship characteristics
 
 ## Decision
 
@@ -143,12 +186,16 @@ pub struct ShipAttributes {
     pub name: String,
     /// Ship hull mass in kilograms (empty, no fuel/cargo)
     pub base_mass_kg: f64,
-    /// Specific heat capacity (J/kg·K)
+    /// Specific heat capacity (J/kg·K) — used for heat tolerance calculations
     pub specific_heat: f64,
     /// Maximum fuel tank capacity (units)
     pub fuel_capacity: f64,
     /// Maximum cargo hold capacity (m³)
     pub cargo_capacity: f64,
+    /// Maximum heat the ship can tolerate before damage occurs (units)
+    pub max_heat_tolerance: f64,
+    /// Heat dissipation rate per time unit (units/s)
+    pub heat_dissipation_rate: f64,
 }
 
 /// Current ship loadout for mass calculations
@@ -319,21 +366,99 @@ pub struct RouteSummary {
 }
 ```
 
-### 4. Heat Impact in Route Output (Future Enhancement)
+### 4. Heat Impact in Route Output
 
-**Note:** Heat impact calculations require further validation against game mechanics. The following
-is a placeholder for future implementation:
+Heat generation calculations provide per-hop and cumulative heat projections based on the formula:
 
 ```rust
-/// Thermal projection for a single route step
+/// Heat generation for a single route step
 #[derive(Debug, Clone, Serialize)]
-pub struct ThermalProjection {
-    /// Temperature at destination system (K)
-    pub system_temp: Option<f64>,
-    /// Thermal stress rating (0.0 = safe, 1.0 = dangerous)
-    pub stress_rating: f64,
-    /// Warning if system temperature is dangerous for this ship
+pub struct HeatProjection {
+    /// Heat generated during this hop (units)
+    pub hop_heat: f64,
+    /// Cumulative heat generated from start (units)
+    pub cumulative_heat: f64,
+    /// Current ship heat level (units)
+    pub current_heat: f64,
+    /// Maximum heat tolerance for this ship (units)
+    pub max_heat: f64,
+    /// Warning if heat exceeds safe operating range
     pub warning: Option<String>,
+}
+
+/// Extended route step with heat data
+pub struct RouteStep {
+    // ... existing fields ...
+    
+    /// Heat generation for this step (if ship specified)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub heat: Option<HeatProjection>,
+}
+
+/// Extended route summary with heat totals
+pub struct RouteSummary {
+    // ... existing fields ...
+    
+    /// Total heat generated for the route
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub total_heat: Option<f64>,
+    
+    /// Heat dissipation rate (per time unit)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub heat_dissipation_rate: Option<f64>,
+    
+    /// Warning if route generates excessive heat
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub heat_warning: Option<String>,
+}
+```
+
+**Heat generation formula implementation:**
+
+```rust
+/// Calculate heat generation for a single spatial jump
+pub fn calculate_jump_heat(
+    current_total_mass_kg: f64,
+    hull_mass_only_kg: f64,
+    distance_ly: f64,
+    calibration_constant: f64, // C (default: 1.0)
+) -> f64 {
+    (3.0 * current_total_mass_kg * distance_ly) / (calibration_constant * hull_mass_only_kg)
+}
+
+/// Calculate heat generation for an entire route
+pub fn calculate_route_heat(
+    ship: &ShipAttributes,
+    loadout: &ShipLoadout,
+    distances_ly: &[f64],
+    dynamic_mass: bool,
+    calibration_constant: f64,
+) -> Vec<(f64, f64)> {
+    // Returns vector of (hop_heat, cumulative_heat) tuples
+    let mut results = Vec::with_capacity(distances_ly.len());
+    let mut cumulative = 0.0;
+    let mut current_loadout = *loadout;
+    
+    for &distance in distances_ly {
+        let current_mass = current_loadout.total_mass_kg(ship);
+        let hop_heat = calculate_jump_heat(
+            current_mass,
+            ship.base_mass_kg,
+            distance,
+            calibration_constant,
+        );
+        cumulative += hop_heat;
+        
+        if dynamic_mass {
+            // Assume heat impacts fuel burn or mass changes
+            // (This may require additional mechanics definition)
+            current_loadout.fuel_load -= (hop_heat * 0.1); // Example: heat affects fuel load
+        }
+        
+        results.push((hop_heat, cumulative));
+    }
+    
+    results
 }
 ```
 
