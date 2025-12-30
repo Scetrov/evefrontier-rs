@@ -30,6 +30,10 @@ on:
         required: true
         type: string
 
+# Workflow-level permissions: minimal by default (principle of least privilege)
+# Each job explicitly declares the permissions it needs
+permissions: {}
+
 env:
   REGISTRY: ghcr.io
   # Use rslater-cs namespace until official org is available
@@ -39,6 +43,8 @@ jobs:
   build-binaries:
     name: Build Binaries
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     
     strategy:
       matrix:
@@ -293,6 +299,7 @@ jobs:
     name: Release Summary
     needs: [build-binaries, build-images, scan-images, sign-images, generate-sbom]
     runs-on: ubuntu-latest
+    permissions: {}
     if: always()
     
     steps:
