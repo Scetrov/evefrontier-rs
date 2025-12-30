@@ -179,6 +179,7 @@ jobs:
           EOF
       
       - name: Build and push multi-arch image
+        id: build
         uses: docker/build-push-action@1dc73863535b631f98b2378be8619f83b136f4a0 # v6.17.0
         with:
           context: .
@@ -193,7 +194,7 @@ jobs:
       - name: Get image digest
         id: digest
         run: |
-          DIGEST=$(docker buildx imagetools inspect ${{ env.IMAGE_PREFIX }}/evefrontier-service-${{ matrix.service }}:${{ needs.build-binaries.outputs.version }} --format '{{.Digest}}')
+          DIGEST="${{ steps.build.outputs.digest }}"
           echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
           echo "Image digest: ${DIGEST}"
 
