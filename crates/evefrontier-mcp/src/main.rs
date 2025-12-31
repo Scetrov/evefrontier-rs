@@ -84,8 +84,10 @@ impl JsonRpcError {
 #[tokio::main]
 async fn main() -> Result<()> {
     // Initialize logging - MUST redirect to stderr to avoid stdout protocol corruption
+    // Disable ANSI colors to avoid escape codes in MCP client logs
     tracing_subscriber::fmt()
         .with_writer(std::io::stderr)
+        .with_ansi(false)
         .with_env_filter(
             tracing_subscriber::EnvFilter::from_default_env()
                 .add_directive("evefrontier_mcp=info".parse()?),
