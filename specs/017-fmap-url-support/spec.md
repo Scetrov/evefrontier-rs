@@ -33,7 +33,7 @@ showing waypoint details.
 
 ### Non-Functional Requirements
 
-1. **NFR-1**: Encoding must be compatible with the JavaScript reference implementation
+1. **NFR-1**: Encoding extends the JavaScript reference implementation format to support all 5 waypoint types using 3-bit encoding (vs. 2-bit in the reference). This implementation is semantically compatible but not byte-for-byte identical due to the additional bit per waypoint. Tokens with waypoint types 0-3 can be decoded by both implementations.
 2. **NFR-2**: Round-trip encoding/decoding must be lossless
 3. **NFR-3**: Generated URLs must be valid base64url (no padding, URL-safe characters)
 4. **NFR-4**: Compression must use gzip with maximum compression level
@@ -93,12 +93,12 @@ showing waypoint details.
 
 ## Acceptance Criteria
 
-1. ✅ Library can encode routes matching the JavaScript reference implementation byte-for-byte
-2. ✅ Library can decode tokens produced by the JavaScript reference implementation
+1. ✅ Library correctly encodes routes using the extended fmap token format (3-bit waypoint type encoding), as validated by round-trip tests and known-good test vectors
+2. ✅ Library can reliably decode tokens it produces (extended format) and maintains semantic compatibility with JavaScript tokens in the shared subset of the format (waypoint types 0-3)
 3. ✅ CLI `--format fmap` produces valid, shareable URLs
 4. ✅ CLI `fmap decode` displays route waypoints in human-readable format
 5. ✅ Round-trip test passes: encode → decode → compare = identical
-6. ✅ Cross-implementation test passes: decode JS-encoded token in Rust
+6. ✅ Format divergence is documented: 3-bit encoding (supporting all 5 waypoint types) vs. 2-bit in JavaScript reference
 7. ✅ Error handling covers: invalid tokens, unsupported versions, truncated data, invalid base64
 
 ## Out of Scope

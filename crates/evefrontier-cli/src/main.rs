@@ -56,6 +56,10 @@ struct GlobalOptions {
     /// Suppress the footer with timing information.
     #[arg(long, action = ArgAction::SetTrue, global = true)]
     no_footer: bool,
+
+    /// Override the fmap base URL used in rendered route outputs (default: https://fmap.scetrov.live).
+    #[arg(long, global = true, value_name = "URL")]
+    fmap_base_url: Option<String>,
 }
 
 #[derive(Subcommand, Debug)]
@@ -403,7 +407,7 @@ fn main() -> Result<()> {
         Command::IndexBuild(args) => handle_index_build(&context, &args),
         Command::IndexVerify(args) => handle_index_verify(&context, &args),
         Command::Ships => handle_list_ships(&context),
-        Command::FmapEncode(args) => handle_fmap_encode(&args),
+        Command::FmapEncode(args) => handle_fmap_encode(&context, &args),
         Command::FmapDecode(args) => handle_fmap_decode(&args),
     };
 
@@ -709,8 +713,6 @@ fn handle_route_command(
         .map(|(idx, step)| {
             let wtype = if idx == 0 {
                 WaypointType::Start
-            } else if idx == summary.steps.len() - 1 {
-                WaypointType::SetDestination
             } else {
                 // Use the method field to determine if it's a gate or spatial jump
                 match step.method.as_deref() {
@@ -907,10 +909,16 @@ fn init_tracing() {
     let _ = tracing::subscriber::set_global_default(subscriber);
 }
 
-fn handle_fmap_encode(args: &FmapEncodeArgs) -> Result<()> {
+fn handle_fmap_encode(context: &AppContext, args: &FmapEncodeArgs) -> Result<()> {
     if args.systems.is_empty() {
         anyhow::bail!("At least one system name is required");
     }
+
+    // Load the starmap to resolve system names
+    let paths = ensure_dataset(context.target_path(), context.dataset_release())
+        .context("failed to locate or download the EVE Frontier dataset")?;
+    let starmap = load_starmap(&paths.database)
+        .with_context(|| format!("failed to load dataset from {}", paths.database.display()))?;
 
     // Parse waypoint types with defaults
     let mut waypoint_types = Vec::new();
@@ -934,25 +942,31 @@ fn handle_fmap_encode(args: &FmapEncodeArgs) -> Result<()> {
         waypoint_types.push(wtype);
     }
 
-    // For now, we encode system IDs directly. In a complete implementation,
-    // we'd look up system names in the database to get their IDs.
-    // For demo purposes, accept system IDs as numbers or use hardcoded mappings.
+    // Resolve system names to IDs using the starmap
     let mut waypoints = Vec::new();
     for (system_name, wtype) in args.systems.iter().zip(waypoint_types.iter()) {
-        // Try to parse as a number first, otherwise use hardcoded mappings for demo
+        // Try to parse as a numeric system ID first
         let system_id = match system_name.parse::<u32>() {
             Ok(id) => id,
             Err(_) => {
-                // Hardcoded demo mappings
-                match system_name.to_lowercase().as_str() {
-                    "jita" => 30_000_142,
-                    "perimeter" => 30_000_144,
-                    "amarr" => 30_002_187,
-                    other => {
-                        anyhow::bail!(
-                            "unknown system '{}'. Use system ID or known name (jita, perimeter, amarr)",
-                            other
-                        )
+                // Look up system name in the database
+                match starmap.system_id_by_name(system_name) {
+                    Some(id) => id as u32,
+                    None => {
+                        // System not found, provide helpful suggestions
+                        let suggestions = starmap.fuzzy_system_matches(system_name, 5);
+                        if suggestions.is_empty() {
+                            anyhow::bail!(
+                                "unknown system '{}'. Use a numeric system ID or an exact system name from the database",
+                                system_name
+                            );
+                        } else {
+                            anyhow::bail!(
+                                "unknown system '{}'. Did you mean one of: {}? Or use a numeric system ID",
+                                system_name,
+                                suggestions.join(", ")
+                            );
+                        }
                     }
                 }
             }

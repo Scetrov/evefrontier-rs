@@ -9,10 +9,10 @@ use evefrontier_lib::{RouteRenderMode, RouteStep, RouteSummary};
 
 use crate::terminal::{format_with_separators, supports_color, ColorPalette};
 
-/// Base URL for fmap route viewer with type width parameter.
-/// The tw=3 parameter indicates 3-bit waypoint type encoding.
-const FMAP_BASE_URL: &str = "https://fmap.scetrov.live/?route=";
-const FMAP_TYPE_WIDTH_PARAM: &str = "&tw=3";
+/// Default base URL for fmap route viewer (route token appended directly).
+pub const DEFAULT_FMAP_BASE_URL: &str = "https://fmap.scetrov.live/?route=";
+/// Type width parameter indicating 3-bit waypoint type encoding.
+pub const FMAP_TYPE_WIDTH_PARAM: &str = "&tw=3";
 
 /// Print the CLI logo banner.
 ///
@@ -116,7 +116,7 @@ pub fn render_text(summary: &RouteSummary, show_temps: bool) {
     if let Some(fmap_url) = &summary.fmap_url {
         println!(
             "\nfmap URL: {}{}{}",
-            FMAP_BASE_URL, fmap_url, FMAP_TYPE_WIDTH_PARAM
+            DEFAULT_FMAP_BASE_URL, fmap_url, FMAP_TYPE_WIDTH_PARAM
         );
     }
 }
@@ -505,7 +505,7 @@ impl EnhancedRenderer {
                 p.cyan,
                 p.reset,
                 p.white_bold,
-                FMAP_BASE_URL,
+                DEFAULT_FMAP_BASE_URL,
                 fmap_url,
                 FMAP_TYPE_WIDTH_PARAM,
                 p.reset

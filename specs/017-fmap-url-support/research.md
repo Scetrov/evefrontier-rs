@@ -10,13 +10,15 @@
 
 **Research Findings**:
 - The `bitvec` crate provides a comprehensive bit manipulation API but may be overkill for this use case
-- Manual bit manipulation using shifts and masks is straightforward and matches the reference implementation
-- The reference implementation uses a simple `BitWriter`/`BitReader` pattern with byte buffers
+- Manual bit manipulation using shifts and masks is straightforward and matches the reference implementation's overall approach
+- The reference implementation uses a simple `BitWriter`/`BitReader` pattern with byte buffers and 2-bit waypoint type encoding
+- The Rust implementation adopts the same `BitWriter`/`BitReader` pattern but uses 3-bit waypoint type encoding to support all 5 waypoint types (Start, Jump, NPC Gate, Smart Gate, Set Destination), which intentionally diverges from the JavaScript bit layout
 
-**Decision**: Implement custom `BitWriter`/`BitReader` structs mirroring the JavaScript reference
-- Direct port ensures byte-for-byte compatibility
+**Decision**: Implement custom `BitWriter`/`BitReader` structs inspired by the JavaScript reference
+- Semantic compatibility with the JavaScript reference (same waypoint semantics) rather than byte-for-byte compatibility, due to the 3-bit waypoint type encoding
 - No external dependencies needed
 - Simpler to audit and test
+- Extended format supports all 5 waypoint types instead of being limited to 4
 
 **Alternatives Considered**:
 - `bitvec` crate: More feature-rich but adds dependency and may have different byte ordering
