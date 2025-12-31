@@ -17,7 +17,10 @@ All notable changes to this project will be documented in this file.
   - Fuzzy system name matching with Jaro-Winkler suggestions
   - RFC 9457 ProblemDetails error responses for structured error handling
   - Temperature-aware spatial filtering for heat-constrained route planning
-  - 35 integration tests covering tools, resources, validation, and error paths
+  - 45 integration tests covering tools, resources, validation, protocol compliance, and error paths
+  - Comprehensive usage documentation in `docs/USAGE.md` with configuration examples for Claude Desktop, VS Code, and Cursor
+  - Tool schemas with full input/output documentation and example requests
+  - JSON-RPC 2.0 protocol implementation with proper error codes and message handling
 
 ## [0.1.0-alpha.1] - 2025-12-30
 
