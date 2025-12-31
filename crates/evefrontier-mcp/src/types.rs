@@ -267,13 +267,21 @@ mod tests {
                 origin: SystemSummary {
                     name: "Nod".to_string(),
                     system_id: 1,
-                    position: Position3D { x: 0.0, y: 0.0, z: 0.0 },
+                    position: Position3D {
+                        x: 0.0,
+                        y: 0.0,
+                        z: 0.0,
+                    },
                     min_temperature_k: 300.0,
                 },
                 destination: SystemSummary {
                     name: "Brana".to_string(),
                     system_id: 2,
-                    position: Position3D { x: 10.0, y: 0.0, z: 0.0 },
+                    position: Position3D {
+                        x: 10.0,
+                        y: 0.0,
+                        z: 0.0,
+                    },
                     min_temperature_k: 300.0,
                 },
                 hop_count: 2,
