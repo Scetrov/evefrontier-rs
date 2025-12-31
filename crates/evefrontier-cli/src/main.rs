@@ -178,10 +178,6 @@ struct RouteOptionsArgs {
     /// Recalculate mass after each hop as fuel is consumed.
     #[arg(long = "dynamic-mass", action = ArgAction::SetTrue)]
     dynamic_mass: bool,
-
-    /// List available ships from ship_data.csv and exit.
-    #[arg(long = "list-ships", action = ArgAction::SetTrue)]
-    list_ships: bool,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum, Default)]
@@ -646,12 +642,6 @@ fn handle_route_command(
     let paths = ensure_dataset(context.target_path(), context.dataset_release())
         .context("failed to locate or download the EVE Frontier dataset")?;
 
-    if args.options.list_ships {
-        let catalog = load_ship_catalog(&paths)?;
-        print_ship_catalog(&catalog);
-        return Ok(());
-    }
-
     let starmap = load_starmap(&paths.database)
         .with_context(|| format!("failed to load dataset from {}", paths.database.display()))?;
 
@@ -693,7 +683,9 @@ fn handle_route_command(
             dynamic_mass: args.options.dynamic_mass,
         };
 
-        summary.attach_fuel(ship, &loadout, &fuel_config);
+        summary
+            .attach_fuel(ship, &loadout, &fuel_config)
+            .context("failed to attach fuel projection")?;
     }
 
     let show_temps = !args.options.no_temp;
@@ -801,9 +793,11 @@ fn ship_data_candidates(database: &Path) -> Vec<PathBuf> {
         candidates.push(parent.join("ship_data.csv"));
     }
 
-    let fixture =
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/fixtures/ship_data.csv");
-    candidates.push(fixture);
+    if cfg!(debug_assertions) {
+        let fixture =
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/fixtures/ship_data.csv");
+        candidates.push(fixture);
+    }
 
     candidates
 }

@@ -199,9 +199,9 @@ impl RouteSummary {
         ship: &ShipAttributes,
         loadout: &ShipLoadout,
         fuel_config: &FuelConfig,
-    ) {
+    ) -> Result<()> {
         if self.steps.len() <= 1 {
-            return;
+            return Ok(());
         }
 
         let distances: Vec<f64> = self
@@ -211,7 +211,7 @@ impl RouteSummary {
             .map(|step| step.distance.unwrap_or(0.0))
             .collect();
 
-        let projections = calculate_route_fuel(ship, loadout, &distances, fuel_config);
+        let projections = calculate_route_fuel(ship, loadout, &distances, fuel_config)?;
 
         for (idx, projection) in projections.iter().enumerate() {
             if let Some(step) = self.steps.get_mut(idx + 1) {
@@ -227,6 +227,8 @@ impl RouteSummary {
                 warnings: Vec::new(),
             });
         }
+
+        Ok(())
     }
 
     /// Render the summary using the requested textual mode.

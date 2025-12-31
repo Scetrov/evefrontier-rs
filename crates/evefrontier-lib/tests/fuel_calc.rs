@@ -21,7 +21,8 @@ fn calculates_static_fuel_projection() {
         dynamic_mass: false,
     };
 
-    let projections = calculate_route_fuel(ship, &loadout, &distances(), &config);
+    let projections = calculate_route_fuel(ship, &loadout, &distances(), &config)
+        .expect("fuel calculation succeeds");
     assert_eq!(projections.len(), 3);
 
     let first = &projections[0];
@@ -49,8 +50,10 @@ fn calculates_dynamic_mass_and_reduces_total_cost() {
         dynamic_mass: true,
     };
 
-    let static_proj = calculate_route_fuel(ship, &loadout, &distances(), &static_config);
-    let dynamic_proj = calculate_route_fuel(ship, &loadout, &distances(), &dynamic_config);
+    let static_proj = calculate_route_fuel(ship, &loadout, &distances(), &static_config)
+        .expect("static calc succeeds");
+    let dynamic_proj = calculate_route_fuel(ship, &loadout, &distances(), &dynamic_config)
+        .expect("dynamic calc succeeds");
 
     let static_total = static_proj.last().unwrap().cumulative;
     let dynamic_total = dynamic_proj.last().unwrap().cumulative;

@@ -1,5 +1,7 @@
 mod models;
 
+use std::env;
+use std::fs;
 use std::io::Cursor;
 use std::sync::OnceLock;
 
@@ -14,8 +16,8 @@ use evefrontier_lambda_shared::{
 use evefrontier_lib::output::{RouteOutputKind, RouteSummary};
 use evefrontier_lib::ship::{FuelConfig, ShipCatalog, ShipLoadout};
 use evefrontier_lib::{
-    plan_route, RouteAlgorithm as LibAlgorithm, RouteConstraints as LibConstraints,
-    RouteRequest as LibRequest,
+    plan_route, Error as LibError, RouteAlgorithm as LibAlgorithm,
+    RouteConstraints as LibConstraints, RouteRequest as LibRequest,
 };
 
 pub use models::{FuelProjectionDto, FuelSummaryDto, RouteResponseDto, RouteStepDto};
@@ -32,10 +34,13 @@ static INDEX_BYTES: &[u8] = include_bytes!("../../../data/static_data.db.spatial
 #[cfg(not(feature = "bundle-data"))]
 static INDEX_BYTES: &[u8] = &[];
 
-/// Bundled ship data (currently using the checked-in fixture).
+/// Bundled ship data (from docs/fixtures/ship_data.csv). Enable via `bundle-ship-data`.
+#[cfg(feature = "bundle-ship-data")]
 static SHIP_DATA_BYTES: &[u8] = include_bytes!("../../../docs/fixtures/ship_data.csv");
+#[cfg(not(feature = "bundle-ship-data"))]
+static SHIP_DATA_BYTES: &[u8] = &[];
 
-static SHIP_CATALOG: OnceLock<Result<ShipCatalog, String>> = OnceLock::new();
+static SHIP_CATALOG: OnceLock<Result<ShipCatalog, LibError>> = OnceLock::new();
 
 /// Lambda response - either success or RFC 9457 error.
 #[derive(Debug, serde::Serialize)]
@@ -133,10 +138,7 @@ fn handle_route_request(request: &RouteRequest, request_id: &str) -> Response {
         let catalog = match ship_catalog() {
             Ok(cat) => cat,
             Err(err) => {
-                return Response::Error(ProblemDetails::internal_error(
-                    format!("failed to load ship data: {}", err),
-                    request_id,
-                ))
+                return Response::Error(from_lib_error(err, request_id));
             }
         };
 
@@ -168,7 +170,9 @@ fn handle_route_request(request: &RouteRequest, request_id: &str) -> Response {
             dynamic_mass: request.dynamic_mass.unwrap_or(false),
         };
 
-        summary.attach_fuel(ship, &loadout, &fuel_config);
+        if let Err(err) = summary.attach_fuel(ship, &loadout, &fuel_config) {
+            return Response::Error(from_lib_error(&err, request_id));
+        }
     }
 
     let response = RouteResponseDto::from_summary(&summary);
@@ -185,15 +189,40 @@ fn handle_route_request(request: &RouteRequest, request_id: &str) -> Response {
     Response::Success(LambdaResponse::new(response))
 }
 
-fn ship_catalog() -> Result<&'static ShipCatalog, String> {
+fn ship_catalog() -> Result<&'static ShipCatalog, &'static LibError> {
     let result = SHIP_CATALOG.get_or_init(|| {
-        let cursor = Cursor::new(SHIP_DATA_BYTES);
-        ShipCatalog::from_reader(cursor).map_err(|e| e.to_string())
+        if !SHIP_DATA_BYTES.is_empty() {
+            let cursor = Cursor::new(SHIP_DATA_BYTES);
+            return ShipCatalog::from_reader(cursor);
+        }
+
+        if let Ok(path) = env::var("EVEFRONTIER_SHIP_DATA") {
+            match fs::read(&path) {
+                Ok(bytes) => {
+                    let cursor = Cursor::new(bytes);
+                    return ShipCatalog::from_reader(cursor);
+                }
+                Err(err) => {
+                    return Err(LibError::ShipDataValidation {
+                        message: format!(
+                            "failed to read ship data from EVEFRONTIER_SHIP_DATA ({}): {}",
+                            path, err
+                        ),
+                    });
+                }
+            }
+        }
+
+        Err(LibError::ShipDataValidation {
+            message:
+                "ship data not bundled; enable 'bundle-ship-data' feature or set EVEFRONTIER_SHIP_DATA"
+                    .to_string(),
+        })
     });
 
     match result {
         Ok(catalog) => Ok(catalog),
-        Err(err) => Err(err.clone()),
+        Err(err) => Err(err),
     }
 }
 

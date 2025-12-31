@@ -15,7 +15,7 @@ cargo run -p evefrontier-cli -- download
 
 ## List Ships
 ```bash
-cargo run -p evefrontier-cli -- --list-ships
+cargo run -p evefrontier-cli -- ships
 ```
 Expected: table of ship names, base mass, fuel/cargo capacity from cached `ship_data.csv`.
 

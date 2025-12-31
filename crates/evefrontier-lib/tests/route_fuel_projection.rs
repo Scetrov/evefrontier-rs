@@ -41,7 +41,9 @@ fn attaches_fuel_projection_to_route_summary() {
         dynamic_mass: true,
     };
 
-    summary.attach_fuel(ship, &loadout, &fuel_config);
+    summary
+        .attach_fuel(ship, &loadout, &fuel_config)
+        .expect("fuel projection attaches");
 
     let fuel = summary.fuel.as_ref().expect("fuel summary present");
     assert_eq!(fuel.ship_name.as_deref(), Some("Reflex"));

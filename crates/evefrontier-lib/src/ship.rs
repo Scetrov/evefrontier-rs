@@ -111,8 +111,28 @@ impl Default for FuelConfig {
 }
 
 impl FuelConfig {
-    fn clamped_quality(&self) -> f64 {
-        self.quality.clamp(1.0, 100.0)
+    pub fn validate(&self) -> Result<()> {
+        if !self.quality.is_finite() {
+            return Err(Error::ShipDataValidation {
+                message: "fuel_quality must be finite".to_string(),
+            });
+        }
+
+        if !(1.0..=100.0).contains(&self.quality) {
+            return Err(Error::ShipDataValidation {
+                message: format!(
+                    "fuel_quality must be between 1 and 100, got {}",
+                    self.quality
+                ),
+            });
+        }
+
+        Ok(())
+    }
+
+    fn quality_factor(&self) -> Result<f64> {
+        self.validate()?;
+        Ok(self.quality / 100.0)
     }
 }
 
@@ -129,15 +149,26 @@ pub fn calculate_jump_fuel_cost(
     total_mass_kg: f64,
     distance_ly: f64,
     fuel_config: &FuelConfig,
-) -> f64 {
-    if distance_ly <= 0.0 || !distance_ly.is_finite() || !total_mass_kg.is_finite() {
-        return 0.0;
+) -> Result<f64> {
+    if !distance_ly.is_finite() || distance_ly <= 0.0 {
+        return Err(Error::ShipDataValidation {
+            message: format!("distance must be finite and positive, got {}", distance_ly),
+        });
+    }
+
+    if !total_mass_kg.is_finite() || total_mass_kg <= 0.0 {
+        return Err(Error::ShipDataValidation {
+            message: format!(
+                "total_mass_kg must be finite and positive, got {}",
+                total_mass_kg
+            ),
+        });
     }
 
     let mass_factor = total_mass_kg / 100_000.0;
-    let quality_factor = fuel_config.clamped_quality() / 100.0;
+    let quality_factor = fuel_config.quality_factor()?;
 
-    mass_factor * quality_factor * distance_ly
+    Ok(mass_factor * quality_factor * distance_ly)
 }
 
 pub fn calculate_route_fuel(
@@ -145,27 +176,36 @@ pub fn calculate_route_fuel(
     loadout: &ShipLoadout,
     distances_ly: &[f64],
     fuel_config: &FuelConfig,
-) -> Vec<FuelProjection> {
+) -> Result<Vec<FuelProjection>> {
+    fuel_config.validate()?;
+
     let mut projections = Vec::with_capacity(distances_ly.len());
     let mut cumulative = 0.0;
     let mut dynamic_fuel_load = loadout.fuel_load;
 
     for &distance in distances_ly {
+        if !distance.is_finite() || distance <= 0.0 {
+            return Err(Error::ShipDataValidation {
+                message: format!("distance must be finite and positive, got {}", distance),
+            });
+        }
+
         let effective_fuel = if fuel_config.dynamic_mass {
             dynamic_fuel_load
         } else {
             loadout.fuel_load
         };
 
-        let distance = if distance.is_finite() && distance > 0.0 {
-            distance
-        } else {
-            0.0
-        };
-
         let mass =
             ship.base_mass_kg + loadout.cargo_mass_kg + (effective_fuel * FUEL_MASS_PER_UNIT_KG);
-        let hop_cost = calculate_jump_fuel_cost(mass, distance, fuel_config);
+
+        if !mass.is_finite() || mass <= 0.0 {
+            return Err(Error::ShipDataValidation {
+                message: format!("computed mass must be finite and positive, got {}", mass),
+            });
+        }
+
+        let hop_cost = calculate_jump_fuel_cost(mass, distance, fuel_config)?;
         cumulative += hop_cost;
 
         let remaining = if fuel_config.dynamic_mass {
@@ -183,7 +223,7 @@ pub fn calculate_route_fuel(
         });
     }
 
-    projections
+    Ok(projections)
 }
 
 #[derive(Debug, Clone, Default)]
@@ -202,6 +242,38 @@ impl ShipCatalog {
 
     pub fn from_reader<R: Read>(reader: R) -> Result<Self> {
         let mut csv_reader = ReaderBuilder::new().trim(Trim::Fields).from_reader(reader);
+
+        let headers = csv_reader
+            .headers()
+            .map_err(|err| Error::ShipDataValidation {
+                message: format!("failed to read ship_data.csv headers: {err}"),
+            })?
+            .clone();
+
+        let required_headers = [
+            "name",
+            "base_mass_kg",
+            "specific_heat",
+            "fuel_capacity",
+            "cargo_capacity",
+            "max_heat_tolerance",
+            "heat_dissipation_rate",
+        ];
+
+        let missing: Vec<&str> = required_headers
+            .iter()
+            .copied()
+            .filter(|header| !headers.iter().any(|h| h == *header))
+            .collect();
+
+        if !missing.is_empty() {
+            return Err(Error::ShipDataValidation {
+                message: format!(
+                    "ship_data.csv missing required columns: {}",
+                    missing.join(", ")
+                ),
+            });
+        }
 
         let mut ships = HashMap::new();
 
