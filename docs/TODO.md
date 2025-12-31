@@ -466,12 +466,14 @@ The following ADR topics are recommended to formalize currently implicit archite
   - Currently blocked: Prioritize other work; design document deferred
   - Related task: Implement web explorer under "Web-based Starmap Explorer" section below
 
-- [ ] **ADR 0017: NX Repository Orchestration Strategy** (Currently implicit in nx.json)
-  - [ ] Document rationale for Nx selection (build caching, task orchestration, developer experience)
-  - [ ] Specify target configuration patterns (input/output hashing, parallel execution)
-  - [ ] Document CI integration (task execution, artifact caching)
-  - [ ] Define custom task patterns for Rust crates and scripts
-  - Currently working: nx.json and project.json files are in place; ADR would formalize strategy
+- [x] **ADR 0017: NX Repository Orchestration Strategy** (Proposed; awaiting review)
+  - [x] Document rationale for Nx selection (build caching, task orchestration, developer experience)
+  - [x] Specify target configuration patterns (input/output hashing, parallel execution)
+  - [x] Document CI integration (task execution, artifact caching)
+  - [x] Define custom task patterns for Rust crates and scripts
+  - [x] Created ADR in docs/adrs/0017-nx-orchestration-strategy.md with full decision, consequences, and alternatives
+  - [x] Updated CONTRIBUTING.md with reference to ADR 0017 for task configuration guidance
+  - [x] Updated AGENTS.md with note about ADR 0017 for task configuration patterns
 
 - [ ] **ADR 0018: Heat Mechanics Research Summary** (Prerequisite for ADR 0015 Phase 2)
   - [ ] Research and validate heat mechanic formulas from EVE Frontier game mechanics
