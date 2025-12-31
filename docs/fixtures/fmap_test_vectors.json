@@ -1,0 +1,5 @@
+{
+  "reference": "frontier-reapers/starmap bitpacking.js (JavaScript reference implementation)",
+  "note": "Cross-implementation test vectors are not included because this Rust implementation uses 3-bit waypoint type encoding (supporting all 5 waypoint types: Start, Jump, NPC Gate, Smart Gate, Set Destination) while the JavaScript reference uses 2-bit encoding (supporting only 4 types). The implementations are semantically compatible for waypoint types 0-3 but not byte-for-byte identical. Round-trip testing within the Rust implementation validates correctness of the extended format. See specs/017-fmap-url-support/spec.md NFR-1 for format divergence details.",
+  "vectors": []
+}

@@ -79,6 +79,7 @@
 pub mod dataset;
 pub mod db;
 pub mod error;
+pub mod fmap;
 pub mod github;
 pub mod graph;
 pub mod output;
@@ -94,6 +95,9 @@ pub use db::{
     SystemPosition,
 };
 pub use error::{Error, Result};
+pub use fmap::{
+    decode_fmap_token, encode_fmap_token, DecodedFmapToken, FmapToken, Waypoint, WaypointType,
+};
 pub use github::DatasetRelease;
 pub use graph::{
     build_gate_graph, build_graph, build_hybrid_graph, build_hybrid_graph_indexed,

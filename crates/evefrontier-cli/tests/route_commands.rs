@@ -40,7 +40,9 @@ fn dijkstra_algorithm_is_supported() {
         .arg("--to")
         .arg("Brana")
         .arg("--algorithm")
-        .arg("dijkstra");
+        .arg("dijkstra")
+        .arg("--format")
+        .arg("text");
 
     cmd.assert()
         .success()
@@ -151,7 +153,9 @@ fn bfs_algorithm_works() {
         .arg("--to")
         .arg("Brana")
         .arg("--algorithm")
-        .arg("bfs");
+        .arg("bfs")
+        .arg("--format")
+        .arg("text");
 
     cmd.assert()
         .success()
@@ -167,7 +171,9 @@ fn astar_algorithm_works() {
         .arg("--to")
         .arg("Brana")
         .arg("--algorithm")
-        .arg("a-star");
+        .arg("a-star")
+        .arg("--format")
+        .arg("text");
 
     cmd.assert()
         .success()

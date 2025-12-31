@@ -11,11 +11,11 @@ mod output;
 mod terminal;
 
 use evefrontier_lib::{
-    compute_dataset_checksum, ensure_dataset, load_starmap, plan_route, read_release_tag,
-    spatial_index_path, try_load_spatial_index, verify_freshness, DatasetMetadata, DatasetRelease,
-    Error as RouteError, FreshnessResult, RouteAlgorithm, RouteConstraints, RouteOutputKind,
-    RouteRequest, RouteSummary, ShipCatalog, ShipLoadout, SpatialIndex, VerifyDiagnostics,
-    VerifyOutput,
+    compute_dataset_checksum, decode_fmap_token, encode_fmap_token, ensure_dataset, load_starmap,
+    plan_route, read_release_tag, spatial_index_path, try_load_spatial_index, verify_freshness,
+    DatasetMetadata, DatasetRelease, Error as RouteError, FreshnessResult, RouteAlgorithm,
+    RouteConstraints, RouteOutputKind, RouteRequest, RouteSummary, ShipCatalog, ShipLoadout,
+    SpatialIndex, VerifyDiagnostics, VerifyOutput, Waypoint, WaypointType,
 };
 
 #[derive(Parser, Debug)]
@@ -56,6 +56,10 @@ struct GlobalOptions {
     /// Suppress the footer with timing information.
     #[arg(long, action = ArgAction::SetTrue, global = true)]
     no_footer: bool,
+
+    /// Override the fmap base URL used in rendered route outputs (default: https://fmap.scetrov.live).
+    #[arg(long, global = true, value_name = "URL")]
+    fmap_base_url: Option<String>,
 }
 
 #[derive(Subcommand, Debug)]
@@ -70,6 +74,10 @@ enum Command {
     IndexVerify(IndexVerifyArgs),
     /// List available ships from ship_data.csv.
     Ships,
+    /// Encode a route to an fmap URL token.
+    FmapEncode(FmapEncodeArgs),
+    /// Decode an fmap URL token back to a route.
+    FmapDecode(FmapDecodeArgs),
 }
 
 #[derive(Args, Debug, Clone)]
@@ -180,6 +188,34 @@ struct RouteOptionsArgs {
     dynamic_mass: bool,
 }
 
+#[derive(Args, Debug, Clone)]
+struct FmapEncodeArgs {
+    /// System names to encode (comma-separated or repeated --system flags).
+    /// First system is the start, last is the destination.
+    #[arg(value_name = "SYSTEM", required = true)]
+    systems: Vec<String>,
+
+    /// Waypoint type for each system: start, jump, npc-gate, smart-gate, destination.
+    /// Defaults: first=start, middle=jump, last=destination.
+    #[arg(long = "type", value_name = "TYPE")]
+    types: Vec<String>,
+
+    /// Output in JSON format (includes metadata).
+    #[arg(long = "json", action = ArgAction::SetTrue)]
+    json: bool,
+}
+
+#[derive(Args, Debug, Clone)]
+struct FmapDecodeArgs {
+    /// Base64url-encoded fmap token string.
+    #[arg(value_name = "TOKEN", required = true)]
+    token: String,
+
+    /// Output in JSON format (includes metadata).
+    #[arg(long = "json", action = ArgAction::SetTrue)]
+    json: bool,
+}
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum, Default)]
 enum RouteAlgorithmArg {
     Bfs,
@@ -203,7 +239,6 @@ impl From<RouteAlgorithmArg> for RouteAlgorithm {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum, Default)]
 enum OutputFormat {
-    #[default]
     Text,
     Rich,
     Json,
@@ -212,6 +247,7 @@ enum OutputFormat {
     /// Emoji-enhanced readable output per EXAMPLES.md.
     Emoji,
     /// Enhanced format with system details (temp, planets, moons).
+    #[default]
     Enhanced,
     #[value(alias = "notepad")]
     Note,
@@ -245,28 +281,33 @@ impl OutputFormat {
         Ok(())
     }
 
-    fn render_route_result(self, summary: &RouteSummary, show_temps: bool) -> Result<()> {
+    fn render_route_result(
+        self,
+        summary: &RouteSummary,
+        show_temps: bool,
+        base_url: &str,
+    ) -> Result<()> {
         match self {
             OutputFormat::Text => {
-                output::render_text(summary, show_temps);
+                output::render_text(summary, show_temps, base_url);
             }
             OutputFormat::Rich => {
-                output::render_rich(summary, show_temps);
+                output::render_rich(summary, show_temps, base_url);
             }
             OutputFormat::Json => {
                 output::render_json(summary)?;
             }
             OutputFormat::Basic => {
-                output::render_basic(summary, show_temps);
+                output::render_basic(summary, show_temps, base_url);
             }
             OutputFormat::Emoji => {
-                output::render_emoji(summary, show_temps);
+                output::render_emoji(summary, show_temps, base_url);
             }
             OutputFormat::Note => {
-                output::render_note(summary);
+                output::render_note(summary, base_url);
             }
             OutputFormat::Enhanced => {
-                output::render_enhanced(summary);
+                output::render_enhanced(summary, base_url);
             }
         }
         Ok(())
@@ -346,6 +387,13 @@ impl AppContext {
     fn should_show_footer(&self) -> bool {
         self.output_format().supports_footer() && !self.options.no_footer
     }
+
+    fn fmap_base_url(&self) -> &str {
+        self.options
+            .fmap_base_url
+            .as_deref()
+            .unwrap_or(output::DEFAULT_FMAP_BASE_URL)
+    }
 }
 
 fn main() -> Result<()> {
@@ -371,6 +419,8 @@ fn main() -> Result<()> {
         Command::IndexBuild(args) => handle_index_build(&context, &args),
         Command::IndexVerify(args) => handle_index_verify(&context, &args),
         Command::Ships => handle_list_ships(&context),
+        Command::FmapEncode(args) => handle_fmap_encode(&context, &args),
+        Command::FmapDecode(args) => handle_fmap_decode(&args),
     };
 
     if result.is_ok() && context.should_show_footer() {
@@ -667,6 +717,56 @@ fn handle_route_command(
     let mut summary = RouteSummary::from_plan(kind, &starmap, &plan)
         .context("failed to build route summary for display")?;
 
+    // Generate fmap URL for the route using the summary steps which have method info
+    let waypoints: Result<Vec<Waypoint>> = summary
+        .steps
+        .iter()
+        .enumerate()
+        .map(|(idx, step)| {
+            let wtype = if idx == 0 {
+                WaypointType::Start
+            } else {
+                // Use the method field to determine if it's a gate or spatial jump.
+                // Treat unknown methods as a jump but emit a warning to surface data issues.
+                match step.method.as_deref() {
+                    Some("gate") => WaypointType::NpcGate,
+                    Some("jump") => WaypointType::Jump,
+                    Some(other) => {
+                        eprintln!(
+                            "Warning: unexpected route step method '{}' for system id {}; treating as 'jump' for fmap URL generation.",
+                            other,
+                            step.id
+                        );
+                        WaypointType::Jump
+                    }
+                    None => WaypointType::Jump,
+                }
+            };
+            let system_id_u32 = u32::try_from(step.id)
+                .with_context(|| format!("system id {} out of range for fmap token", step.id))?;
+            Ok(Waypoint {
+                system_id: system_id_u32,
+                waypoint_type: wtype,
+            })
+        })
+        .collect();
+
+    match waypoints.and_then(|w| encode_fmap_token(&w).map_err(Into::into)) {
+        Ok(token) => {
+            summary.fmap_url = Some(token.token);
+        }
+        Err(err) => {
+            // Do not fail the entire command on optional URL generation issues,
+            // but make the failure visible to the user by setting a placeholder.
+            // This ensures the render functions can show that URL generation was attempted but failed.
+            eprintln!(
+                "Warning: failed to generate fmap URL for this route: {}",
+                err
+            );
+            summary.fmap_url = Some("(generation failed)".to_string());
+        }
+    }
+
     if let Some(ship_name) = args.options.ship.as_ref() {
         let catalog = load_ship_catalog(&paths)?;
         let ship = catalog
@@ -691,7 +791,7 @@ fn handle_route_command(
     let show_temps = !args.options.no_temp;
     context
         .output_format()
-        .render_route_result(&summary, show_temps)
+        .render_route_result(&summary, show_temps, context.fmap_base_url())
 }
 
 fn handle_list_ships(context: &AppContext) -> Result<()> {
@@ -830,4 +930,174 @@ fn init_tracing() {
         .finish();
 
     let _ = tracing::subscriber::set_global_default(subscriber);
+}
+
+fn handle_fmap_encode(context: &AppContext, args: &FmapEncodeArgs) -> Result<()> {
+    if args.systems.is_empty() {
+        anyhow::bail!("At least one system name is required");
+    }
+
+    // Parse waypoint types with defaults
+    let mut waypoint_types = Vec::new();
+    for (i, _system_name) in args.systems.iter().enumerate() {
+        let wtype = if i < args.types.len() {
+            match args.types[i].as_str() {
+                "start" => WaypointType::Start,
+                "jump" => WaypointType::Jump,
+                "npc-gate" => WaypointType::NpcGate,
+                "smart-gate" => WaypointType::SmartGate,
+                "destination" | "dest" => WaypointType::SetDestination,
+                other => anyhow::bail!("invalid waypoint type: {}", other),
+            }
+        } else if i == 0 {
+            WaypointType::Start
+        } else if i == args.systems.len() - 1 {
+            WaypointType::SetDestination
+        } else {
+            WaypointType::Jump
+        };
+        waypoint_types.push(wtype);
+    }
+
+    // Check if we need database lookup (if any system name fails to parse as u32)
+    let needs_db_lookup = args.systems.iter().any(|sys| sys.parse::<u32>().is_err());
+
+    // Resolve system names to IDs
+    let mut waypoints = Vec::new();
+    let starmap =
+        if needs_db_lookup {
+            let paths = ensure_dataset(context.target_path(), context.dataset_release())
+                .context("failed to locate or download the EVE Frontier dataset")?;
+            Some(load_starmap(&paths.database).with_context(|| {
+                format!("failed to load dataset from {}", paths.database.display())
+            })?)
+        } else {
+            None
+        };
+
+    for (system_name, wtype) in args.systems.iter().zip(waypoint_types.iter()) {
+        // Try to parse as a numeric system ID first
+        let system_id = match system_name.parse::<u32>() {
+            Ok(id) => id,
+            Err(_) => {
+                // Look up system name in the database
+                let db = starmap.as_ref().ok_or_else(|| {
+                    anyhow::anyhow!(
+                        "system name '{}' requires database lookup, but database failed to load",
+                        system_name
+                    )
+                })?;
+                match db.system_id_by_name(system_name) {
+                    Some(id) => id as u32,
+                    None => {
+                        // System not found, provide helpful suggestions
+                        let suggestions = db.fuzzy_system_matches(system_name, 5);
+                        if suggestions.is_empty() {
+                            anyhow::bail!(
+                                "unknown system '{}'. Use a numeric system ID or an exact system name from the database",
+                                system_name
+                            );
+                        } else {
+                            anyhow::bail!(
+                                "unknown system '{}'. Did you mean one of: {}? Or use a numeric system ID",
+                                system_name,
+                                suggestions.join(", ")
+                            );
+                        }
+                    }
+                }
+            }
+        };
+
+        waypoints.push(Waypoint {
+            system_id,
+            waypoint_type: *wtype,
+        });
+    }
+
+    // Encode the token
+    let token =
+        encode_fmap_token(&waypoints).map_err(|e| anyhow::anyhow!("encoding failed: {}", e))?;
+
+    if args.json {
+        #[derive(Serialize)]
+        struct FmapOutput {
+            token: String,
+            waypoint_count: usize,
+            bit_width: u8,
+            version: u8,
+        }
+
+        let output = FmapOutput {
+            token: token.token.clone(),
+            waypoint_count: token.waypoint_count,
+            bit_width: token.bit_width,
+            version: token.version,
+        };
+
+        println!("{}", serde_json::to_string_pretty(&output)?);
+    } else {
+        println!("fmap token: {}", token.token);
+        println!("waypoints: {}", token.waypoint_count);
+        println!("bit width: {}", token.bit_width);
+    }
+
+    Ok(())
+}
+
+fn handle_fmap_decode(args: &FmapDecodeArgs) -> Result<()> {
+    // Decode the token
+    let decoded =
+        decode_fmap_token(&args.token).map_err(|e| anyhow::anyhow!("decoding failed: {}", e))?;
+
+    if args.json {
+        #[derive(Serialize)]
+        struct WaypointOutput {
+            system_id: u32,
+            waypoint_type: String,
+        }
+
+        #[derive(Serialize)]
+        struct FmapDecodedOutput {
+            version: u8,
+            bit_width: u8,
+            waypoint_count: usize,
+            waypoints: Vec<WaypointOutput>,
+        }
+
+        let waypoints = decoded
+            .waypoints
+            .iter()
+            .map(|wp| WaypointOutput {
+                system_id: wp.system_id,
+                waypoint_type: format!("{:?}", wp.waypoint_type).to_lowercase(),
+            })
+            .collect();
+
+        let output = FmapDecodedOutput {
+            version: decoded.version,
+            bit_width: decoded.bit_width,
+            waypoint_count: decoded.waypoint_count,
+            waypoints,
+        };
+
+        println!("{}", serde_json::to_string_pretty(&output)?);
+    } else {
+        println!("fmap decoded successfully");
+        println!("version: {}", decoded.version);
+        println!("bit width: {}", decoded.bit_width);
+        println!("waypoints: {}", decoded.waypoint_count);
+        println!();
+        println!("{:<15} {:<20}", "System ID", "Type");
+        println!("{}", "-".repeat(35));
+        for wp in decoded.waypoints {
+            println!(
+                "{:<15} {:<20}",
+                wp.system_id,
+                format!("{:?}", wp.waypoint_type)
+            );
+        }
+    }
+
+    Ok(())
 }

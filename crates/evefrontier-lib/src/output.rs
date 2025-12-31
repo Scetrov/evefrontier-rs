@@ -88,6 +88,9 @@ pub struct RouteSummary {
     /// Aggregated fuel projection when ship data is provided.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fuel: Option<FuelSummary>,
+    /// fmap URL token for sharing/bookmarking the route.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fmap_url: Option<String>,
 }
 
 /// Fuel summary aggregated across all route steps.
@@ -187,6 +190,7 @@ impl RouteSummary {
             goal,
             steps,
             fuel: None,
+            fmap_url: None,
         })
     }
 
