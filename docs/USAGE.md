@@ -579,6 +579,342 @@ let starmap = load_starmap(fixture_path)?;
 - **Constraint Impact**: Each constraint (avoided systems, max jump, etc.) may increase route
   computation time. Use sparingly for best performance.
 
+## MCP Server Integration
+
+The workspace provides an MCP (Model Context Protocol) server that exposes EVE Frontier route planning
+and system query functionality to AI assistants like Claude Desktop, VS Code, and Cursor.
+
+The MCP server communicates via stdio using JSON-RPC 2.0 and provides:
+- **Tools**: Interactive route planning, system info lookup, spatial queries, gate connections
+- **Resources**: Dataset metadata, algorithm capabilities, spatial index status
+- **Prompts**: (Coming in Phase 9) Pre-configured navigation and exploration templates
+
+### Quick Start
+
+Run the MCP server directly:
+
+```bash
+cargo run -p evefrontier-mcp
+```
+
+The server listens on stdin/stdout for JSON-RPC 2.0 messages. Example:
+
+```bash
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' | cargo run -p evefrontier-mcp
+```
+
+### Configuration Examples
+
+#### Claude Desktop
+
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or
+`%APPDATA%\Claude\claude_desktop_config.json` (Windows):
+
+```json
+{
+  "mcpServers": {
+    "evefrontier": {
+      "command": "cargo",
+      "args": ["run", "-p", "evefrontier-mcp"],
+      "cwd": "/path/to/evefrontier-rs"
+    }
+  }
+}
+```
+
+#### VS Code (with MCP Extension)
+
+Add to `.vscode/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "evefrontier": {
+      "command": "cargo",
+      "args": ["run", "-p", "evefrontier-mcp"],
+      "cwd": "${workspaceFolder}"
+    }
+  }
+}
+```
+
+#### Cursor
+
+Add to Cursor Settings → MCP Servers:
+
+```json
+{
+  "evefrontier": {
+    "command": "cargo",
+    "args": ["run", "-p", "evefrontier-mcp"],
+    "cwd": "/path/to/evefrontier-rs"
+  }
+}
+```
+
+### Available Tools
+
+The MCP server exposes four tools for AI assistants:
+
+#### `route_plan`
+
+Plan a route between two star systems with optional constraints.
+
+**Input Schema:**
+
+```typescript
+{
+  origin: string;           // Starting system name (required)
+  destination: string;      // Destination system name (required)
+  algorithm?: "bfs" | "dijkstra" | "a-star"; // Routing algorithm (default: a-star)
+  max_jump?: number;        // Maximum jump distance in light years
+  max_temperature?: number; // Maximum system temperature in Kelvin
+  avoid_systems?: string[]; // Systems to avoid
+  avoid_gates?: boolean;    // Avoid jump gates (spatial only)
+}
+```
+
+**Example Request:**
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "route_plan",
+    "arguments": {
+      "origin": "Nod",
+      "destination": "Brana",
+      "algorithm": "a-star",
+      "max_jump": 80
+    }
+  }
+}
+```
+
+**Response:**
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"success\":true,\"summary\":\"Route from Nod to Brana: 2 jumps, 45.2 ly\",\"route\":{...}}"
+      }
+    ]
+  }
+}
+```
+
+#### `system_info`
+
+Get detailed information about a star system.
+
+**Input Schema:**
+
+```typescript
+{
+  system_name: string; // System name to query (required)
+}
+```
+
+**Example:**
+
+```json
+{
+  "name": "system_info",
+  "arguments": { "system_name": "Nod" }
+}
+```
+
+Returns system coordinates, temperature, planets, moons, and gate connections.
+
+#### `systems_nearby`
+
+Find star systems within a spatial radius.
+
+**Input Schema:**
+
+```typescript
+{
+  origin: string;           // Center system name (required)
+  radius: number;           // Search radius in light years (required)
+  max_temperature?: number; // Maximum system temperature filter
+}
+```
+
+**Example:**
+
+```json
+{
+  "name": "systems_nearby",
+  "arguments": {
+    "origin": "Nod",
+    "radius": 50,
+    "max_temperature": 5000
+  }
+}
+```
+
+Returns list of systems within range, sorted by distance.
+
+#### `gates_from`
+
+Get jump gate connections from a system.
+
+**Input Schema:**
+
+```typescript
+{
+  system_name: string; // System name to query (required)
+}
+```
+
+**Example:**
+
+```json
+{
+  "name": "gates_from",
+  "arguments": { "system_name": "Nod" }
+}
+```
+
+Returns list of gate-connected neighbor systems.
+
+### Available Resources
+
+The MCP server exposes three resources for context:
+
+#### `evefrontier://dataset/info`
+
+Dataset metadata including system count, gate count, schema version.
+
+**Response:**
+
+```json
+{
+  "system_count": 8,
+  "gate_count": 12,
+  "schema_version": "static_data.db",
+  "release_tag": "v0.1.0",
+  "checksum": "abc123..."
+}
+```
+
+#### `evefrontier://algorithms`
+
+Available routing algorithms and their capabilities.
+
+**Response:**
+
+```json
+{
+  "algorithms": [
+    {
+      "name": "bfs",
+      "description": "Breadth-first search for unweighted gate routes",
+      "constraints": ["gate_only", "no_max_jump", "fast"]
+    },
+    {
+      "name": "dijkstra",
+      "description": "Weighted routing supporting gate and spatial edges",
+      "constraints": ["supports_max_jump", "supports_temperature", "gate_or_spatial"]
+    },
+    {
+      "name": "a-star",
+      "description": "Heuristic-guided routing prioritizing shortest spatial distance",
+      "constraints": ["supports_max_jump", "supports_temperature", "heuristic_spatial"]
+    }
+  ],
+  "default": "a-star"
+}
+```
+
+#### `evefrontier://spatial-index/status`
+
+Spatial index availability and initialization status.
+
+**Response:**
+
+```json
+{
+  "available": true,
+  "path": "/path/to/static_data.db.spatial.bin",
+  "initialized_at": "2025-12-31T12:34:56Z",
+  "format_version": 2,
+  "source_checksum": "abc123...",
+  "source_release_tag": "v0.1.0"
+}
+```
+
+### Protocol Details
+
+The MCP server implements JSON-RPC 2.0 over stdio transport with the following methods:
+
+- `initialize`: Protocol handshake (returns version, capabilities, server info)
+- `tools/list`: List all available tools with schemas
+- `tools/call`: Invoke a tool with arguments
+- `resources/list`: List all available resources
+- `resources/read`: Read resource content by URI
+- `prompts/list`: List available prompt templates (Phase 9)
+
+All responses follow the MCP specification format with `content` arrays containing
+structured data as JSON strings.
+
+### Error Handling
+
+The server returns standard JSON-RPC error codes:
+
+- `-32700`: Parse error (malformed JSON)
+- `-32600`: Invalid request (non-2.0 protocol version)
+- `-32601`: Method not found (unknown tool/resource)
+- `-32602`: Invalid params (validation failure)
+- `-32603`: Internal error (server-side failure)
+
+**Example Error Response:**
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "error": {
+    "code": -32602,
+    "message": "Invalid parameters: origin cannot be empty"
+  }
+}
+```
+
+### Performance Considerations
+
+- **Cold Start**: First request loads dataset (~100ms) and spatial index (~50ms)
+- **Tool Latency**: Route planning: 10-100ms, system queries: <10ms
+- **Memory**: ~50-100MB RAM for dataset + spatial index
+- **Concurrency**: Single-threaded, processes one request at a time
+
+### Debugging
+
+Enable detailed logging by setting the `RUST_LOG` environment variable:
+
+```bash
+RUST_LOG=evefrontier_mcp=debug cargo run -p evefrontier-mcp
+```
+
+Logs are written to stderr to avoid corrupting the stdio protocol on stdout.
+
+### Testing
+
+Run integration tests that verify the JSON-RPC protocol:
+
+```bash
+cargo test -p evefrontier-mcp --test integration_test
+```
+
+Tests spawn the server and verify all protocol methods, tool invocations, and error handling.
+
 ## AWS Lambda Functions
 
 The workspace provides three AWS Lambda functions for serverless route planning and navigation. Each

@@ -35,3 +35,7 @@ tempfile = "3.19"
 [[bench]]
 name = "pathfinding"
 harness = false
+
+[features]
+default = []
+mcp = []

@@ -2,6 +2,7 @@
 members = [
     "crates/evefrontier-lib",
     "crates/evefrontier-cli",
+    "crates/evefrontier-mcp",
     "crates/evefrontier-lambda-shared",
     "crates/evefrontier-lambda-route",
     "crates/evefrontier-lambda-scout-gates",
