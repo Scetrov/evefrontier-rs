@@ -1,3 +1,4 @@
+use base64::Engine;
 use evefrontier_lib::fmap::{decode_fmap_token, encode_fmap_token, Waypoint, WaypointType};
 
 // System IDs for test routes (relative to BASE_SYSTEM_ID = 30_000_000)
@@ -76,18 +77,30 @@ fn test_decode_invalid_base64() {
 
 #[test]
 fn test_decode_invalid_version() {
-    // Encode a token and corrupt the version byte
-    let waypoints = vec![Waypoint {
-        system_id: JITA,
-        waypoint_type: WaypointType::Start,
-    }];
-    let token_str = encode_fmap_token(&waypoints).expect("encode failed").token;
+    use flate2::write::GzEncoder;
+    use flate2::Compression;
+    use std::io::Write;
 
-    // Decode, verify success first
-    assert!(decode_fmap_token(&token_str).is_ok());
+    // Manually construct a token with invalid version
+    let raw_data = vec![
+        99, // Invalid version (expected 1)
+        8,  // bit_width = 8
+        0, 0, // count = 0 (no waypoints)
+    ];
 
-    // For testing invalid version, we'd need to manually construct a bad token
-    // This is harder with gzip, so we'll test the error variant separately
+    // Compress with gzip
+    let mut encoder = GzEncoder::new(Vec::new(), Compression::best());
+    encoder.write_all(&raw_data).expect("write failed");
+    let compressed = encoder.finish().expect("finish failed");
+
+    // Encode as base64url
+    let token = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&compressed);
+
+    // Try to decode - should fail with unsupported version error
+    let result = decode_fmap_token(&token);
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(err.to_string().contains("unsupported fmap version"));
 }
 
 #[test]
@@ -109,7 +122,7 @@ fn test_decode_truncated_data() {
 
 #[test]
 fn test_round_trip_preserves_all_types() {
-    // Test all waypoint types
+    // Test all 5 waypoint types to ensure 3-bit encoding works
     let waypoints = vec![
         Waypoint {
             system_id: JITA,
@@ -122,6 +135,14 @@ fn test_round_trip_preserves_all_types() {
         Waypoint {
             system_id: AMARR,
             waypoint_type: WaypointType::NpcGate,
+        },
+        Waypoint {
+            system_id: JITA + 1000,
+            waypoint_type: WaypointType::SmartGate,
+        },
+        Waypoint {
+            system_id: PERIMETER + 500,
+            waypoint_type: WaypointType::SetDestination,
         },
     ];
 

@@ -702,7 +702,7 @@ fn handle_route_command(
         .context("failed to build route summary for display")?;
 
     // Generate fmap URL for the route using the summary steps which have method info
-    let waypoints: Vec<Waypoint> = summary
+    let waypoints: Result<Vec<Waypoint>> = summary
         .steps
         .iter()
         .enumerate()
@@ -719,15 +719,27 @@ fn handle_route_command(
                     _ => WaypointType::Jump, // Default to jump for unknown methods
                 }
             };
-            Waypoint {
-                system_id: step.id as u32,
+            let system_id_u32 = u32::try_from(step.id)
+                .with_context(|| format!("system id {} out of range for fmap token", step.id))?;
+            Ok(Waypoint {
+                system_id: system_id_u32,
                 waypoint_type: wtype,
-            }
+            })
         })
         .collect();
 
-    if let Ok(token) = encode_fmap_token(&waypoints) {
-        summary.fmap_url = Some(token.token);
+    match waypoints.and_then(|w| encode_fmap_token(&w).map_err(Into::into)) {
+        Ok(token) => {
+            summary.fmap_url = Some(token.token);
+        }
+        Err(err) => {
+            // Do not fail the entire command on optional URL generation issues,
+            // but make the failure visible to the user instead of silently ignoring it.
+            eprintln!(
+                "Warning: failed to generate fmap URL for this route: {}",
+                err
+            );
+        }
     }
 
     if let Some(ship_name) = args.options.ship.as_ref() {

@@ -132,6 +132,10 @@ pub enum Error {
     #[error("invalid fmap bit width {k}, must be 1-30")]
     FmapInvalidBitWidth { k: u8 },
 
+    /// Invalid fmap token: waypoint type value cannot be decoded
+    #[error("invalid fmap token: waypoint type {waypoint_type} is not valid (must be 0-4)")]
+    FmapInvalidWaypointType { waypoint_type: u8 },
+
     /// Invalid fmap token: data truncated
     #[error("fmap data truncated: expected {expected} bytes, got {actual}")]
     FmapTruncatedData { expected: usize, actual: usize },

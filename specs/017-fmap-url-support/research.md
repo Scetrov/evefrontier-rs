@@ -170,9 +170,13 @@ Bytes 2-3: Count (big-endian u16)
 
 For each waypoint:
 - `k` bits: (system_id - 30_000_000) as unsigned
-- 2 bits: waypoint type (0-3)
+- 3 bits: waypoint type (0-4)
 
 Padding: Unused bits in final byte are zero-padded.
+
+> **Format Divergence**: The original frontier-reapers specification uses 2 bits for waypoint
+> type. This implementation uses 3 bits to support all 5 waypoint types including
+> `SetDestination` (type 4). The `tw=3` URL parameter signals this extended format.
 
 ## Open Questions (Resolved)
 

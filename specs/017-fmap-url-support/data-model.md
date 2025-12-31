@@ -51,7 +51,7 @@ pub struct Waypoint {
 **Validation Rules**:
 - `system_id` must be >= 30,000,000 (BASE_ID)
 - `system_id - BASE_ID` must fit in 30 bits (max offset ~1 billion)
-- `waypoint_type` must encode to 2 bits (values 0-3) for current format version
+- `waypoint_type` must encode to 3 bits (values 0-4) for the current format version
 
 ### FmapToken
 
@@ -112,8 +112,8 @@ pub const FMAP_HEADER_SIZE: usize = 4;
 /// Maximum bit width for system ID offsets.
 pub const MAX_BIT_WIDTH: u8 = 30;
 
-/// Bits used to encode waypoint type.
-pub const WAYPOINT_TYPE_BITS: u8 = 2;
+/// Bits used to encode waypoint type (3 bits for types 0-4)
+pub const WAYPOINT_TYPE_BITS: u8 = 3;
 ```
 
 ## State Transitions
@@ -245,10 +245,10 @@ For route: Jita (30000142) → Perimeter (30000144)
 4. **Header**: `[0x01, 0x08, 0x00, 0x02]`
    - version=1, k=8, count=2
 
-5. **Payload** (k=8 bits per offset + 2 bits per type):
-   - Waypoint 0: `10001110` (142) + `00` (Start) = `10001110 00`
-   - Waypoint 1: `10010000` (144) + `01` (Jump) = `10010000 01`
-   - Combined: `10001110 00100100 0001xxxx` (x = padding)
+5. **Payload** (k=8 bits per offset + 3 bits per type):
+   - Waypoint 0: `10001110` (142) + `000` (Start) = `10001110000`
+   - Waypoint 1: `10010000` (144) + `001` (Jump) = `10010000001`
+   - Combined: `10001110 00010010 000001xx` (x = padding to byte boundary)
 
 6. **Compress**: gzip(header + payload)
 

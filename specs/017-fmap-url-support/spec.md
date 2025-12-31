@@ -51,10 +51,15 @@ showing waypoint details.
 2. **Payload** (variable):
    - For each waypoint:
      - System ID offset: `k` bits (unsigned, offset from BASE_ID 30,000,000)
-     - Waypoint type: 2 bits (0-3)
+     - Waypoint type: 3 bits (0-4)
 
 3. **Compression**: Gzipped with maximum compression (level 9)
 4. **Encoding**: Base64url (URL-safe, no padding)
+
+> **Note**: The original frontier-reapers starmap specification used 2 bits for waypoint type
+> (supporting types 0-3). This implementation extends to 3 bits to support the additional
+> `Set Destination` type (value 4), while maintaining backward compatibility for types 0-3.
+> The `tw=3` URL parameter signals this 3-bit encoding format.
 
 ### Waypoint Types
 

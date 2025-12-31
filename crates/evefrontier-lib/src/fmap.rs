@@ -353,8 +353,10 @@ pub fn decode_fmap_token(token_str: &str) -> Result<DecodedFmapToken, Error> {
                 base_id: BASE_SYSTEM_ID,
             })?;
 
-        let waypoint_type = WaypointType::from_u8(type_bits as u8)
-            .ok_or(Error::FmapInvalidBitWidth { k: type_bits as u8 })?;
+        let waypoint_type =
+            WaypointType::from_u8(type_bits as u8).ok_or(Error::FmapInvalidWaypointType {
+                waypoint_type: type_bits as u8,
+            })?;
 
         waypoints.push(Waypoint {
             system_id,
