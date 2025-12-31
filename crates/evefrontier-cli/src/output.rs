@@ -109,7 +109,10 @@ pub fn render_text(summary: &RouteSummary, show_temps: bool) {
     }
 
     if let Some(fmap_url) = &summary.fmap_url {
-        println!("\nfmap URL: https://fmap.scetrov.live/?route={}", fmap_url);
+        println!(
+            "\nfmap URL: https://fmap.scetrov.live/?route={}&tw=3",
+            fmap_url
+        );
     }
 }
 
@@ -493,7 +496,7 @@ impl EnhancedRenderer {
         if let Some(fmap_url) = &summary.fmap_url {
             println!();
             println!(
-                "  {}fmap URL:{}        {}https://fmap.scetrov.live/?route={}{}",
+                "  {}fmap URL:{}        {}https://fmap.scetrov.live/?route={}&tw=3{}",
                 p.cyan, p.reset, p.white_bold, fmap_url, p.reset
             );
         }
