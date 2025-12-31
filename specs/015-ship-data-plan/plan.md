@@ -65,6 +65,12 @@ tests/ (per-crate)             # Unit/integration tests using fixtures
 
 **Structure Decision**: Use existing multi-crate workspace; add ship data/module to `evefrontier-lib`, surface flags in CLI, extend Lambda/service schemas without creating new crates.
 
+## Default Values
+
+- **Default Ship**: `Reflex` — applied when `--ship` not specified
+- **Default Fuel Quality**: `10%` — applied when `--fuel-quality` not specified
+- **Implementation**: Set as Clap argument defaults; ship catalog validates Reflex exists at startup
+
 ## Complexity Tracking
 
 > **Fill ONLY if Constitution Check has violations that must be justified**
