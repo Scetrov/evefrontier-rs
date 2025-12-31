@@ -89,8 +89,9 @@ fn text_output_mentions_fuel_when_ship_selected() {
         .arg("--fuel-load")
         .arg("1750");
 
+    // Enhanced format (default) shows "Fuel (Reflex):" and "Remaining:"
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains("fuel:"))
-        .stdout(predicate::str::contains("Total fuel"));
+        .stdout(predicate::str::contains("Fuel (Reflex):"))
+        .stdout(predicate::str::contains("Remaining:"));
 }

@@ -235,7 +235,6 @@ impl From<RouteAlgorithmArg> for RouteAlgorithm {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum, Default)]
 enum OutputFormat {
-    #[default]
     Text,
     Rich,
     Json,
@@ -244,6 +243,7 @@ enum OutputFormat {
     /// Emoji-enhanced readable output per EXAMPLES.md.
     Emoji,
     /// Enhanced format with system details (temp, planets, moons).
+    #[default]
     Enhanced,
     #[value(alias = "notepad")]
     Note,
