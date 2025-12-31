@@ -701,21 +701,26 @@ fn handle_route_command(
     let mut summary = RouteSummary::from_plan(kind, &starmap, &plan)
         .context("failed to build route summary for display")?;
 
-    // Generate fmap URL for the route
-    let waypoints: Vec<Waypoint> = plan
+    // Generate fmap URL for the route using the summary steps which have method info
+    let waypoints: Vec<Waypoint> = summary
         .steps
         .iter()
         .enumerate()
-        .map(|(idx, &system_id)| {
+        .map(|(idx, step)| {
             let wtype = if idx == 0 {
                 WaypointType::Start
-            } else if idx == plan.steps.len() - 1 {
+            } else if idx == summary.steps.len() - 1 {
                 WaypointType::SetDestination
             } else {
-                WaypointType::Jump
+                // Use the method field to determine if it's a gate or spatial jump
+                match step.method.as_deref() {
+                    Some("gate") => WaypointType::NpcGate,
+                    Some("jump") => WaypointType::Jump,
+                    _ => WaypointType::Jump, // Default to jump for unknown methods
+                }
             };
             Waypoint {
-                system_id: system_id as u32,
+                system_id: step.id as u32,
                 waypoint_type: wtype,
             }
         })
