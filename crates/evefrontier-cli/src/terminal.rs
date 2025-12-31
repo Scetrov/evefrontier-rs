@@ -37,17 +37,23 @@ pub mod colors {
     pub const ORANGE: &str = "\x1b[38;5;208m";
     /// Red for hot systems (>50K).
     pub const RED: &str = "\x1b[31m";
+    /// Magenta for special systems (black holes).
+    pub const MAGENTA: &str = "\x1b[35m";
+    /// Bold reverse magenta for black hole badge.
+    pub const TAG_BLACK_HOLE: &str = "\x1b[1;7;35m";
 }
 
 /// A collection of resolved color codes, either actual ANSI sequences
 /// or empty strings when color is disabled.
 #[derive(Debug, Clone, Copy)]
+#[allow(dead_code)] // Some colors reserved for future use
 pub struct ColorPalette {
     pub reset: &'static str,
     pub tag_start: &'static str,
     pub tag_gate: &'static str,
     pub tag_jump: &'static str,
     pub tag_goal: &'static str,
+    pub tag_black_hole: &'static str,
     pub white_bold: &'static str,
     pub gray: &'static str,
     pub cyan: &'static str,
@@ -55,6 +61,7 @@ pub struct ColorPalette {
     pub blue: &'static str,
     pub orange: &'static str,
     pub red: &'static str,
+    pub magenta: &'static str,
 }
 
 impl ColorPalette {
@@ -67,6 +74,7 @@ impl ColorPalette {
             tag_gate: colors::TAG_GATE,
             tag_jump: colors::TAG_JUMP,
             tag_goal: colors::TAG_GOAL,
+            tag_black_hole: colors::TAG_BLACK_HOLE,
             white_bold: colors::WHITE_BOLD,
             gray: colors::GRAY,
             cyan: colors::CYAN,
@@ -74,6 +82,7 @@ impl ColorPalette {
             blue: colors::BLUE,
             orange: colors::ORANGE,
             red: colors::RED,
+            magenta: colors::MAGENTA,
         }
     }
 
@@ -86,6 +95,7 @@ impl ColorPalette {
             tag_gate: "",
             tag_jump: "",
             tag_goal: "",
+            tag_black_hole: "",
             white_bold: "",
             gray: "",
             cyan: "",
@@ -93,6 +103,7 @@ impl ColorPalette {
             blue: "",
             orange: "",
             red: "",
+            magenta: "",
         }
     }
 

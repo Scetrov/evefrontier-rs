@@ -508,14 +508,17 @@ The following ADR topics are recommended to formalize currently implicit archite
 
 ## Known Issues / Tweaks
 
-- [ ] The GOAL item in `enhanced` mode doesn't include a status line (min temp, planets, moons).
+- [x] The GOAL item in `enhanced` mode doesn't include a status line (min temp, planets, moons).
+      (Fixed in output.rs; also added "Black Hole" indicator for systems 30000001-30000003)
 - [ ] `enhanced` should be the default not basic as it provides the clearest representation.
 - [ ] Add LibrePay integration with a link in the README for donations/support, plus a once every 7
       days reminder in the CLI footer.
-- [ ] Add support for generating fmap URLs based upon
+- [x] Add support for generating fmap URLs based upon
       [ROUTE_FEATURE.md](https://github.com/frontier-reapers/starmap/blob/main/docs/ROUTE_FEATURE.md)
       specification.
-  - [ ] Write a comprehensive ADR describing both the encoder and decoder algorithms for fmap URLs.
+  - [x] Write a comprehensive ADR describing both the encoder and decoder algorithms for fmap URLs.
+      (Implemented in `crates/evefrontier-lib/src/fmap.rs` with 3-bit waypoint type encoding;
+      CLI commands `fmap-encode` and `fmap-decode` added; route output includes fmap URL)
 - [ ] Add support for avoiding systems by solarsystem ID, name or radius from solar system.
 - [ ] Add support for specifying some parameters (i.e. avoidance systems, algorithim, etc.) either
       in `~/.config` or ENV_VARs

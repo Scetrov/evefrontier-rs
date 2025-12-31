@@ -64,3 +64,57 @@ fn attaches_fuel_projection_to_route_summary() {
         prev = cumulative;
     }
 }
+
+#[test]
+fn gate_steps_do_not_consume_fuel() {
+    let starmap = load_starmap(&fixture_db_path()).expect("starmap loads");
+    let request = RouteRequest {
+        start: "Nod".to_string(),
+        goal: "Brana".to_string(),
+        algorithm: RouteAlgorithm::AStar,
+        constraints: RouteConstraints::default(),
+        spatial_index: None,
+    };
+
+    let plan = plan_route(&starmap, &request).expect("route planned");
+    let mut summary =
+        RouteSummary::from_plan(RouteOutputKind::Route, &starmap, &plan).expect("summary builds");
+
+    let catalog = ShipCatalog::from_path(&fixture_ship_path()).expect("ship fixture loads");
+    let ship = catalog.get("Reflex").expect("reflex present");
+    let loadout = ShipLoadout::new(ship, 1750.0, 0.0).expect("valid loadout");
+    let fuel_config = FuelConfig {
+        quality: 10.0,
+        dynamic_mass: true,
+    };
+
+    summary
+        .attach_fuel(ship, &loadout, &fuel_config)
+        .expect("fuel projection attaches");
+
+    let mut prev_cumulative = 0.0;
+    let mut prev_remaining = loadout.fuel_load;
+
+    for step in summary.steps.iter().skip(1) {
+        let projection = step.fuel.as_ref().expect("projection present on hop");
+        match step.method.as_deref() {
+            Some("gate") => {
+                assert_eq!(projection.hop_cost, 0.0);
+                assert!((projection.cumulative - prev_cumulative).abs() < 1e-9);
+                if let Some(remaining) = projection.remaining {
+                    assert!((remaining - prev_remaining).abs() < 1e-6);
+                }
+            }
+            Some("jump") => {
+                assert!(projection.hop_cost > 0.0);
+                if let Some(remaining) = projection.remaining {
+                    assert!(remaining <= prev_remaining + 1e-6);
+                    prev_remaining = remaining;
+                }
+            }
+            _ => {}
+        }
+
+        prev_cumulative = projection.cumulative;
+    }
+}

@@ -317,9 +317,7 @@ impl EnhancedRenderer {
         for (i, step) in summary.steps.iter().enumerate() {
             let is_last = i + 1 == len;
             self.render_step(step, i == 0, is_last);
-            if !is_last {
-                self.render_step_details(step);
-            }
+            self.render_step_details(step);
         }
 
         self.render_footer(summary, base_url);
@@ -398,46 +396,8 @@ impl EnhancedRenderer {
     }
 
     fn render_step_details(&self, step: &RouteStep) {
-        let p = &self.palette;
-        let mut parts: Vec<String> = Vec::new();
-
-        // Temperature
-        if let Some(t) = step.min_external_temp {
-            parts.push(format!("{}min {:>6.2}K{}", p.cyan, t, p.reset));
-        }
-
-        // Planets (omit if zero)
-        let planets = step.planet_count.unwrap_or(0);
-        if planets > 0 {
-            let label = if planets == 1 { "Planet" } else { "Planets" };
-            parts.push(format!("{}{:>2} {}{}", p.green, planets, label, p.reset));
-        }
-
-        // Moons (omit if zero)
-        let moons = step.moon_count.unwrap_or(0);
-        if moons > 0 {
-            let label = if moons == 1 { "Moon" } else { "Moons" };
-            parts.push(format!("{}{:>2} {}{}", p.blue, moons, label, p.reset));
-        }
-
-        if let Some(fuel) = step.fuel.as_ref() {
-            let remaining = fuel
-                .remaining
-                .map(|v| format!(" (rem {:.2})", v))
-                .unwrap_or_default();
-            parts.push(format!(
-                "{}fuel {:.2}{}{}",
-                p.cyan, fuel.hop_cost, remaining, p.reset
-            ));
-        }
-
-        if !parts.is_empty() {
-            println!(
-                "       {}│{} {}",
-                p.gray,
-                p.reset,
-                parts.join(&format!("{}, {}", p.gray, p.reset))
-            );
+        if let Some(line) = self.build_step_details_line(step) {
+            println!("{}", line);
         }
     }
 
@@ -508,6 +468,78 @@ impl EnhancedRenderer {
     }
 }
 
+impl EnhancedRenderer {
+    /// Build the status line for a route step.
+    fn build_step_details_line(&self, step: &RouteStep) -> Option<String> {
+        let p = &self.palette;
+        let mut parts: Vec<String> = Vec::new();
+
+        // Black hole systems (IDs 30000001, 30000002, 30000003)
+        let is_black_hole = matches!(step.id, 30000001..=30000003);
+        if is_black_hole {
+            parts.push(format!("{}▌Black Hole▐{}", p.tag_black_hole, p.reset));
+        }
+
+        // Temperature (skip for black holes - they have no planets orbiting)
+        if !is_black_hole {
+            if let Some(t) = step.min_external_temp {
+                parts.push(format!("{}min {:>6.2}K{}", p.cyan, t, p.reset));
+            }
+        }
+
+        // Planets (omit if zero)
+        let planets = step.planet_count.unwrap_or(0);
+        if planets > 0 {
+            let label = if planets == 1 { "Planet" } else { "Planets" };
+            let label_width = "Planets".len();
+            parts.push(format!(
+                "{}{:>2} {:<label_width$}{}",
+                p.green,
+                planets,
+                label,
+                p.reset,
+                label_width = label_width,
+            ));
+        }
+
+        // Moons (omit if zero)
+        let moons = step.moon_count.unwrap_or(0);
+        if moons > 0 {
+            let label = if moons == 1 { "Moon" } else { "Moons" };
+            let label_width = "Moons".len();
+            parts.push(format!(
+                "{}{:>2} {:<label_width$}{}",
+                p.blue,
+                moons,
+                label,
+                p.reset,
+                label_width = label_width,
+            ));
+        }
+
+        if let Some(fuel) = step.fuel.as_ref() {
+            let mut segment = format!("{}fuel {:.2}{}", p.orange, fuel.hop_cost, p.reset);
+
+            if let Some(rem) = fuel.remaining {
+                segment.push_str(&format!(" {}(rem {:.2}){}", p.magenta, rem, p.reset));
+            }
+
+            parts.push(segment);
+        }
+
+        if parts.is_empty() {
+            return None;
+        }
+
+        Some(format!(
+            "       {}│{} {}",
+            p.gray,
+            p.reset,
+            parts.join(&format!("{}, {}", p.gray, p.reset))
+        ))
+    }
+}
+
 fn format_fuel_suffix(step: &RouteStep) -> Option<String> {
     let fuel = step.fuel.as_ref()?;
     let remaining = fuel
@@ -520,6 +552,8 @@ fn format_fuel_suffix(step: &RouteStep) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::terminal::colors;
+    use evefrontier_lib::FuelProjection;
 
     #[test]
     fn test_enhanced_renderer_creation() {
@@ -554,5 +588,123 @@ mod tests {
         assert!(circle.contains('●'));
         // Should contain red color code
         assert!(circle.contains("\x1b[31m"));
+    }
+
+    #[test]
+    fn test_build_step_details_black_hole() {
+        let renderer = EnhancedRenderer::new(ColorPalette::plain());
+        let step = RouteStep {
+            index: 1,
+            id: 30000002,
+            name: Some("M 974".to_string()),
+            distance: Some(3.0),
+            method: Some("jump".to_string()),
+            min_external_temp: None,
+            planet_count: Some(0),
+            moon_count: Some(0),
+            fuel: None,
+        };
+
+        let line = renderer
+            .build_step_details_line(&step)
+            .expect("line present");
+        assert!(line.contains("Black Hole"));
+        assert!(!line.contains("min"));
+    }
+
+    #[test]
+    fn test_build_step_details_includes_fuel_and_counts() {
+        let renderer = EnhancedRenderer::new(ColorPalette::plain());
+        let step = RouteStep {
+            index: 2,
+            id: 42,
+            name: Some("Test".to_string()),
+            distance: Some(10.0),
+            method: Some("jump".to_string()),
+            min_external_temp: Some(12.34),
+            planet_count: Some(2),
+            moon_count: Some(1),
+            fuel: Some(FuelProjection {
+                hop_cost: 5.0,
+                cumulative: 5.0,
+                remaining: Some(95.0),
+                warning: None,
+            }),
+        };
+
+        let line = renderer
+            .build_step_details_line(&step)
+            .expect("line present");
+        assert!(line.contains("min"));
+        assert!(line.contains(" 2 Planets"));
+        assert!(line.contains(" 1 Moon "));
+        assert!(line.contains("fuel"));
+    }
+
+    #[test]
+    fn test_build_step_details_colors_fuel_when_colored() {
+        let renderer = EnhancedRenderer::new(ColorPalette::colored());
+        let step = RouteStep {
+            index: 2,
+            id: 42,
+            name: Some("Test".to_string()),
+            distance: Some(10.0),
+            method: Some("jump".to_string()),
+            min_external_temp: None,
+            planet_count: None,
+            moon_count: None,
+            fuel: Some(FuelProjection {
+                hop_cost: 3.5,
+                cumulative: 3.5,
+                remaining: Some(96.5),
+                warning: None,
+            }),
+        };
+
+        let line = renderer
+            .build_step_details_line(&step)
+            .expect("line present");
+        assert!(line.contains(colors::ORANGE));
+        assert!(line.contains(colors::MAGENTA));
+        assert!(line.contains("fuel 3.50"));
+        assert!(line.contains("(rem 96.50)"));
+    }
+
+    #[test]
+    fn test_padding_consistent_for_singular_plural() {
+        let renderer = EnhancedRenderer::new(ColorPalette::plain());
+
+        let singular = RouteStep {
+            index: 1,
+            id: 1,
+            name: Some("One".to_string()),
+            distance: Some(1.0),
+            method: Some("jump".to_string()),
+            min_external_temp: None,
+            planet_count: Some(1),
+            moon_count: Some(1),
+            fuel: None,
+        };
+
+        let plural = RouteStep {
+            planet_count: Some(2),
+            moon_count: Some(2),
+            ..singular.clone()
+        };
+
+        let singular_line = renderer
+            .build_step_details_line(&singular)
+            .expect("line present");
+        let plural_line = renderer
+            .build_step_details_line(&plural)
+            .expect("line present");
+
+        // Planet label padded to match plural width ("Planets" -> 7 chars)
+        assert!(singular_line.contains(" 1 Planet "));
+        assert!(plural_line.contains(" 2 Planets"));
+
+        // Moon label padded to match plural width ("Moons" -> 5 chars)
+        assert!(singular_line.contains(" 1 Moon "));
+        assert!(plural_line.contains(" 2 Moons"));
     }
 }

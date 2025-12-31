@@ -5,7 +5,10 @@ use serde::Serialize;
 use crate::db::{Starmap, SystemId};
 use crate::error::{Error, Result};
 use crate::routing::RoutePlan;
-use crate::ship::{calculate_route_fuel, FuelConfig, FuelProjection, ShipAttributes, ShipLoadout};
+use crate::ship::{
+    calculate_jump_fuel_cost, FuelConfig, FuelProjection, ShipAttributes, ShipLoadout,
+    FUEL_MASS_PER_UNIT_KG,
+};
 use crate::RouteAlgorithm;
 
 /// Classifies the high-level command that produced a route summary.
@@ -198,6 +201,11 @@ impl RouteSummary {
     ///
     /// Distance-driven hops receive per-hop fuel data; the first step (origin)
     /// carries no fuel information. The summary's `fuel` field aggregates totals.
+    ///
+    /// Note: This method inlines gate step handling (zero fuel cost) rather than delegating to
+    /// `calculate_route_fuel()` to avoid invoking the full route fuel calculator for each step.
+    /// The `calculate_route_fuel()` function remains exported as a public API and is used in tests
+    /// and external code for complete route projections with static/dynamic mass modes.
     pub fn attach_fuel(
         &mut self,
         ship: &ShipAttributes,
@@ -208,29 +216,99 @@ impl RouteSummary {
             return Ok(());
         }
 
-        let distances: Vec<f64> = self
-            .steps
-            .iter()
-            .skip(1)
-            .map(|step| step.distance.unwrap_or(0.0))
-            .collect();
+        fuel_config.validate()?;
 
-        let projections = calculate_route_fuel(ship, loadout, &distances, fuel_config)?;
+        let mut cumulative = 0.0;
+        let mut remaining_fuel = loadout.fuel_load;
 
-        for (idx, projection) in projections.iter().enumerate() {
-            if let Some(step) = self.steps.get_mut(idx + 1) {
-                step.fuel = Some(projection.clone());
+        for idx in 1..self.steps.len() {
+            let method = self.steps[idx].method.as_deref();
+
+            if method == Some("gate") {
+                let remaining = if fuel_config.dynamic_mass {
+                    remaining_fuel
+                } else {
+                    (loadout.fuel_load - cumulative).max(0.0)
+                };
+
+                let projection = FuelProjection {
+                    hop_cost: 0.0,
+                    cumulative,
+                    remaining: Some(remaining),
+                    warning: None,
+                };
+
+                if let Some(step) = self.steps.get_mut(idx) {
+                    step.fuel = Some(projection);
+                }
+
+                continue;
+            }
+
+            let distance = self.steps[idx]
+                .distance
+                .ok_or_else(|| Error::ShipDataValidation {
+                    message: "distance must be present for fuel calculation".to_string(),
+                })?;
+
+            if !distance.is_finite() || distance <= 0.0 {
+                return Err(Error::ShipDataValidation {
+                    message: format!("distance must be finite and positive, got {}", distance),
+                });
+            }
+
+            let effective_fuel = if fuel_config.dynamic_mass {
+                remaining_fuel
+            } else {
+                loadout.fuel_load
+            };
+
+            let mass = ship.base_mass_kg
+                + loadout.cargo_mass_kg
+                + (effective_fuel * FUEL_MASS_PER_UNIT_KG);
+
+            if !mass.is_finite() || mass <= 0.0 {
+                return Err(Error::ShipDataValidation {
+                    message: format!("computed mass must be finite and positive, got {}", mass),
+                });
+            }
+
+            let hop_cost = calculate_jump_fuel_cost(mass, distance, fuel_config)?;
+            cumulative += hop_cost;
+
+            let projection = if fuel_config.dynamic_mass {
+                remaining_fuel = (remaining_fuel - hop_cost).max(0.0);
+                FuelProjection {
+                    hop_cost,
+                    cumulative,
+                    remaining: Some(remaining_fuel),
+                    warning: None,
+                }
+            } else {
+                let remaining = (loadout.fuel_load - cumulative).max(0.0);
+                FuelProjection {
+                    hop_cost,
+                    cumulative,
+                    remaining: Some(remaining),
+                    warning: None,
+                }
+            };
+
+            if let Some(step) = self.steps.get_mut(idx) {
+                step.fuel = Some(projection);
             }
         }
 
-        if let Some(last) = projections.last() {
-            self.fuel = Some(FuelSummary {
-                total: last.cumulative,
-                remaining: last.remaining,
-                ship_name: Some(ship.name.clone()),
-                warnings: Vec::new(),
-            });
-        }
+        self.fuel = Some(FuelSummary {
+            total: cumulative,
+            remaining: Some(if fuel_config.dynamic_mass {
+                remaining_fuel
+            } else {
+                (loadout.fuel_load - cumulative).max(0.0)
+            }),
+            ship_name: Some(ship.name.clone()),
+            warnings: Vec::new(),
+        });
 
         Ok(())
     }

@@ -11,7 +11,9 @@
 
 A player uses `evefrontier-cli route --ship Reflex --fuel-quality 10 --cargo-mass 5000` to plan a trip. They need per-hop and total fuel usage with warnings if fuel exceeds capacity.
 
-**Independent Test**: Running the CLI with fixture data returns route steps that include hop fuel cost, cumulative fuel, and an error when required fuel exceeds ship capacity unless `--no-download` is supplied.
+**Default Behavior**: When no `--ship` is specified, the CLI defaults to the Reflex ship with 10% fuel quality. Users can override both with explicit flags.
+
+**Independent Test**: Running the CLI with fixture data returns route steps that include hop fuel cost, cumulative fuel, and an error when required fuel exceeds capacity unless `--no-download` is supplied.
 
 ### User Story 2 - Lambda client receives fuel projections (Priority: P1)
 
@@ -47,7 +49,7 @@ Downloader fetches `ship_data.csv` alongside the database and caches it. Calls r
 - **FR-004**: Implement fuel cost calculation `(total_mass_kg / 10^5) × (fuel_quality / 100) × distance_ly` supporting static and dynamic mass modes.
 - **FR-005**: Implement route-level fuel projection returning per-hop and cumulative values; include remaining fuel when initial fuel load provided.
 - **FR-006**: Extend `RouteStep`/`RouteSummary` to include optional `FuelProjection` fields (hop_cost, cumulative, remaining, warnings).
-- **FR-007**: Extend CLI `route` subcommand with `--ship`, `--fuel-quality`, `--cargo-mass`, `--fuel-load`, `--dynamic-mass`, and `--list-ships`; add friendly validation errors for unknown ships or invalid parameters.
+- **FR-007**: Extend CLI `route` subcommand with `--ship` (default: Reflex), `--fuel-quality` (default: 10%), `--cargo-mass`, `--fuel-load`, `--dynamic-mass`, and `--list-ships`; add friendly validation errors for unknown ships or invalid parameters.
 - **FR-008**: Extend Lambda request/response schemas to accept ship/loadout/fuel parameters and return fuel projection data, preserving backward compatibility for callers omitting ship data.
 - **FR-009**: Bundle `ship_data.csv` (and optional derived artifacts) into Lambda/container builds alongside the database and spatial index.
 - **FR-010**: Provide fixtures and tests for ship data parsing and fuel calculations (static and dynamic) with known outputs; include CLI and Lambda integration tests using fixtures.
@@ -83,6 +85,13 @@ Downloader fetches `ship_data.csv` alongside the database and caches it. Calls r
 - Existing downloader already handles DB caching; extend to ship data asset in the same cache dir.
 - Spatial index integration is complete; new fuel logic must coexist with existing routing outputs.
 
+## CLI Defaults
+
+- **Default Ship**: `Reflex` — automatically selected when `--ship` flag omitted
+- **Default Fuel Quality**: `10%` — automatically used when `--fuel-quality` flag omitted
+- **Rationale**: Reflex is EVE Frontier's starting ship; 10% is standard in-game fuel quality for T0 fuel blocks
+- **Override**: Users can specify `--ship <name>` and `--fuel-quality <percent>` to use alternatives
+
 ## Acceptance Criteria
 
 - [ ] `ship_data.csv` is downloaded/cached with checksum guard alongside the DB.
@@ -92,4 +101,4 @@ Downloader fetches `ship_data.csv` alongside the database and caches it. Calls r
 - [ ] Lambda request/response schemas accept ship/loadout params and return fuel projections; integration tests updated.
 - [ ] Fixtures added for ship data; tests cover invalid input handling.
 - [ ] Documentation updated (`USAGE.md`, `README.md`) with fuel examples and flags.
-- [ ] CHANGELOG entry under Unreleased notes the new fuel projection capability.
+- [ ] CHANGELOG entry under Unreleased notes the new fuel projection capability and default ship/fuel settings.
