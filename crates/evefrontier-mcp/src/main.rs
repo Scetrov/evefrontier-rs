@@ -174,6 +174,7 @@ async fn handle_request(line: &str, state: &McpServerState) -> JsonRpcResponse {
         "resources/list" => handle_resources_list(state).await,
         "resources/read" => handle_resources_read(&request.params, state).await,
         "prompts/list" => handle_prompts_list().await,
+        "prompts/get" => handle_prompts_get(&request.params).await,
         _ => Err(JsonRpcError::method_not_found(format!(
             "Unknown method: {}",
             request.method
@@ -391,6 +392,36 @@ async fn handle_resources_read(
 }
 
 async fn handle_prompts_list() -> Result<Value, JsonRpcError> {
-    // Phase 9 - return empty for now
-    Ok(serde_json::json!({ "prompts": [] }))
+    let prompts = evefrontier_mcp::prompts::list_prompts()
+        .map_err(|e| JsonRpcError::internal_error(e.to_string()))?;
+
+    Ok(serde_json::json!({ "prompts": prompts }))
+}
+
+async fn handle_prompts_get(params: &Option<Value>) -> Result<Value, JsonRpcError> {
+    let params = params
+        .as_ref()
+        .ok_or_else(|| JsonRpcError::invalid_params("Missing parameters"))?;
+
+    let name = params["name"]
+        .as_str()
+        .ok_or_else(|| JsonRpcError::invalid_params("Missing prompt name"))?;
+
+    let arguments = params["arguments"].clone();
+
+    let prompt_text = evefrontier_mcp::prompts::get_prompt(name, &arguments)
+        .map_err(|e| JsonRpcError::internal_error(e.to_string()))?;
+
+    Ok(serde_json::json!({
+        "description": format!("Prompt template: {}", name),
+        "messages": [
+            {
+                "role": "user",
+                "content": {
+                    "type": "text",
+                    "text": prompt_text
+                }
+            }
+        ]
+    }))
 }

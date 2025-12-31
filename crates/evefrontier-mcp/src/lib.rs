@@ -21,6 +21,7 @@
 #![allow(dead_code)] // Many items are placeholders for Phase 2+
 
 pub mod error;
+pub mod prompts;
 pub mod resources;
 pub mod server;
 pub mod tools;

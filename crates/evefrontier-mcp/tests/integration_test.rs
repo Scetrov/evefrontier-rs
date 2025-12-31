@@ -323,7 +323,7 @@ fn test_resources_read_algorithms() {
 }
 
 #[test]
-fn test_prompts_list_empty() {
+fn test_prompts_list() {
     let mut server = spawn_server().expect("Failed to spawn server");
 
     let request = json!({
@@ -338,7 +338,88 @@ fn test_prompts_list_empty() {
     assert_eq!(response["jsonrpc"], "2.0");
     assert_eq!(response["id"], 9);
     assert!(response["result"]["prompts"].is_array());
-    assert_eq!(response["result"]["prompts"].as_array().unwrap().len(), 0);
+
+    let prompts = response["result"]["prompts"].as_array().unwrap();
+    assert_eq!(prompts.len(), 4);
+
+    let names: Vec<_> = prompts
+        .iter()
+        .map(|p| p["name"].as_str().unwrap())
+        .collect();
+    assert!(names.contains(&"route_planning"));
+    assert!(names.contains(&"system_exploration"));
+    assert!(names.contains(&"fleet_planning"));
+    assert!(names.contains(&"safe_zone_finder"));
+
+    server.kill().ok();
+    server.wait().ok();
+}
+
+#[test]
+fn test_prompts_get_route_planning() {
+    let mut server = spawn_server().expect("Failed to spawn server");
+
+    let request = json!({
+        "jsonrpc": "2.0",
+        "id": 10,
+        "method": "prompts/get",
+        "params": {
+            "name": "route_planning",
+            "arguments": {
+                "origin": "Nod",
+                "destination": "Brana",
+                "risk_tolerance": "safe"
+            }
+        }
+    });
+
+    let response = send_request(&mut server, request).expect("Failed to get response");
+
+    assert_eq!(response["jsonrpc"], "2.0");
+    assert_eq!(response["id"], 10);
+    assert!(response["result"]["messages"].is_array());
+
+    let messages = response["result"]["messages"].as_array().unwrap();
+    assert_eq!(messages.len(), 1);
+    assert_eq!(messages[0]["role"], "user");
+
+    let text = messages[0]["content"]["text"].as_str().unwrap();
+    assert!(text.contains("Nod"));
+    assert!(text.contains("Brana"));
+    assert!(text.contains("safe"));
+    assert!(text.contains("max_temperature: 4000"));
+
+    server.kill().ok();
+    server.wait().ok();
+}
+
+#[test]
+fn test_prompts_get_system_exploration() {
+    let mut server = spawn_server().expect("Failed to spawn server");
+
+    let request = json!({
+        "jsonrpc": "2.0",
+        "id": 11,
+        "method": "prompts/get",
+        "params": {
+            "name": "system_exploration",
+            "arguments": {
+                "system_name": "Nod"
+            }
+        }
+    });
+
+    let response = send_request(&mut server, request).expect("Failed to get response");
+
+    assert_eq!(response["jsonrpc"], "2.0");
+    assert_eq!(response["id"], 11);
+
+    let text = response["result"]["messages"][0]["content"]["text"]
+        .as_str()
+        .unwrap();
+    assert!(text.contains("Nod"));
+    assert!(text.contains("system_info"));
+    assert!(text.contains("Strategic Value"));
 
     server.kill().ok();
     server.wait().ok();
