@@ -39,8 +39,7 @@ A larger fixture containing 717 systems that cover ~50% of routes from `SampleRo
 The systems were selected by analyzing `SampleRoutes.csv` and extracting systems that appear
 in 4+ route paths (the "corridor" systems).
 
-### Routing Examples
-### 3. `ship_data.csv` - Ship Catalog Fixture
+## 3. `ship_data.csv` - Ship Catalog Fixture
 
 A minimal ship catalog for fuel projection testing:
 

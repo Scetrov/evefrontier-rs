@@ -201,6 +201,11 @@ impl RouteSummary {
     ///
     /// Distance-driven hops receive per-hop fuel data; the first step (origin)
     /// carries no fuel information. The summary's `fuel` field aggregates totals.
+    ///
+    /// Note: This method inlines gate step handling (zero fuel cost) rather than delegating to
+    /// `calculate_route_fuel()` to avoid invoking the full route fuel calculator for each step.
+    /// The `calculate_route_fuel()` function remains exported as a public API and is used in tests
+    /// and external code for complete route projections with static/dynamic mass modes.
     pub fn attach_fuel(
         &mut self,
         ship: &ShipAttributes,
