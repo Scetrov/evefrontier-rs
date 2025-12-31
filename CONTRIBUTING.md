@@ -267,6 +267,12 @@ The repository uses Nx to orchestrate Rust build, test, lint, and clippy tasks a
 > while "Lambda functions" refers specifically to the 3 function crates (`route`, `scout-gates`,
 > `scout-range`). Be explicit in PRs and documentation to avoid confusion.
 
+> [!IMPORTANT]
+> For comprehensive documentation of Nx patterns, rationale, and architecture, see 
+> [ADR 0017: NX Repository Orchestration Strategy](docs/adrs/0017-nx-orchestration-strategy.md).
+> That ADR explains task configuration, caching strategy, CI integration, and provides examples
+> for configuring new projects.
+
 Nx provides:
 - **Task dependencies**: Tests automatically run after builds complete (`test` depends on `build`)
 - **Intelligent caching**: Nx caches task outputs locally to skip redundant work
@@ -278,6 +284,8 @@ Nx tasks are configured with `parallel: false` for all Rust targets. This means:
 - Nx orchestrates task order and dependencies (e.g., ensuring builds complete before tests)
 - Cargo manages its own internal parallelism for compilation (`-j` flag)
 - No conflicts between Nx and Cargo parallelism
+
+(See ADR 0017 "Why `parallel: false`?" section for detailed rationale.)
 
 ### Common Nx Commands
 
@@ -313,12 +321,27 @@ pnpm nx run-many --target=clippy --all
 - To clear cache: `pnpm nx reset`
 - To bypass cache for a single run: `pnpm nx run <project>:<target> --skip-nx-cache`
 
+(See ADR 0017 "Named Input Strategy" section for how cache keys are determined.)
+
+### Configuring New Projects
+
+When adding a new Rust crate:
+
+1. Create `crates/[new-crate]/Cargo.toml`
+2. Create `crates/[new-crate]/project.json` following the pattern documented in ADR 0017
+3. Run `pnpm nx run-many --target build --all` to validate
+
+See ADR 0017 "Examples for Contributors" for complete examples.
+
 ### Troubleshooting
 
 If Nx daemon causes issues (rare):
 ```sh
 NX_DAEMON=false pnpm nx run-many --target=test --all
 ```
+
+For cache-related issues, see ADR 0017 "Questions & Troubleshooting" section.
+
 
 To see detailed task execution:
 ```sh

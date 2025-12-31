@@ -16,6 +16,10 @@
   configuration
 - If the user needs help with an Nx configuration or project graph error, use the `nx_workspace`
   tool to get any errors
+- **Important**: For task configuration guidance, workspace patterns, and cache behavior, consult
+  [ADR 0017: NX Repository Orchestration Strategy](docs/adrs/0017-nx-orchestration-strategy.md).
+  This ADR documents the rationale for `parallel: false`, named inputs, target defaults, and 
+  provides examples for configuring new projects.
 
 <!-- nx configuration end-->
 
@@ -24,3 +28,4 @@ Note: Before starting work on a change or task, always read the repository-level
 relevant documentation or ADRs that could affect your design or implementation choices. These
 documents often include important conventions, schema notes, and CI/packaging guidance that should
 be considered before making changes.
+

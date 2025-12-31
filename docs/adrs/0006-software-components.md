@@ -41,6 +41,8 @@ vendor when necessary.
 - NX (nx)
   - Role: Repository/task orchestration for developer workflows and scripts. The workspace uses `nx`
     for higher-level scripting and task composition.
+  - Reference: [ADR 0017: NX Repository Orchestration Strategy](0017-nx-orchestration-strategy.md)
+    documents the formal task orchestration patterns, cache strategy, and CI/CD integration.
 
 - Husky & lint-staged
   - Role: Optional commit-time checks (formatting) via Git hooks. Keep pre-commit hooks light

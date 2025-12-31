@@ -1,0 +1,20 @@
+# Generated to avoid formatting build artifacts and caches
+node_modules/
+dist/
+build/
+coverage/
+.target
+target/
+.nx/
+.cache/
+logs/
+*.log
+*.tmp
+.tmp/
+docs/_book/
+examples/target/
+scripts/.venv/
+.venv/
+venv/
+terraform/.terraform/
+terraform/*.tfstate*
