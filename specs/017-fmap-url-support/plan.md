@@ -18,7 +18,7 @@ compression, and base64url encoding, plus CLI integration via `--format fmap` an
 **Target Platform**: Linux (primary), macOS, Windows (CLI)  
 **Project Type**: Library-first (evefrontier-lib) + CLI wrapper  
 **Performance Goals**: Encode <1ms for 1000 waypoints, decode <1ms  
-**Constraints**: Byte-for-byte compatibility with JavaScript reference implementation  
+**Constraints**: Semantic compatibility with JavaScript reference implementation (identical decoded routes; bytes may differ)  
 **Scale/Scope**: Routes typically 5-100 waypoints, max 65535 (u16 limit)
 
 ## Constitution Check

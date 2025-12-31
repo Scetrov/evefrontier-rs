@@ -87,9 +87,11 @@ fn text_output_mentions_fuel_when_ship_selected() {
         .arg("--fuel-quality")
         .arg("10")
         .arg("--fuel-load")
-        .arg("1750");
+        .arg("1750")
+        .arg("--format")
+        .arg("enhanced");
 
-    // Enhanced format (default) shows "Fuel (Reflex):" and "Remaining:"
+    // Enhanced format shows "Fuel (Reflex):" and "Remaining:" labels
     cmd.assert()
         .success()
         .stdout(predicate::str::contains("Fuel (Reflex):"))

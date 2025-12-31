@@ -31,7 +31,7 @@ pub enum WaypointType {
 
 **Validation Rules**:
 - Value must be in range 0-4
-- Only 2 bits used in encoding (values 0-3), SetDestination (4) requires 3 bits (future format)
+- `waypoint_type` must encode to 3 bits (values 0-4) for the current format version
 
 ### Waypoint
 
@@ -216,10 +216,10 @@ pub enum Error {
 ├──────────┴───────────┴──────────────────────────────────────┤
 │                       PAYLOAD (variable)                     │
 │  ┌─────────────────────────────────────────────────────┐    │
-│  │ Waypoint 0: [offset: k bits][type: 2 bits]          │    │
-│  │ Waypoint 1: [offset: k bits][type: 2 bits]          │    │
+│  │ Waypoint 0: [offset: k bits][type: 3 bits]          │    │
+│  │ Waypoint 1: [offset: k bits][type: 3 bits]          │    │
 │  │ ...                                                  │    │
-│  │ Waypoint N: [offset: k bits][type: 2 bits]          │    │
+│  │ Waypoint N: [offset: k bits][type: 3 bits]          │    │
 │  │ Padding: 0-7 bits to byte boundary                   │    │
 │  └─────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────┘

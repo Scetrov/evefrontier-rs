@@ -726,11 +726,20 @@ fn handle_route_command(
             let wtype = if idx == 0 {
                 WaypointType::Start
             } else {
-                // Use the method field to determine if it's a gate or spatial jump
+                // Use the method field to determine if it's a gate or spatial jump.
+                // Treat unknown methods as a jump but emit a warning to surface data issues.
                 match step.method.as_deref() {
                     Some("gate") => WaypointType::NpcGate,
                     Some("jump") => WaypointType::Jump,
-                    _ => WaypointType::Jump, // Default to jump for unknown methods
+                    Some(other) => {
+                        eprintln!(
+                            "Warning: unexpected route step method '{}' for system id {}; treating as 'jump' for fmap URL generation.",
+                            other,
+                            step.id
+                        );
+                        WaypointType::Jump
+                    }
+                    None => WaypointType::Jump,
                 }
             };
             let system_id_u32 = u32::try_from(step.id)
@@ -748,11 +757,13 @@ fn handle_route_command(
         }
         Err(err) => {
             // Do not fail the entire command on optional URL generation issues,
-            // but make the failure visible to the user instead of silently ignoring it.
+            // but make the failure visible to the user by setting a placeholder.
+            // This ensures the render functions can show that URL generation was attempted but failed.
             eprintln!(
                 "Warning: failed to generate fmap URL for this route: {}",
                 err
             );
+            summary.fmap_url = Some("(generation failed)".to_string());
         }
     }
 
@@ -926,12 +937,6 @@ fn handle_fmap_encode(context: &AppContext, args: &FmapEncodeArgs) -> Result<()>
         anyhow::bail!("At least one system name is required");
     }
 
-    // Load the starmap to resolve system names
-    let paths = ensure_dataset(context.target_path(), context.dataset_release())
-        .context("failed to locate or download the EVE Frontier dataset")?;
-    let starmap = load_starmap(&paths.database)
-        .with_context(|| format!("failed to load dataset from {}", paths.database.display()))?;
-
     // Parse waypoint types with defaults
     let mut waypoint_types = Vec::new();
     for (i, _system_name) in args.systems.iter().enumerate() {
@@ -954,19 +959,39 @@ fn handle_fmap_encode(context: &AppContext, args: &FmapEncodeArgs) -> Result<()>
         waypoint_types.push(wtype);
     }
 
-    // Resolve system names to IDs using the starmap
+    // Check if we need database lookup (if any system name fails to parse as u32)
+    let needs_db_lookup = args.systems.iter().any(|sys| sys.parse::<u32>().is_err());
+
+    // Resolve system names to IDs
     let mut waypoints = Vec::new();
+    let starmap =
+        if needs_db_lookup {
+            let paths = ensure_dataset(context.target_path(), context.dataset_release())
+                .context("failed to locate or download the EVE Frontier dataset")?;
+            Some(load_starmap(&paths.database).with_context(|| {
+                format!("failed to load dataset from {}", paths.database.display())
+            })?)
+        } else {
+            None
+        };
+
     for (system_name, wtype) in args.systems.iter().zip(waypoint_types.iter()) {
         // Try to parse as a numeric system ID first
         let system_id = match system_name.parse::<u32>() {
             Ok(id) => id,
             Err(_) => {
                 // Look up system name in the database
-                match starmap.system_id_by_name(system_name) {
+                let db = starmap.as_ref().ok_or_else(|| {
+                    anyhow::anyhow!(
+                        "system name '{}' requires database lookup, but database failed to load",
+                        system_name
+                    )
+                })?;
+                match db.system_id_by_name(system_name) {
                     Some(id) => id as u32,
                     None => {
                         // System not found, provide helpful suggestions
-                        let suggestions = starmap.fuzzy_system_matches(system_name, 5);
+                        let suggestions = db.fuzzy_system_matches(system_name, 5);
                         if suggestions.is_empty() {
                             anyhow::bail!(
                                 "unknown system '{}'. Use a numeric system ID or an exact system name from the database",

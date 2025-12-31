@@ -132,7 +132,11 @@ pub enum Error {
     #[error("invalid fmap bit width {k}, must be 1-30")]
     FmapInvalidBitWidth { k: u8 },
 
-    /// Invalid fmap token: waypoint type value cannot be decoded
+    /// Invalid fmap token encountered during decoding: waypoint type value is outside the valid range.
+    ///
+    /// This error indicates that a waypoint type value read from the fmap stream is not one of the
+    /// supported enum values (currently 0–4). The raw, invalid value is returned in `waypoint_type`
+    /// so callers can log or diagnose malformed fmap data.
     #[error("invalid fmap token: waypoint type {waypoint_type} is not valid (must be 0-4)")]
     FmapInvalidWaypointType { waypoint_type: u8 },
 
@@ -140,8 +144,12 @@ pub enum Error {
     #[error("fmap data truncated: expected {expected} bytes, got {actual}")]
     FmapTruncatedData { expected: usize, actual: usize },
 
-    /// Invalid system ID for fmap encoding
-    #[error("invalid system ID {system_id}: must be >= {base_id}")]
+    /// Invalid fmap system ID offset: overflow when adding base ID
+    ///
+    /// This error indicates that during decoding, adding the BASE_SYSTEM_ID to an offset value
+    /// caused integer overflow. This suggests either malformed fmap data or an offset that is
+    /// unreasonably large.
+    #[error("system ID offset {system_id} caused overflow when adding base ID {base_id}")]
     FmapInvalidSystemId { system_id: u32, base_id: u32 },
 }
 
