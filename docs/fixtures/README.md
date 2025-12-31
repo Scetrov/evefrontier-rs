@@ -40,6 +40,40 @@ The systems were selected by analyzing `SampleRoutes.csv` and extracting systems
 in 4+ route paths (the "corridor" systems).
 
 ### Routing Examples
+### 3. `ship_data.csv` - Ship Catalog Fixture
+
+A minimal ship catalog for fuel projection testing:
+
+- **Ships included:** Reflex, and other EVE Frontier ships (see file for complete list)
+- **Default test ship:** Reflex (used in CLI/Lambda tests with 10% fuel quality default)
+- **Schema:** Base mass (kg), fuel capacity, cargo capacity, specific heat, max heat tolerance,
+  heat dissipation rate
+
+**Protection note:** This fixture should not be overwritten by dataset downloads. The library
+includes a safety guard (`ensure_e6c3_dataset`) that rejects download targets resolving to
+`docs/fixtures/minimal_static_data.db`, preventing accidental fixture replacement.
+
+**Using the fixture in tests:**
+
+```rust
+use std::path::PathBuf;
+use evefrontier_lib::ship::ShipCatalog;
+
+fn fixture_path() -> PathBuf {
+   PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+      .join("../../docs/fixtures/ship_data.csv")
+}
+
+#[test]
+fn test_with_ship_catalog() {
+   let catalog = ShipCatalog::from_path(&fixture_path())
+      .expect("fixture should load");
+   let reflex = catalog.get("Reflex").expect("Reflex available");
+   assert!(reflex.base_mass_kg > 0.0);
+}
+```
+
+### Routing Examples
 
 **Gate-based routes:**
 - Nod → Brana (via H:2L2S → Y:3R7E, 3 hops)

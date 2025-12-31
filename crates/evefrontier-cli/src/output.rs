@@ -402,7 +402,7 @@ impl EnhancedRenderer {
         // Black hole systems (IDs 30000001, 30000002, 30000003)
         let is_black_hole = matches!(step.id, 30000001..=30000003);
         if is_black_hole {
-            parts.push(format!("{}◆ Black Hole ◆{}", p.tag_black_hole, p.reset));
+            parts.push(format!("{}▌Black Hole▐{}", p.tag_black_hole, p.reset));
         }
 
         // Temperature (skip for black holes - they have no planets orbiting)

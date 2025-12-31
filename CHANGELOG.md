@@ -13,6 +13,22 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - **MCP Server** (`evefrontier-mcp`)
+  - **Ship Data & Fuel Calculations** (Library & CLI)
+    - `ShipAttributes`, `ShipLoadout`, and `ShipCatalog` structs for ship management
+    - Fuel cost calculator: `calculate_jump_fuel_cost()` with mass and distance-based formula
+    - Route fuel projection: `calculate_route_fuel()` with static and dynamic mass modes
+    - CLI flags: `--ship`, `--fuel-quality`, `--cargo-mass`, `--dynamic-mass` for route command
+    - CLI convenience flag: `--list-ships` to display available ships from catalog
+    - Ship data fixture (`docs/fixtures/ship_data.csv`) with Reflex and other ships
+    - Default values: Reflex ship with 10% fuel quality applied automatically
+    - Enhanced output mode displays fuel consumption per hop and total fuel required
+    - Lambda support: Extended RouteRequest/RouteSummary with optional fuel projection fields
+    - Dynamic mass recalculation mode where fuel weight decreases after each jump
+    - 8 integration tests for ship catalog parsing, fuel calculation, and route aggregation
+    - 3 specification tests for future ship data downloader features
+    - Documentation in `docs/USAGE.md` with fuel calculation examples and formula reference
+
+  - **MCP Server** (`evefrontier-mcp`)
   - Model Context Protocol (MCP) server implementation for AI assistant integration
   - Stdio transport for local process communication (Claude Desktop, VS Code, Cursor)
   - JSON-RPC 2.0 message handling per MCP specification 2024-11-05

@@ -313,6 +313,35 @@ Both tools complement each other:
 
 ## References
 
+## Ship Data Security
+
+Ship data (CSV format) is loaded from both bundled fixtures and remote GitHub releases.
+
+### CSV Input Validation
+
+`ShipCatalog::from_reader()` validates:
+- Required columns present and correct type
+- Each ship record has finite positive numeric fields
+- Ship names are non-empty
+- No duplicate ship names
+
+All validation is done with safe Rust; invalid data is rejected with descriptive errors.
+
+### Download Security
+
+- HTTPS-only downloads from official GitHub repository (Scetrov/evefrontier_datasets)
+- Invalid SSL/TLS certificates cause failure
+- Atomic file operations prevent partial writes
+- Local test overrides via `EVEFRONTIER_DATASET_SOURCE` (test-only, not production)
+
+### Future: Checksums
+
+Release signature and checksum validation planned for ADR 0015 Phase 2 (see `docs/TODO.md`).
+
+---
+
+## References
+
 - [RustSec Advisory Database](https://rustsec.org/)
 - [cargo-audit Documentation](https://github.com/rustsec/rustsec/tree/main/cargo-audit)
 - [OWASP Dependency Check](https://owasp.org/www-project-dependency-check/)

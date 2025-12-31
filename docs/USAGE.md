@@ -167,6 +167,59 @@ The routing subcommands accept several flags that map directly to the library's 
   as safe.
 
 ### `index-build`
+### Fuel projection (optional)
+
+When planning routes, you can optionally calculate fuel consumption by specifying a ship and fuel
+quality. The CLI will display fuel cost for each hop and total fuel required for the route.
+
+```bash
+# Use default ship (Reflex) and fuel quality (10%) - no flags needed
+evefrontier-cli route --from "Nod" --to "Brana"
+
+# Specify a different ship
+evefrontier-cli route --from "Nod" --to "Brana" --ship "Reflex"
+
+# Adjust fuel quality (1-100, default 10)
+evefrontier-cli route --from "Nod" --to "Brana" --fuel-quality 15
+
+# Include cargo mass in calculations
+evefrontier-cli route --from "Nod" --to "Brana" --cargo-mass 5000
+
+# Enable dynamic mass recalculation (mass decreases as fuel burns)
+evefrontier-cli route --from "Nod" --to "Brana" --dynamic-mass
+```
+
+**Fuel calculation:**
+
+The fuel cost for a jump is calculated using:
+
+```
+fuel_cost = (total_mass_kg / 100,000) × (fuel_quality / 100) × distance_ly
+```
+
+Where `total_mass_kg` includes:
+- Ship base mass
+- Fuel currently loaded
+- Cargo mass (if specified)
+
+**Static vs. Dynamic mass:**
+
+- **Static mode (default):** Total mass remains constant throughout the route. Fuel consumption
+  increases with remaining fuel load.
+- **Dynamic mode (`--dynamic-mass`):** After each jump, fuel mass decreases. Subsequent hops cost
+  less fuel because the ship is lighter. Useful for calculating actual fuel remaining and detecting
+  fuel shortfalls.
+
+**List available ships:**
+
+```bash
+evefrontier-cli route --list-ships
+```
+
+This displays all available ships from the bundled ship data catalog, with their base mass and fuel
+capacity.
+
+### `index-build`
 
 Precomputes a KD-tree spatial index for efficient neighbor queries during routing. The index file is
 saved alongside the database with a `.spatial.bin` extension.
