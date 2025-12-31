@@ -1,0 +1,323 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EVE Frontier MCP Tools",
+  "description": "JSON Schema definitions for EVE Frontier MCP server tools",
+  "definitions": {
+    "route_plan_input": {
+      "type": "object",
+      "title": "RoutePlanInput",
+      "description": "Input parameters for the route_plan tool",
+      "properties": {
+        "origin": {
+          "type": "string",
+          "description": "Starting system name (required)",
+          "minLength": 1
+        },
+        "destination": {
+          "type": "string",
+          "description": "Goal system name (required)",
+          "minLength": 1
+        },
+        "algorithm": {
+          "type": "string",
+          "description": "Routing algorithm",
+          "enum": ["bfs", "dijkstra", "a-star"],
+          "default": "a-star"
+        },
+        "max_jump": {
+          "type": "number",
+          "description": "Maximum jump distance in light-years",
+          "exclusiveMinimum": 0,
+          "maximum": 500
+        },
+        "max_temperature": {
+          "type": "number",
+          "description": "Maximum system temperature in Kelvin",
+          "exclusiveMinimum": 0
+        },
+        "avoid_systems": {
+          "type": "array",
+          "description": "System names to exclude from route",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": []
+        },
+        "avoid_gates": {
+          "type": "boolean",
+          "description": "Use spatial-only routing, ignore jump gates",
+          "default": false
+        }
+      },
+      "required": ["origin", "destination"],
+      "additionalProperties": false
+    },
+    "system_info_input": {
+      "type": "object",
+      "title": "SystemInfoInput",
+      "description": "Input parameters for the system_info tool",
+      "properties": {
+        "system_name": {
+          "type": "string",
+          "description": "System name to query (supports fuzzy matching)",
+          "minLength": 1
+        }
+      },
+      "required": ["system_name"],
+      "additionalProperties": false
+    },
+    "systems_nearby_input": {
+      "type": "object",
+      "title": "SystemsNearbyInput",
+      "description": "Input parameters for the systems_nearby tool",
+      "properties": {
+        "system_name": {
+          "type": "string",
+          "description": "Center system name",
+          "minLength": 1
+        },
+        "radius_ly": {
+          "type": "number",
+          "description": "Search radius in light-years",
+          "exclusiveMinimum": 0,
+          "maximum": 1000
+        },
+        "max_temperature": {
+          "type": "number",
+          "description": "Maximum system temperature in Kelvin",
+          "exclusiveMinimum": 0
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Maximum number of results",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 20
+        }
+      },
+      "required": ["system_name", "radius_ly"],
+      "additionalProperties": false
+    },
+    "gates_from_input": {
+      "type": "object",
+      "title": "GatesFromInput",
+      "description": "Input parameters for the gates_from tool",
+      "properties": {
+        "system_name": {
+          "type": "string",
+          "description": "System name to query gates from",
+          "minLength": 1
+        }
+      },
+      "required": ["system_name"],
+      "additionalProperties": false
+    },
+    "position_3d": {
+      "type": "object",
+      "title": "Position3D",
+      "description": "3D coordinates in EVE Frontier space",
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "z": { "type": "number" }
+      },
+      "required": ["x", "y", "z"]
+    },
+    "system_summary": {
+      "type": "object",
+      "title": "SystemSummary",
+      "description": "Brief system information",
+      "properties": {
+        "name": { "type": "string" },
+        "system_id": { "type": "integer" },
+        "position": { "$ref": "#/definitions/position_3d" }
+      },
+      "required": ["name", "system_id", "position"]
+    },
+    "waypoint": {
+      "type": "object",
+      "title": "Waypoint",
+      "description": "A single waypoint in a route",
+      "properties": {
+        "system_name": { "type": "string" },
+        "system_id": { "type": "integer" },
+        "position": { "$ref": "#/definitions/position_3d" },
+        "min_temperature_k": { "type": "number" },
+        "edge_type": {
+          "type": ["string", "null"],
+          "enum": ["gate", "spatial", null]
+        },
+        "distance_ly": { "type": ["number", "null"] }
+      },
+      "required": ["system_name", "system_id", "position", "min_temperature_k"]
+    },
+    "route_details": {
+      "type": "object",
+      "title": "RouteDetails",
+      "description": "Detailed route information",
+      "properties": {
+        "algorithm": { "type": "string" },
+        "origin": { "$ref": "#/definitions/system_summary" },
+        "destination": { "$ref": "#/definitions/system_summary" },
+        "hop_count": { "type": "integer", "minimum": 0 },
+        "total_distance_ly": { "type": ["number", "null"] },
+        "gate_jumps": { "type": "integer", "minimum": 0 },
+        "spatial_jumps": { "type": "integer", "minimum": 0 },
+        "waypoints": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/waypoint" }
+        }
+      },
+      "required": ["algorithm", "origin", "destination", "hop_count", "gate_jumps", "spatial_jumps", "waypoints"]
+    },
+    "route_error": {
+      "type": "object",
+      "title": "RouteError",
+      "description": "Error information when route planning fails",
+      "properties": {
+        "code": { "type": "string" },
+        "message": { "type": "string" },
+        "suggestions": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "required": ["code", "message"]
+    },
+    "route_plan_output": {
+      "type": "object",
+      "title": "RoutePlanOutput",
+      "description": "Output from the route_plan tool",
+      "properties": {
+        "success": { "type": "boolean" },
+        "summary": { "type": "string" },
+        "route": {
+          "oneOf": [
+            { "$ref": "#/definitions/route_details" },
+            { "type": "null" }
+          ]
+        },
+        "error": {
+          "oneOf": [
+            { "$ref": "#/definitions/route_error" },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": ["success", "summary"]
+    },
+    "gate_connection": {
+      "type": "object",
+      "title": "GateConnection",
+      "description": "A jump gate connection to another system",
+      "properties": {
+        "destination_system": { "type": "string" },
+        "destination_id": { "type": "integer" }
+      },
+      "required": ["destination_system", "destination_id"]
+    },
+    "system_details": {
+      "type": "object",
+      "title": "SystemDetails",
+      "description": "Detailed system information",
+      "properties": {
+        "system_id": { "type": "integer" },
+        "name": { "type": "string" },
+        "position": { "$ref": "#/definitions/position_3d" },
+        "min_external_temperature_k": { "type": "number" },
+        "planet_count": { "type": "integer", "minimum": 0 },
+        "moon_count": { "type": "integer", "minimum": 0 },
+        "connected_gates": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/gate_connection" }
+        }
+      },
+      "required": ["system_id", "name", "position", "min_external_temperature_k", "planet_count", "moon_count", "connected_gates"]
+    },
+    "system_info_output": {
+      "type": "object",
+      "title": "SystemInfoOutput",
+      "description": "Output from the system_info tool",
+      "properties": {
+        "found": { "type": "boolean" },
+        "system": {
+          "oneOf": [
+            { "$ref": "#/definitions/system_details" },
+            { "type": "null" }
+          ]
+        },
+        "error": {
+          "oneOf": [
+            { "$ref": "#/definitions/route_error" },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": ["found"]
+    },
+    "nearby_system": {
+      "type": "object",
+      "title": "NearbySystem",
+      "description": "A system found in a nearby search",
+      "properties": {
+        "name": { "type": "string" },
+        "system_id": { "type": "integer" },
+        "distance_ly": { "type": "number" },
+        "min_temperature_k": { "type": "number" }
+      },
+      "required": ["name", "system_id", "distance_ly", "min_temperature_k"]
+    },
+    "systems_nearby_output": {
+      "type": "object",
+      "title": "SystemsNearbyOutput",
+      "description": "Output from the systems_nearby tool",
+      "properties": {
+        "center_system": { "type": "string" },
+        "radius_ly": { "type": "number" },
+        "count": { "type": "integer", "minimum": 0 },
+        "systems": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/nearby_system" }
+        }
+      },
+      "required": ["center_system", "radius_ly", "count", "systems"]
+    },
+    "gates_from_output": {
+      "type": "object",
+      "title": "GatesFromOutput",
+      "description": "Output from the gates_from tool",
+      "properties": {
+        "system_name": { "type": "string" },
+        "gate_count": { "type": "integer", "minimum": 0 },
+        "gates": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/gate_connection" }
+        }
+      },
+      "required": ["system_name", "gate_count", "gates"]
+    }
+  },
+  "tools": {
+    "route_plan": {
+      "name": "route_plan",
+      "description": "Plan a route between two star systems in EVE Frontier. Supports multiple algorithms (BFS for minimum hops, Dijkstra for shortest distance, A* for fast heuristic search) and constraints (max jump distance, temperature limits, system avoidance).",
+      "inputSchema": { "$ref": "#/definitions/route_plan_input" }
+    },
+    "system_info": {
+      "name": "system_info",
+      "description": "Get detailed information about a star system including coordinates, temperature, planets, moons, and connected jump gates. Supports fuzzy matching on system names.",
+      "inputSchema": { "$ref": "#/definitions/system_info_input" }
+    },
+    "systems_nearby": {
+      "name": "systems_nearby",
+      "description": "Find star systems within a specified radius of a center system. Can filter by maximum temperature. Requires spatial index to be available.",
+      "inputSchema": { "$ref": "#/definitions/systems_nearby_input" }
+    },
+    "gates_from": {
+      "name": "gates_from",
+      "description": "List all jump gate connections from a given star system.",
+      "inputSchema": { "$ref": "#/definitions/gates_from_input" }
+    }
+  }
+}

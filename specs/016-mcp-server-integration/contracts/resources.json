@@ -1,0 +1,161 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EVE Frontier MCP Resources",
+  "description": "JSON Schema definitions for EVE Frontier MCP server resources",
+  "resources": [
+    {
+      "uri": "evefrontier://dataset/info",
+      "name": "Dataset Information",
+      "description": "Metadata about the currently loaded EVE Frontier dataset including system count, gate count, schema version, and load timestamp.",
+      "mimeType": "application/json",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "system_count": {
+            "type": "integer",
+            "description": "Total number of star systems in the dataset",
+            "minimum": 0
+          },
+          "gate_count": {
+            "type": "integer",
+            "description": "Total number of jump gate connections",
+            "minimum": 0
+          },
+          "schema_version": {
+            "type": "string",
+            "description": "Schema identifier (e.g., 'e6c3')"
+          },
+          "database_path": {
+            "type": "string",
+            "description": "Absolute path to the loaded database file"
+          },
+          "loaded_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp when the dataset was loaded"
+          }
+        },
+        "required": ["system_count", "gate_count", "schema_version", "database_path", "loaded_at"]
+      }
+    },
+    {
+      "uri": "evefrontier://algorithms",
+      "name": "Routing Algorithms",
+      "description": "List of available routing algorithms with descriptions. Use this to understand which algorithm is appropriate for different use cases.",
+      "mimeType": "application/json",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "algorithms": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Algorithm identifier to use in route_plan tool"
+                },
+                "description": {
+                  "type": "string",
+                  "description": "Human-readable description of the algorithm"
+                },
+                "use_cases": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Recommended use cases for this algorithm"
+                }
+              },
+              "required": ["name", "description"]
+            }
+          },
+          "default": {
+            "type": "string",
+            "description": "Default algorithm used when not specified"
+          }
+        },
+        "required": ["algorithms", "default"]
+      },
+      "example": {
+        "algorithms": [
+          {
+            "name": "bfs",
+            "description": "Breadth-first search for minimum hop count (ignores distances)",
+            "use_cases": [
+              "Finding shortest path by number of jumps",
+              "Gate-only routing where all gates are equivalent"
+            ]
+          },
+          {
+            "name": "dijkstra",
+            "description": "Shortest path by total distance in light-years",
+            "use_cases": [
+              "Minimizing total travel distance",
+              "Fuel-efficient routing"
+            ]
+          },
+          {
+            "name": "a-star",
+            "description": "Heuristic-guided search using spatial coordinates (default, typically fastest)",
+            "use_cases": [
+              "General-purpose routing (recommended default)",
+              "Fast pathfinding for long-distance routes"
+            ]
+          }
+        ],
+        "default": "a-star"
+      }
+    },
+    {
+      "uri": "evefrontier://spatial-index/status",
+      "name": "Spatial Index Status",
+      "description": "Information about the spatial index used for range queries. Required for systems_nearby tool.",
+      "mimeType": "application/json",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "boolean",
+            "description": "Whether the spatial index is loaded and ready"
+          },
+          "version": {
+            "type": "integer",
+            "description": "Index format version (currently 2)",
+            "minimum": 1
+          },
+          "system_count": {
+            "type": "integer",
+            "description": "Number of systems indexed",
+            "minimum": 0
+          },
+          "source_checksum": {
+            "type": "string",
+            "description": "SHA-256 checksum of the source database"
+          },
+          "build_timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp when the index was built"
+          },
+          "freshness": {
+            "type": "string",
+            "enum": ["fresh", "stale", "unknown"],
+            "description": "Whether the index matches the current database"
+          }
+        },
+        "required": ["available"]
+      },
+      "example_available": {
+        "available": true,
+        "version": 2,
+        "system_count": 8247,
+        "source_checksum": "abc123def456...",
+        "build_timestamp": "2025-12-30T10:00:00Z",
+        "freshness": "fresh"
+      },
+      "example_unavailable": {
+        "available": false,
+        "freshness": "unknown"
+      }
+    }
+  ]
+}
