@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+### Added
+
+- **MCP Server** (`evefrontier-mcp`)
+  - Model Context Protocol (MCP) server implementation for AI assistant integration
+  - Stdio transport for local process communication (Claude Desktop, VS Code, Cursor)
+  - JSON-RPC 2.0 message handling per MCP specification 2024-11-05
+  - `McpServerState` with dataset loading, spatial index integration, and metadata access
+  - Route planning tool (`route_plan`) with algorithm selection and constraint support
+  - System query tools: `system_info`, `systems_nearby` (spatial KD-tree queries), `gates_from`
+  - MCP resources: `dataset/info` (metadata), `algorithms` (catalog), `spatial-index/status`
+  - Fuzzy system name matching with Jaro-Winkler suggestions
+  - RFC 9457 ProblemDetails error responses for structured error handling
+  - Temperature-aware spatial filtering for heat-constrained route planning
+  - 35 integration tests covering tools, resources, validation, and error paths
+
 ## [0.1.0-alpha.1] - 2025-12-30
 
 ### Added
