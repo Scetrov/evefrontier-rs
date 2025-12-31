@@ -9,6 +9,8 @@ All notable changes to this project will be documented in this file.
 - **CLI** (`evefrontier-cli`)
   - GOAL step in `--format enhanced` now displays status line (min temp, planets, moons) like all other steps
   - Added "Black Hole" indicator for systems 30000001-30000003 which have no celestial bodies
+- **Library** (`evefrontier-lib`)
+  - Fuel projections no longer consume fuel on gate hops; gate steps report zero fuel cost
 
 ### Added
 

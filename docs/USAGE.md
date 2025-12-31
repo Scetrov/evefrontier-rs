@@ -603,6 +603,33 @@ let json = serde_json::to_string_pretty(&summary)?;
 println!("{}", json);
 ```
 
+#### Enhanced format example (CLI)
+
+```bash
+evefrontier-cli --no-logo --format enhanced route --from "Nod" --to "Brana"
+```
+
+Sample output (colors may vary by terminal):
+
+```
+Route from Nod to Brana (3 jumps):
+ STRT  ● Nod
+   │ min  15.74K,  2 Planets
+ GATE  ● J:35IA (gate, 119ly)
+   │ min   3.69K,  8 Planets,  6 Moons
+ JUMP  ● G:3OA0 (jump, 110ly)
+   │ min   1.31K,  3 Planets,  1 Moon
+ GOAL  ● Brana (gate, 143ly)
+   │ min   0.32K,  2 Planets,  2 Moons
+
+───────────────────────────────────────
+  Total Distance:  373ly
+  Via Gates:       262ly
+  Via Jumps:       110ly
+```
+
+> Black hole systems (IDs 30000001–30000003) display a “Black Hole” badge on the status line.
+
 ### Using Custom Dataset Paths
 
 For testing or using alternative datasets:
