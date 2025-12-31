@@ -24,6 +24,8 @@ pub mod error;
 pub mod resources;
 pub mod server;
 pub mod tools;
+pub mod types;
 
 pub use error::{Error, Result};
 pub use server::McpServerState;
+pub use types::*;
