@@ -107,6 +107,10 @@ pub fn render_text(summary: &RouteSummary, show_temps: bool) {
             println!("Warning: {}", warning);
         }
     }
+
+    if let Some(fmap_url) = &summary.fmap_url {
+        println!("\nfmap URL: {}", fmap_url);
+    }
 }
 
 fn render_step_with_prefix(prefix: &str, step: &RouteStep, name: &str, show_temps: bool) {
@@ -484,6 +488,14 @@ impl EnhancedRenderer {
                     p.green, p.reset, p.white_bold, remaining, p.reset
                 );
             }
+        }
+
+        if let Some(fmap_url) = &summary.fmap_url {
+            println!();
+            println!(
+                "  {}fmap URL:{}        {}{}",
+                p.cyan, p.reset, p.white_bold, fmap_url
+            );
         }
     }
 }

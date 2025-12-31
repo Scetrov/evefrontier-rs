@@ -701,6 +701,30 @@ fn handle_route_command(
     let mut summary = RouteSummary::from_plan(kind, &starmap, &plan)
         .context("failed to build route summary for display")?;
 
+    // Generate fmap URL for the route
+    let waypoints: Vec<Waypoint> = plan
+        .steps
+        .iter()
+        .enumerate()
+        .map(|(idx, &system_id)| {
+            let wtype = if idx == 0 {
+                WaypointType::Start
+            } else if idx == plan.steps.len() - 1 {
+                WaypointType::SetDestination
+            } else {
+                WaypointType::Jump
+            };
+            Waypoint {
+                system_id: system_id as u32,
+                waypoint_type: wtype,
+            }
+        })
+        .collect();
+
+    if let Ok(token) = encode_fmap_token(&waypoints) {
+        summary.fmap_url = Some(token.token);
+    }
+
     if let Some(ship_name) = args.options.ship.as_ref() {
         let catalog = load_ship_catalog(&paths)?;
         let ship = catalog
