@@ -102,6 +102,43 @@ pub enum Error {
     /// Database deserialization failed (used with rusqlite serialize feature).
     #[error("failed to deserialize database: {message}")]
     DatabaseDeserialize { message: String },
+
+    /// Invalid fmap token: base64 decoding failed
+    #[error("invalid fmap token: base64 decode failed")]
+    FmapBase64DecodeError {
+        #[source]
+        source: base64::DecodeError,
+    },
+
+    /// Invalid fmap token: gzip decompression failed
+    #[error("invalid fmap token: decompression failed")]
+    FmapDecompressionError {
+        #[source]
+        source: std::io::Error,
+    },
+
+    /// fmap compression failed
+    #[error("fmap compression failed")]
+    FmapCompressionError {
+        #[source]
+        source: std::io::Error,
+    },
+
+    /// Unsupported fmap format version
+    #[error("unsupported fmap version {version}, expected {expected}")]
+    FmapUnsupportedVersion { version: u8, expected: u8 },
+
+    /// Invalid fmap header: bit width out of range
+    #[error("invalid fmap bit width {k}, must be 1-30")]
+    FmapInvalidBitWidth { k: u8 },
+
+    /// Invalid fmap token: data truncated
+    #[error("fmap data truncated: expected {expected} bytes, got {actual}")]
+    FmapTruncatedData { expected: usize, actual: usize },
+
+    /// Invalid system ID for fmap encoding
+    #[error("invalid system ID {system_id}: must be >= {base_id}")]
+    FmapInvalidSystemId { system_id: u32, base_id: u32 },
 }
 
 fn format_suggestions(suggestions: &[String]) -> String {

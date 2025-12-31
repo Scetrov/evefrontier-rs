@@ -13,6 +13,8 @@ Partially auto-generated from feature plans; manual additions allowed between MA
 - SQLite dataset (`static_data.db`) plus cached `ship_data.csv` in `evefrontier_datasets/` (015-ship-data-plan)
 - Rust 1.91.1 (per `.rust-toolchain`) + `rmcp` (official MCP SDK), `tokio`, `serde`, `schemars` (JSON Schema) (016-mcp-server-integration)
 - SQLite database (bundled EVE Frontier dataset from `evefrontier_datasets` repo) (016-mcp-server-integration)
+- Rust 1.91.1 (per `.rust-toolchain`) + flate2 (gzip), base64 (encoding) - both already transitive deps (017-fmap-url-support)
+- N/A (stateless encoding/decoding) (017-fmap-url-support)
 
 - Documentation (Markdown) with shell command examples + GPG, cosign, cargo-sbom, sha256sum (005-release-documentation)
 
@@ -32,9 +34,9 @@ tests/
 Documentation (Markdown) with shell command examples: Follow standard conventions
 
 ## Recent Changes
+- 017-fmap-url-support: Added Rust 1.91.1 (per `.rust-toolchain`) + flate2 (gzip), base64 (encoding) - both already transitive deps
 - 016-mcp-server-integration: Added Rust 1.91.1 (per `.rust-toolchain`) + `rmcp` (official MCP SDK), `tokio`, `serde`, `schemars` (JSON Schema)
 - 015-ship-data-plan: Added Rust 1.91.1 + `rusqlite`, `serde`, `csv`, `thiserror`, `kiddo` (existing spatial index), `clap`, `aws_lambda_events`
-- 010-ghcr-container-repository-paths: Added YAML, Markdown, TOML (configuration files only) + GitHub Actions, Helm, Docker/Podman
 
 
 <!-- MANUAL ADDITIONS START -->

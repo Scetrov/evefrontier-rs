@@ -79,6 +79,7 @@
 pub mod dataset;
 pub mod db;
 pub mod error;
+pub mod fmap;
 pub mod github;
 pub mod graph;
 pub mod output;
