@@ -317,9 +317,7 @@ impl EnhancedRenderer {
         for (i, step) in summary.steps.iter().enumerate() {
             let is_last = i + 1 == len;
             self.render_step(step, i == 0, is_last);
-            if !is_last {
-                self.render_step_details(step);
-            }
+            self.render_step_details(step);
         }
 
         self.render_footer(summary, base_url);
@@ -401,9 +399,17 @@ impl EnhancedRenderer {
         let p = &self.palette;
         let mut parts: Vec<String> = Vec::new();
 
-        // Temperature
-        if let Some(t) = step.min_external_temp {
-            parts.push(format!("{}min {:>6.2}K{}", p.cyan, t, p.reset));
+        // Black hole systems (IDs 30000001, 30000002, 30000003)
+        let is_black_hole = matches!(step.id, 30000001..=30000003);
+        if is_black_hole {
+            parts.push(format!("{}◆ Black Hole ◆{}", p.tag_black_hole, p.reset));
+        }
+
+        // Temperature (skip for black holes - they have no planets orbiting)
+        if !is_black_hole {
+            if let Some(t) = step.min_external_temp {
+                parts.push(format!("{}min {:>6.2}K{}", p.cyan, t, p.reset));
+            }
         }
 
         // Planets (omit if zero)

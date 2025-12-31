@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+### Fixed
+
+- **CLI** (`evefrontier-cli`)
+  - GOAL step in `--format enhanced` now displays status line (min temp, planets, moons) like all other steps
+  - Added "Black Hole" indicator for systems 30000001-30000003 which have no celestial bodies
+
 ### Added
 
 - **MCP Server** (`evefrontier-mcp`)
