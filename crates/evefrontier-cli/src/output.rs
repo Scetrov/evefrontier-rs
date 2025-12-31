@@ -83,7 +83,7 @@ pub fn print_footer(elapsed: std::time::Duration) {
 /// Render a route summary in text format.
 ///
 /// Human-friendly route view with algorithm annotation.
-pub fn render_text(summary: &RouteSummary, show_temps: bool) {
+pub fn render_text(summary: &RouteSummary, show_temps: bool, base_url: &str) {
     let hops = summary.hops;
     let start = summary.start.name.as_deref().unwrap_or("<unknown>");
     let goal = summary.goal.name.as_deref().unwrap_or("<unknown>");
@@ -116,7 +116,7 @@ pub fn render_text(summary: &RouteSummary, show_temps: bool) {
     if let Some(fmap_url) = &summary.fmap_url {
         println!(
             "\nfmap URL: {}{}{}",
-            DEFAULT_FMAP_BASE_URL, fmap_url, FMAP_TYPE_WIDTH_PARAM
+            base_url, fmap_url, FMAP_TYPE_WIDTH_PARAM
         );
     }
 }
@@ -179,7 +179,7 @@ fn render_text_step(step: &RouteStep, show_temps: bool) {
 }
 
 /// Render a route summary in rich text format using the library's renderer.
-pub fn render_rich(summary: &RouteSummary, show_temps: bool) {
+pub fn render_rich(summary: &RouteSummary, show_temps: bool, _base_url: &str) {
     print!(
         "{}",
         summary.render_with(RouteRenderMode::RichText, show_temps)
@@ -201,7 +201,7 @@ pub fn render_json(summary: &RouteSummary) -> io::Result<()> {
 /// Render a route summary in basic path format.
 ///
 /// Uses `+`/`|`/`-` prefixes for first/middle/last steps.
-pub fn render_basic(summary: &RouteSummary, show_temps: bool) {
+pub fn render_basic(summary: &RouteSummary, show_temps: bool, _base_url: &str) {
     let len = summary.steps.len();
     if len == 0 {
         return;
@@ -231,7 +231,7 @@ pub fn render_basic(summary: &RouteSummary, show_temps: bool) {
 /// Render a route summary in emoji format.
 ///
 /// Uses emoji markers: 🚥 (start), 📍 (waypoint), 🚀️ (destination).
-pub fn render_emoji(summary: &RouteSummary, show_temps: bool) {
+pub fn render_emoji(summary: &RouteSummary, show_temps: bool, _base_url: &str) {
     let hops = summary.hops;
     let start = summary.start.name.as_deref().unwrap_or("<unknown>");
     let goal = summary.goal.name.as_deref().unwrap_or("<unknown>");
@@ -261,7 +261,7 @@ fn render_emoji_step(icon: &str, step: &RouteStep, name: &str, show_temps: bool)
 /// Render a route summary in notepad format.
 ///
 /// Strict notepad format using `Sta`/`Dst`/`Jmp` lines with showinfo anchors.
-pub fn render_note(summary: &RouteSummary) {
+pub fn render_note(summary: &RouteSummary, _base_url: &str) {
     let first = summary.steps.first();
     if let Some(step) = first {
         let name = step.name.as_deref().unwrap_or("<unknown>");
@@ -283,10 +283,10 @@ pub fn render_note(summary: &RouteSummary) {
 ///
 /// Enhanced format with inverted tag labels and system details
 /// (temperature, planets, moons). Uses ANSI colors when available.
-pub fn render_enhanced(summary: &RouteSummary) {
+pub fn render_enhanced(summary: &RouteSummary, base_url: &str) {
     let palette = ColorPalette::detect();
     let renderer = EnhancedRenderer::new(palette);
-    renderer.render(summary);
+    renderer.render(summary, base_url);
 }
 
 /// Renderer for enhanced output format with colored tags and system details.
@@ -302,7 +302,7 @@ impl EnhancedRenderer {
     }
 
     /// Render a route summary.
-    pub fn render(&self, summary: &RouteSummary) {
+    pub fn render(&self, summary: &RouteSummary, base_url: &str) {
         let p = &self.palette;
         let hops = summary.hops;
         let start = summary.start.name.as_deref().unwrap_or("<unknown>");
@@ -322,7 +322,7 @@ impl EnhancedRenderer {
             }
         }
 
-        self.render_footer(summary);
+        self.render_footer(summary, base_url);
     }
 
     fn render_step(&self, step: &RouteStep, is_first: bool, is_last: bool) {
@@ -441,7 +441,7 @@ impl EnhancedRenderer {
         }
     }
 
-    fn render_footer(&self, summary: &RouteSummary) {
+    fn render_footer(&self, summary: &RouteSummary, base_url: &str) {
         let p = &self.palette;
         let gate_distance = summary.total_distance - summary.jump_distance;
         let total_str = format_with_separators(summary.total_distance as u64);
@@ -502,13 +502,7 @@ impl EnhancedRenderer {
             println!();
             println!(
                 "  {}fmap URL:{}        {}{}{}{}{}",
-                p.cyan,
-                p.reset,
-                p.white_bold,
-                DEFAULT_FMAP_BASE_URL,
-                fmap_url,
-                FMAP_TYPE_WIDTH_PARAM,
-                p.reset
+                p.cyan, p.reset, p.white_bold, base_url, fmap_url, FMAP_TYPE_WIDTH_PARAM, p.reset
             );
         }
     }

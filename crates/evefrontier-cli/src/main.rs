@@ -281,28 +281,33 @@ impl OutputFormat {
         Ok(())
     }
 
-    fn render_route_result(self, summary: &RouteSummary, show_temps: bool) -> Result<()> {
+    fn render_route_result(
+        self,
+        summary: &RouteSummary,
+        show_temps: bool,
+        base_url: &str,
+    ) -> Result<()> {
         match self {
             OutputFormat::Text => {
-                output::render_text(summary, show_temps);
+                output::render_text(summary, show_temps, base_url);
             }
             OutputFormat::Rich => {
-                output::render_rich(summary, show_temps);
+                output::render_rich(summary, show_temps, base_url);
             }
             OutputFormat::Json => {
                 output::render_json(summary)?;
             }
             OutputFormat::Basic => {
-                output::render_basic(summary, show_temps);
+                output::render_basic(summary, show_temps, base_url);
             }
             OutputFormat::Emoji => {
-                output::render_emoji(summary, show_temps);
+                output::render_emoji(summary, show_temps, base_url);
             }
             OutputFormat::Note => {
-                output::render_note(summary);
+                output::render_note(summary, base_url);
             }
             OutputFormat::Enhanced => {
-                output::render_enhanced(summary);
+                output::render_enhanced(summary, base_url);
             }
         }
         Ok(())
@@ -381,6 +386,13 @@ impl AppContext {
 
     fn should_show_footer(&self) -> bool {
         self.output_format().supports_footer() && !self.options.no_footer
+    }
+
+    fn fmap_base_url(&self) -> &str {
+        self.options
+            .fmap_base_url
+            .as_deref()
+            .unwrap_or(output::DEFAULT_FMAP_BASE_URL)
     }
 }
 
@@ -768,7 +780,7 @@ fn handle_route_command(
     let show_temps = !args.options.no_temp;
     context
         .output_format()
-        .render_route_result(&summary, show_temps)
+        .render_route_result(&summary, show_temps, context.fmap_base_url())
 }
 
 fn handle_list_ships(context: &AppContext) -> Result<()> {
