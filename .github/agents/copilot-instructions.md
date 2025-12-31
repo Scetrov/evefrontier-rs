@@ -9,6 +9,8 @@ Partially auto-generated from feature plans; manual additions allowed between MA
 - Rust 1.91.1 (per `.rust-toolchain`) + sha2 (checksum), postcard+zstd (serialization), clap (CLI) (009-spatial-index-freshness-ci)
 - File-based (spatial index `.spatial.bin`, dataset `.db`) (009-spatial-index-freshness-ci)
 - YAML, Markdown, TOML (configuration files only) + GitHub Actions, Helm, Docker/Podman (010-ghcr-container-repository-paths)
+- Rust 1.91.1 + `rusqlite`, `serde`, `csv`, `thiserror`, `kiddo` (existing spatial index), `clap`, `aws_lambda_events` (015-ship-data-plan)
+- SQLite dataset (`static_data.db`) plus cached `ship_data.csv` in `evefrontier_datasets/` (015-ship-data-plan)
 
 - Documentation (Markdown) with shell command examples + GPG, cosign, cargo-sbom, sha256sum (005-release-documentation)
 
@@ -28,9 +30,9 @@ tests/
 Documentation (Markdown) with shell command examples: Follow standard conventions
 
 ## Recent Changes
+- 015-ship-data-plan: Added Rust 1.91.1 + `rusqlite`, `serde`, `csv`, `thiserror`, `kiddo` (existing spatial index), `clap`, `aws_lambda_events`
 - 010-ghcr-container-repository-paths: Added YAML, Markdown, TOML (configuration files only) + GitHub Actions, Helm, Docker/Podman
 - 009-spatial-index-freshness-ci: Added Rust 1.91.1 (per `.rust-toolchain`) + sha2 (checksum), postcard+zstd (serialization), clap (CLI)
-- 008-microservices-observability: Added Rust 1.91.1 (per `.rust-toolchain`) + axum 0.8, tracing, tracing-subscriber (json feature), metrics,
 
 
 <!-- MANUAL ADDITIONS START -->

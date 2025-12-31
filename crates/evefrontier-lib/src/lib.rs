@@ -84,6 +84,7 @@ pub mod graph;
 pub mod output;
 pub mod path;
 pub mod routing;
+pub mod ship;
 pub mod spatial;
 pub mod temperature;
 
@@ -99,11 +100,17 @@ pub use graph::{
     build_spatial_graph, build_spatial_graph_indexed, Edge, EdgeKind, Graph, GraphBuildOptions,
     GraphMode,
 };
-pub use output::{RouteEndpoint, RouteOutputKind, RouteRenderMode, RouteStep, RouteSummary};
+pub use output::{
+    FuelSummary, RouteEndpoint, RouteOutputKind, RouteRenderMode, RouteStep, RouteSummary,
+};
 pub use path::{
     find_route, find_route_a_star, find_route_bfs, find_route_dijkstra, PathConstraints,
 };
 pub use routing::{plan_route, RouteAlgorithm, RouteConstraints, RoutePlan, RouteRequest};
+pub use ship::{
+    calculate_jump_fuel_cost, calculate_route_fuel, FuelConfig, FuelProjection, ShipAttributes,
+    ShipCatalog, ShipLoadout, FUEL_MASS_PER_UNIT_KG,
+};
 pub use spatial::{
     compute_dataset_checksum, read_release_tag, spatial_index_path, try_load_spatial_index,
     verify_freshness, DatasetMetadata, FreshnessResult, IndexNode, NeighbourQuery, SpatialIndex,

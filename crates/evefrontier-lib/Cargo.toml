@@ -19,6 +19,7 @@ tempfile.workspace = true
 zip.workspace = true
 strsim = "0.11.1"
 once_cell.workspace = true
+csv = "1.3"
 
 # Spatial index (KD-tree) support - ADR 0009
 kiddo = "5.2.3"

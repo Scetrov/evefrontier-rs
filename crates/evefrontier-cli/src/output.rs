@@ -91,30 +91,73 @@ pub fn render_text(summary: &RouteSummary, show_temps: bool) {
     }
     println!("\nTotal distance: {:.0}ly", summary.total_distance);
     println!("Total ly jumped: {:.0}ly", summary.jump_distance);
+
+    if let Some(fuel) = &summary.fuel {
+        if let Some(ship) = &fuel.ship_name {
+            println!("Total fuel: {:.2} (ship: {})", fuel.total, ship);
+        } else {
+            println!("Total fuel: {:.2}", fuel.total);
+        }
+
+        if let Some(remaining) = fuel.remaining {
+            println!("Fuel remaining: {:.2}", remaining);
+        }
+
+        for warning in &fuel.warnings {
+            println!("Warning: {}", warning);
+        }
+    }
 }
 
 fn render_step_with_prefix(prefix: &str, step: &RouteStep, name: &str, show_temps: bool) {
+    let fuel_suffix = format_fuel_suffix(step);
+
     if let (Some(distance), Some(method)) = (step.distance, step.method.as_deref()) {
         if show_temps {
             if let Some(t) = step.min_external_temp {
                 println!(
-                    "{}{} [min {:.2}K] ({:.0}ly via {})",
-                    prefix, name, t, distance, method
+                    "{}{} [min {:.2}K] ({:.0}ly via {}){}",
+                    prefix,
+                    name,
+                    t,
+                    distance,
+                    method,
+                    fuel_suffix.as_deref().unwrap_or("")
                 );
             } else {
-                println!("{}{} ({:.0}ly via {})", prefix, name, distance, method);
+                println!(
+                    "{}{} ({:.0}ly via {}){}",
+                    prefix,
+                    name,
+                    distance,
+                    method,
+                    fuel_suffix.as_deref().unwrap_or("")
+                );
             }
         } else {
-            println!("{}{} ({:.0}ly via {})", prefix, name, distance, method);
+            println!(
+                "{}{} ({:.0}ly via {}){}",
+                prefix,
+                name,
+                distance,
+                method,
+                fuel_suffix.as_deref().unwrap_or("")
+            );
         }
     } else if show_temps {
         if let Some(t) = step.min_external_temp {
-            println!("{}{} [min {:.2}K]", prefix, name, t);
+            println!(
+                "{}{} [min {:.2}K]{}",
+                prefix,
+                name,
+                t,
+                fuel_suffix.as_deref().unwrap_or("")
+            );
         } else {
-            println!("{}{}", prefix, name);
+            println!("{}{}{}", prefix, name, fuel_suffix.as_deref().unwrap_or(""));
         }
     } else {
-        println!("{}{}", prefix, name);
+        println!("{}{}{}", prefix, name, fuel_suffix.as_deref().unwrap_or(""));
     }
 }
 
@@ -365,6 +408,17 @@ impl EnhancedRenderer {
             parts.push(format!("{}{:>2} {}{}", p.blue, moons, label, p.reset));
         }
 
+        if let Some(fuel) = step.fuel.as_ref() {
+            let remaining = fuel
+                .remaining
+                .map(|v| format!(" (rem {:.2})", v))
+                .unwrap_or_default();
+            parts.push(format!(
+                "{}fuel {:.2}{}{}",
+                p.cyan, fuel.hop_cost, remaining, p.reset
+            ));
+        }
+
         if !parts.is_empty() {
             println!(
                 "       {}│{} {}",
@@ -417,7 +471,30 @@ impl EnhancedRenderer {
             p.reset,
             width = max_width
         );
+        if let Some(fuel) = &summary.fuel {
+            let ship = fuel.ship_name.as_deref().unwrap_or("<unknown ship>");
+            println!(
+                "  {}Fuel ({}):{}   {}{:.2}{}",
+                p.cyan, ship, p.reset, p.white_bold, fuel.total, p.reset
+            );
+
+            if let Some(remaining) = fuel.remaining {
+                println!(
+                    "  {}Remaining:{}      {}{:.2}{}",
+                    p.green, p.reset, p.white_bold, remaining, p.reset
+                );
+            }
+        }
     }
+}
+
+fn format_fuel_suffix(step: &RouteStep) -> Option<String> {
+    let fuel = step.fuel.as_ref()?;
+    let remaining = fuel
+        .remaining
+        .map(|v| format!(" (remaining: {:.2})", v))
+        .unwrap_or_default();
+    Some(format!(" | fuel: {:.2}{}", fuel.hop_cost, remaining))
 }
 
 #[cfg(test)]

@@ -63,6 +63,14 @@ pub enum Error {
     #[error("temperature calculation failed: {0}")]
     TemperatureCalculation(String),
 
+    /// Raised when ship data fails validation.
+    #[error("invalid ship data: {message}")]
+    ShipDataValidation { message: String },
+
+    /// Raised when duplicate ship names are encountered during catalog load.
+    #[error("duplicate ship name encountered: {name}")]
+    DuplicateShipName { name: String },
+
     /// Wrapper for SQLite errors.
     #[error(transparent)]
     Sqlite(#[from] rusqlite::Error),

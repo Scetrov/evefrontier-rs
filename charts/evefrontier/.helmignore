@@ -8,6 +8,12 @@
 *.tmp
 *.orig
 *.log
+*.tgz
+Chart.lock
+
+# Local override values
+values.local.yaml
+values.dev.yaml
 
 # IDE/Editor directories
 .idea/

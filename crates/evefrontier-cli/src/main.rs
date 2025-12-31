@@ -14,7 +14,8 @@ use evefrontier_lib::{
     compute_dataset_checksum, ensure_dataset, load_starmap, plan_route, read_release_tag,
     spatial_index_path, try_load_spatial_index, verify_freshness, DatasetMetadata, DatasetRelease,
     Error as RouteError, FreshnessResult, RouteAlgorithm, RouteConstraints, RouteOutputKind,
-    RouteRequest, RouteSummary, SpatialIndex, VerifyDiagnostics, VerifyOutput,
+    RouteRequest, RouteSummary, ShipCatalog, ShipLoadout, SpatialIndex, VerifyDiagnostics,
+    VerifyOutput,
 };
 
 #[derive(Parser, Debug)]
@@ -67,6 +68,8 @@ enum Command {
     IndexBuild(IndexBuildArgs),
     /// Verify that the spatial index is fresh (matches the current dataset).
     IndexVerify(IndexVerifyArgs),
+    /// List available ships from ship_data.csv.
+    Ships,
 }
 
 #[derive(Args, Debug, Clone)]
@@ -155,6 +158,30 @@ struct RouteOptionsArgs {
     /// Suppress minimum external temperature annotations in route output.
     #[arg(long = "no-temp", action = ArgAction::SetTrue)]
     no_temp: bool,
+
+    /// Ship name for fuel projection (case-insensitive).
+    #[arg(long = "ship")]
+    ship: Option<String>,
+
+    /// Fuel quality rating (1-100, default 10).
+    #[arg(long = "fuel-quality", default_value = "10")]
+    fuel_quality: f64,
+
+    /// Cargo mass in kilograms.
+    #[arg(long = "cargo-mass", default_value = "0")]
+    cargo_mass: f64,
+
+    /// Initial fuel load (units). Defaults to full capacity.
+    #[arg(long = "fuel-load")]
+    fuel_load: Option<f64>,
+
+    /// Recalculate mass after each hop as fuel is consumed.
+    #[arg(long = "dynamic-mass", action = ArgAction::SetTrue)]
+    dynamic_mass: bool,
+
+    /// List available ships from ship_data.csv and exit.
+    #[arg(long = "list-ships", action = ArgAction::SetTrue)]
+    list_ships: bool,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum, Default)]
@@ -347,6 +374,7 @@ fn main() -> Result<()> {
         }
         Command::IndexBuild(args) => handle_index_build(&context, &args),
         Command::IndexVerify(args) => handle_index_verify(&context, &args),
+        Command::Ships => handle_list_ships(&context),
     };
 
     if result.is_ok() && context.should_show_footer() {
@@ -617,6 +645,13 @@ fn handle_route_command(
 ) -> Result<()> {
     let paths = ensure_dataset(context.target_path(), context.dataset_release())
         .context("failed to locate or download the EVE Frontier dataset")?;
+
+    if args.options.list_ships {
+        let catalog = load_ship_catalog(&paths)?;
+        print_ship_catalog(&catalog);
+        return Ok(());
+    }
+
     let starmap = load_starmap(&paths.database)
         .with_context(|| format!("failed to load dataset from {}", paths.database.display()))?;
 
@@ -639,12 +674,41 @@ fn handle_route_command(
         Err(err) => return Err(handle_route_failure(&request, err)),
     };
 
-    let summary = RouteSummary::from_plan(kind, &starmap, &plan)
+    let mut summary = RouteSummary::from_plan(kind, &starmap, &plan)
         .context("failed to build route summary for display")?;
+
+    if let Some(ship_name) = args.options.ship.as_ref() {
+        let catalog = load_ship_catalog(&paths)?;
+        let ship = catalog
+            .get(ship_name)
+            .ok_or_else(|| anyhow::anyhow!(format!("ship '{}' not found in catalog", ship_name)))?;
+
+        let fuel_load = args.options.fuel_load.unwrap_or(ship.fuel_capacity);
+
+        let loadout = ShipLoadout::new(ship, fuel_load, args.options.cargo_mass)
+            .context("invalid ship loadout")?;
+
+        let fuel_config = evefrontier_lib::ship::FuelConfig {
+            quality: args.options.fuel_quality,
+            dynamic_mass: args.options.dynamic_mass,
+        };
+
+        summary.attach_fuel(ship, &loadout, &fuel_config);
+    }
+
     let show_temps = !args.options.no_temp;
     context
         .output_format()
         .render_route_result(&summary, show_temps)
+}
+
+fn handle_list_ships(context: &AppContext) -> Result<()> {
+    let paths = ensure_dataset(context.target_path(), context.dataset_release())
+        .context("failed to locate or download the EVE Frontier dataset")?;
+
+    let catalog = load_ship_catalog(&paths)?;
+    print_ship_catalog(&catalog);
+    Ok(())
 }
 
 fn handle_route_failure(request: &RouteRequest, err: RouteError) -> anyhow::Error {
@@ -708,6 +772,60 @@ fn format_route_not_found_message(
         message.push_str(&format!("Try {}.", tips.join(", ")));
     }
     message
+}
+
+fn load_ship_catalog(paths: &evefrontier_lib::DatasetPaths) -> Result<ShipCatalog> {
+    let candidates = ship_data_candidates(&paths.database);
+    let path = candidates
+        .iter()
+        .find(|p| p.exists())
+        .cloned()
+        .ok_or_else(|| {
+            anyhow::anyhow!(
+                "ship_data.csv not found; set EVEFRONTIER_SHIP_DATA or place file next to dataset"
+            )
+        })?;
+
+    ShipCatalog::from_path(&path)
+        .with_context(|| format!("failed to load ship data from {}", path.display()))
+}
+
+fn ship_data_candidates(database: &Path) -> Vec<PathBuf> {
+    let mut candidates = Vec::new();
+
+    if let Ok(env_path) = std::env::var("EVEFRONTIER_SHIP_DATA") {
+        candidates.push(PathBuf::from(env_path));
+    }
+
+    if let Some(parent) = database.parent() {
+        candidates.push(parent.join("ship_data.csv"));
+    }
+
+    let fixture =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/fixtures/ship_data.csv");
+    candidates.push(fixture);
+
+    candidates
+}
+
+fn print_ship_catalog(catalog: &ShipCatalog) {
+    let ships = catalog.ships_sorted();
+    if ships.is_empty() {
+        println!("No ships available in catalog.");
+        return;
+    }
+
+    println!("Available ships ({}):", ships.len());
+    println!(
+        "{:<16} {:>14} {:>10} {:>12}",
+        "Name", "Base Mass (kg)", "Fuel Cap", "Cargo Cap"
+    );
+    for ship in ships {
+        println!(
+            "{:<16} {:>14.0} {:>10.0} {:>12.0}",
+            ship.name, ship.base_mass_kg, ship.fuel_capacity, ship.cargo_capacity
+        );
+    }
 }
 
 fn init_tracing() {
