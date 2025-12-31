@@ -123,7 +123,7 @@ pub struct RouteDetails {
 #[derive(Debug, Clone, Serialize)]
 pub struct Waypoint {
     pub system_name: String,
-    pub system_id: u32,
+    pub system_id: u64,
     pub position: Position3D,
     pub min_temperature_k: f64,
     /// Type of jump to reach this system from previous
@@ -142,7 +142,7 @@ pub struct RouteError {
 #[derive(Debug, Clone, Serialize)]
 pub struct SystemSummary {
     pub name: String,
-    pub system_id: u32,
+    pub system_id: u64,
     pub position: Position3D,
     pub min_temperature_k: f64,
 }
@@ -164,7 +164,7 @@ pub struct SystemInfoOutput {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct SystemDetails {
-    pub system_id: u32,
+    pub system_id: u64,
     pub name: String,
     pub position: Position3D,
     pub min_external_temperature_k: f64,
@@ -176,7 +176,7 @@ pub struct SystemDetails {
 #[derive(Debug, Clone, Serialize)]
 pub struct GateConnection {
     pub destination_system: String,
-    pub destination_id: u32,
+    pub destination_id: u64,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -198,7 +198,7 @@ pub struct SystemsNearbyOutput {
 #[derive(Debug, Clone, Serialize)]
 pub struct NearbySystem {
     pub name: String,
-    pub system_id: u32,
+    pub system_id: u64,
     pub distance_ly: f64,
     pub min_temperature_k: f64,
 }

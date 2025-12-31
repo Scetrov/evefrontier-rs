@@ -229,10 +229,10 @@ impl SystemsNearbyTool {
         }
 
         if let Some(max_temp) = input.max_temperature {
-            if max_temp < 0.0 {
+            if max_temp <= 0.0 {
                 return Err(Error::invalid_param(
                     "max_temperature",
-                    "Temperature cannot be negative",
+                    "Must be positive (Kelvin)",
                 ));
             }
         }
