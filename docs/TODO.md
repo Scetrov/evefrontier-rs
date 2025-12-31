@@ -13,10 +13,11 @@ Tasks are grouped by domain; checkboxes track completion status.
 - ✅ **ADRs 0001-0014:** Fully or substantially implemented
 - ⚠️ **ADR 0015 (Fuel Calculations):** Proposed; deferred pending:
   - Community validation of fuel formula
-  - Heat mechanic research and confirmation  
+  - Heat mechanic research and confirmation
   - Ship data CSV availability from evefrontier_datasets repository
 
 **Recommendations:**
+
 - Create ADR 0016 documenting web-based starmap explorer architecture (currently deferred)
 - Create ADR documenting NX orchestration strategy (implicit in current structure)
 - Create "Heat Mechanics Research" ADR once formula validated (prerequisite for ADR 0015 Phase 2)
@@ -183,7 +184,8 @@ For detailed alignment report, see `docs/adr-alignment-report_2025-12-30.md`
 - [ ] Extend `RouteStep` with optional `FuelProjection` struct (hop_cost, cumulative, remaining)
 - [ ] Extend `RouteSummary` with total_fuel, ship_name, and fuel_warning fields
 - [ ] Update output formatters to include fuel information in status line when ship specified
-- [ ] Add `--ship`, `--fuel-quality`, `--cargo-mass`, `--fuel-load` CLI options to `route` subcommand
+- [ ] Add `--ship`, `--fuel-quality`, `--cargo-mass`, `--fuel-load` CLI options to `route`
+      subcommand
 - [ ] Add `--dynamic-mass` flag to enable per-hop mass recalculation
 - [ ] Add `--list-ships` convenience option to display available ships
 - [ ] Extend Lambda request/response schemas with ship, loadout, and fuel parameters
@@ -467,26 +469,31 @@ The following ADR topics are recommended to formalize currently implicit archite
   - Related task: Implement web explorer under "Web-based Starmap Explorer" section below
 
 - [x] **ADR 0017: NX Repository Orchestration Strategy** (Proposed; awaiting review)
-  - [x] Document rationale for Nx selection (build caching, task orchestration, developer experience)
+  - [x] Document rationale for Nx selection (build caching, task orchestration, developer
+        experience)
   - [x] Specify target configuration patterns (input/output hashing, parallel execution)
   - [x] Document CI integration (task execution, artifact caching)
   - [x] Define custom task patterns for Rust crates and scripts
-  - [x] Created ADR in docs/adrs/0017-nx-orchestration-strategy.md with full decision, consequences, and alternatives
+  - [x] Created ADR in docs/adrs/0017-nx-orchestration-strategy.md with full decision, consequences,
+        and alternatives
   - [x] Updated CONTRIBUTING.md with reference to ADR 0017 for task configuration guidance
   - [x] Updated AGENTS.md with note about ADR 0017 for task configuration patterns
 
 - [ ] **ADR 0018: Heat Mechanics Research Summary** (Prerequisite for ADR 0015 Phase 2)
   - [ ] Research and validate heat mechanic formulas from EVE Frontier game mechanics
-  - [ ] Document findings: thermal stress model, ship-specific heat tolerance, rate of heat accumulation
+  - [ ] Document findings: thermal stress model, ship-specific heat tolerance, rate of heat
+        accumulation
   - [ ] Create validation test cases against observed in-game behavior
   - [ ] Define implementation specification for heat calculations in RouteStep/RouteSummary
   - Currently blocked: Pending community research and game mechanic validation
   - Related task: This ADR must complete before implementing "Ship Data & Fuel Calculations Phase 4"
 
-- [ ] **ADR 0019: Lambda Architecture and Cold-Start Optimization** (Currently implicit in Lambda crates)
+- [ ] **ADR 0019: Lambda Architecture and Cold-Start Optimization** (Currently implicit in Lambda
+      crates)
   - [ ] Document cold-start constraints (binary size limits, initialization timing budgets)
   - [ ] Specify spatial index bundling and lazy-loading strategy
-  - [ ] Define state initialization sequence (database loading, index deserialization, metrics setup)
+  - [ ] Define state initialization sequence (database loading, index deserialization, metrics
+        setup)
   - [ ] Justify architectural choices (e.g., why shared infrastructure in evefrontier-lambda-shared)
   - [ ] Specify performance targets and monitoring strategy
   - Currently working: Implementation is sound; ADR would clarify trade-offs and constraints
@@ -530,6 +537,21 @@ The following ADR topics are recommended to formalize currently implicit archite
       `choco install evefrontier-cli`.
 - [ ] Add Docker image for easy deployment in containerized environments via
       `docker pull evefrontier-cli`.
+
+## MCP Server Integration
+
+- [ ] **CLI Subcommand & Stdio Transport**: Implement the `mcp` command and set up JSON-RPC 2.0
+      communication over `stdin`/`stdout`.
+- [ ] **EVE Frontier Tool Mapping**: Expose core library functionality (world state queries, account
+      balance, blockchain transactions) as MCP tools.
+- [ ] **Resource & Schema Definitions**: Define AI-readable resources for game data models and smart
+      assembly configurations.
+- [ ] **Docker & Security Hardening**: Ensure the server runs with dropped capabilities
+      (`CAP_DROP=all`), non-root users, and static `musl` builds.
+- [ ] **IO & Logging Isolation**: Configure the logging framework to redirect all system logs to
+      `stderr` to prevent protocol corruption on `stdout`.
+- [ ] **Integration & Distribution**: Provide configuration templates for MCP clients (Claude
+      Desktop, Cursor) and automated Docker health checks.
 
 ---
 

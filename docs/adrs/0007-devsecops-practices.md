@@ -87,3 +87,7 @@ Adopt the following DevSecOps practices for the repository and CI pipelines:
       ```
     - These commands are used by the repository pre-commit flow. Prefer running dependency checks via
       the Nx targets so they behave the same in CI and locally.
+
+**Reference**: See [ADR 0017: NX Repository Orchestration Strategy](0017-nx-orchestration-strategy.md)
+for detailed documentation of task orchestration patterns, cache strategy, and how CI/CD tasks
+inherit from workspace defaults.
