@@ -18,6 +18,11 @@
       "env": {
         "NVD_API_KEY": "${input:NVDAPIKey}"
       }
+    },
+    "evefrontier": {
+      "command": "cargo",
+      "args": ["run", "-p", "evefrontier-mcp", "--", "mcp"],
+      "cwd": "${workspaceFolder}"
     }
   }
 }
