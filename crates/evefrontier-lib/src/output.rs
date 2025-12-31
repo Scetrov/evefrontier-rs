@@ -5,6 +5,7 @@ use serde::Serialize;
 use crate::db::{Starmap, SystemId};
 use crate::error::{Error, Result};
 use crate::routing::RoutePlan;
+use crate::ship::{calculate_route_fuel, FuelConfig, FuelProjection, ShipAttributes, ShipLoadout};
 use crate::RouteAlgorithm;
 
 /// Classifies the high-level command that produced a route summary.
@@ -58,6 +59,9 @@ pub struct RouteStep {
     /// Number of moons in this system.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub moon_count: Option<u32>,
+    /// Fuel projection for this hop (present when ship data supplied).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fuel: Option<FuelProjection>,
 }
 
 impl RouteStep {
@@ -81,6 +85,21 @@ pub struct RouteSummary {
     pub start: RouteEndpoint,
     pub goal: RouteEndpoint,
     pub steps: Vec<RouteStep>,
+    /// Aggregated fuel projection when ship data is provided.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fuel: Option<FuelSummary>,
+}
+
+/// Fuel summary aggregated across all route steps.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct FuelSummary {
+    pub total: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub remaining: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ship_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub warnings: Vec<String>,
 }
 
 impl RouteSummary {
@@ -137,6 +156,7 @@ impl RouteSummary {
                 min_external_temp,
                 planet_count,
                 moon_count,
+                fuel: None,
             });
         }
 
@@ -166,7 +186,49 @@ impl RouteSummary {
             start,
             goal,
             steps,
+            fuel: None,
         })
+    }
+
+    /// Attach fuel projections to each hop using the supplied ship/loadout/config.
+    ///
+    /// Distance-driven hops receive per-hop fuel data; the first step (origin)
+    /// carries no fuel information. The summary's `fuel` field aggregates totals.
+    pub fn attach_fuel(
+        &mut self,
+        ship: &ShipAttributes,
+        loadout: &ShipLoadout,
+        fuel_config: &FuelConfig,
+    ) -> Result<()> {
+        if self.steps.len() <= 1 {
+            return Ok(());
+        }
+
+        let distances: Vec<f64> = self
+            .steps
+            .iter()
+            .skip(1)
+            .map(|step| step.distance.unwrap_or(0.0))
+            .collect();
+
+        let projections = calculate_route_fuel(ship, loadout, &distances, fuel_config)?;
+
+        for (idx, projection) in projections.iter().enumerate() {
+            if let Some(step) = self.steps.get_mut(idx + 1) {
+                step.fuel = Some(projection.clone());
+            }
+        }
+
+        if let Some(last) = projections.last() {
+            self.fuel = Some(FuelSummary {
+                total: last.cumulative,
+                remaining: last.remaining,
+                ship_name: Some(ship.name.clone()),
+                warnings: Vec::new(),
+            });
+        }
+
+        Ok(())
     }
 
     /// Render the summary using the requested textual mode.

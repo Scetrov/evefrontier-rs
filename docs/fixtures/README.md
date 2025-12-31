@@ -8,6 +8,7 @@ This directory contains test fixture databases used by integration and unit test
 |---------|---------|-------|---------|
 | `minimal_static_data.db` | 8 | 12 | Core routing tests, schema validation |
 | `route_testing.db` | 717 | 344 | Sample route validation (~50% coverage) |
+| `ship_data.csv` | n/a | n/a | Ship catalog fixture for fuel projection tests |
 
 ## Current Fixtures
 
@@ -200,3 +201,27 @@ The fixture includes both current and legacy schema for compatibility testing:
 - `mapSolarSystems(solarSystemID, name)`
 
 Additional tables: `Regions`, `Constellations`, `Planets`, `Moons`
+
+### 3. `ship_data.csv` - Ship Catalog Fixture
+
+- **Fields**: `name,base_mass_kg,specific_heat,fuel_capacity,cargo_capacity,max_heat_tolerance,heat_dissipation_rate`
+- **Entries**: 3 representative ships (Reflex, Forager, Warden) with validated positive values
+- **Checksum**: `ship_data.csv.sha256` (refresh when regenerating the CSV)
+
+> [!IMPORTANT]
+> Do not overwrite `ship_data.csv` with downloaded data without updating the checksum.
+> Use a separate path for ad-hoc downloads to avoid breaking tests.
+
+#### Regeneration
+
+If the ship catalog changes in a dataset release:
+
+```bash
+# Example: refresh ship fixture from a dataset source
+python3 scripts/extract_ship_fixture.py /path/to/release/ship_data.csv docs/fixtures/ship_data.csv
+
+# Recompute checksum
+sha256sum docs/fixtures/ship_data.csv > docs/fixtures/ship_data.csv.sha256
+```
+
+Update fuel-related tests after refreshing the fixture to match the new data.

@@ -46,6 +46,26 @@ pub struct RouteRequest {
     /// Maximum star temperature threshold in Kelvin.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_temperature: Option<f64>,
+
+    /// Optional ship name for fuel projection.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ship: Option<String>,
+
+    /// Fuel quality percentage (1-100). Defaults to 10 when omitted.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fuel_quality: Option<f64>,
+
+    /// Cargo mass in kilograms.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cargo_mass: Option<f64>,
+
+    /// Fuel load in units.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fuel_load: Option<f64>,
+
+    /// Enable per-hop dynamic mass recalculation.
+    #[serde(default)]
+    pub dynamic_mass: Option<bool>,
 }
 
 /// Supported routing algorithms.
@@ -100,6 +120,42 @@ impl Validate for RouteRequest {
             if max_temp <= 0.0 {
                 return Err(Box::new(ProblemDetails::bad_request(
                     "The 'max_temperature' field must be a positive number",
+                    request_id,
+                )));
+            }
+        }
+
+        if let Some(ref ship) = self.ship {
+            if ship.trim().is_empty() {
+                return Err(Box::new(ProblemDetails::bad_request(
+                    "The 'ship' field cannot be empty when provided",
+                    request_id,
+                )));
+            }
+        }
+
+        if let Some(fuel_quality) = self.fuel_quality {
+            if !(1.0..=100.0).contains(&fuel_quality) {
+                return Err(Box::new(ProblemDetails::bad_request(
+                    "The 'fuel_quality' field must be between 1 and 100",
+                    request_id,
+                )));
+            }
+        }
+
+        if let Some(cargo_mass) = self.cargo_mass {
+            if cargo_mass < 0.0 {
+                return Err(Box::new(ProblemDetails::bad_request(
+                    "The 'cargo_mass' field must be zero or greater",
+                    request_id,
+                )));
+            }
+        }
+
+        if let Some(fuel_load) = self.fuel_load {
+            if fuel_load < 0.0 {
+                return Err(Box::new(ProblemDetails::bad_request(
+                    "The 'fuel_load' field must be zero or greater",
                     request_id,
                 )));
             }
@@ -210,6 +266,11 @@ mod tests {
             avoid: vec![],
             avoid_gates: false,
             max_temperature: None,
+            ship: None,
+            fuel_quality: None,
+            cargo_mass: None,
+            fuel_load: None,
+            dynamic_mass: None,
         };
         assert!(req.validate("req-123").is_ok());
     }
@@ -224,6 +285,11 @@ mod tests {
             avoid: vec![],
             avoid_gates: false,
             max_temperature: None,
+            ship: None,
+            fuel_quality: None,
+            cargo_mass: None,
+            fuel_load: None,
+            dynamic_mass: None,
         };
         let err = req.validate("req-123").unwrap_err();
         assert_eq!(err.status, 400);
@@ -240,6 +306,11 @@ mod tests {
             avoid: vec![],
             avoid_gates: false,
             max_temperature: None,
+            ship: None,
+            fuel_quality: None,
+            cargo_mass: None,
+            fuel_load: None,
+            dynamic_mass: None,
         };
         let err = req.validate("req-123").unwrap_err();
         assert!(err.detail.unwrap().contains("positive number"));
@@ -313,6 +384,11 @@ mod tests {
             avoid: vec!["System1".to_string(), "System2".to_string()],
             avoid_gates: true,
             max_temperature: Some(100.0),
+            ship: None,
+            fuel_quality: None,
+            cargo_mass: None,
+            fuel_load: None,
+            dynamic_mass: None,
         };
         assert!(req.validate("req-constraints").is_ok());
     }
@@ -327,9 +403,53 @@ mod tests {
             avoid: vec![],
             avoid_gates: false,
             max_temperature: Some(-50.0),
+            ship: None,
+            fuel_quality: None,
+            cargo_mass: None,
+            fuel_load: None,
+            dynamic_mass: None,
         };
         let err = req.validate("req-neg-temp").unwrap_err();
         assert!(err.detail.unwrap().contains("max_temperature"));
+    }
+
+    #[test]
+    fn test_route_request_with_ship_fields() {
+        let req = RouteRequest {
+            from: "Nod".to_string(),
+            to: "Brana".to_string(),
+            algorithm: RouteAlgorithm::AStar,
+            max_jump: None,
+            avoid: vec![],
+            avoid_gates: false,
+            max_temperature: None,
+            ship: Some("Reflex".to_string()),
+            fuel_quality: Some(10.0),
+            cargo_mass: Some(1000.0),
+            fuel_load: Some(500.0),
+            dynamic_mass: Some(true),
+        };
+        assert!(req.validate("req-ship").is_ok());
+    }
+
+    #[test]
+    fn test_route_request_rejects_invalid_fuel_quality() {
+        let req = RouteRequest {
+            from: "Nod".to_string(),
+            to: "Brana".to_string(),
+            algorithm: RouteAlgorithm::AStar,
+            max_jump: None,
+            avoid: vec![],
+            avoid_gates: false,
+            max_temperature: None,
+            ship: Some("Reflex".to_string()),
+            fuel_quality: Some(0.5),
+            cargo_mass: None,
+            fuel_load: None,
+            dynamic_mass: None,
+        };
+        let err = req.validate("req-fuel-quality").unwrap_err();
+        assert!(err.detail.unwrap().contains("fuel_quality"));
     }
 
     #[test]

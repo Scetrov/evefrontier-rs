@@ -1,0 +1,180 @@
+openapi: 3.1.0
+info:
+  title: EVE Frontier Routing API — Fuel Projection
+  version: 0.1.0-draft
+paths:
+  /route:
+    post:
+      summary: Compute route with optional fuel projection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RouteRequest'
+      responses:
+        '200':
+          description: Route with optional fuel projection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RouteResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /ships:
+    get:
+      summary: List available ships
+      responses:
+        '200':
+          description: Ship catalog
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ships:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ShipAttributes'
+components:
+  schemas:
+    RouteRequest:
+      type: object
+      required: [from, to]
+      properties:
+        from:
+          type: string
+          description: Start system name or ID
+        to:
+          type: string
+          description: Destination system name or ID
+        ship:
+          type: string
+          description: Optional ship name (case-insensitive match against catalog)
+        fuel_quality:
+          type: number
+          format: double
+          minimum: 1
+          maximum: 100
+          default: 10
+        cargo_mass:
+          type: number
+          format: double
+          minimum: 0
+        fuel_load:
+          type: number
+          format: double
+          minimum: 0
+        dynamic_mass:
+          type: boolean
+          default: false
+    RouteResponse:
+      type: object
+      properties:
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/RouteStep'
+        summary:
+          $ref: '#/components/schemas/RouteSummary'
+    RouteStep:
+      type: object
+      properties:
+        system:
+          type: string
+        distance_ly:
+          type: number
+          format: double
+        fuel:
+          $ref: '#/components/schemas/FuelProjection'
+    RouteSummary:
+      type: object
+      properties:
+        total_distance_ly:
+          type: number
+          format: double
+        hops:
+          type: integer
+        fuel:
+          $ref: '#/components/schemas/FuelSummary'
+    FuelProjection:
+      type: object
+      nullable: true
+      properties:
+        hop_cost:
+          type: number
+          format: double
+        cumulative:
+          type: number
+          format: double
+        remaining:
+          type: number
+          format: double
+          nullable: true
+        warning:
+          type: string
+          nullable: true
+    FuelSummary:
+      type: object
+      nullable: true
+      properties:
+        total:
+          type: number
+          format: double
+        remaining:
+          type: number
+          format: double
+          nullable: true
+        ship_name:
+          type: string
+          nullable: true
+        warnings:
+          type: array
+          items:
+            type: string
+    ShipAttributes:
+      type: object
+      required: [name, base_mass_kg, specific_heat, fuel_capacity, cargo_capacity, max_heat_tolerance, heat_dissipation_rate]
+      properties:
+        name:
+          type: string
+        base_mass_kg:
+          type: number
+          format: double
+          minimum: 0
+        specific_heat:
+          type: number
+          format: double
+          minimum: 0
+        fuel_capacity:
+          type: number
+          format: double
+          minimum: 0
+        cargo_capacity:
+          type: number
+          format: double
+          minimum: 0
+        max_heat_tolerance:
+          type: number
+          format: double
+          minimum: 0
+        heat_dissipation_rate:
+          type: number
+          format: double
+          minimum: 0
+    ProblemDetails:
+      type: object
+      required: [title, status]
+      properties:
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
