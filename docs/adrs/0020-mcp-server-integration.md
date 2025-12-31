@@ -34,7 +34,7 @@ The MCP server will be implemented as a dedicated Rust crate (`crates/evefrontie
 - Depends on `evefrontier-lib` for core routing, system queries, and dataset loading
 - Implements stdio transport using the official `rmcp` (Rust MCP SDK) v0.12+
 - Runs as a long-lived process spawned by AI clients via platform-specific spawning mechanisms
-- Loads the EVE Frontier dataset once at startup and shares it across requests via `Arc<Mutex<_>>`
+- Loads the EVE Frontier dataset once at startup; the resulting state is kept in memory and, when integrated with `rmcp` and concurrent handlers, will be exposed to them via an `Arc`-based synchronization wrapper (e.g. `Arc<Mutex<_>>`) rather than requiring interior mutability in `McpServerState` itself
 
 **Rationale**:
 - Separating the MCP server into its own crate maintains clean architecture (server concerns do not

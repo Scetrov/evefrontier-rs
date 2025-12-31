@@ -43,7 +43,7 @@ uses the official Rust MCP SDK (`rmcp`) and follows the existing library-first a
 | Principle | Status | Evidence/Notes |
 |-----------|--------|----------------|
 | I. Test-Driven Development | ✅ PASS | Tool schemas defined → tests can be written first → implementation follows |
-| II. Library-First Architecture | ✅ PASS | All tool logic in `evefrontier-lib/src/mcp/`; handlers call existing APIs |
+| II. Library-First Architecture | ✅ PASS | MCP-specific glue in `evefrontier-mcp/src/`; business logic delegates to existing `evefrontier-lib` APIs (routing, dataset loading, spatial queries) |
 | III. Architecture Decision Records | ✅ PASS | ADR 0020 to be created during implementation (tracked in tasks.md) |
 | IV. Clean Code & Cognitive Load | ✅ PASS | Each tool has single responsibility; clear input/output contracts |
 | V. Security-First Development | ✅ PASS | JSON Schema validation; no external network calls; input bounds checked |

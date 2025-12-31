@@ -32,10 +32,10 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T007 Create `McpServerState` struct in `crates/evefrontier-lib/src/mcp/mod.rs`
+- [ ] T007 Create `McpServerState` struct in `crates/evefrontier-mcp/src/server.rs`
 - [ ] T008 Implement `McpServerState::new()` to load starmap and spatial index
-- [ ] T009 Create `DatasetInfo` struct in `crates/evefrontier-lib/src/mcp/mod.rs`
-- [ ] T010 [P] Create error types in `crates/evefrontier-lib/src/mcp/error.rs` (ToolError)
+- [ ] T009 Create `DatasetInfo` struct in `crates/evefrontier-mcp/src/server.rs`
+- [ ] T010 [P] Create error types in `crates/evefrontier-mcp/src/error.rs` (ToolError)
 - [ ] T011 [P] Configure tracing to stderr in `crates/evefrontier-mcp/src/main.rs`
 - [ ] T012 Implement MCP server initialization handshake in `crates/evefrontier-mcp/src/server.rs`
 - [ ] T013 Create ADR 0020 documenting MCP integration decisions in `docs/adrs/0020-mcp-server-integration.md`
