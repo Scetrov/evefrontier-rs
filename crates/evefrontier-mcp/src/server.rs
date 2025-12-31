@@ -53,6 +53,14 @@ pub struct DatasetInfo {
     pub loaded_at: String,
 }
 
+/// Descriptor for MCP resources exposed by the server
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ResourceDescriptor {
+    pub uri: &'static str,
+    pub title: &'static str,
+    pub description: &'static str,
+}
+
 impl McpServerState {
     /// Create a new MCP server state
     ///
@@ -169,6 +177,27 @@ impl McpServerState {
         }
     }
 
+    /// List MCP resources exposed by this server
+    pub fn resources(&self) -> Vec<ResourceDescriptor> {
+        vec![
+            ResourceDescriptor {
+                uri: "evefrontier://dataset/info",
+                title: "Dataset Info",
+                description: "Dataset metadata: system count, gate count, schema version",
+            },
+            ResourceDescriptor {
+                uri: "evefrontier://algorithms",
+                title: "Routing Algorithms",
+                description: "Available routing algorithms and capabilities",
+            },
+            ResourceDescriptor {
+                uri: "evefrontier://spatial-index/status",
+                title: "Spatial Index Status",
+                description: "Spatial index availability, path, and initialization timestamp",
+            },
+        ]
+    }
+
     /// Find a system by exact or fuzzy match
     ///
     /// Returns a list of matching system names sorted by match quality.
@@ -243,6 +272,27 @@ mod tests {
         let json = serde_json::to_string(&info).unwrap();
         assert!(json.contains("system_count"));
         assert!(json.contains("100"));
+    }
+
+    #[test]
+    fn test_resources_descriptor_includes_three_resources() {
+        let state = McpServerState {
+            database_path: PathBuf::from("/tmp/static_data.db"),
+            initialized_at: chrono::Utc::now(),
+            system_count: 8,
+            gate_count: 12,
+            schema_version: "e6c3".into(),
+            spatial_index_available: true,
+        };
+
+        let resources = state.resources();
+        assert_eq!(resources.len(), 3);
+        assert!(resources
+            .iter()
+            .any(|r| r.uri == "evefrontier://dataset/info"));
+        assert!(resources
+            .iter()
+            .any(|r| r.uri == "evefrontier://spatial-index/status"));
     }
 
     #[test]
