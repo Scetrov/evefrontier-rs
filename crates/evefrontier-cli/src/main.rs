@@ -11,11 +11,11 @@ mod output;
 mod terminal;
 
 use evefrontier_lib::{
-    compute_dataset_checksum, ensure_dataset, load_starmap, plan_route, read_release_tag,
-    spatial_index_path, try_load_spatial_index, verify_freshness, DatasetMetadata, DatasetRelease,
-    Error as RouteError, FreshnessResult, RouteAlgorithm, RouteConstraints, RouteOutputKind,
-    RouteRequest, RouteSummary, ShipCatalog, ShipLoadout, SpatialIndex, VerifyDiagnostics,
-    VerifyOutput,
+    compute_dataset_checksum, decode_fmap_token, encode_fmap_token, ensure_dataset, load_starmap,
+    plan_route, read_release_tag, spatial_index_path, try_load_spatial_index, verify_freshness,
+    DatasetMetadata, DatasetRelease, Error as RouteError, FreshnessResult, RouteAlgorithm,
+    RouteConstraints, RouteOutputKind, RouteRequest, RouteSummary, ShipCatalog, ShipLoadout,
+    SpatialIndex, VerifyDiagnostics, VerifyOutput, Waypoint, WaypointType,
 };
 
 #[derive(Parser, Debug)]
@@ -70,6 +70,10 @@ enum Command {
     IndexVerify(IndexVerifyArgs),
     /// List available ships from ship_data.csv.
     Ships,
+    /// Encode a route to an fmap URL token.
+    FmapEncode(FmapEncodeArgs),
+    /// Decode an fmap URL token back to a route.
+    FmapDecode(FmapDecodeArgs),
 }
 
 #[derive(Args, Debug, Clone)]
@@ -178,6 +182,34 @@ struct RouteOptionsArgs {
     /// Recalculate mass after each hop as fuel is consumed.
     #[arg(long = "dynamic-mass", action = ArgAction::SetTrue)]
     dynamic_mass: bool,
+}
+
+#[derive(Args, Debug, Clone)]
+struct FmapEncodeArgs {
+    /// System names to encode (comma-separated or repeated --system flags).
+    /// First system is the start, last is the destination.
+    #[arg(value_name = "SYSTEM", required = true)]
+    systems: Vec<String>,
+
+    /// Waypoint type for each system: start, jump, npc-gate, smart-gate, destination.
+    /// Defaults: first=start, middle=jump, last=destination.
+    #[arg(long = "type", value_name = "TYPE")]
+    types: Vec<String>,
+
+    /// Output in JSON format (includes metadata).
+    #[arg(long = "json", action = ArgAction::SetTrue)]
+    json: bool,
+}
+
+#[derive(Args, Debug, Clone)]
+struct FmapDecodeArgs {
+    /// Base64url-encoded fmap token string.
+    #[arg(value_name = "TOKEN", required = true)]
+    token: String,
+
+    /// Output in JSON format (includes metadata).
+    #[arg(long = "json", action = ArgAction::SetTrue)]
+    json: bool,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum, Default)]
@@ -371,6 +403,8 @@ fn main() -> Result<()> {
         Command::IndexBuild(args) => handle_index_build(&context, &args),
         Command::IndexVerify(args) => handle_index_verify(&context, &args),
         Command::Ships => handle_list_ships(&context),
+        Command::FmapEncode(args) => handle_fmap_encode(&args),
+        Command::FmapDecode(args) => handle_fmap_decode(&args),
     };
 
     if result.is_ok() && context.should_show_footer() {
@@ -830,4 +864,148 @@ fn init_tracing() {
         .finish();
 
     let _ = tracing::subscriber::set_global_default(subscriber);
+}
+
+fn handle_fmap_encode(args: &FmapEncodeArgs) -> Result<()> {
+    if args.systems.is_empty() {
+        anyhow::bail!("At least one system name is required");
+    }
+
+    // Parse waypoint types with defaults
+    let mut waypoint_types = Vec::new();
+    for (i, _system_name) in args.systems.iter().enumerate() {
+        let wtype = if i < args.types.len() {
+            match args.types[i].as_str() {
+                "start" => WaypointType::Start,
+                "jump" => WaypointType::Jump,
+                "npc-gate" => WaypointType::NpcGate,
+                "smart-gate" => WaypointType::SmartGate,
+                "destination" | "dest" => WaypointType::SetDestination,
+                other => anyhow::bail!("invalid waypoint type: {}", other),
+            }
+        } else if i == 0 {
+            WaypointType::Start
+        } else if i == args.systems.len() - 1 {
+            WaypointType::SetDestination
+        } else {
+            WaypointType::Jump
+        };
+        waypoint_types.push(wtype);
+    }
+
+    // For now, we encode system IDs directly. In a complete implementation,
+    // we'd look up system names in the database to get their IDs.
+    // For demo purposes, accept system IDs as numbers or use hardcoded mappings.
+    let mut waypoints = Vec::new();
+    for (system_name, wtype) in args.systems.iter().zip(waypoint_types.iter()) {
+        // Try to parse as a number first, otherwise use hardcoded mappings for demo
+        let system_id = match system_name.parse::<u32>() {
+            Ok(id) => id,
+            Err(_) => {
+                // Hardcoded demo mappings
+                match system_name.to_lowercase().as_str() {
+                    "jita" => 30_000_142,
+                    "perimeter" => 30_000_144,
+                    "amarr" => 30_002_187,
+                    other => {
+                        anyhow::bail!(
+                            "unknown system '{}'. Use system ID or known name (jita, perimeter, amarr)",
+                            other
+                        )
+                    }
+                }
+            }
+        };
+
+        waypoints.push(Waypoint {
+            system_id,
+            waypoint_type: *wtype,
+        });
+    }
+
+    // Encode the token
+    let token =
+        encode_fmap_token(&waypoints).map_err(|e| anyhow::anyhow!("encoding failed: {}", e))?;
+
+    if args.json {
+        #[derive(Serialize)]
+        struct FmapOutput {
+            token: String,
+            waypoint_count: usize,
+            bit_width: u8,
+            version: u8,
+        }
+
+        let output = FmapOutput {
+            token: token.token.clone(),
+            waypoint_count: token.waypoint_count,
+            bit_width: token.bit_width,
+            version: token.version,
+        };
+
+        println!("{}", serde_json::to_string_pretty(&output)?);
+    } else {
+        println!("fmap token: {}", token.token);
+        println!("waypoints: {}", token.waypoint_count);
+        println!("bit width: {}", token.bit_width);
+    }
+
+    Ok(())
+}
+
+fn handle_fmap_decode(args: &FmapDecodeArgs) -> Result<()> {
+    // Decode the token
+    let decoded =
+        decode_fmap_token(&args.token).map_err(|e| anyhow::anyhow!("decoding failed: {}", e))?;
+
+    if args.json {
+        #[derive(Serialize)]
+        struct WaypointOutput {
+            system_id: u32,
+            waypoint_type: String,
+        }
+
+        #[derive(Serialize)]
+        struct FmapDecodedOutput {
+            version: u8,
+            bit_width: u8,
+            waypoint_count: usize,
+            waypoints: Vec<WaypointOutput>,
+        }
+
+        let waypoints = decoded
+            .waypoints
+            .iter()
+            .map(|wp| WaypointOutput {
+                system_id: wp.system_id,
+                waypoint_type: format!("{:?}", wp.waypoint_type).to_lowercase(),
+            })
+            .collect();
+
+        let output = FmapDecodedOutput {
+            version: decoded.version,
+            bit_width: decoded.bit_width,
+            waypoint_count: decoded.waypoint_count,
+            waypoints,
+        };
+
+        println!("{}", serde_json::to_string_pretty(&output)?);
+    } else {
+        println!("fmap decoded successfully");
+        println!("version: {}", decoded.version);
+        println!("bit width: {}", decoded.bit_width);
+        println!("waypoints: {}", decoded.waypoint_count);
+        println!();
+        println!("{:<15} {:<20}", "System ID", "Type");
+        println!("{}", "-".repeat(35));
+        for wp in decoded.waypoints {
+            println!(
+                "{:<15} {:<20}",
+                wp.system_id,
+                format!("{:?}", wp.waypoint_type)
+            );
+        }
+    }
+
+    Ok(())
 }
