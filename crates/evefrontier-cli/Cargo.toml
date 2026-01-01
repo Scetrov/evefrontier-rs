@@ -25,7 +25,12 @@ serde_json.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 
+# MCP subcommand dependencies
+evefrontier-mcp = { path = "../evefrontier-mcp" }
+tokio = { version = "1.30", features = ["io-util", "macros", "signal", "rt-multi-thread"] }
+
 [dev-dependencies]
 assert_cmd.workspace = true
 predicates.workspace = true
 tempfile.workspace = true
+wait-timeout = "0.2"

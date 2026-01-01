@@ -1,54 +1,104 @@
-// Implementation plan auto-filled for feature 018-enhanced-goal-status-line
+# Implementation Plan: [FEATURE]
 
-# Implementation Plan: Enhanced Mode GOAL Status Line
+**Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
+**Input**: Feature specification from `/specs/[###-feature-name]/spec.md`
 
-**Branch**: `018-enhanced-goal-status-line` | **Date**: 2025-12-31 | **Spec**: `specs/018-enhanced-goal-status-line/spec.md`
-**Input**: Feature specification from `/specs/018-enhanced-goal-status-line/spec.md`
+**Note**: This template is filled in by the `/speckit.plan` command. See `.specify/templates/commands/plan.md` for the execution workflow.
 
 ## Summary
 
-Fix the enhanced CLI output so GOAL steps render a status line (min temp, planets, moons) like other steps, and show a “Black Hole” badge for systems 30000001–30000003. Keep alignment unchanged and avoid affecting other formats.
+[Extract from feature spec: primary requirement + technical approach from research]
 
 ## Technical Context
 
-**Language/Version**: Rust 1.91.1  
-**Primary Dependencies**: `clap` CLI, `thiserror`, `serde`, project libs in `crates/evefrontier-lib`  
-**Storage**: SQLite starmap dataset (read-only)  
-**Testing**: `cargo test` (workspace; focus on `-p evefrontier-cli`)  
-**Target Platform**: Linux/macOS CLI, AWS Lambda binaries downstream  
-**Project Type**: Multi-crate Rust workspace (library + CLI + lambdas)  
-**Performance Goals**: No regressions; negligible impact (display-only change)  
-**Constraints**: Preserve existing output formats; follow palette tag conventions  
-**Scale/Scope**: Small UI/format fix
+<!--
+  ACTION REQUIRED: Replace the content in this section with the technical details
+  for the project. The structure here is presented in advisory capacity to guide
+  the iteration process.
+-->
+
+**Language/Version**: [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION]  
+**Primary Dependencies**: [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]  
+**Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]  
+**Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]  
+**Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
+**Project Type**: [single/web/mobile - determines source structure]  
+**Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]  
+**Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]  
+**Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
 
 ## Constitution Check
 
-No constitution gates triggered; change is display-only and follows existing palette/tag patterns.
+*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+
+[Gates determined based on constitution file]
 
 ## Project Structure
 
 ### Documentation (this feature)
 
 ```text
-specs/018-enhanced-goal-status-line/
-├── plan.md
-├── spec.md
-└── tasks.md
+specs/[###-feature]/
+├── plan.md              # This file (/speckit.plan command output)
+├── research.md          # Phase 0 output (/speckit.plan command)
+├── data-model.md        # Phase 1 output (/speckit.plan command)
+├── quickstart.md        # Phase 1 output (/speckit.plan command)
+├── contracts/           # Phase 1 output (/speckit.plan command)
+└── tasks.md             # Phase 2 output (/speckit.tasks command - NOT created by /speckit.plan)
 ```
 
 ### Source Code (repository root)
+<!--
+  ACTION REQUIRED: Replace the placeholder tree below with the concrete layout
+  for this feature. Delete unused options and expand the chosen structure with
+  real paths (e.g., apps/admin, packages/something). The delivered plan must
+  not include Option labels.
+-->
 
 ```text
-crates/evefrontier-cli/src/output.rs      # Enhanced renderer logic
-crates/evefrontier-cli/src/terminal.rs    # Color palette/tag styles
-crates/evefrontier-cli/tests/             # CLI/regression tests
-crates/evefrontier-lib/src/path.rs        # Fuel computations used by outputs
-docs/USAGE.md                             # CLI examples
-CHANGELOG.md                              # Release notes
+# [REMOVE IF UNUSED] Option 1: Single project (DEFAULT)
+src/
+├── models/
+├── services/
+├── cli/
+└── lib/
+
+tests/
+├── contract/
+├── integration/
+└── unit/
+
+# [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
+backend/
+├── src/
+│   ├── models/
+│   ├── services/
+│   └── api/
+└── tests/
+
+frontend/
+├── src/
+│   ├── components/
+│   ├── pages/
+│   └── services/
+└── tests/
+
+# [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
+api/
+└── [same as backend above]
+
+ios/ or android/
+└── [platform-specific structure: feature modules, UI flows, platform tests]
 ```
 
-**Structure Decision**: Use existing Rust workspace layout; CLI crate owns rendering, library crate owns path/fuel data.
+**Structure Decision**: [Document the selected structure and reference the real
+directories captured above]
 
 ## Complexity Tracking
 
-Not applicable; no additional complexity introduced.
+> **Fill ONLY if Constitution Check has violations that must be justified**
+
+| Violation | Why Needed | Simpler Alternative Rejected Because |
+|-----------|------------|-------------------------------------|
+| [e.g., 4th project] | [current need] | [why 3 projects insufficient] |
+| [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient] |
