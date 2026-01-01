@@ -7,6 +7,7 @@ use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
 use serde::Serialize;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
+mod commands;
 mod output;
 mod terminal;
 
@@ -62,6 +63,13 @@ struct GlobalOptions {
     fmap_base_url: Option<String>,
 }
 
+#[derive(Args, Debug, Clone)]
+pub struct McpCommandArgs {
+    /// Override log level (trace, debug, info, warn, error). Defaults to RUST_LOG env var or 'info'.
+    #[arg(long, value_parser = ["trace", "debug", "info", "warn", "error"])]
+    pub log_level: Option<String>,
+}
+
 #[derive(Subcommand, Debug)]
 enum Command {
     /// Ensure the dataset is downloaded and report its location.
@@ -78,6 +86,8 @@ enum Command {
     FmapEncode(FmapEncodeArgs),
     /// Decode an fmap URL token back to a route.
     FmapDecode(FmapDecodeArgs),
+    /// Launch the Model Context Protocol (MCP) server via stdio transport.
+    Mcp(McpCommandArgs),
 }
 
 #[derive(Args, Debug, Clone)]
@@ -396,18 +406,28 @@ impl AppContext {
     }
 }
 
-fn main() -> Result<()> {
+// The CLI uses Tokio's async runtime for the entire process (`#[tokio::main]`) to support
+// launching the MCP stdio server directly from the CLI. This choice simplifies integration but
+// introduces a small runtime overhead for otherwise synchronous subcommands; if startup overhead
+// becomes a concern we can restrict the runtime to the MCP subcommand only using a dedicated
+// runtime builder.
+#[tokio::main]
+async fn main() -> Result<()> {
     let cli = Cli::parse();
     let context = AppContext::new(cli.global);
 
-    // For JSON output, suppress tracing to keep stdout clean
-    if context.output_format() != OutputFormat::Json {
+    // For JSON output, suppress tracing to keep stdout clean. If launching the MCP
+    // subcommand, skip global tracing initialization so the MCP command can set
+    // up a stderr-only tracing subscriber without conflicting with the global default.
+    if context.output_format() != OutputFormat::Json && !matches!(cli.command, Command::Mcp(_)) {
         init_tracing();
     }
 
     let start = std::time::Instant::now();
 
-    if context.should_show_logo() {
+    // Suppress CLI banner when acting as a stdio-based MCP server to avoid
+    // corrupting the JSON-RPC protocol on stdout.
+    if !matches!(cli.command, Command::Mcp(_)) && context.should_show_logo() {
         output::print_logo();
     }
 
@@ -421,6 +441,9 @@ fn main() -> Result<()> {
         Command::Ships => handle_list_ships(&context),
         Command::FmapEncode(args) => handle_fmap_encode(&context, &args),
         Command::FmapDecode(args) => handle_fmap_decode(&args),
+        Command::Mcp(args) => {
+            commands::mcp::run_mcp_server(&context.options, args.log_level.as_deref()).await
+        }
     };
 
     if result.is_ok() && context.should_show_footer() {

@@ -519,8 +519,8 @@ The following ADR topics are recommended to formalize currently implicit archite
       [ROUTE_FEATURE.md](https://github.com/frontier-reapers/starmap/blob/main/docs/ROUTE_FEATURE.md)
       specification.
   - [x] Write a comprehensive ADR describing both the encoder and decoder algorithms for fmap URLs.
-      (Implemented in `crates/evefrontier-lib/src/fmap.rs` with 3-bit waypoint type encoding;
-      CLI commands `fmap-encode` and `fmap-decode` added; route output includes fmap URL)
+        (Implemented in `crates/evefrontier-lib/src/fmap.rs` with 3-bit waypoint type encoding; CLI
+        commands `fmap-encode` and `fmap-decode` added; route output includes fmap URL)
 - [ ] Add support for avoiding systems by solarsystem ID, name or radius from solar system.
 - [ ] Add support for specifying some parameters (i.e. avoidance systems, algorithim, etc.) either
       in `~/.config` or ENV_VARs
@@ -547,12 +547,14 @@ The following ADR topics are recommended to formalize currently implicit archite
 
 - [x] **Crate Scaffolding**: Create `evefrontier-mcp` crate for Model Context Protocol support.
 - [x] **JSON-RPC 2.0 Server**: Implement the server logic with stdio transport support.
-- [ ] **CLI Subcommand & Stdio Transport**: Implement the `mcp` command in `evefrontier-cli` to launch the server.
+- [ ] **CLI Subcommand & Stdio Transport**: Implement the `mcp` command in `evefrontier-cli` to
+      launch the server.
 - [ ] **EVE Frontier Tool Mapping**: Expose core library functionality (world state queries, account
       balance, blockchain transactions) as MCP tools.
 - [ ] **Resource & Schema Definitions**: Define AI-readable resources for game data models and smart
       assembly configurations.
-- [x] **Dataset Resources**: Implement `evefrontier://dataset/info`, `evefrontier://algorithms`, and `evefrontier://spatial-index/status` resources.
+- [x] **Dataset Resources**: Implement `evefrontier://dataset/info`, `evefrontier://algorithms`, and
+      `evefrontier://spatial-index/status` resources.
 - [ ] **Docker & Security Hardening**: Ensure the server runs with dropped capabilities
       (`CAP_DROP=all`), non-root users, and static `musl` builds.
 - [ ] **IO & Logging Isolation**: Configure the logging framework to redirect all system logs to

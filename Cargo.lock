@@ -901,13 +901,16 @@ dependencies = [
  "clap",
  "directories 6.0.0",
  "evefrontier-lib",
+ "evefrontier-mcp",
  "hex",
  "predicates",
  "serde",
  "serde_json",
  "tempfile",
+ "tokio",
  "tracing",
  "tracing-subscriber",
+ "wait-timeout",
 ]
 
 [[package]]
