@@ -33,6 +33,7 @@
 ## Phase 7: User Story 5 (P2) — Downloader caches ship data
 - [X] T019 [US5] Created test specs for ship data downloader in `crates/evefrontier-lib/tests/dataset_download_ship_data.rs` (GitHub downloader enhancement deferred to future PR)
 - [X] T020 [US5] Added integration tests for ship data fixture validation, parsing, and future downloader idempotency in `crates/evefrontier-lib/tests/dataset_download_ship_data.rs`
+- [ ] T025 [US5] Implement downloader logic to detect `ship_data.csv` in release assets, download and cache as `<tag>-ship_data.csv` with `<tag>-ship_data.csv.sha256` checksum, and expose `DatasetPaths.ship_data` from `ensure_dataset`/`ensure_e6c3_dataset`.
 
 ## Phase 8: Polish & Cross-Cutting
 - [X] T021 Updated `docs/USAGE.md` with comprehensive fuel projection section (static/dynamic modes, examples, formula, ship listing)
