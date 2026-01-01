@@ -84,11 +84,10 @@ impl StdioTransport {
     fn check_io<T>(res: std::io::Result<T>) -> Result<T> {
         match res {
             Ok(v) => Ok(v),
-            Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => Err(std::io::Error::new(
-                std::io::ErrorKind::BrokenPipe,
-                "Client disconnected",
-            )
-            .into()),
+            Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => {
+                // Preserve original io::Error context instead of constructing a new one.
+                Err(e).context("Client disconnected")
+            }
             Err(e) => Err(e.into()),
         }
     }
@@ -96,13 +95,21 @@ impl StdioTransport {
     pub async fn write_message(&mut self, msg: &Value) -> Result<()> {
         let s = serde_json::to_string(msg)?;
 
-        // Write JSON, newline and flush while mapping IO errors consistently
+        // Write JSON, newline and flush while mapping IO errors consistently.
+        // Use instance helper to preserve error context and reduce duplication.
         Self::check_io(self.writer.write_all(s.as_bytes()).await)?;
         Self::check_io(self.writer.write_all(b"\n").await)?;
         Self::check_io(self.writer.flush().await)?;
 
         Ok(())
     }
+}
+
+// Helper to inspect anyhow::Error for BrokenPipe without duplicating downcast logic.
+fn is_broken_pipe_error(e: &anyhow::Error) -> bool {
+    e.downcast_ref::<std::io::Error>()
+        .map(|ioe| ioe.kind() == std::io::ErrorKind::BrokenPipe)
+        .unwrap_or(false)
 }
 
 /// Run the server loop: read messages from stdin and respond on stdout.
@@ -129,35 +136,84 @@ pub async fn run_server_loop(mut transport: StdioTransport, server: McpServerSta
                         let method = val.get("method").and_then(|m| m.as_str()).unwrap_or("");
                         let id = val.get("id").cloned();
 
-                       if method == "initialize" {
+                       // Prepare response based on method.
+                       let response = if method == "initialize" {
+                           // We do not advertise non-implemented capabilities to avoid misleading clients.
                            let result = json!({
                                "protocolVersion": "2024-11-05",
-                               "serverInfo": {"name":"evefrontier", "version": env!("CARGO_PKG_VERSION")},
-                               "capabilities": {"tools": {}, "resources": {}, "prompts": {} }
+                               "serverInfo": {"name": "evefrontier", "version": env!("CARGO_PKG_VERSION")},
+                               // No tools/resources/prompts are currently advertised here.
+                               "capabilities": {}
                            });
 
-                           let response = json!({"jsonrpc": "2.0", "id": id, "result": result});
-                           if let Err(e) = transport.write_message(&response).await {
-                               // Prefer inspecting the underlying IO error instead of string matching
-                               if e.downcast_ref::<std::io::Error>().map(|ioe| ioe.kind() == std::io::ErrorKind::BrokenPipe).unwrap_or(false) {
-                                   tracing::info!("Client disconnected (broken pipe)");
-                                   break;
+                           json!({"jsonrpc": "2.0", "id": id, "result": result})
+                       } else if method == "tools/list" {
+                           // Return a simple description of available tools.
+                           let result = json!({
+                               "tools": [
+                                   {"name": "route_plan", "description": "Plan a route between two solar systems."},
+                                   {"name": "system_info", "description": "Get information about a solar system."},
+                                   {"name": "systems_nearby", "description": "List systems within a number of jumps."},
+                                   {"name": "gates_from", "description": "List outbound stargates from a system."}
+                               ]
+                           });
+
+                           json!({"jsonrpc": "2.0", "id": id, "result": result})
+                       } else if method == "tools/call" {
+                           let params = val.get("params").cloned().unwrap_or_else(|| json!({}));
+                           let (tool_name_opt, _arguments_opt) = match params {
+                               Value::Object(ref obj) => {
+                                   let name = obj.get("name").and_then(|v| v.as_str());
+                                   let arguments = obj.get("arguments").cloned().unwrap_or_else(|| json!({}));
+                                   (name, Some(arguments))
                                }
-                               return Err(e);
+                               _ => (None, None),
+                           };
+
+                           if tool_name_opt.is_none() {
+                               let error = json!({"code": -32602, "message": "Invalid params for tools/call: expected object with string field 'name'."});
+                               json!({"jsonrpc": "2.0", "id": id, "error": error})
+                           } else {
+                               let tool_name = tool_name_opt.unwrap();
+                               let known_tool = matches!(tool_name, "route_plan" | "system_info" | "systems_nearby" | "gates_from");
+
+                               if !known_tool {
+                                   let error = json!({"code": -32601, "message": format!("Unknown tool: {}", tool_name)});
+                                   json!({"jsonrpc": "2.0", "id": id, "error": error})
+                               } else {
+                                   // Known but not implemented yet - fail securely with an explicit error code.
+                                   let error = json!({"code": -32001, "message": format!("Tool '{}' is not yet implemented on the server.", tool_name)});
+                                   json!({"jsonrpc": "2.0", "id": id, "error": error})
+                               }
+                           }
+                       } else if method == "resources/list" {
+                           let result = json!({"resources": []});
+                           json!({"jsonrpc": "2.0", "id": id, "result": result})
+                       } else if method == "resources/read" {
+                           let has_uri = match val.get("params") {
+                               Some(Value::Object(ref obj)) => obj.get("uri").and_then(|v| v.as_str()).is_some(),
+                               _ => false,
+                           };
+                           if !has_uri {
+                               let error = json!({"code": -32602, "message": "Invalid params for resources/read: expected object with string field 'uri'."});
+                               json!({"jsonrpc": "2.0", "id": id, "error": error})
+                           } else {
+                               let error = json!({"code": -32002, "message": "Resources are not implemented on this server."});
+                               json!({"jsonrpc": "2.0", "id": id, "error": error})
                            }
                        } else {
-                           // Method not found
                            let error = json!({"code": -32601, "message": format!("Unknown method: {}", method)});
-                           let response = json!({"jsonrpc": "2.0", "id": id, "error": error});
-                           if let Err(e) = transport.write_message(&response).await {
-                               if e.downcast_ref::<std::io::Error>().map(|ioe| ioe.kind() == std::io::ErrorKind::BrokenPipe).unwrap_or(false) {
-                                   tracing::info!("Client disconnected (broken pipe)");
-                                   break;
-                               }
-                               return Err(e);
+                           json!({"jsonrpc": "2.0", "id": id, "error": error})
+                       };
+
+                       if let Err(e) = transport.write_message(&response).await {
+                           if is_broken_pipe_error(&e) {
+                               tracing::info!("Client disconnected (broken pipe)");
+                               break;
                            }
+                           return Err(e);
                        }
-                   }
+                    }
                    Ok(None) => {
                        tracing::info!("Client disconnected (EOF)");
                        break;
@@ -184,8 +240,8 @@ pub async fn run_mcp_server(global: &GlobalOptions, log_level: Option<&str>) -> 
     let target = resolve_dataset_path(global)?;
     tracing::info!("Resolving dataset path...");
 
-    let server = (|| -> Result<McpServerState> {
-        if let Some(ref p) = target {
+    fn initialize_server_from_target(target: Option<&PathBuf>) -> Result<McpServerState> {
+        if let Some(p) = target {
             if p.exists() {
                 tracing::info!("Using explicit dataset path {}", p.display());
                 return McpServerState::with_path(p)
@@ -211,7 +267,9 @@ pub async fn run_mcp_server(global: &GlobalOptions, log_level: Option<&str>) -> 
             .context("Failed to initialize MCP server state from database")?;
         tracing::info!("Dataset loaded in {:?}", start.elapsed());
         Ok(s)
-    })()?;
+    }
+
+    let server = initialize_server_from_target(target.as_ref())?;
 
     // 3. Create transport and run server loop
     let transport = StdioTransport::new();

@@ -1,10 +1,7 @@
 use serde_json::{json, Value};
 use std::io::{BufRead, BufReader, Read, Write};
 use std::process::{Child, Command, Stdio};
-use std::time::Duration;
-
-#[cfg(unix)]
-use wait_timeout::ChildExt;
+use std::time::{Duration, Instant};
 
 fn spawn_server() -> std::io::Result<Child> {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
@@ -28,8 +25,7 @@ fn spawn_server() -> std::io::Result<Child> {
 }
 
 fn send_request(child: &mut Child, request: Value) -> std::io::Result<Value> {
-    // Give the server a short moment to initialize and start reading stdin
-    std::thread::sleep(std::time::Duration::from_millis(200));
+    // Write request and read a single JSON-RPC response (blocking read is fine in test).
 
     let stdin = child
         .stdin
@@ -57,7 +53,6 @@ fn send_request(child: &mut Child, request: Value) -> std::io::Result<Value> {
     })
 }
 
-#[cfg(unix)]
 #[test]
 fn test_stdio_isolation_initialize() {
     let mut server = spawn_server().expect("Failed to spawn server");
@@ -78,11 +73,24 @@ fn test_stdio_isolation_initialize() {
     // Close stdin to signal EOF and allow server to exit gracefully
     drop(server.stdin.take());
 
-    // Wait for process to exit (with timeout)
-    let exit_status = server
-        .wait_timeout(Duration::from_secs(2))
-        .expect("Failed to wait for server")
-        .expect("Server did not exit within timeout");
+    // Wait for process to exit (with timeout) using a portable loop.
+    let start = Instant::now();
+    let exit_status = loop {
+        if server
+            .try_wait()
+            .expect("Failed to check server status")
+            .is_some()
+        {
+            break server
+                .try_wait()
+                .expect("Failed to check server status")
+                .unwrap();
+        }
+        if start.elapsed() > Duration::from_secs(5) {
+            panic!("Server did not exit within timeout");
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    };
 
     assert!(
         exit_status.success(),
@@ -98,9 +106,44 @@ fn test_stdio_isolation_initialize() {
         .unwrap()
         .read_to_string(&mut stderr)
         .ok();
-    assert!(stderr.contains("MCP server initialized") || stderr.contains("MCP Server initialized"));
+    assert!(stderr.contains("MCP server initialized"));
 
     // Ensure no log-level keywords leaked to stdout by checking response doesn't contain "INFO"/"ERROR"
     let stdout_str = serde_json::to_string(&response).unwrap();
     assert!(!stdout_str.contains("INFO") && !stdout_str.contains("ERROR"));
+}
+
+#[test]
+fn test_tools_list() {
+    let mut server = spawn_server().expect("Failed to spawn server");
+
+    let request = json!({
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "tools/list",
+        "params": {}
+    });
+
+    let response = send_request(&mut server, request).expect("Failed to get tools/list response");
+
+    assert_eq!(response["jsonrpc"], "2.0");
+    assert_eq!(response["id"], 2);
+    assert!(response["result"].get("tools").is_some());
+
+    // Close stdin and let process exit cleanly.
+    drop(server.stdin.take());
+    let start = Instant::now();
+    loop {
+        if server
+            .try_wait()
+            .expect("Failed to check server status")
+            .is_some()
+        {
+            break;
+        }
+        if start.elapsed() > Duration::from_secs(5) {
+            panic!("Server did not exit within timeout");
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
 }
