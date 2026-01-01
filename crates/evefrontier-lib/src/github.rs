@@ -374,11 +374,14 @@ fn copy_from_override(source: &Path, target: &Path) -> Result<()> {
         .map(|ext| ext.eq_ignore_ascii_case("zip"))
         .unwrap_or(false)
     {
-        extract_archive(source, &cached_dataset)?;
-
-        // For archives, also try to extract ship_data.csv if present
+        // Open archive once and extract both the .db and ship_data.csv in a single pass
+        // Use a `&Path` for NamedTempFile::new_in to avoid unnecessary moves/clones
+        let parent = cache_dir.as_path();
         let file = File::open(source)?;
         let mut archive = ZipArchive::new(file)?;
+
+        let mut found_db = false;
+        let cache_dir_buf = cache_dir.clone();
         for idx in 0..archive.len() {
             let mut entry = archive.by_index(idx)?;
             if !entry.is_file() {
@@ -386,17 +389,31 @@ fn copy_from_override(source: &Path, target: &Path) -> Result<()> {
             }
             if let Some(path) = entry.enclosed_name() {
                 let lname = path.to_string_lossy().to_ascii_lowercase();
-                if lname.ends_with("ship_data.csv") {
-                    let cached_ship = cache_dir.join(format!("local-{}", "ship_data.csv"));
-                    let mut tmp = NamedTempFile::new_in(cache_dir.as_path())?;
+                if lname.ends_with(".db") && !found_db {
+                    let mut tmp = NamedTempFile::new_in(parent)?;
+                    io::copy(&mut entry, tmp.as_file_mut())?;
+                    tmp.flush()?;
+                    if cached_dataset.exists() {
+                        fs::remove_file(&cached_dataset)?;
+                    }
+                    tmp.persist(&cached_dataset).map_err(|err| err.error)?;
+                    found_db = true;
+                } else if lname.ends_with("ship_data.csv") {
+                    let cached_ship = cache_dir_buf.join(format!("local-{}", "ship_data.csv"));
+                    let mut tmp = NamedTempFile::new_in(parent)?;
                     io::copy(&mut entry, tmp.as_file_mut())?;
                     tmp.flush()?;
                     tmp.persist(&cached_ship).map_err(|err| err.error)?;
                     let checksum = compute_sha256_hex(&cached_ship)?;
                     write_checksum_sidecar(&cached_ship, &checksum)?;
-                    break;
                 }
             }
+        }
+
+        if !found_db {
+            return Err(Error::ArchiveMissingDatabase {
+                archive: source.to_path_buf(),
+            });
         }
     } else {
         copy_file_atomic(source, &cached_dataset)?;
@@ -437,7 +454,7 @@ fn copy_from_override_with_cache(source: &Path, target: &Path, cache_dir: &Path)
         // ship_data.csv
         let ship_src = source.join("ship_data.csv");
         if ship_src.exists() {
-            let cached_ship = PathBuf::from(cache_dir).join(format!("local-{}", "ship_data.csv"));
+            let cached_ship = cache_dir.join(format!("local-{}", "ship_data.csv"));
             copy_file_atomic(&ship_src, &cached_ship)?;
             let checksum = compute_sha256_hex(&cached_ship)?;
             write_checksum_sidecar(&cached_ship, &checksum)?;
@@ -448,11 +465,11 @@ fn copy_from_override_with_cache(source: &Path, target: &Path, cache_dir: &Path)
         .map(|ext| ext.eq_ignore_ascii_case("zip"))
         .unwrap_or(false)
     {
-        extract_archive(source, &cached_dataset)?;
-
-        // Extract ship_data.csv if present
+        // Open archive once and extract DB and ship_data.csv in a single pass
         let file = File::open(source)?;
         let mut archive = ZipArchive::new(file)?;
+
+        let mut found_db = false;
         for idx in 0..archive.len() {
             let mut entry = archive.by_index(idx)?;
             if !entry.is_file() {
@@ -460,18 +477,31 @@ fn copy_from_override_with_cache(source: &Path, target: &Path, cache_dir: &Path)
             }
             if let Some(path) = entry.enclosed_name() {
                 let lname = path.to_string_lossy().to_ascii_lowercase();
-                if lname.ends_with("ship_data.csv") {
-                    let cached_ship =
-                        PathBuf::from(cache_dir).join(format!("local-{}", "ship_data.csv"));
+                if lname.ends_with(".db") && !found_db {
+                    let mut tmp = NamedTempFile::new_in(cache_dir)?;
+                    io::copy(&mut entry, tmp.as_file_mut())?;
+                    tmp.flush()?;
+                    if cached_dataset.exists() {
+                        fs::remove_file(&cached_dataset)?;
+                    }
+                    tmp.persist(&cached_dataset).map_err(|err| err.error)?;
+                    found_db = true;
+                } else if lname.ends_with("ship_data.csv") {
+                    let cached_ship = cache_dir.join(format!("local-{}", "ship_data.csv"));
                     let mut tmp = NamedTempFile::new_in(cache_dir)?;
                     io::copy(&mut entry, tmp.as_file_mut())?;
                     tmp.flush()?;
                     tmp.persist(&cached_ship).map_err(|err| err.error)?;
                     let checksum = compute_sha256_hex(&cached_ship)?;
                     write_checksum_sidecar(&cached_ship, &checksum)?;
-                    break;
                 }
             }
+        }
+
+        if !found_db {
+            return Err(Error::ArchiveMissingDatabase {
+                archive: source.to_path_buf(),
+            });
         }
     } else {
         copy_file_atomic(source, &cached_dataset)?;
@@ -733,24 +763,12 @@ pub(crate) fn find_cached_ship_for_tag(tag: &str) -> Result<Option<PathBuf>> {
         return Ok(None);
     }
 
-    // First pass: prefer explicit ship_data filenames
-    for entry in fs::read_dir(&cache_dir)? {
-        let entry = entry?;
-        let path = entry.path();
-        if !path.is_file() {
-            continue;
-        }
-        let name = path
-            .file_name()
-            .map(|n| n.to_string_lossy().to_string())
-            .unwrap_or_default();
-        if name.to_ascii_lowercase().contains("ship_data") {
-            return Ok(Some(path));
-        }
-    }
-
-    // Second pass: look for files prefixed with the tag that look like ship assets
+    // Single-pass scan: prefer explicit ship_data filenames, but keep a
+    // fallback candidate that matches the sanitized tag prefix and contains
+    // the word 'ship'. This avoids scanning the directory twice.
+    let mut fallback: Option<PathBuf> = None;
     let prefix = sanitize_component(tag).to_ascii_lowercase();
+
     for entry in fs::read_dir(&cache_dir)? {
         let entry = entry?;
         let path = entry.path();
@@ -762,12 +780,17 @@ pub(crate) fn find_cached_ship_for_tag(tag: &str) -> Result<Option<PathBuf>> {
             .map(|n| n.to_string_lossy().to_string())
             .unwrap_or_default();
         let lname = name.to_ascii_lowercase();
-        if lname.starts_with(&prefix) && lname.contains("ship") {
+
+        if lname.contains("ship_data") {
             return Ok(Some(path));
+        }
+
+        if fallback.is_none() && lname.starts_with(&prefix) && lname.contains("ship") {
+            fallback = Some(path);
         }
     }
 
-    Ok(None)
+    Ok(fallback)
 }
 
 fn download_to_file(client: &Client, url: &str, file: &mut File) -> Result<()> {

@@ -138,7 +138,7 @@ fn handle_route_request(request: &RouteRequest, request_id: &str) -> Response {
         let catalog = match ship_catalog() {
             Ok(cat) => cat,
             Err(err) => {
-                return Response::Error(from_lib_error(&err, request_id));
+                return Response::Error(from_lib_error(err, request_id));
             }
         };
 
@@ -189,7 +189,7 @@ fn handle_route_request(request: &RouteRequest, request_id: &str) -> Response {
     Response::Success(LambdaResponse::new(response))
 }
 
-fn ship_catalog() -> Result<&'static ShipCatalog, LibError> {
+fn ship_catalog() -> Result<&'static ShipCatalog, &'static LibError> {
     // Prefer a catalog loaded at runtime (cold-start). This supports Lambda
     // bundling where the shared runtime pre-parsed the CSV into memory.
     if let Ok(runtime) = std::panic::catch_unwind(get_runtime) {
@@ -228,9 +228,7 @@ fn ship_catalog() -> Result<&'static ShipCatalog, LibError> {
 
     match result {
         Ok(catalog) => Ok(catalog),
-        Err(err) => Err(LibError::ShipDataValidation {
-            message: err.to_string(),
-        }),
+        Err(err) => Err(err),
     }
 }
 
