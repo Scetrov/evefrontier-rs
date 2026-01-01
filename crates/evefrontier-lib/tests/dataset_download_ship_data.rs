@@ -25,6 +25,62 @@ fn ship_data_fixture_exists_and_loads() {
     );
 }
 
+#[test]
+fn download_from_source_with_cache_copies_ship_csv_from_directory() {
+    use std::fs;
+    use tempfile::tempdir;
+
+    let fixture_dir = fixture_path();
+    let source = tempdir().expect("create source tempdir");
+    let cache = tempdir().expect("create cache tempdir");
+
+    // Copy fixture DB and ship_data.csv into source dir
+    fs::copy(
+        fixture_dir.join("minimal_static_data.db"),
+        source.path().join("static_data.db"),
+    )
+    .expect("copy db");
+    fs::copy(
+        fixture_dir.join("ship_data.csv"),
+        source.path().join("ship_data.csv"),
+    )
+    .expect("copy ship csv");
+
+    let target = tempfile::tempdir().expect("target dir");
+    let target_db = target.path().join("static_data.db");
+
+    // Use the download_from_source_with_cache helper which should copy files into cache
+    let resolved = evefrontier_lib::github::download_from_source_with_cache(
+        &target_db,
+        evefrontier_lib::github::DatasetRelease::Latest,
+        source.path(),
+        cache.path(),
+        "e6c3",
+    )
+    .expect("download from source with cache");
+
+    assert_eq!(resolved, "e6c3");
+
+    // Check cached ship CSV and sidecar exist
+    let cached_ship = cache.path().join("local-ship_data.csv");
+    assert!(cached_ship.exists(), "cached ship_data.csv must exist");
+
+    let sidecar = cache.path().join("local-ship_data.csv.sha256");
+    assert!(sidecar.exists(), "checksum sidecar must exist");
+
+    // checksum matches computed
+    use sha2::{Digest, Sha256};
+    let data = std::fs::read(&cached_ship).expect("read ship csv");
+    let mut hasher = Sha256::new();
+    hasher.update(&data);
+    let actual = format!("{:x}", hasher.finalize());
+    let expected = std::fs::read_to_string(sidecar)
+        .expect("read sidecar")
+        .trim()
+        .to_string();
+    assert_eq!(actual, expected, "checksum should match sidecar");
+}
+
 /// Test that ship_data.csv fixture contains the expected default ship (Reflex).
 #[test]
 fn ship_data_fixture_contains_reflex() {

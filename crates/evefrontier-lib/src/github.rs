@@ -326,13 +326,68 @@ fn copy_from_override(source: &Path, target: &Path) -> Result<()> {
     fs::create_dir_all(&cache_dir)?;
 
     let cached_dataset = cache_dir.join(format!("local-{}", target_dataset_filename(target)));
-    if source
+    if source.is_dir() {
+        // Copy DB file from directory source
+        let mut found_db = false;
+        for entry in fs::read_dir(source)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path
+                .extension()
+                .and_then(|e| e.to_str())
+                .map(|s| s.eq_ignore_ascii_case("db"))
+                .unwrap_or(false)
+            {
+                copy_file_atomic(&path, &cached_dataset)?;
+                found_db = true;
+                break;
+            }
+        }
+        if !found_db {
+            return Err(Error::Io(io::Error::new(
+                io::ErrorKind::NotFound,
+                "no .db file found in source directory",
+            )));
+        }
+
+        // Also copy ship_data.csv if present
+        let ship_src = source.join("ship_data.csv");
+        if ship_src.exists() {
+            let cached_ship = cache_dir.join(format!("local-{}", "ship_data.csv"));
+            copy_file_atomic(&ship_src, &cached_ship)?;
+            let checksum = compute_sha256_hex(&cached_ship)?;
+            write_checksum_sidecar(&cached_ship, &checksum)?;
+        }
+    } else if source
         .extension()
         .and_then(|ext| ext.to_str())
         .map(|ext| ext.eq_ignore_ascii_case("zip"))
         .unwrap_or(false)
     {
         extract_archive(source, &cached_dataset)?;
+
+        // For archives, also try to extract ship_data.csv if present
+        let file = File::open(source)?;
+        let mut archive = ZipArchive::new(file)?;
+        for idx in 0..archive.len() {
+            let mut entry = archive.by_index(idx)?;
+            if !entry.is_file() {
+                continue;
+            }
+            if let Some(path) = entry.enclosed_name() {
+                let lname = path.to_string_lossy().to_ascii_lowercase();
+                if lname.ends_with("ship_data.csv") {
+                    let cached_ship = cache_dir.join(format!("local-{}", "ship_data.csv"));
+                    let mut tmp = NamedTempFile::new_in(cache_dir.as_path())?;
+                    io::copy(&mut entry, tmp.as_file_mut())?;
+                    tmp.flush()?;
+                    tmp.persist(&cached_ship).map_err(|err| err.error)?;
+                    let checksum = compute_sha256_hex(&cached_ship)?;
+                    write_checksum_sidecar(&cached_ship, &checksum)?;
+                    break;
+                }
+            }
+        }
     } else {
         copy_file_atomic(source, &cached_dataset)?;
     }
@@ -345,13 +400,69 @@ fn copy_from_override_with_cache(source: &Path, target: &Path, cache_dir: &Path)
 
     let cached_dataset =
         PathBuf::from(cache_dir).join(format!("local-{}", target_dataset_filename(target)));
-    if source
+    if source.is_dir() {
+        // Copy db from directory
+        let mut found_db = false;
+        for entry in fs::read_dir(source)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path
+                .extension()
+                .and_then(|e| e.to_str())
+                .map(|s| s.eq_ignore_ascii_case("db"))
+                .unwrap_or(false)
+            {
+                copy_file_atomic(&path, &cached_dataset)?;
+                found_db = true;
+                break;
+            }
+        }
+        if !found_db {
+            return Err(Error::Io(io::Error::new(
+                io::ErrorKind::NotFound,
+                "no .db file found in source directory",
+            )));
+        }
+
+        // ship_data.csv
+        let ship_src = source.join("ship_data.csv");
+        if ship_src.exists() {
+            let cached_ship = PathBuf::from(cache_dir).join(format!("local-{}", "ship_data.csv"));
+            copy_file_atomic(&ship_src, &cached_ship)?;
+            let checksum = compute_sha256_hex(&cached_ship)?;
+            write_checksum_sidecar(&cached_ship, &checksum)?;
+        }
+    } else if source
         .extension()
         .and_then(|ext| ext.to_str())
         .map(|ext| ext.eq_ignore_ascii_case("zip"))
         .unwrap_or(false)
     {
         extract_archive(source, &cached_dataset)?;
+
+        // Extract ship_data.csv if present
+        let file = File::open(source)?;
+        let mut archive = ZipArchive::new(file)?;
+        for idx in 0..archive.len() {
+            let mut entry = archive.by_index(idx)?;
+            if !entry.is_file() {
+                continue;
+            }
+            if let Some(path) = entry.enclosed_name() {
+                let lname = path.to_string_lossy().to_ascii_lowercase();
+                if lname.ends_with("ship_data.csv") {
+                    let cached_ship =
+                        PathBuf::from(cache_dir).join(format!("local-{}", "ship_data.csv"));
+                    let mut tmp = NamedTempFile::new_in(cache_dir)?;
+                    io::copy(&mut entry, tmp.as_file_mut())?;
+                    tmp.flush()?;
+                    tmp.persist(&cached_ship).map_err(|err| err.error)?;
+                    let checksum = compute_sha256_hex(&cached_ship)?;
+                    write_checksum_sidecar(&cached_ship, &checksum)?;
+                    break;
+                }
+            }
+        }
     } else {
         copy_file_atomic(source, &cached_dataset)?;
     }
