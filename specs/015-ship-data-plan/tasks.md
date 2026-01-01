@@ -34,6 +34,17 @@
 - [X] T019 [US5] Created test specs for ship data downloader in `crates/evefrontier-lib/tests/dataset_download_ship_data.rs` (GitHub downloader enhancement deferred to future PR)
 - [X] T020 [US5] Added integration tests for ship data fixture validation, parsing, and future downloader idempotency in `crates/evefrontier-lib/tests/dataset_download_ship_data.rs`
 - [ ] T025 [US5] Implement downloader logic to detect `ship_data.csv` in release assets, download and cache as `<tag>-ship_data.csv` with `<tag>-ship_data.csv.sha256` checksum, and expose `DatasetPaths.ship_data` from `ensure_dataset`/`ensure_e6c3_dataset`.
+- [ ] T026 [US5] Implement detection of `ship_data.csv` in `ReleaseResponse.assets` and extend `select_dataset_asset`/classification helpers in `crates/evefrontier-lib/src/github.rs` to return a `ShipData` asset when present.
+- [ ] T027 [US5] Add download + atomic cache write for ship CSV: save as `<tag>-ship_data.csv` under cache dir in `crates/evefrontier-lib/src/github.rs` (reuse existing download helpers and extract/archive handling where appropriate).
+- [ ] T028 [US5] Compute and write SHA-256 sidecar `<tag>-ship_data.csv.sha256` after successful download and add verification on cache hit to re-download on mismatch (`crates/evefrontier-lib/src/github.rs`).
+- [ ] T029 [US5] Extend `DatasetPaths` to include `ship_data: Option<PathBuf>` and populate it from `ensure_dataset`/`ensure_e6c3_dataset` (`crates/evefrontier-lib/src/dataset.rs`).
+- [ ] T030 [US5] Add unit/integration tests for downloader behavior (cache, checksum verification, missing-asset behavior) in `crates/evefrontier-lib/tests/dataset_download_ship_data.rs` using `download_from_source_with_cache` helpers and `docs/fixtures/ship_data.csv` fixture.
+- [ ] T031 [US5] Add ShipCatalog integration tests that load cached `ship_data.csv` via `ShipCatalog::from_path` and assert parsing, duplicates and missing headers errors `crates/evefrontier-lib/tests/ship_catalog.rs`.
+- [ ] T032 [US5] Add CLI integration test verifying `evefrontier-cli ships` reads the cached ship CSV and prints expected columns (`crates/evefrontier-cli/tests/list_ships.rs`) [P].
+- [ ] T033 [US5] Update Lambda build packaging to include `ship_data.csv` (or derived serialized artifact) in bundle and add a test in `crates/evefrontier-lambda-shared/tests` to assert presence (`crates/evefrontier-lambda-shared/*`) — depends on T028.
+- [ ] T034 [US5] Update documentation: add cache location and usage to `docs/USAGE.md`, add fixture notes to `docs/fixtures/README.md`, and mark TODOs in `docs/TODO.md` as completed where appropriate (`docs/USAGE.md`, `docs/fixtures/README.md`, `docs/TODO.md`) [P].
+- [ ] T035 [US5] Add CHANGELOG.md entry under Unreleased describing ship data caching and fuel projection defaults (`CHANGELOG.md`) [P].
+- [ ] T036 [US5] Add CI job or test matrix entry to run downloader-related tests and ensure they pass in CI (`.github/workflows/ci.yml`) (depends on T029/T030/T032).
 
 ## Phase 8: Polish & Cross-Cutting
 - [X] T021 Updated `docs/USAGE.md` with comprehensive fuel projection section (static/dynamic modes, examples, formula, ship listing)
