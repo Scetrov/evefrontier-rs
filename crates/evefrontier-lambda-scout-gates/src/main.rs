@@ -62,8 +62,14 @@ enum Response {
 async fn main() -> Result<(), Error> {
     init_tracing();
 
+    // Bundled ship data (optional)
+    #[cfg(feature = "bundle-ship-data")]
+    static SHIP_DATA_BYTES: &[u8] = include_bytes!("../../../data/ship_data.csv");
+    #[cfg(not(feature = "bundle-ship-data"))]
+    static SHIP_DATA_BYTES: &[u8] = &[];
+
     // Initialize runtime with bundled data (logs cold-start timing)
-    let _runtime = init_runtime(DB_BYTES, INDEX_BYTES);
+    let _runtime = init_runtime(DB_BYTES, INDEX_BYTES, SHIP_DATA_BYTES);
 
     lambda_runtime::run(service_fn(handler)).await
 }

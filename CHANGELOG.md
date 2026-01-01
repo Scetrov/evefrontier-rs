@@ -32,6 +32,11 @@ All notable changes to this project will be documented in this file.
     - 3 specification tests for future ship data downloader features
     - Documentation in `docs/USAGE.md` with fuel calculation examples and formula reference
 
+  - **Lambda Bundling & Ship Data**
+    - Add support for bundling `ship_data.csv` into Lambda artifacts (feature: `bundle-ship-data`)
+    - `evefrontier-lambda-shared::init_runtime()` now accepts bundled ship bytes and loads an in-memory `ShipCatalog` at cold start for fast ship lookups
+    - `EVEFRONTIER_SHIP_DATA` env var can be used to provide a ship CSV at runtime when bundling is not used
+
   - **MCP Server** (`evefrontier-mcp`)
   - Model Context Protocol (MCP) server implementation for AI assistant integration
   - Stdio transport for local process communication (Claude Desktop, VS Code, Cursor)

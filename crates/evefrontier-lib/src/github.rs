@@ -10,6 +10,7 @@ use reqwest::blocking::Client;
 use reqwest::header::ACCEPT;
 use reqwest::StatusCode;
 use serde::Deserialize;
+use sha2::{Digest, Sha256};
 use tempfile::NamedTempFile;
 use tracing::{debug, info, warn};
 use zip::ZipArchive;
@@ -192,7 +193,7 @@ pub fn download_from_source_with_cache(
 pub(crate) fn download_dataset_with_tag(
     target_path: &Path,
     release: DatasetRelease,
-) -> Result<String> {
+) -> Result<(String, Option<PathBuf>)> {
     if let Some(source) = env::var_os(DATASET_SOURCE_ENV) {
         let override_path = PathBuf::from(source);
         info!(
@@ -206,8 +207,11 @@ pub(crate) fn download_dataset_with_tag(
         // release tag. This honors the `EVEFRONTIER_DATASET_LATEST_TAG`
         // override used by tests (or other local tooling) so the release
         // marker reflects the actual resolved tag instead of the literal
-        // string "latest".
-        return resolve_release_tag(&release);
+        // string "latest". Additionally attempt to locate any cached ship
+        // CSV in the cache directory so callers can be informed of its path.
+        let resolved = resolve_release_tag(&release)?;
+        let ship = find_cached_ship_for_tag(&resolved).ok().flatten();
+        return Ok((resolved, ship));
     }
 
     let cache_dir = dataset_cache_dir()?;
@@ -236,13 +240,73 @@ pub(crate) fn download_dataset_with_tag(
             AssetKind::Archive => {
                 download_archive_asset(&client, &asset.download_url, &cached_dataset)?
             }
+            AssetKind::ShipCsv => {
+                // Should not be selected for the main dataset; ship CSVs will be handled
+                // separately by the ship-data downloader tasks.
+                unreachable!("select_dataset_asset should not return ShipCsv");
+            }
         }
     } else {
         debug!(path = %cached_dataset.display(), "using cached dataset asset");
     }
 
+    // Attempt to cache ship_data.csv alongside the dataset when present in the release.
+    let mut ship_cached: Option<PathBuf> = None;
+    if let Some(ship_asset) = select_ship_asset(&release_response) {
+        let cached_ship = cache_dir.join(cache_file_name(
+            &ship_asset,
+            &release_response,
+            Path::new("ship_data.csv"),
+        ));
+
+        let need_download = if cached_ship.exists() {
+            match read_checksum_sidecar(&cached_ship)? {
+                Some(expected) => match compute_sha256_hex(&cached_ship) {
+                    Ok(actual) if actual == expected => {
+                        debug!(path = %cached_ship.display(), "using cached ship asset (checksum verified)");
+                        false
+                    }
+                    Ok(_) => {
+                        info!(path = %cached_ship.display(), "ship asset checksum mismatch; re-downloading");
+                        true
+                    }
+                    Err(err) => {
+                        warn!(%err, "failed to compute ship asset checksum; re-downloading");
+                        true
+                    }
+                },
+                None => {
+                    // No checksum sidecar: compute and write one
+                    match compute_sha256_hex(&cached_ship) {
+                        Ok(actual) => {
+                            write_checksum_sidecar(&cached_ship, &actual)?;
+                            debug!(path = %cached_ship.display(), "wrote missing ship checksum sidecar");
+                            false
+                        }
+                        Err(_) => true,
+                    }
+                }
+            }
+        } else {
+            true
+        };
+
+        if need_download {
+            info!(tag = %release_response.tag_name, asset = %ship_asset.name, path = %cached_ship.display(), "caching ship_data asset");
+            download_ship_asset(&client, &ship_asset.download_url, &cached_ship)?;
+            let checksum = compute_sha256_hex(&cached_ship)?;
+            write_checksum_sidecar(&cached_ship, &checksum)?;
+            ship_cached = Some(cached_ship.clone());
+        } else {
+            // cached and verified or written sidecar above
+            if cached_ship.exists() {
+                ship_cached = Some(cached_ship.clone());
+            }
+        }
+    }
+
     copy_cached_to_target(&cached_dataset, target_path)?;
-    Ok(release_response.tag_name)
+    Ok((release_response.tag_name, ship_cached))
 }
 
 pub(crate) fn resolve_release_tag(release: &DatasetRelease) -> Result<String> {
@@ -272,13 +336,85 @@ fn copy_from_override(source: &Path, target: &Path) -> Result<()> {
     fs::create_dir_all(&cache_dir)?;
 
     let cached_dataset = cache_dir.join(format!("local-{}", target_dataset_filename(target)));
-    if source
+    if source.is_dir() {
+        // Copy DB file from directory source
+        let mut found_db = false;
+        for entry in fs::read_dir(source)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path
+                .extension()
+                .and_then(|e| e.to_str())
+                .map(|s| s.eq_ignore_ascii_case("db"))
+                .unwrap_or(false)
+            {
+                copy_file_atomic(&path, &cached_dataset)?;
+                found_db = true;
+                break;
+            }
+        }
+        if !found_db {
+            return Err(Error::Io(io::Error::new(
+                io::ErrorKind::NotFound,
+                "no .db file found in source directory",
+            )));
+        }
+
+        // Also copy ship_data.csv if present
+        let ship_src = source.join("ship_data.csv");
+        if ship_src.exists() {
+            let cached_ship = cache_dir.join(format!("local-{}", "ship_data.csv"));
+            copy_file_atomic(&ship_src, &cached_ship)?;
+            let checksum = compute_sha256_hex(&cached_ship)?;
+            write_checksum_sidecar(&cached_ship, &checksum)?;
+        }
+    } else if source
         .extension()
         .and_then(|ext| ext.to_str())
         .map(|ext| ext.eq_ignore_ascii_case("zip"))
         .unwrap_or(false)
     {
-        extract_archive(source, &cached_dataset)?;
+        // Open archive once and extract both the .db and ship_data.csv in a single pass
+        // Use a `&Path` for NamedTempFile::new_in to avoid unnecessary moves/clones
+        let parent = cache_dir.as_path();
+        let file = File::open(source)?;
+        let mut archive = ZipArchive::new(file)?;
+
+        let mut found_db = false;
+        let cache_dir_buf = cache_dir.clone();
+        for idx in 0..archive.len() {
+            let mut entry = archive.by_index(idx)?;
+            if !entry.is_file() {
+                continue;
+            }
+            if let Some(path) = entry.enclosed_name() {
+                let lname = path.to_string_lossy().to_ascii_lowercase();
+                if lname.ends_with(".db") && !found_db {
+                    let mut tmp = NamedTempFile::new_in(parent)?;
+                    io::copy(&mut entry, tmp.as_file_mut())?;
+                    tmp.flush()?;
+                    if cached_dataset.exists() {
+                        fs::remove_file(&cached_dataset)?;
+                    }
+                    tmp.persist(&cached_dataset).map_err(|err| err.error)?;
+                    found_db = true;
+                } else if lname.ends_with("ship_data.csv") {
+                    let cached_ship = cache_dir_buf.join(format!("local-{}", "ship_data.csv"));
+                    let mut tmp = NamedTempFile::new_in(parent)?;
+                    io::copy(&mut entry, tmp.as_file_mut())?;
+                    tmp.flush()?;
+                    tmp.persist(&cached_ship).map_err(|err| err.error)?;
+                    let checksum = compute_sha256_hex(&cached_ship)?;
+                    write_checksum_sidecar(&cached_ship, &checksum)?;
+                }
+            }
+        }
+
+        if !found_db {
+            return Err(Error::ArchiveMissingDatabase {
+                archive: source.to_path_buf(),
+            });
+        }
     } else {
         copy_file_atomic(source, &cached_dataset)?;
     }
@@ -291,13 +427,82 @@ fn copy_from_override_with_cache(source: &Path, target: &Path, cache_dir: &Path)
 
     let cached_dataset =
         PathBuf::from(cache_dir).join(format!("local-{}", target_dataset_filename(target)));
-    if source
+    if source.is_dir() {
+        // Copy db from directory
+        let mut found_db = false;
+        for entry in fs::read_dir(source)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path
+                .extension()
+                .and_then(|e| e.to_str())
+                .map(|s| s.eq_ignore_ascii_case("db"))
+                .unwrap_or(false)
+            {
+                copy_file_atomic(&path, &cached_dataset)?;
+                found_db = true;
+                break;
+            }
+        }
+        if !found_db {
+            return Err(Error::Io(io::Error::new(
+                io::ErrorKind::NotFound,
+                "no .db file found in source directory",
+            )));
+        }
+
+        // ship_data.csv
+        let ship_src = source.join("ship_data.csv");
+        if ship_src.exists() {
+            let cached_ship = cache_dir.join(format!("local-{}", "ship_data.csv"));
+            copy_file_atomic(&ship_src, &cached_ship)?;
+            let checksum = compute_sha256_hex(&cached_ship)?;
+            write_checksum_sidecar(&cached_ship, &checksum)?;
+        }
+    } else if source
         .extension()
         .and_then(|ext| ext.to_str())
         .map(|ext| ext.eq_ignore_ascii_case("zip"))
         .unwrap_or(false)
     {
-        extract_archive(source, &cached_dataset)?;
+        // Open archive once and extract DB and ship_data.csv in a single pass
+        let file = File::open(source)?;
+        let mut archive = ZipArchive::new(file)?;
+
+        let mut found_db = false;
+        for idx in 0..archive.len() {
+            let mut entry = archive.by_index(idx)?;
+            if !entry.is_file() {
+                continue;
+            }
+            if let Some(path) = entry.enclosed_name() {
+                let lname = path.to_string_lossy().to_ascii_lowercase();
+                if lname.ends_with(".db") && !found_db {
+                    let mut tmp = NamedTempFile::new_in(cache_dir)?;
+                    io::copy(&mut entry, tmp.as_file_mut())?;
+                    tmp.flush()?;
+                    if cached_dataset.exists() {
+                        fs::remove_file(&cached_dataset)?;
+                    }
+                    tmp.persist(&cached_dataset).map_err(|err| err.error)?;
+                    found_db = true;
+                } else if lname.ends_with("ship_data.csv") {
+                    let cached_ship = cache_dir.join(format!("local-{}", "ship_data.csv"));
+                    let mut tmp = NamedTempFile::new_in(cache_dir)?;
+                    io::copy(&mut entry, tmp.as_file_mut())?;
+                    tmp.flush()?;
+                    tmp.persist(&cached_ship).map_err(|err| err.error)?;
+                    let checksum = compute_sha256_hex(&cached_ship)?;
+                    write_checksum_sidecar(&cached_ship, &checksum)?;
+                }
+            }
+        }
+
+        if !found_db {
+            return Err(Error::ArchiveMissingDatabase {
+                archive: source.to_path_buf(),
+            });
+        }
     } else {
         copy_file_atomic(source, &cached_dataset)?;
     }
@@ -395,6 +600,8 @@ fn fetch_release(client: &Client, release: &DatasetRelease) -> Result<ReleaseRes
 enum AssetKind {
     Database,
     Archive,
+    /// A CSV file containing ship data (e.g., `ship_data.csv`).
+    ShipCsv,
 }
 
 #[derive(Debug)]
@@ -423,6 +630,10 @@ fn select_dataset_asset(release: &ReleaseResponse) -> Option<AssetInfo> {
                     kind: AssetKind::Archive,
                 });
             }
+            Some(AssetKind::ShipCsv) => {
+                // Ship CSVs are not dataset assets; skip and allow DB/archive selection.
+                continue;
+            }
             None => continue,
         }
     }
@@ -434,6 +645,10 @@ fn classify_asset(asset: &ReleaseAsset) -> Option<AssetKind> {
     let name = asset.name.to_ascii_lowercase();
     if name.ends_with(".db") || name.ends_with(".sqlite") {
         return Some(AssetKind::Database);
+    }
+    // Accept explicit ship data CSV names or names that include `ship_data`.
+    if name.ends_with("ship_data.csv") || name.contains("ship_data") {
+        return Some(AssetKind::ShipCsv);
     }
 
     if name.ends_with(".zip") {
@@ -449,11 +664,27 @@ fn classify_asset(asset: &ReleaseAsset) -> Option<AssetKind> {
     None
 }
 
+#[allow(dead_code)]
+fn select_ship_asset(release: &ReleaseResponse) -> Option<AssetInfo> {
+    for asset in &release.assets {
+        if let Some(AssetKind::ShipCsv) = classify_asset(asset) {
+            return Some(AssetInfo {
+                name: asset.name.clone(),
+                download_url: asset.browser_download_url.clone(),
+                kind: AssetKind::ShipCsv,
+            });
+        }
+    }
+
+    None
+}
+
 fn cache_file_name(asset: &AssetInfo, release: &ReleaseResponse, target: &Path) -> String {
     let tag = sanitize_component(&release.tag_name);
     match asset.kind {
         AssetKind::Database => format!("{}-{}", tag, sanitize_component(&asset.name)),
         AssetKind::Archive => format!("{}-{}", tag, target_dataset_filename(target)),
+        AssetKind::ShipCsv => format!("{}-{}", tag, sanitize_component(&asset.name)),
     }
 }
 
@@ -487,6 +718,79 @@ fn download_archive_asset(client: &Client, url: &str, destination: &Path) -> Res
     download_to_file(client, url, archive_tmp.as_file_mut())?;
     archive_tmp.flush()?;
     extract_archive(archive_tmp.path(), destination)
+}
+
+fn download_ship_asset(client: &Client, url: &str, destination: &Path) -> Result<()> {
+    let parent = destination.parent().unwrap_or_else(|| Path::new("."));
+    let mut tmp = NamedTempFile::new_in(parent)?;
+    download_to_file(client, url, tmp.as_file_mut())?;
+    tmp.flush()?;
+    tmp.persist(destination).map_err(|err| err.error)?;
+    Ok(())
+}
+
+fn compute_sha256_hex(path: &Path) -> Result<String> {
+    let data = fs::read(path)?;
+    let mut hasher = Sha256::new();
+    hasher.update(&data);
+    Ok(format!("{:x}", hasher.finalize()))
+}
+
+fn write_checksum_sidecar(file: &Path, checksum: &str) -> Result<()> {
+    let sidecar_name = format!("{}.sha256", file.file_name().unwrap().to_string_lossy());
+    let sidecar_path = file.with_file_name(sidecar_name);
+    fs::write(sidecar_path, checksum)?;
+    Ok(())
+}
+
+fn read_checksum_sidecar(file: &Path) -> Result<Option<String>> {
+    let sidecar_name = format!("{}.sha256", file.file_name().unwrap().to_string_lossy());
+    let sidecar_path = file.with_file_name(sidecar_name);
+    if !sidecar_path.exists() {
+        return Ok(None);
+    }
+    let s = fs::read_to_string(sidecar_path)?;
+    Ok(Some(s.trim().to_string()))
+}
+
+/// Best-effort search for a cached ship_data file in the dataset cache directory.
+///
+/// This looks first for any file containing `ship_data` (case-insensitive), and
+/// falls back to files prefixed by the sanitized release tag containing `ship`.
+pub(crate) fn find_cached_ship_for_tag(tag: &str) -> Result<Option<PathBuf>> {
+    let cache_dir = dataset_cache_dir()?;
+    if !cache_dir.exists() {
+        return Ok(None);
+    }
+
+    // Single-pass scan: prefer explicit ship_data filenames, but keep a
+    // fallback candidate that matches the sanitized tag prefix and contains
+    // the word 'ship'. This avoids scanning the directory twice.
+    let mut fallback: Option<PathBuf> = None;
+    let prefix = sanitize_component(tag).to_ascii_lowercase();
+
+    for entry in fs::read_dir(&cache_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+        let name = path
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let lname = name.to_ascii_lowercase();
+
+        if lname.contains("ship_data") {
+            return Ok(Some(path));
+        }
+
+        if fallback.is_none() && lname.starts_with(&prefix) && lname.contains("ship") {
+            fallback = Some(path);
+        }
+    }
+
+    Ok(fallback)
 }
 
 fn download_to_file(client: &Client, url: &str, file: &mut File) -> Result<()> {
@@ -615,4 +919,54 @@ fn copy_file_atomic(source: &Path, destination: &Path) -> Result<()> {
     }
     tmp.persist(destination).map_err(|err| err.error)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn classify_detects_ship_data_by_name() {
+        let asset = ReleaseAsset {
+            name: "ship_data.csv".to_string(),
+            browser_download_url: "https://example.com/ship_data.csv".to_string(),
+            content_type: Some("text/csv".to_string()),
+        };
+
+        assert_eq!(classify_asset(&asset), Some(AssetKind::ShipCsv));
+    }
+
+    #[test]
+    fn classify_detects_ship_data_by_inclusion() {
+        let asset = ReleaseAsset {
+            name: "datasets_ship_data_v2.csv".to_string(),
+            browser_download_url: "https://example.com/datasets_ship_data_v2.csv".to_string(),
+            content_type: Some("text/csv".to_string()),
+        };
+
+        assert_eq!(classify_asset(&asset), Some(AssetKind::ShipCsv));
+    }
+
+    #[test]
+    fn select_ship_asset_picks_ship_csv() {
+        let release = ReleaseResponse {
+            tag_name: "e6c3".to_string(),
+            assets: vec![
+                ReleaseAsset {
+                    name: "static_data.db".to_string(),
+                    browser_download_url: "https://example.com/static_data.db".to_string(),
+                    content_type: Some("application/octet-stream".to_string()),
+                },
+                ReleaseAsset {
+                    name: "ship_data.csv".to_string(),
+                    browser_download_url: "https://example.com/ship_data.csv".to_string(),
+                    content_type: Some("text/csv".to_string()),
+                },
+            ],
+        };
+
+        let selected = select_ship_asset(&release).expect("ship asset should be found");
+        assert_eq!(selected.kind, AssetKind::ShipCsv);
+        assert!(selected.name.contains("ship_data"));
+    }
 }

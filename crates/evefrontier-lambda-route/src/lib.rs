@@ -34,9 +34,9 @@ static INDEX_BYTES: &[u8] = include_bytes!("../../../data/static_data.db.spatial
 #[cfg(not(feature = "bundle-data"))]
 static INDEX_BYTES: &[u8] = &[];
 
-/// Bundled ship data (from docs/fixtures/ship_data.csv). Enable via `bundle-ship-data`.
+/// Bundled ship data (from data/ship_data.csv). Enable via `bundle-ship-data`.
 #[cfg(feature = "bundle-ship-data")]
-static SHIP_DATA_BYTES: &[u8] = include_bytes!("../../../docs/fixtures/ship_data.csv");
+static SHIP_DATA_BYTES: &[u8] = include_bytes!("../../../data/ship_data.csv");
 #[cfg(not(feature = "bundle-ship-data"))]
 static SHIP_DATA_BYTES: &[u8] = &[];
 
@@ -55,7 +55,7 @@ pub async fn run() -> Result<(), Error> {
     init_tracing();
 
     // Initialize runtime with bundled data (logs cold-start timing)
-    let _runtime = init_runtime(DB_BYTES, INDEX_BYTES);
+    let _runtime = init_runtime(DB_BYTES, INDEX_BYTES, SHIP_DATA_BYTES);
 
     lambda_runtime::run(service_fn(handler)).await
 }
@@ -190,18 +190,25 @@ fn handle_route_request(request: &RouteRequest, request_id: &str) -> Response {
 }
 
 fn ship_catalog() -> Result<&'static ShipCatalog, &'static LibError> {
+    // Prefer a catalog loaded at runtime (cold-start). This supports Lambda
+    // bundling where the shared runtime pre-parsed the CSV into memory.
+    if let Ok(runtime) = std::panic::catch_unwind(get_runtime) {
+        if let Some(catalog) = runtime.ship_catalog() {
+            return Ok(catalog);
+        }
+    }
+
+    // Otherwise, lazily initialize a per-crate catalog from bundled bytes or
+    // the `EVEFRONTIER_SHIP_DATA` env var. This preserves previous behaviour
+    // for tests and non-Lambda execution.
     let result = SHIP_CATALOG.get_or_init(|| {
         if !SHIP_DATA_BYTES.is_empty() {
-            let cursor = Cursor::new(SHIP_DATA_BYTES);
-            return ShipCatalog::from_reader(cursor);
+            return ShipCatalog::from_reader(Cursor::new(SHIP_DATA_BYTES));
         }
 
         if let Ok(path) = env::var("EVEFRONTIER_SHIP_DATA") {
             match fs::read(&path) {
-                Ok(bytes) => {
-                    let cursor = Cursor::new(bytes);
-                    return ShipCatalog::from_reader(cursor);
-                }
+                Ok(bytes) => return ShipCatalog::from_reader(Cursor::new(bytes)),
                 Err(err) => {
                     return Err(LibError::ShipDataValidation {
                         message: format!(
@@ -214,9 +221,8 @@ fn ship_catalog() -> Result<&'static ShipCatalog, &'static LibError> {
         }
 
         Err(LibError::ShipDataValidation {
-            message:
-                "ship data not bundled; enable 'bundle-ship-data' feature or set EVEFRONTIER_SHIP_DATA"
-                    .to_string(),
+            message: "ship data not bundled; enable 'bundle-ship-data' feature or set EVEFRONTIER_SHIP_DATA"
+                .to_string(),
         })
     });
 
@@ -236,6 +242,7 @@ mod tests {
         let _ = init_runtime(
             test_utils::fixture_db_bytes(),
             test_utils::fixture_index_bytes(),
+            test_utils::fixture_ship_bytes(),
         );
     }
 

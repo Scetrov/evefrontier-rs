@@ -54,3 +54,25 @@ fn lists_ships_with_attributes() {
         .stdout(contains("1750"))
         .stdout(contains("800000"));
 }
+
+#[test]
+fn lists_ships_from_cached_dataset() {
+    let temp_dir = tempdir().expect("create temp dir");
+    let cache_dir = temp_dir.path().join("cache");
+    fs::create_dir_all(&cache_dir).expect("create cache dir");
+
+    let mut cmd = cli();
+    cmd.env("EVEFRONTIER_DATASET_SOURCE", fixture_db())
+        .env("EVEFRONTIER_DATASET_CACHE_DIR", &cache_dir)
+        .env("RUST_LOG", "error")
+        .arg("--no-logo")
+        .arg("--data-dir")
+        .arg(temp_dir.path());
+
+    cmd.arg("ships");
+
+    cmd.assert()
+        .success()
+        .stdout(contains("Available ships (3):"))
+        .stdout(contains("Reflex"));
+}

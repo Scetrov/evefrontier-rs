@@ -195,6 +195,9 @@ For detailed alignment report, see `docs/adr-alignment-report_2025-12-30.md`
 - [x] Write integration tests for CLI fuel projection output
 - [x] Update `USAGE.md` with fuel projection examples including cargo and dynamic mass
 - [ ] Future: Research and implement heat impact calculations (requires separate ADR)
+- [x] Bundle `ship_data.csv` into Lambda artifacts and load `ShipCatalog` at cold start (T032)
+- [x] Document ship data bundling & CLI download ship path in `docs/USAGE.md` and update `CHANGELOG.md` (T033)
+- [x] Add CI job `ship-downloader-tests` to run downloader and checksum tests in CI (T035)
 
 ## CLI (`evefrontier-cli`)
 

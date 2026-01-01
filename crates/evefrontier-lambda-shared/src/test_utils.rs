@@ -83,6 +83,16 @@ pub fn fixture_index_bytes() -> &'static [u8] {
     })
 }
 
+/// Load the fixture ship_data.csv bytes for bundling tests.
+pub fn fixture_ship_bytes() -> &'static [u8] {
+    static BYTES: OnceLock<Vec<u8>> = OnceLock::new();
+    BYTES.get_or_init(|| {
+        let path =
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/fixtures/ship_data.csv");
+        std::fs::read(path).expect("ship fixture should exist")
+    })
+}
+
 /// Create a mock request ID for testing.
 ///
 /// Since `lambda_runtime::Context` is non-exhaustive and cannot be directly
