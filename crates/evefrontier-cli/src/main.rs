@@ -890,6 +890,14 @@ fn format_route_not_found_message(
 }
 
 fn load_ship_catalog(paths: &evefrontier_lib::DatasetPaths) -> Result<ShipCatalog> {
+    // Prefer ship data discovered by the dataset resolver (populated in `DatasetPaths`)
+    if let Some(ref ship_path) = paths.ship_data {
+        if ship_path.exists() {
+            return ShipCatalog::from_path(ship_path)
+                .with_context(|| format!("failed to load ship data from {}", ship_path.display()));
+        }
+    }
+
     let candidates = ship_data_candidates(&paths.database);
     let path = candidates
         .iter()
