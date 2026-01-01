@@ -288,6 +288,9 @@ impl OutputFormat {
             "Dataset available at {} (requested release: {})",
             output.dataset_path, output.release
         );
+        if let Some(ref ship) = output.ship_data_path {
+            println!("Ship data available at {}", ship);
+        }
         Ok(())
     }
 
@@ -328,13 +331,16 @@ impl OutputFormat {
 struct DownloadOutput {
     dataset_path: String,
     release: ReleaseRequest,
+    /// Optional path to the cached ship_data CSV if available.
+    ship_data_path: Option<String>,
 }
 
 impl DownloadOutput {
-    fn new(dataset_path: &Path, release: &DatasetRelease) -> Self {
+    fn new(dataset_path: &Path, release: &DatasetRelease, ship_data: Option<&Path>) -> Self {
         Self {
             dataset_path: dataset_path.display().to_string(),
             release: release.into(),
+            ship_data_path: ship_data.map(|p| p.display().to_string()),
         }
     }
 }
@@ -458,7 +464,14 @@ fn handle_download(context: &AppContext) -> Result<()> {
     let release = context.dataset_release();
     let paths = ensure_dataset(context.target_path(), release.clone())
         .context("failed to locate or download the EVE Frontier dataset")?;
-    let output = DownloadOutput::new(&paths.database, &release);
+    // Prefer DatasetPaths.ship_data, fall back to env var if provided
+    let ship_path_buf: Option<PathBuf> = if let Some(p) = &paths.ship_data {
+        Some(p.clone())
+    } else {
+        std::env::var_os("EVEFRONTIER_SHIP_DATA").map(PathBuf::from)
+    };
+
+    let output = DownloadOutput::new(&paths.database, &release, ship_path_buf.as_deref());
     context.output_format().render_download(&output)
 }
 
