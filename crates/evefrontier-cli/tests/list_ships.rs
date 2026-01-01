@@ -64,6 +64,7 @@ fn lists_ships_from_cached_dataset() {
     let mut cmd = cli();
     cmd.env("EVEFRONTIER_DATASET_SOURCE", fixture_db())
         .env("EVEFRONTIER_DATASET_CACHE_DIR", &cache_dir)
+        .env("EVEFRONTIER_SHIP_DATA", fixture_ship())
         .env("RUST_LOG", "error")
         .arg("--no-logo")
         .arg("--data-dir")
