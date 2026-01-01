@@ -659,829 +659,96 @@ let starmap = load_starmap(fixture_path)?;
 - **Constraint Impact**: Each constraint (avoided systems, max jump, etc.) may increase route
   computation time. Use sparingly for best performance.
 
-## MCP Server Integration
+## MCP Server (stdio)
 
-The workspace provides an MCP (Model Context Protocol) server that exposes EVE Frontier route planning
-and system query functionality to AI assistants like Claude Desktop, VS Code, and Cursor.
+The CLI can run a Model Context Protocol (MCP) server over stdio using the `mcp` subcommand. This
+mode is useful for integrating the EVE Frontier dataset with AI assistants (Claude Desktop, VS
+Code Copilot, Cursor) or any client that speaks JSON-RPC over stdin/stdout.
 
-The MCP server communicates via stdio using JSON-RPC 2.0 and provides:
-- **Tools**: Interactive route planning, system info lookup, spatial queries, gate connections
-- **Resources**: Dataset metadata, algorithm capabilities, spatial index status
-- **Prompts**: (Coming in Phase 9) Pre-configured navigation and exploration templates
+Key points:
+- Protocol: JSON-RPC 2.0 over newline-delimited messages on `stdout`/`stdin`.
+- Logs: All logs and diagnostic output are written to `stderr` only so `stdout` remains a clean
+  JSON-RPC channel.
+- Dataset resolution: `--data-dir <PATH>` overrides `EVEFRONTIER_DATA_DIR`; if not provided the
+  CLI will attempt to download or locate a dataset via the usual resolver.
 
-### Quick Start
+### Basic usage
 
-Run the MCP server directly:
-
-```bash
-cargo run -p evefrontier-mcp
-```
-
-The server listens on stdin/stdout for JSON-RPC 2.0 messages. Example:
+Run the MCP server using an explicit dataset fixture (recommended for development and tests):
 
 ```bash
-echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' | cargo run -p evefrontier-mcp
+# Run the MCP server (stdio transport)
+evefrontier-cli mcp --data-dir ./docs/fixtures/minimal_static_data.db
 ```
 
-### Configuration Examples
+When using an environment variable to set the dataset location:
 
-#### Claude Desktop
+```bash
+export EVEFRONTIER_DATA_DIR="$HOME/.local/share/evefrontier/static_data.db"
+evefrontier-cli mcp
+```
 
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or
-`%APPDATA%\Claude\claude_desktop_config.json` (Windows):
+Control logging verbosity via `RUST_LOG` (logs appear on stderr):
+
+```bash
+RUST_LOG=info evefrontier-cli mcp --data-dir ./docs/fixtures/minimal_static_data.db
+```
+
+The server responds to at least the standard MCP `initialize` handshake and exposes tools,
+resources, and prompts as JSON objects in the `initialize` response.
+
+### Client configuration examples
+
+Claude Desktop (example `claude_desktop_config.json`):
 
 ```json
 {
-  "mcpServers": {
-    "evefrontier": {
-      "command": "cargo",
-      "args": ["run", "-p", "evefrontier-mcp"],
-      "cwd": "/path/to/evefrontier-rs"
-    }
+  "name": "EVE Frontier (CLI MCP)",
+  "command": "/path/to/evefrontier-cli",
+  "args": ["mcp"],
+  "env": {
+    "EVEFRONTIER_DATA_DIR": "/absolute/path/to/static_data.db",
+    "RUST_LOG": "info"
   }
 }
 ```
 
-#### VS Code (with MCP Extension)
-
-Add to `.vscode/mcp.json`:
+VS Code extension / launch config (example `launch.json` snippet):
 
 ```json
 {
-  "mcpServers": {
-    "evefrontier": {
-      "command": "cargo",
-      "args": ["run", "-p", "evefrontier-mcp"],
-      "cwd": "${workspaceFolder}"
-    }
-  }
-}
-```
-
-#### Cursor
-
-Add to Cursor Settings → MCP Servers:
-
-```json
-{
-  "evefrontier": {
-    "command": "cargo",
-    "args": ["run", "-p", "evefrontier-mcp"],
-    "cwd": "/path/to/evefrontier-rs"
-  }
-}
-```
-
-### Available Tools
-
-The MCP server exposes four tools for AI assistants:
-
-#### `route_plan`
-
-Plan a route between two star systems with optional constraints.
-
-**Input Schema:**
-
-```typescript
-{
-  origin: string;           // Starting system name (required)
-  destination: string;      // Destination system name (required)
-  algorithm?: "bfs" | "dijkstra" | "a-star"; // Routing algorithm (default: a-star)
-  max_jump?: number;        // Maximum jump distance in light years
-  max_temperature?: number; // Maximum system temperature in Kelvin
-  avoid_systems?: string[]; // Systems to avoid
-  avoid_gates?: boolean;    // Avoid jump gates (spatial only)
-}
-```
-
-**Example Request:**
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "tools/call",
-  "params": {
-    "name": "route_plan",
-    "arguments": {
-      "origin": "Nod",
-      "destination": "Brana",
-      "algorithm": "a-star",
-      "max_jump": 80
-    }
-  }
-}
-```
-
-**Response:**
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "result": {
-    "content": [
-      {
-        "type": "text",
-        "text": "{\"success\":true,\"summary\":\"Route from Nod to Brana: 2 jumps, 45.2 ly\",\"route\":{...}}"
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run EVE Frontier MCP",
+      "type": "extensionHost",
+      "request": "launch",
+      "runtimeExecutable": "/path/to/evefrontier-cli",
+      "args": ["mcp"],
+      "env": {
+        "EVEFRONTIER_DATA_DIR": "/absolute/path/to/static_data.db",
+        "RUST_LOG": "info"
       }
-    ]
-  }
-}
-```
-
-#### `system_info`
-
-Get detailed information about a star system.
-
-**Input Schema:**
-
-```typescript
-{
-  system_name: string; // System name to query (required)
-}
-```
-
-**Example:**
-
-```json
-{
-  "name": "system_info",
-  "arguments": { "system_name": "Nod" }
-}
-```
-
-Returns system coordinates, temperature, planets, moons, and gate connections.
-
-#### `systems_nearby`
-
-Find star systems within a spatial radius.
-
-**Input Schema:**
-
-```typescript
-{
-  origin: string;           // Center system name (required)
-  radius: number;           // Search radius in light years (required)
-  max_temperature?: number; // Maximum system temperature filter
-}
-```
-
-**Example:**
-
-```json
-{
-  "name": "systems_nearby",
-  "arguments": {
-    "origin": "Nod",
-    "radius": 50,
-    "max_temperature": 5000
-  }
-}
-```
-
-Returns list of systems within range, sorted by distance.
-
-#### `gates_from`
-
-Get jump gate connections from a system.
-
-**Input Schema:**
-
-```typescript
-{
-  system_name: string; // System name to query (required)
-}
-```
-
-**Example:**
-
-```json
-{
-  "name": "gates_from",
-  "arguments": { "system_name": "Nod" }
-}
-```
-
-Returns list of gate-connected neighbor systems.
-
-### Available Resources
-
-The MCP server exposes three resources for context:
-
-#### `evefrontier://dataset/info`
-
-Dataset metadata including system count, gate count, schema version.
-
-**Response:**
-
-```json
-{
-  "system_count": 8,
-  "gate_count": 12,
-  "schema_version": "static_data.db",
-  "release_tag": "v0.1.0",
-  "checksum": "abc123..."
-}
-```
-
-#### `evefrontier://algorithms`
-
-Available routing algorithms and their capabilities.
-
-**Response:**
-
-```json
-{
-  "algorithms": [
-    {
-      "name": "bfs",
-      "description": "Breadth-first search for unweighted gate routes",
-      "constraints": ["gate_only", "no_max_jump", "fast"]
-    },
-    {
-      "name": "dijkstra",
-      "description": "Weighted routing supporting gate and spatial edges",
-      "constraints": ["supports_max_jump", "supports_temperature", "gate_or_spatial"]
-    },
-    {
-      "name": "a-star",
-      "description": "Heuristic-guided routing prioritizing shortest spatial distance",
-      "constraints": ["supports_max_jump", "supports_temperature", "heuristic_spatial"]
-    }
-  ],
-  "default": "a-star"
-}
-```
-
-#### `evefrontier://spatial-index/status`
-
-Spatial index availability and initialization status.
-
-**Response:**
-
-```json
-{
-  "available": true,
-  "path": "/path/to/static_data.db.spatial.bin",
-  "initialized_at": "2025-12-31T12:34:56Z",
-  "format_version": 2,
-  "source_checksum": "abc123...",
-  "source_release_tag": "v0.1.0"
-}
-```
-
-### Protocol Details
-
-The MCP server implements JSON-RPC 2.0 over stdio transport with the following methods:
-
-- `initialize`: Protocol handshake (returns version, capabilities, server info)
-- `tools/list`: List all available tools with schemas
-- `tools/call`: Invoke a tool with arguments
-- `resources/list`: List all available resources
-- `resources/read`: Read resource content by URI
-- `prompts/list`: List available prompt templates (Phase 9)
-
-All responses follow the MCP specification format with `content` arrays containing
-structured data as JSON strings.
-
-### Error Handling
-
-The server returns standard JSON-RPC error codes:
-
-- `-32700`: Parse error (malformed JSON)
-- `-32600`: Invalid request (non-2.0 protocol version)
-- `-32601`: Method not found (unknown tool/resource)
-- `-32602`: Invalid params (validation failure)
-- `-32603`: Internal error (server-side failure)
-
-**Example Error Response:**
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "error": {
-    "code": -32602,
-    "message": "Invalid parameters: origin cannot be empty"
-  }
-}
-```
-
-### Performance Considerations
-
-- **Cold Start**: First request loads dataset (~100ms) and spatial index (~50ms)
-- **Tool Latency**: Route planning: 10-100ms, system queries: <10ms
-- **Memory**: ~50-100MB RAM for dataset + spatial index
-- **Concurrency**: Single-threaded, processes one request at a time
-
-### Debugging
-
-Enable detailed logging by setting the `RUST_LOG` environment variable:
-
-```bash
-RUST_LOG=evefrontier_mcp=debug cargo run -p evefrontier-mcp
-```
-
-Logs are written to stderr to avoid corrupting the stdio protocol on stdout.
-
-### Testing
-
-Run integration tests that verify the JSON-RPC protocol:
-
-```bash
-cargo test -p evefrontier-mcp --test integration_test
-```
-
-Tests spawn the server and verify all protocol methods, tool invocations, and error handling.
-
-## AWS Lambda Functions
-
-The workspace provides three AWS Lambda functions for serverless route planning and navigation. Each
-Lambda is a thin wrapper around `evefrontier-lib` with optimized cold-start performance via bundled
-dataset and spatial index.
-
-> [!TIP]
-> For infrastructure setup and deployment instructions, see [DEPLOYMENT.md](./DEPLOYMENT.md). This
-> section covers API usage assuming functions are already deployed.
-
-### Lambda Function Overview
-
-| Function                         | Endpoint       | Description                                                  |
-| -------------------------------- | -------------- | ------------------------------------------------------------ |
-| `evefrontier-lambda-route`       | `/route`       | Compute routes between systems with algorithm selection      |
-| `evefrontier-lambda-scout-gates` | `/scout-gates` | Find gate-connected neighbors of a system                    |
-| `evefrontier-lambda-scout-range` | `/scout-range` | Find systems within spatial range with temperature filtering |
-
-All Lambda functions:
-
-- Accept JSON requests and return JSON responses
-- Use RFC 9457 Problem Details for structured error responses
-- Support tracing for CloudWatch Logs integration
-- Bundle the dataset and spatial index for zero-download cold starts
-- Share a common runtime initialized once per Lambda container lifecycle
-
-### Route Lambda
-
-Computes routes between two systems using configurable algorithms and constraints.
-
-#### Request Schema
-
-```json
-{
-  "from": "ER1-MM7",
-  "to": "ENQ-PB6",
-  "algorithm": "a-star",
-  "max_jump": 80.0,
-  "avoid": ["IFM-228"],
-  "avoid_gates": false,
-  "max_temperature": 50.0
-}
-```
-
-**Fields:**
-
-- `from` (required): Starting system name
-- `to` (required): Destination system name
-- `algorithm` (optional): `"bfs"`, `"dijkstra"`, or `"a-star"` (default: `"a-star"`)
-- `max_jump` (optional): Maximum jump distance in light-years
-- `avoid` (optional): Array of system names to avoid
-- `avoid_gates` (optional): If `true`, use only spatial jumps (default: `false`)
-- `max_temperature` (optional): Maximum star temperature threshold in Kelvin
-
-#### Response Schema
-
-**Success (HTTP 200):**
-
-```json
-{
-  "content_type": "application/json",
-  "hops": 2,
-  "gates": 2,
-  "jumps": 0,
-  "algorithm": "a-star",
-  "route": ["ER1-MM7", "IFM-228", "ENQ-PB6"]
-}
-```
-
-_Note: The `LambdaResponse` wrapper uses `#[serde(flatten)]`, so response fields are merged directly
-into the top level._
-
-**Error (HTTP 400/404/500):**
-
-```json
-{
-  "type": "https://evefrontier.example/problems/unknown-system",
-  "title": "Unknown System",
-  "status": 404,
-  "detail": "System 'InvalidName' not found in dataset. Did you mean: ER1-MM7, ENQ-PB6?",
-  "instance": "/route/req-abc123"
-}
-```
-
-#### Invocation Examples
-
-**AWS SDK (Python):**
-
-```python
-import boto3
-import json
-
-lambda_client = boto3.client('lambda', region_name='us-east-1')
-
-payload = {
-    "from": "ER1-MM7",
-    "to": "ENQ-PB6",
-    "algorithm": "a-star",
-    "max_jump": 80.0
-}
-
-response = lambda_client.invoke(
-    FunctionName='evefrontier-lambda-route',
-    InvocationType='RequestResponse',
-    Payload=json.dumps(payload)
-)
-
-result = json.loads(response['Payload'].read())
-print(f"Route: {result['data']['route']}")
-print(f"Hops: {result['data']['hops']}")
-```
-
-**AWS SDK (JavaScript/Node.js):**
-
-```javascript
-const { LambdaClient, InvokeCommand } = require("@aws-sdk/client-lambda");
-
-const client = new LambdaClient({ region: "us-east-1" });
-
-const payload = {
-  from: "ER1-MM7",
-  to: "ENQ-PB6",
-  algorithm: "a-star",
-  max_jump: 80.0
-};
-
-const command = new InvokeCommand({
-  FunctionName: "evefrontier-route",
-  Payload: JSON.stringify(payload)
-});
-
-const response = await client.send(command);
-const result = JSON.parse(Buffer.from(response.Payload).toString());
-console.log(`Route: ${result.data.route}`);
-```
-
-**curl (via API Gateway):**
-
-```bash
-curl -X POST https://api.example.com/route \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -d '{
-    "from": "ER1-MM7",
-    "to": "ENQ-PB6",
-    "algorithm": "a-star"
-  }'
-```
-
-### Scout Gates Lambda
-
-Returns gate-connected neighbors of a system.
-
-#### Request Schema
-
-```json
-{
-  "system": "ER1-MM7"
-}
-```
-
-**Fields:**
-
-- `system` (required): System name to find neighbors for
-
-#### Response Schema
-
-**Success (HTTP 200):**
-
-```json
-{
-  "content_type": "application/json",
-  "system": "ER1-MM7",
-  "system_id": 30001178,
-  "count": 4,
-  "neighbors": [
-    {
-      "name": "IFM-228",
-      "id": 30001177
-    },
-    {
-      "name": "E85-NR6",
-      "id": 30001179
     }
   ]
 }
 ```
 
-_Note: The `LambdaResponse` wrapper uses `#[serde(flatten)]`, so response fields are merged directly
-into the top level._
+> NOTE: Different AI clients may have different ways to configure an external process. The
+> essential properties are the executable path, `mcp` argument, and environment variables.
 
-#### Invocation Examples
+### Troubleshooting
 
-**AWS SDK (Python):**
+- If the client fails to parse responses, ensure the CLI is launched **without** banners or
+  messages on `stdout`. The MCP mode suppresses the ASCII banner and routes all logs to `stderr`.
+- If the server cannot find the dataset, confirm the `--data-dir` path or set `EVEFRONTIER_DATA_DIR`.
+  The CLI will attempt to download the dataset if `--data-dir` is not explicit.
+- If the client disconnects unexpectedly, the server handles EOF and exits gracefully. Client-side
+  tools must keep `stdout` open until finished reading JSON-RPC responses.
 
-```python
-payload = {"system": "ER1-MM7"}
+If you'd like, I can add a short example showing the JSON `initialize` exchange and a minimal
+Claude Desktop configuration file in the `docs/` directory.
 
-response = lambda_client.invoke(
-    FunctionName='evefrontier-lambda-scout-gates',
-    InvocationType='RequestResponse',
-    Payload=json.dumps(payload)
-)
+---
 
-result = json.loads(response['Payload'].read())
-neighbors = result['data']['neighbors']
-print(f"Found {result['data']['count']} gate-connected systems:")
-for neighbor in neighbors:
-    print(f"  - {neighbor['name']} (ID: {neighbor['id']})")
-```
-
-**curl (via API Gateway):**
-
-```bash
-curl -X POST https://api.example.com/scout-gates \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -d '{"system": "ER1-MM7"}'
-```
-
-### Scout Range Lambda
-
-Returns systems within spatial range with optional temperature filtering.
-
-#### Request Schema
-
-```json
-{
-  "system": "ER1-MM7",
-  "limit": 50,
-  "radius": 100.0,
-  "max_temperature": 50.0
-}
-```
-
-**Fields:**
-
-- `system` (required): Center system name
-- `limit` (optional): Maximum number of results (default: 50)
-- `radius` (optional): Maximum distance in light-years (no limit if omitted)
-- `max_temperature` (optional): Maximum star temperature threshold in Kelvin
-
-#### Response Schema
-
-**Success (HTTP 200):**
-
-```json
-{
-  "content_type": "application/json",
-  "system": "ER1-MM7",
-  "system_id": 30001178,
-  "count": 3,
-  "systems": [
-    {
-      "name": "IFM-228",
-      "id": 30001177,
-      "distance_ly": 25.4,
-      "min_temp_k": 2.45
-    },
-    {
-      "name": "ENQ-PB6",
-      "id": 30001176,
-      "distance_ly": 67.8,
-      "min_temp_k": 22.1
-    },
-    {
-      "name": "E85-NR6",
-      "id": 30001179,
-      "distance_ly": 88.3
-    }
-  ]
-}
-```
-
-_Note: The `LambdaResponse` wrapper uses `#[serde(flatten)]`, so response fields are merged directly
-into the top level._
-
-**Notes:**
-
-- Results are ordered by distance (closest first)
-- `min_temp_k` field is included only if temperature data is available in the dataset
-- KD-tree spatial index is used for efficient neighbor queries (sub-millisecond for typical
-  datasets)
-
-#### Invocation Examples
-
-**AWS SDK (Python):**
-
-```python
-payload = {
-    "system": "ER1-MM7",
-    "radius": 100.0,
-    "max_temperature": 50.0,
-    "limit": 10
-}
-
-response = lambda_client.invoke(
-    FunctionName='evefrontier-lambda-scout-range',
-    InvocationType='RequestResponse',
-    Payload=json.dumps(payload)
-)
-
-result = json.loads(response['Payload'].read())
-systems = result['data']['systems']
-print(f"Found {result['data']['count']} systems within range:")
-for system in systems:
-    temp_info = f", temp: {system['min_temp_k']}K" if 'min_temp_k' in system else ""
-    print(f"  - {system['name']}: {system['distance_ly']:.1f} ly{temp_info}")
-```
-
-**curl (via API Gateway):**
-
-```bash
-curl -X POST https://api.example.com/scout-range \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -d '{
-    "system": "ER1-MM7",
-    "radius": 100.0,
-    "max_temperature": 50.0
-  }'
-```
-
-### Cold Start & Initialization
-
-Lambda functions bundle the EVE Frontier dataset and spatial index at build time for optimal
-cold-start performance. Initialization happens once per Lambda container lifecycle.
-
-#### Initialization Sequence
-
-1. **Tracing Setup**: JSON-formatted CloudWatch Logs integration
-2. **Database Loading**: Zero-copy deserialization from bundled bytes
-   (`rusqlite::deserialize_bytes`)
-3. **Spatial Index Loading**: KD-tree deserialized from bundled compressed bytes
-4. **Starmap Construction**: In-memory graph built from database tables
-
-#### Cold Start Timing
-
-Typical cold-start metrics (logged via tracing):
-
-```json
-{
-  "level": "INFO",
-  "message": "runtime initialized",
-  "db_load_ms": 45,
-  "index_load_ms": 12,
-  "total_init_ms": 57,
-  "timestamp": "2025-12-05T10:30:45.123Z"
-}
-```
-
-- **Database load**: 30-60ms (depends on dataset size)
-- **Spatial index load**: 10-20ms (compressed format enables fast decompression)
-- **Total cold start**: <100ms for typical e6c3 dataset
-
-**Warm invocations** reuse the initialized container and return in <10ms.
-
-#### Memory Usage
-
-- **Bundled assets**: ~20-50 MB (dataset + spatial index compressed)
-- **Runtime memory**: ~80-150 MB (starmap, KD-tree, graph structures)
-- **Total Lambda memory**: 512 MB recommended (256 MB minimum)
-
-### Configuration & Secrets
-
-#### Environment Variables
-
-Currently, Lambda functions do not require environment configuration. All data is bundled at build
-time.
-
-**Future configuration options** (when implemented):
-
-- `LOG_LEVEL`: Tracing verbosity (`debug`, `info`, `warn`, `error`)
-- `DATASET_VERSION`: Override bundled dataset version (if dynamic loading enabled)
-
-#### IAM Permissions
-
-Lambda functions require minimal IAM permissions:
-
-**Required:**
-
-- `logs:CreateLogGroup`
-- `logs:CreateLogStream`
-- `logs:PutLogEvents`
-
-**If using API Gateway:**
-
-- Configure authentication (API keys, Cognito, IAM, or custom authorizers)
-
-**Future requirements** (when secrets are needed):
-
-- `secretsmanager:GetSecretValue` (if API tokens or credentials are externalized)
-
-#### Deployment Considerations
-
-1. **Build with bundled data**:
-
-   ```bash
-   cargo build --release -p evefrontier-lambda-route --features bundle-data
-   cargo build --release -p evefrontier-lambda-scout-gates --features bundle-data
-   cargo build --release -p evefrontier-lambda-scout-range --features bundle-data
-   ```
-
-2. **Package for AWS Lambda**:
-   - Binaries must be named `bootstrap` for custom Lambda runtimes
-   - Package in `.zip` with binary at root
-   - Or use container images with AWS Lambda Runtime Interface
-
-3. **Lambda Configuration**:
-   - Runtime: `provided.al2` (custom Rust runtime)
-   - Memory: 512 MB (recommended)
-   - Timeout: 10 seconds (routes typically compute in <1s)
-   - Architecture: `arm64` or `x86_64` (match build target)
-
-4. **API Gateway Integration**:
-   - Set up REST API or HTTP API endpoints
-   - Configure CORS if needed for browser clients
-   - Enable CloudWatch Logs for request tracing
-
-**See `docs/RELEASE.md` (future)** for detailed deployment automation and Terraform templates.
-
-## Development Scripts
-
-The `scripts/` directory contains utility scripts for fixture management, database inspection, and
-development tooling. All scripts are registered as Nx tasks.
-
-### Available Script Tasks
-
-```bash
-# Verify test fixture integrity
-pnpm nx run scripts:fixture-verify
-
-# Show current fixture status
-pnpm nx run scripts:fixture-status
-
-# Record fixture metadata (after updates)
-pnpm nx run scripts:fixture-record
-
-# Inspect a database file
-pnpm nx run scripts:inspect-db docs/fixtures/minimal_static_data.db
-
-# Run all verification tasks
-pnpm nx run scripts:verify-all
-```
-
-### Fixture Management
-
-The test fixture at `docs/fixtures/minimal_static_data.db` is pinned and verified against recorded
-metadata. This ensures deterministic test results across different environments.
-
-**Verify fixture integrity:**
-
-```bash
-pnpm nx run scripts:fixture-verify
-```
-
-This command compares the current fixture against the recorded SHA-256 checksum and table row counts
-in `docs/fixtures/minimal_static_data.meta.json`. It fails if the fixture has been modified.
-
-**Record new metadata after updating the fixture:**
-
-```bash
-pnpm nx run scripts:fixture-record
-```
-
-Use this after intentionally modifying the fixture (e.g., adding new test systems).
-
-### Database Inspection
-
-The `inspect-db` task displays the schema and contents of any evefrontier SQLite database:
-
-```bash
-pnpm nx run scripts:inspect-db docs/fixtures/minimal_static_data.db
-```
-
-Output includes table names, system data, planets, moons, and jump gates.
-
-### Python Environment
-
-Scripts use Python stdlib only (no external dependencies). For future scripts requiring
-dependencies, run:
-
-```bash
-pnpm nx run scripts:venv-setup
-```
-
-This creates a virtual environment at `scripts/.venv/` and installs packages from
-`scripts/requirements.txt`.
-
-For detailed script documentation, see `scripts/README.md`.
+...existing code...
