@@ -1,10 +1,16 @@
 use evefrontier_lambda_route::Response;
-use evefrontier_lambda_shared::test_utils::{fixture_db_bytes, fixture_index_bytes};
+use evefrontier_lambda_shared::test_utils::{
+    fixture_db_bytes, fixture_index_bytes, fixture_ship_bytes,
+};
 use evefrontier_lambda_shared::{init_runtime, RouteRequest};
 use lambda_runtime::{Context, LambdaEvent};
 
 fn init_fixture_runtime() {
-    let _ = init_runtime(fixture_db_bytes(), fixture_index_bytes());
+    let _ = init_runtime(
+        fixture_db_bytes(),
+        fixture_index_bytes(),
+        fixture_ship_bytes(),
+    );
 }
 
 async fn invoke(request: RouteRequest) -> Response {

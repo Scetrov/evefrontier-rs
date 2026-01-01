@@ -138,6 +138,9 @@ location. When `--dataset` is omitted the downloader uses the latest release fro
 evefrontier-cli download --data-dir docs/fixtures
 ```
 
+When a `ship_data.csv` file is present in the dataset cache, `evefrontier-cli download` will
+print the resolved path to the ship data alongside the dataset path for convenience.
+
 ### `route`
 
 Computes a route between two system names using the selected algorithm (default: A\* hybrid graph
@@ -401,6 +404,23 @@ When testing Lambda handlers locally, ensure your local dataset and index match:
 evefrontier-cli index-build --force
 evefrontier-cli index-verify
 ```
+
+### Ship Data & Lambda Bundling
+
+Ship data (`ship_data.csv`) can be bundled into Lambda artifacts to provide an in-memory
+`ShipCatalog` at cold start. This enables fast ship lookups for fuel projection and validation
+without performing disk I/O at runtime.
+
+- To include ship data in a Lambda build, enable the `bundle-ship-data` Cargo feature for the
+  Lambda crate (e.g., `evefrontier-lambda-route`) and ensure `data/ship_data.csv` is present at
+  build time.
+- When bundled, `evefrontier-lambda-shared::init_runtime()` will parse the CSV and expose the
+  catalog via `LambdaRuntime::ship_catalog()` for handlers to use.
+- If bundling is not used, set the `EVEFRONTIER_SHIP_DATA` environment variable to the path of a
+  `ship_data.csv` file to provide ship data at runtime.
+
+Note: Failure to parse a bundled ship CSV will be logged during cold start, and the Lambda will
+continue to operate without ship-based fuel projections.
 
 ## Configuration & data path resolution
 

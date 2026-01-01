@@ -29,6 +29,7 @@ use rusqlite::Connection;
 use tracing::{error, info};
 
 use evefrontier_lib::db::{load_starmap_from_connection, Starmap};
+use evefrontier_lib::ship::ShipCatalog;
 use evefrontier_lib::spatial::SpatialIndex;
 use evefrontier_lib::Error as LibError;
 
@@ -74,6 +75,7 @@ impl From<rusqlite::Error> for InitError {
 pub struct LambdaRuntime {
     starmap: Starmap,
     spatial_index: Arc<SpatialIndex>,
+    ship_catalog: Option<ShipCatalog>,
 }
 
 impl LambdaRuntime {
@@ -90,6 +92,11 @@ impl LambdaRuntime {
     /// Get a shared reference to the spatial index for use in route requests.
     pub fn spatial_index_arc(&self) -> Arc<SpatialIndex> {
         Arc::clone(&self.spatial_index)
+    }
+
+    /// Access an optional loaded `ShipCatalog` if bundled at cold start.
+    pub fn ship_catalog(&self) -> Option<&ShipCatalog> {
+        self.ship_catalog.as_ref()
     }
 }
 
@@ -113,7 +120,16 @@ impl LambdaRuntime {
 ///
 /// This function will panic if called more than once. Use `get_runtime()` for
 /// subsequent accesses.
-pub fn init_runtime(db_bytes: &'static [u8], index_bytes: &'static [u8]) -> &'static LambdaRuntime {
+/// Initialize the Lambda runtime from bundled data.
+///
+/// * `db_bytes` - SQLite database bytes (from `include_bytes!`)
+/// * `index_bytes` - Spatial index bytes (from `include_bytes!`)
+/// * `ship_bytes` - Optional ship CSV bytes (from `include_bytes!`), may be empty.
+pub fn init_runtime(
+    db_bytes: &'static [u8],
+    index_bytes: &'static [u8],
+    ship_bytes: &'static [u8],
+) -> &'static LambdaRuntime {
     let result = RUNTIME.get_or_init(|| {
         let total_start = Instant::now();
 
@@ -153,9 +169,28 @@ pub fn init_runtime(db_bytes: &'static [u8], index_bytes: &'static [u8]) -> &'st
             "Lambda runtime initialization complete"
         );
 
+        // Attempt to load ship catalog if bytes are provided. Failure to parse
+        // ship data should not fail entire runtime; log and continue without it.
+        let ship_catalog = if !ship_bytes.is_empty() {
+            match ShipCatalog::from_reader(std::io::Cursor::new(ship_bytes)) {
+                Ok(c) => {
+                    info!(ship_entries = c.ship_names().len(), "loaded bundled ship_data.csv");
+                    // keep source None since it's bundled bytes
+                    Some(c)
+                }
+                Err(e) => {
+                    info!(error = %e, "failed to parse bundled ship_data.csv; continuing without ship catalog");
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
         Ok(LambdaRuntime {
             starmap,
             spatial_index: Arc::new(spatial_index),
+            ship_catalog,
         })
     });
 
@@ -243,5 +278,25 @@ mod tests {
         let lib_err = LibError::UnsupportedSchema;
         let init_err: InitError = lib_err.into();
         assert!(init_err.message.contains("unsupported"));
+    }
+
+    #[test]
+    fn test_init_runtime_loads_ship_catalog() {
+        let runtime = init_runtime(
+            crate::test_utils::fixture_db_bytes(),
+            crate::test_utils::fixture_index_bytes(),
+            crate::test_utils::fixture_ship_bytes(),
+        );
+
+        let catalog = runtime.ship_catalog();
+        assert!(
+            catalog.is_some(),
+            "ship catalog should be loaded from fixture bytes"
+        );
+        let names = catalog.unwrap().ship_names();
+        assert!(
+            names.iter().any(|n| n == "Reflex"),
+            "expected Reflex in ship catalog"
+        );
     }
 }

@@ -10,6 +10,7 @@ description = "AWS Lambda function for scouting systems within range"
 # When enabled, bundles large dataset artifacts from `data/` into the binary.
 # Disabled by default to keep CI builds lightweight.
 bundle-data = []
+bundle-ship-data = []
 
 [dependencies]
 evefrontier-lib = { path = "../evefrontier-lib" }
