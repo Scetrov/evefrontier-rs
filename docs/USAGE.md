@@ -663,7 +663,7 @@ let starmap = load_starmap(fixture_path)?;
 
 The CLI can run a Model Context Protocol (MCP) server over stdio using the `mcp` subcommand. This
 mode is useful for integrating the EVE Frontier dataset with AI assistants (Claude Desktop, VS
-Code Copilot, Cursor) or any client that speaks JSON-RPC over stdin/stdout.
+Code Copilot, Cursor) or any client that speaks JSON-RPC over `stdin`/`stdout`.
 
 Key points:
 - Protocol: JSON-RPC 2.0 over newline-delimited messages on `stdout`/`stdin`.
@@ -694,8 +694,9 @@ Control logging verbosity via `RUST_LOG` (logs appear on stderr):
 RUST_LOG=info evefrontier-cli mcp --data-dir ./docs/fixtures/minimal_static_data.db
 ```
 
-The server responds to at least the standard MCP `initialize` handshake and exposes tools,
-resources, and prompts as JSON objects in the `initialize` response.
+The server responds to the standard MCP `initialize` handshake. The `initialize` response
+includes capability keys for `tools` and `resources` (currently present as empty objects); tool
+discovery is performed via `tools/list` and actual invocation via `tools/call`.
 
 ### Client configuration examples
 
@@ -750,5 +751,3 @@ If you'd like, I can add a short example showing the JSON `initialize` exchange 
 Claude Desktop configuration file in the `docs/` directory.
 
 ---
-
-...existing code...

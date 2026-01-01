@@ -80,28 +80,28 @@ impl StdioTransport {
         Ok(Some(v))
     }
 
-    // Helper to map std::io::Result into anyhow::Result while preserving BrokenPipe as io::Error
-    fn check_io<T>(res: std::io::Result<T>) -> Result<T> {
-        match res {
-            Ok(v) => Ok(v),
-            Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => {
-                // Preserve original io::Error context instead of constructing a new one.
-                Err(e).context("Client disconnected")
-            }
-            Err(e) => Err(e.into()),
-        }
-    }
-
     pub async fn write_message(&mut self, msg: &Value) -> Result<()> {
         let s = serde_json::to_string(msg)?;
 
         // Write JSON, newline and flush while mapping IO errors consistently.
-        // Use instance helper to preserve error context and reduce duplication.
-        Self::check_io(self.writer.write_all(s.as_bytes()).await)?;
-        Self::check_io(self.writer.write_all(b"\n").await)?;
-        Self::check_io(self.writer.flush().await)?;
+        // Use module helper to preserve error context and reduce duplication.
+        check_io(self.writer.write_all(s.as_bytes()).await)?;
+        check_io(self.writer.write_all(b"\n").await)?;
+        check_io(self.writer.flush().await)?;
 
         Ok(())
+    }
+}
+
+// Helper to map std::io::Result into anyhow::Result while preserving BrokenPipe as io::Error
+fn check_io<T>(res: std::io::Result<T>) -> Result<T> {
+    match res {
+        Ok(v) => Ok(v),
+        Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => {
+            // Preserve original io::Error context instead of constructing a new one.
+            Err(e).context("Client disconnected")
+        }
+        Err(e) => Err(e.into()),
     }
 }
 
@@ -132,18 +132,33 @@ pub async fn run_server_loop(mut transport: StdioTransport, server: McpServerSta
            msg = transport.read_message() => {
                match msg {
                    Ok(Some(val)) => {
-                        // Expect object with jsonrpc, id, method
+                        // Validate JSON-RPC version
+                        match val.get("jsonrpc") {
+                            Some(Value::String(s)) if s == "2.0" => {}
+                            _ => {
+                                let id = val.get("id").cloned();
+                                let error = json!({"code": -32600, "message": "Invalid Request: missing or invalid 'jsonrpc' field"});
+                                let resp = json!({"jsonrpc": "2.0", "id": id, "error": error});
+                                transport.write_message(&resp).await?;
+                                continue;
+                            }
+                        }
+
+                        // Expect object with method
                         let method = val.get("method").and_then(|m| m.as_str()).unwrap_or("");
                         let id = val.get("id").cloned();
 
                        // Prepare response based on method.
                        let response = if method == "initialize" {
-                           // We do not advertise non-implemented capabilities to avoid misleading clients.
+                           // Advertise only capabilities that are actually implemented to avoid misleading clients.
                            let result = json!({
                                "protocolVersion": "2024-11-05",
                                "serverInfo": {"name": "evefrontier", "version": env!("CARGO_PKG_VERSION")},
-                               // No tools/resources/prompts are currently advertised here.
-                               "capabilities": {}
+                               // Tools and resources are supported via tools/list, tools/call, and resources/* handlers.
+                               "capabilities": {
+                                   "tools": {},
+                                   "resources": {}
+                               }
                            });
 
                            json!({"jsonrpc": "2.0", "id": id, "result": result})
@@ -181,8 +196,8 @@ pub async fn run_server_loop(mut transport: StdioTransport, server: McpServerSta
                                    let error = json!({"code": -32601, "message": format!("Unknown tool: {}", tool_name)});
                                    json!({"jsonrpc": "2.0", "id": id, "error": error})
                                } else {
-                                   // Known but not implemented yet - fail securely with an explicit error code.
-                                   let error = json!({"code": -32001, "message": format!("Tool '{}' is not yet implemented on the server.", tool_name)});
+                                   // Known but not implemented yet - fail securely with JSON-RPC internal error (-32603).
+                                   let error = json!({"code": -32603, "message": format!("Tool '{}' is not yet implemented on the server.", tool_name)});
                                    json!({"jsonrpc": "2.0", "id": id, "error": error})
                                }
                            }
@@ -231,6 +246,36 @@ pub async fn run_server_loop(mut transport: StdioTransport, server: McpServerSta
     Ok(())
 }
 
+/// Initialize MCP server state from an optional path: checks explicit path, otherwise ensures dataset via GitHub.
+fn initialize_server_from_target(target: Option<&PathBuf>) -> Result<McpServerState> {
+    if let Some(p) = target {
+        if p.exists() {
+            tracing::info!("Using explicit dataset path {}", p.display());
+            return McpServerState::with_path(p)
+                .context("Failed to initialize MCP server state from database");
+        }
+        tracing::info!(
+            "Dataset not found at {}, attempting to ensure/download",
+            p.display()
+        );
+        let paths = ensure_dataset(Some(p), DatasetRelease::latest())
+            .context("Failed to locate or download dataset")?;
+        let start = Instant::now();
+        let s = McpServerState::with_path(&paths.database)
+            .context("Failed to initialize MCP server state from database")?;
+        tracing::info!("Dataset loaded in {:?}", start.elapsed());
+        return Ok(s);
+    }
+
+    let paths = ensure_dataset(None, DatasetRelease::latest())
+        .context("Failed to locate or download dataset")?;
+    let start = Instant::now();
+    let s = McpServerState::with_path(&paths.database)
+        .context("Failed to initialize MCP server state from database")?;
+    tracing::info!("Dataset loaded in {:?}", start.elapsed());
+    Ok(s)
+}
+
 /// Public entrypoint orchestrating the MCP server lifecycle
 pub async fn run_mcp_server(global: &GlobalOptions, log_level: Option<&str>) -> Result<()> {
     // 1. Configure tracing
@@ -239,35 +284,6 @@ pub async fn run_mcp_server(global: &GlobalOptions, log_level: Option<&str>) -> 
     // 2. Resolve dataset path and initialize the MCP server (deduplicated)
     let target = resolve_dataset_path(global)?;
     tracing::info!("Resolving dataset path...");
-
-    fn initialize_server_from_target(target: Option<&PathBuf>) -> Result<McpServerState> {
-        if let Some(p) = target {
-            if p.exists() {
-                tracing::info!("Using explicit dataset path {}", p.display());
-                return McpServerState::with_path(p)
-                    .context("Failed to initialize MCP server state from database");
-            }
-            tracing::info!(
-                "Dataset not found at {}, attempting to ensure/download",
-                p.display()
-            );
-            let paths = ensure_dataset(Some(p), DatasetRelease::latest())
-                .context("Failed to locate or download dataset")?;
-            let start = Instant::now();
-            let s = McpServerState::with_path(&paths.database)
-                .context("Failed to initialize MCP server state from database")?;
-            tracing::info!("Dataset loaded in {:?}", start.elapsed());
-            return Ok(s);
-        }
-
-        let paths = ensure_dataset(None, DatasetRelease::latest())
-            .context("Failed to locate or download dataset")?;
-        let start = Instant::now();
-        let s = McpServerState::with_path(&paths.database)
-            .context("Failed to initialize MCP server state from database")?;
-        tracing::info!("Dataset loaded in {:?}", start.elapsed());
-        Ok(s)
-    }
 
     let server = initialize_server_from_target(target.as_ref())?;
 

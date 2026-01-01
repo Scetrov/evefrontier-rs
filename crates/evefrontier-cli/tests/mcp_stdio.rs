@@ -24,6 +24,29 @@ fn spawn_server() -> std::io::Result<Child> {
         .spawn()
 }
 
+/// Ensures the child process is killed when the guard is dropped to avoid leaking processes on test failure.
+struct ProcessGuard(Option<Child>);
+
+impl ProcessGuard {
+    fn new(child: Child) -> Self {
+        Self(Some(child))
+    }
+
+    fn child_mut(&mut self) -> &mut Child {
+        self.0.as_mut().expect("child taken")
+    }
+}
+
+impl Drop for ProcessGuard {
+    fn drop(&mut self) {
+        if let Some(mut c) = self.0.take() {
+            // Best-effort: try to kill the child process, ignore errors.
+            let _ = c.kill();
+            let _ = c.wait();
+        }
+    }
+}
+
 fn send_request(child: &mut Child, request: Value) -> std::io::Result<Value> {
     // Write request and read a single JSON-RPC response (blocking read is fine in test).
 
@@ -55,7 +78,8 @@ fn send_request(child: &mut Child, request: Value) -> std::io::Result<Value> {
 
 #[test]
 fn test_stdio_isolation_initialize() {
-    let mut server = spawn_server().expect("Failed to spawn server");
+    let mut guard = ProcessGuard::new(spawn_server().expect("Failed to spawn server"));
+    let server = guard.child_mut();
 
     let request = json!({
         "jsonrpc": "2.0",
@@ -64,32 +88,33 @@ fn test_stdio_isolation_initialize() {
         "params": {}
     });
 
-    let response = send_request(&mut server, request).expect("Failed to get response");
+    let response = send_request(server, request).expect("Failed to get response");
 
     assert_eq!(response["jsonrpc"], "2.0");
     assert_eq!(response["id"], 1);
     assert!(response["result"].is_object());
 
+    // Verify that initialize advertises capabilities keys (tools/resources present but possibly empty)
+    assert!(response["result"].get("capabilities").is_some());
+    let caps = &response["result"]["capabilities"];
+    assert!(caps.get("tools").is_some());
+    assert!(caps.get("resources").is_some());
+
     // Close stdin to signal EOF and allow server to exit gracefully
     drop(server.stdin.take());
 
-    // Wait for process to exit (with timeout) using a portable loop.
+    // Wait for process to exit (with timeout) using a portable loop that avoids redundant try_wait calls.
     let start = Instant::now();
     let exit_status = loop {
-        if server
-            .try_wait()
-            .expect("Failed to check server status")
-            .is_some()
-        {
-            break server
-                .try_wait()
-                .expect("Failed to check server status")
-                .unwrap();
+        match server.try_wait().expect("Failed to check server status") {
+            Some(status) => break status,
+            None => {
+                if start.elapsed() > Duration::from_secs(5) {
+                    panic!("Server did not exit within timeout");
+                }
+                std::thread::sleep(Duration::from_millis(10));
+            }
         }
-        if start.elapsed() > Duration::from_secs(5) {
-            panic!("Server did not exit within timeout");
-        }
-        std::thread::sleep(Duration::from_millis(10));
     };
 
     assert!(
@@ -100,7 +125,8 @@ fn test_stdio_isolation_initialize() {
 
     // Read stderr output and ensure it contains logging
     let mut stderr = String::new();
-    server
+    guard
+        .child_mut()
         .stderr
         .as_mut()
         .unwrap()
@@ -108,14 +134,15 @@ fn test_stdio_isolation_initialize() {
         .ok();
     assert!(stderr.contains("MCP server initialized"));
 
-    // Ensure no log-level keywords leaked to stdout by checking response doesn't contain "INFO"/"ERROR"
+    // Ensure no server log message leaked to stdout JSON response
     let stdout_str = serde_json::to_string(&response).unwrap();
-    assert!(!stdout_str.contains("INFO") && !stdout_str.contains("ERROR"));
+    assert!(!stdout_str.contains("MCP server initialized"));
 }
 
 #[test]
 fn test_tools_list() {
-    let mut server = spawn_server().expect("Failed to spawn server");
+    let mut guard = ProcessGuard::new(spawn_server().expect("Failed to spawn server"));
+    let server = guard.child_mut();
 
     let request = json!({
         "jsonrpc": "2.0",
@@ -124,7 +151,7 @@ fn test_tools_list() {
         "params": {}
     });
 
-    let response = send_request(&mut server, request).expect("Failed to get tools/list response");
+    let response = send_request(server, request).expect("Failed to get tools/list response");
 
     assert_eq!(response["jsonrpc"], "2.0");
     assert_eq!(response["id"], 2);
