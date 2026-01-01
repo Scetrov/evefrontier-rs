@@ -12,10 +12,10 @@ use tokio::signal;
 use crate::GlobalOptions;
 
 /// Configure tracing to write only to stderr.
-pub fn configure_tracing(_log_level: Option<&str>) -> Result<()> {
+pub fn configure_tracing(log_level: Option<&str>) -> Result<()> {
     use tracing_subscriber::{fmt, EnvFilter};
 
-    let env_filter = if let Some(level) = _log_level {
+    let env_filter = if let Some(level) = log_level {
         EnvFilter::new(level)
     } else {
         EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"))
@@ -65,7 +65,8 @@ impl StdioTransport {
         }
     }
 
-    pub async fn read_message(&mut self) -> Result<Value> {
+    /// Read a single JSON-RPC message. Returns Ok(None) on EOF.
+    pub async fn read_message(&mut self) -> Result<Option<Value>> {
         let mut line = String::new();
         let bytes = self
             .reader
@@ -73,39 +74,32 @@ impl StdioTransport {
             .await
             .context("failed to read line")?;
         if bytes == 0 {
-            anyhow::bail!("EOF");
+            return Ok(None);
         }
         let v: Value = serde_json::from_str(line.trim_end()).context("invalid json")?;
-        Ok(v)
+        Ok(Some(v))
+    }
+
+    // Helper to map std::io::Result into anyhow::Result while preserving BrokenPipe as io::Error
+    fn check_io<T>(res: std::io::Result<T>) -> Result<T> {
+        match res {
+            Ok(v) => Ok(v),
+            Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => Err(std::io::Error::new(
+                std::io::ErrorKind::BrokenPipe,
+                "Client disconnected",
+            )
+            .into()),
+            Err(e) => Err(e.into()),
+        }
     }
 
     pub async fn write_message(&mut self, msg: &Value) -> Result<()> {
         let s = serde_json::to_string(msg)?;
 
-        // Handle broken pipe gracefully (client disconnected)
-        match self.writer.write_all(s.as_bytes()).await {
-            Ok(_) => {}
-            Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => {
-                anyhow::bail!("Client disconnected (broken pipe)");
-            }
-            Err(e) => return Err(e.into()),
-        }
-
-        match self.writer.write_all(b"\n").await {
-            Ok(_) => {}
-            Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => {
-                anyhow::bail!("Client disconnected (broken pipe)");
-            }
-            Err(e) => return Err(e.into()),
-        }
-
-        match self.writer.flush().await {
-            Ok(_) => {}
-            Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => {
-                anyhow::bail!("Client disconnected (broken pipe)");
-            }
-            Err(e) => return Err(e.into()),
-        }
+        // Write JSON, newline and flush while mapping IO errors consistently
+        Self::check_io(self.writer.write_all(s.as_bytes()).await)?;
+        Self::check_io(self.writer.write_all(b"\n").await)?;
+        Self::check_io(self.writer.flush().await)?;
 
         Ok(())
     }
@@ -123,55 +117,55 @@ pub async fn run_server_loop(mut transport: StdioTransport, server: McpServerSta
 
     loop {
         select! {
-            _ = signal::ctrl_c() => {
-                tracing::info!("Received shutdown signal, exiting gracefully");
-                break;
-            }
+           _ = signal::ctrl_c() => {
+               tracing::info!("Received shutdown signal, exiting gracefully");
+               break;
+           }
 
-            msg = transport.read_message() => {
-                match msg {
-                    Ok(val) => {
+           msg = transport.read_message() => {
+               match msg {
+                   Ok(Some(val)) => {
                         // Expect object with jsonrpc, id, method
                         let method = val.get("method").and_then(|m| m.as_str()).unwrap_or("");
                         let id = val.get("id").cloned();
 
-                        if method == "initialize" {
-                            let result = json!({
-                                "protocolVersion": "2024-11-05",
-                                "serverInfo": {"name":"evefrontier", "version": env!("CARGO_PKG_VERSION")},
-                                "capabilities": {"tools": {}, "resources": {}, "prompts": {} }
-                            });
+                       if method == "initialize" {
+                           let result = json!({
+                               "protocolVersion": "2024-11-05",
+                               "serverInfo": {"name":"evefrontier", "version": env!("CARGO_PKG_VERSION")},
+                               "capabilities": {"tools": {}, "resources": {}, "prompts": {} }
+                           });
 
-                            let response = json!({"jsonrpc": "2.0", "id": id, "result": result});
-                            if let Err(e) = transport.write_message(&response).await {
-                                if e.to_string().contains("broken pipe") {
-                                    tracing::info!("Client disconnected (broken pipe)");
-                                    break;
-                                }
-                                return Err(e);
-                            }
-                        } else {
-                            // Method not found
-                            let error = json!({"code": -32601, "message": format!("Unknown method: {}", method)});
-                            let response = json!({"jsonrpc": "2.0", "id": id, "error": error});
-                            if let Err(e) = transport.write_message(&response).await {
-                                if e.to_string().contains("broken pipe") {
-                                    tracing::info!("Client disconnected (broken pipe)");
-                                    break;
-                                }
-                                return Err(e);
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        if e.to_string().contains("EOF") {
-                            tracing::info!("Client disconnected (EOF)");
-                            break;
-                        }
-
-                        tracing::error!("Transport error: {}", e);
-                        return Err(e);
-                    }
+                           let response = json!({"jsonrpc": "2.0", "id": id, "result": result});
+                           if let Err(e) = transport.write_message(&response).await {
+                               // Prefer inspecting the underlying IO error instead of string matching
+                               if e.downcast_ref::<std::io::Error>().map(|ioe| ioe.kind() == std::io::ErrorKind::BrokenPipe).unwrap_or(false) {
+                                   tracing::info!("Client disconnected (broken pipe)");
+                                   break;
+                               }
+                               return Err(e);
+                           }
+                       } else {
+                           // Method not found
+                           let error = json!({"code": -32601, "message": format!("Unknown method: {}", method)});
+                           let response = json!({"jsonrpc": "2.0", "id": id, "error": error});
+                           if let Err(e) = transport.write_message(&response).await {
+                               if e.downcast_ref::<std::io::Error>().map(|ioe| ioe.kind() == std::io::ErrorKind::BrokenPipe).unwrap_or(false) {
+                                   tracing::info!("Client disconnected (broken pipe)");
+                                   break;
+                               }
+                               return Err(e);
+                           }
+                       }
+                   }
+                   Ok(None) => {
+                       tracing::info!("Client disconnected (EOF)");
+                       break;
+                   }
+                   Err(e) => {
+                       tracing::error!("Transport error: {}", e);
+                       return Err(e);
+                   }
                 }
             }
         }
@@ -186,20 +180,17 @@ pub async fn run_mcp_server(global: &GlobalOptions, log_level: Option<&str>) -> 
     // 1. Configure tracing
     configure_tracing(log_level)?;
 
-    // 2. Resolve dataset path
+    // 2. Resolve dataset path and initialize the MCP server (deduplicated)
     let target = resolve_dataset_path(global)?;
-
     tracing::info!("Resolving dataset path...");
 
-    // If the user provided an explicit path that already exists, use it directly
-    // (this avoids the protected fixture guard in `ensure_dataset`). Otherwise,
-    // call `ensure_dataset()` which will download the dataset if missing.
-    let server = if let Some(ref p) = target {
-        if p.exists() {
-            tracing::info!("Using explicit dataset path {}", p.display());
-            McpServerState::with_path(p)
-                .context("Failed to initialize MCP server state from database")?
-        } else {
+    let server = (|| -> Result<McpServerState> {
+        if let Some(ref p) = target {
+            if p.exists() {
+                tracing::info!("Using explicit dataset path {}", p.display());
+                return McpServerState::with_path(p)
+                    .context("Failed to initialize MCP server state from database");
+            }
             tracing::info!(
                 "Dataset not found at {}, attempting to ensure/download",
                 p.display()
@@ -210,17 +201,17 @@ pub async fn run_mcp_server(global: &GlobalOptions, log_level: Option<&str>) -> 
             let s = McpServerState::with_path(&paths.database)
                 .context("Failed to initialize MCP server state from database")?;
             tracing::info!("Dataset loaded in {:?}", start.elapsed());
-            s
+            return Ok(s);
         }
-    } else {
+
         let paths = ensure_dataset(None, DatasetRelease::latest())
             .context("Failed to locate or download dataset")?;
         let start = Instant::now();
         let s = McpServerState::with_path(&paths.database)
             .context("Failed to initialize MCP server state from database")?;
         tracing::info!("Dataset loaded in {:?}", start.elapsed());
-        s
-    };
+        Ok(s)
+    })()?;
 
     // 3. Create transport and run server loop
     let transport = StdioTransport::new();

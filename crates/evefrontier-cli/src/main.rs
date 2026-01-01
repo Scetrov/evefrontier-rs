@@ -66,7 +66,7 @@ struct GlobalOptions {
 #[derive(Args, Debug, Clone)]
 pub struct McpCommandArgs {
     /// Override log level (trace, debug, info, warn, error). Defaults to RUST_LOG env var or 'info'.
-    #[arg(long)]
+    #[arg(long, value_parser = ["trace", "debug", "info", "warn", "error"])]
     pub log_level: Option<String>,
 }
 
@@ -406,6 +406,11 @@ impl AppContext {
     }
 }
 
+// The CLI uses Tokio's async runtime for the entire process (`#[tokio::main]`) to support
+// launching the MCP stdio server directly from the CLI. This choice simplifies integration but
+// introduces a small runtime overhead for otherwise synchronous subcommands; if startup overhead
+// becomes a concern we can restrict the runtime to the MCP subcommand only using a dedicated
+// runtime builder.
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();

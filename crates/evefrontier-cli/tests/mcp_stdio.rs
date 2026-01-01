@@ -10,9 +10,9 @@ fn spawn_server() -> std::io::Result<Child> {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let workspace_root = std::path::Path::new(manifest_dir)
         .parent()
-        .unwrap()
+        .expect("CARGO_MANIFEST_DIR should have a parent")
         .parent()
-        .unwrap();
+        .expect("workspace should be two levels up from manifest dir");
 
     let exe = workspace_root.join("target/debug/evefrontier-cli");
     Command::new(exe)
@@ -31,8 +31,16 @@ fn send_request(child: &mut Child, request: Value) -> std::io::Result<Value> {
     // Give the server a short moment to initialize and start reading stdin
     std::thread::sleep(std::time::Duration::from_millis(200));
 
-    let stdin = child.stdin.as_mut().unwrap();
-    let mut stdout = BufReader::new(child.stdout.as_mut().unwrap());
+    let stdin = child
+        .stdin
+        .as_mut()
+        .expect("child process should have stdin piped");
+    let mut stdout = BufReader::new(
+        child
+            .stdout
+            .as_mut()
+            .expect("child process should have stdout piped"),
+    );
 
     writeln!(stdin, "{}", request)?;
     stdin.flush()?;
@@ -49,6 +57,7 @@ fn send_request(child: &mut Child, request: Value) -> std::io::Result<Value> {
     })
 }
 
+#[cfg(unix)]
 #[test]
 fn test_stdio_isolation_initialize() {
     let mut server = spawn_server().expect("Failed to spawn server");
