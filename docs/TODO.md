@@ -547,8 +547,9 @@ The following ADR topics are recommended to formalize currently implicit archite
 
 - [x] **Crate Scaffolding**: Create `evefrontier-mcp` crate for Model Context Protocol support.
 - [x] **JSON-RPC 2.0 Server**: Implement the server logic with stdio transport support.
-- [ ] **CLI Subcommand & Stdio Transport**: Implement the `mcp` command in `evefrontier-cli` to
-      launch the server.
+- [x] **CLI Subcommand & Stdio Transport**: Implement the `mcp` command in `evefrontier-cli` to
+      launch the server. (Implemented in `crates/evefrontier-cli/src/commands/mcp.rs` and wired in
+      `crates/evefrontier-cli/src/main.rs`.)
 - [ ] **EVE Frontier Tool Mapping**: Expose core library functionality (world state queries, account
       balance, blockchain transactions) as MCP tools.
 - [ ] **Resource & Schema Definitions**: Define AI-readable resources for game data models and smart
@@ -557,8 +558,10 @@ The following ADR topics are recommended to formalize currently implicit archite
       `evefrontier://spatial-index/status` resources.
 - [ ] **Docker & Security Hardening**: Ensure the server runs with dropped capabilities
       (`CAP_DROP=all`), non-root users, and static `musl` builds.
-- [ ] **IO & Logging Isolation**: Configure the logging framework to redirect all system logs to
-      `stderr` to prevent protocol corruption on `stdout`.
+- [x] **IO & Logging Isolation**: Configure the logging framework to redirect all system logs to
+      `stderr` to prevent protocol corruption on `stdout`. (Implemented via `configure_tracing()` in
+      `crates/evefrontier-cli/src/commands/mcp.rs` and banner suppression in
+      `crates/evefrontier-cli/src/main.rs`.)
 - [ ] **Integration & Distribution**: Provide configuration templates for MCP clients (Claude
       Desktop, Cursor) and automated Docker health checks.
 
