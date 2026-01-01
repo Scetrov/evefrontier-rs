@@ -236,6 +236,11 @@ pub(crate) fn download_dataset_with_tag(
             AssetKind::Archive => {
                 download_archive_asset(&client, &asset.download_url, &cached_dataset)?
             }
+            AssetKind::ShipCsv => {
+                // Should not be selected for the main dataset; ship CSVs will be handled
+                // separately by the ship-data downloader tasks.
+                unreachable!("select_dataset_asset should not return ShipCsv");
+            }
         }
     } else {
         debug!(path = %cached_dataset.display(), "using cached dataset asset");
@@ -395,6 +400,8 @@ fn fetch_release(client: &Client, release: &DatasetRelease) -> Result<ReleaseRes
 enum AssetKind {
     Database,
     Archive,
+    /// A CSV file containing ship data (e.g., `ship_data.csv`).
+    ShipCsv,
 }
 
 #[derive(Debug)]
@@ -423,6 +430,10 @@ fn select_dataset_asset(release: &ReleaseResponse) -> Option<AssetInfo> {
                     kind: AssetKind::Archive,
                 });
             }
+            Some(AssetKind::ShipCsv) => {
+                // Ship CSVs are not dataset assets; skip and allow DB/archive selection.
+                continue;
+            }
             None => continue,
         }
     }
@@ -434,6 +445,10 @@ fn classify_asset(asset: &ReleaseAsset) -> Option<AssetKind> {
     let name = asset.name.to_ascii_lowercase();
     if name.ends_with(".db") || name.ends_with(".sqlite") {
         return Some(AssetKind::Database);
+    }
+    // Accept explicit ship data CSV names or names that include `ship_data`.
+    if name.ends_with("ship_data.csv") || name.contains("ship_data") {
+        return Some(AssetKind::ShipCsv);
     }
 
     if name.ends_with(".zip") {
@@ -449,11 +464,27 @@ fn classify_asset(asset: &ReleaseAsset) -> Option<AssetKind> {
     None
 }
 
+#[allow(dead_code)]
+fn select_ship_asset(release: &ReleaseResponse) -> Option<AssetInfo> {
+    for asset in &release.assets {
+        if let Some(AssetKind::ShipCsv) = classify_asset(asset) {
+            return Some(AssetInfo {
+                name: asset.name.clone(),
+                download_url: asset.browser_download_url.clone(),
+                kind: AssetKind::ShipCsv,
+            });
+        }
+    }
+
+    None
+}
+
 fn cache_file_name(asset: &AssetInfo, release: &ReleaseResponse, target: &Path) -> String {
     let tag = sanitize_component(&release.tag_name);
     match asset.kind {
         AssetKind::Database => format!("{}-{}", tag, sanitize_component(&asset.name)),
         AssetKind::Archive => format!("{}-{}", tag, target_dataset_filename(target)),
+        AssetKind::ShipCsv => format!("{}-{}", tag, sanitize_component(&asset.name)),
     }
 }
 
@@ -615,4 +646,54 @@ fn copy_file_atomic(source: &Path, destination: &Path) -> Result<()> {
     }
     tmp.persist(destination).map_err(|err| err.error)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn classify_detects_ship_data_by_name() {
+        let asset = ReleaseAsset {
+            name: "ship_data.csv".to_string(),
+            browser_download_url: "https://example.com/ship_data.csv".to_string(),
+            content_type: Some("text/csv".to_string()),
+        };
+
+        assert_eq!(classify_asset(&asset), Some(AssetKind::ShipCsv));
+    }
+
+    #[test]
+    fn classify_detects_ship_data_by_inclusion() {
+        let asset = ReleaseAsset {
+            name: "datasets_ship_data_v2.csv".to_string(),
+            browser_download_url: "https://example.com/datasets_ship_data_v2.csv".to_string(),
+            content_type: Some("text/csv".to_string()),
+        };
+
+        assert_eq!(classify_asset(&asset), Some(AssetKind::ShipCsv));
+    }
+
+    #[test]
+    fn select_ship_asset_picks_ship_csv() {
+        let release = ReleaseResponse {
+            tag_name: "e6c3".to_string(),
+            assets: vec![
+                ReleaseAsset {
+                    name: "static_data.db".to_string(),
+                    browser_download_url: "https://example.com/static_data.db".to_string(),
+                    content_type: Some("application/octet-stream".to_string()),
+                },
+                ReleaseAsset {
+                    name: "ship_data.csv".to_string(),
+                    browser_download_url: "https://example.com/ship_data.csv".to_string(),
+                    content_type: Some("text/csv".to_string()),
+                },
+            ],
+        };
+
+        let selected = select_ship_asset(&release).expect("ship asset should be found");
+        assert_eq!(selected.kind, AssetKind::ShipCsv);
+        assert!(selected.name.contains("ship_data"));
+    }
 }
