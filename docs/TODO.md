@@ -172,28 +172,28 @@ For detailed alignment report, see `docs/adr-alignment-report_2025-12-30.md`
 
 ## Ship Data & Fuel Calculations (ADR 0015)
 
-- [ ] Create `ship.rs` module with `ShipAttributes`, `ShipLoadout`, and `ShipCatalog` structs
-- [ ] Implement CSV parsing for `ship_data.csv` with validation (base_mass_kg, fuel_capacity,
+- [x] Create `ship.rs` module with `ShipAttributes`, `ShipLoadout`, and `ShipCatalog` structs
+- [x] Implement CSV parsing for `ship_data.csv` with validation (base_mass_kg, fuel_capacity,
       cargo_capacity, specific_heat)
-- [ ] Add `calculate_jump_fuel_cost()` function implementing the fuel formula:
+- [x] Add `calculate_jump_fuel_cost()` function implementing the fuel formula:
       `(total_mass_kg / 10^5) × (fuel_quality / 100) × distance_ly`
-- [ ] Add `calculate_route_fuel()` for full route projection with static/dynamic mass modes
-- [ ] Implement `ShipLoadout::total_mass_kg()` combining hull + fuel + cargo mass
+- [x] Add `calculate_route_fuel()` for full route projection with static/dynamic mass modes
+- [x] Implement `ShipLoadout::total_mass_kg()` combining hull + fuel + cargo mass
 - [ ] Extend GitHub downloader (`github.rs`) to fetch `ship_data.csv` from release assets
 - [ ] Add ship data caching alongside the database in `evefrontier_datasets/` cache directory
-- [ ] Extend `RouteStep` with optional `FuelProjection` struct (hop_cost, cumulative, remaining)
-- [ ] Extend `RouteSummary` with total_fuel, ship_name, and fuel_warning fields
-- [ ] Update output formatters to include fuel information in status line when ship specified
-- [ ] Add `--ship`, `--fuel-quality`, `--cargo-mass`, `--fuel-load` CLI options to `route`
+- [x] Extend `RouteStep` with optional `FuelProjection` struct (hop_cost, cumulative, remaining)
+- [x] Extend `RouteSummary` with total_fuel, ship_name, and fuel_warning fields
+- [x] Update output formatters to include fuel information in status line when ship specified
+- [x] Add `--ship`, `--fuel-quality`, `--cargo-mass`, `--fuel-load` CLI options to `route`
       subcommand
-- [ ] Add `--dynamic-mass` flag to enable per-hop mass recalculation
-- [ ] Add `--list-ships` convenience option to display available ships
-- [ ] Extend Lambda request/response schemas with ship, loadout, and fuel parameters
-- [ ] Bundle `ship_data.csv` with Lambda deployment artifacts
-- [ ] Add ship data fixture for testing (subset of ships)
-- [ ] Write unit tests for fuel calculation formula with known test cases (static and dynamic modes)
-- [ ] Write integration tests for CLI fuel projection output
-- [ ] Update `USAGE.md` with fuel projection examples including cargo and dynamic mass
+- [x] Add `--dynamic-mass` flag to enable per-hop mass recalculation
+- [x] Add `ships` subcommand to display available ships (implemented as `evefrontier-cli ships`)
+- [x] Extend Lambda request/response schemas with ship, loadout, and fuel parameters
+- [x] Bundle `ship_data.csv` with Lambda deployment artifacts
+- [x] Add ship data fixture for testing (subset of ships)
+- [x] Write unit tests for fuel calculation formula with known test cases (static and dynamic modes)
+- [x] Write integration tests for CLI fuel projection output
+- [x] Update `USAGE.md` with fuel projection examples including cargo and dynamic mass
 - [ ] Future: Research and implement heat impact calculations (requires separate ADR)
 
 ## CLI (`evefrontier-cli`)
@@ -447,10 +447,11 @@ For detailed alignment report, see `docs/adr-alignment-report_2025-12-30.md`
     - Helm installation instructions and examples
   - [x] Configuration and secrets management for containerized environments
     - values.yaml configuration, ConfigMap, ServiceAccount
-  - [ ] Observability setup (metrics, logs, traces) for microservices
-    - Tracing infrastructure exists but metrics/observability documentation pending
-    - Prefer OpenTelemetry integration for future work, refactor existing tracing hooks to use OTEL
-      when feasible.
+  - [x] Observability setup (metrics, logs, traces) for microservices
+    - Prometheus metrics endpoint (`/metrics`) implemented in all microservices
+    - Structured JSON logging via `tracing` and `evefrontier-service-shared`
+    - Kubernetes liveness and readiness probes configured
+    - (Future: OpenTelemetry integration for distributed tracing)
 - [ ] Generate quadlet files for systemd based container management with Podman
   - [ ] Create quadlet files for each microservice with appropriate resource limits and restart
         policies
@@ -510,7 +511,8 @@ The following ADR topics are recommended to formalize currently implicit archite
 
 - [x] The GOAL item in `enhanced` mode doesn't include a status line (min temp, planets, moons).
       (Fixed in output.rs; also added "Black Hole" indicator for systems 30000001-30000003)
-- [ ] `enhanced` should be the default not basic as it provides the clearest representation.
+- [x] `enhanced` should be the default not basic as it provides the clearest representation.
+      (Implemented as default in `OutputFormat` enum)
 - [ ] Add LibrePay integration with a link in the README for donations/support, plus a once every 7
       days reminder in the CLI footer.
 - [x] Add support for generating fmap URLs based upon
@@ -543,12 +545,14 @@ The following ADR topics are recommended to formalize currently implicit archite
 
 ## MCP Server Integration
 
-- [ ] **CLI Subcommand & Stdio Transport**: Implement the `mcp` command and set up JSON-RPC 2.0
-      communication over `stdin`/`stdout`.
+- [x] **Crate Scaffolding**: Create `evefrontier-mcp` crate for Model Context Protocol support.
+- [x] **JSON-RPC 2.0 Server**: Implement the server logic with stdio transport support.
+- [ ] **CLI Subcommand & Stdio Transport**: Implement the `mcp` command in `evefrontier-cli` to launch the server.
 - [ ] **EVE Frontier Tool Mapping**: Expose core library functionality (world state queries, account
       balance, blockchain transactions) as MCP tools.
 - [ ] **Resource & Schema Definitions**: Define AI-readable resources for game data models and smart
       assembly configurations.
+- [x] **Dataset Resources**: Implement `evefrontier://dataset/info`, `evefrontier://algorithms`, and `evefrontier://spatial-index/status` resources.
 - [ ] **Docker & Security Hardening**: Ensure the server runs with dropped capabilities
       (`CAP_DROP=all`), non-root users, and static `musl` builds.
 - [ ] **IO & Logging Isolation**: Configure the logging framework to redirect all system logs to
