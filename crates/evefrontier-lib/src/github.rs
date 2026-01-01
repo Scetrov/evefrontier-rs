@@ -10,6 +10,7 @@ use reqwest::blocking::Client;
 use reqwest::header::ACCEPT;
 use reqwest::StatusCode;
 use serde::Deserialize;
+use sha2::{Digest, Sha256};
 use tempfile::NamedTempFile;
 use tracing::{debug, info, warn};
 use zip::ZipArchive;
@@ -244,6 +245,54 @@ pub(crate) fn download_dataset_with_tag(
         }
     } else {
         debug!(path = %cached_dataset.display(), "using cached dataset asset");
+    }
+
+    // Attempt to cache ship_data.csv alongside the dataset when present in the release.
+    if let Some(ship_asset) = select_ship_asset(&release_response) {
+        let cached_ship = cache_dir.join(cache_file_name(
+            &ship_asset,
+            &release_response,
+            Path::new("ship_data.csv"),
+        ));
+
+        let need_download = if cached_ship.exists() {
+            match read_checksum_sidecar(&cached_ship)? {
+                Some(expected) => match compute_sha256_hex(&cached_ship) {
+                    Ok(actual) if actual == expected => {
+                        debug!(path = %cached_ship.display(), "using cached ship asset (checksum verified)");
+                        false
+                    }
+                    Ok(_) => {
+                        info!(path = %cached_ship.display(), "ship asset checksum mismatch; re-downloading");
+                        true
+                    }
+                    Err(err) => {
+                        warn!(%err, "failed to compute ship asset checksum; re-downloading");
+                        true
+                    }
+                },
+                None => {
+                    // No checksum sidecar: compute and write one
+                    match compute_sha256_hex(&cached_ship) {
+                        Ok(actual) => {
+                            write_checksum_sidecar(&cached_ship, &actual)?;
+                            debug!(path = %cached_ship.display(), "wrote missing ship checksum sidecar");
+                            false
+                        }
+                        Err(_) => true,
+                    }
+                }
+            }
+        } else {
+            true
+        };
+
+        if need_download {
+            info!(tag = %release_response.tag_name, asset = %ship_asset.name, path = %cached_ship.display(), "caching ship_data asset");
+            download_ship_asset(&client, &ship_asset.download_url, &cached_ship)?;
+            let checksum = compute_sha256_hex(&cached_ship)?;
+            write_checksum_sidecar(&cached_ship, &checksum)?;
+        }
     }
 
     copy_cached_to_target(&cached_dataset, target_path)?;
@@ -518,6 +567,39 @@ fn download_archive_asset(client: &Client, url: &str, destination: &Path) -> Res
     download_to_file(client, url, archive_tmp.as_file_mut())?;
     archive_tmp.flush()?;
     extract_archive(archive_tmp.path(), destination)
+}
+
+fn download_ship_asset(client: &Client, url: &str, destination: &Path) -> Result<()> {
+    let parent = destination.parent().unwrap_or_else(|| Path::new("."));
+    let mut tmp = NamedTempFile::new_in(parent)?;
+    download_to_file(client, url, tmp.as_file_mut())?;
+    tmp.flush()?;
+    tmp.persist(destination).map_err(|err| err.error)?;
+    Ok(())
+}
+
+fn compute_sha256_hex(path: &Path) -> Result<String> {
+    let data = fs::read(path)?;
+    let mut hasher = Sha256::new();
+    hasher.update(&data);
+    Ok(format!("{:x}", hasher.finalize()))
+}
+
+fn write_checksum_sidecar(file: &Path, checksum: &str) -> Result<()> {
+    let sidecar_name = format!("{}.sha256", file.file_name().unwrap().to_string_lossy());
+    let sidecar_path = file.with_file_name(sidecar_name);
+    fs::write(sidecar_path, checksum)?;
+    Ok(())
+}
+
+fn read_checksum_sidecar(file: &Path) -> Result<Option<String>> {
+    let sidecar_name = format!("{}.sha256", file.file_name().unwrap().to_string_lossy());
+    let sidecar_path = file.with_file_name(sidecar_name);
+    if !sidecar_path.exists() {
+        return Ok(None);
+    }
+    let s = fs::read_to_string(sidecar_path)?;
+    Ok(Some(s.trim().to_string()))
 }
 
 fn download_to_file(client: &Client, url: &str, file: &mut File) -> Result<()> {
