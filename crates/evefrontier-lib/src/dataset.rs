@@ -24,6 +24,8 @@ pub struct DatasetPaths {
     pub database: PathBuf,
     /// Path to the spatial index file, if it exists.
     pub spatial_index: Option<PathBuf>,
+    /// Optional path to the cached `ship_data.csv` file if present in the dataset cache.
+    pub ship_data: Option<PathBuf>,
 }
 
 impl DatasetPaths {
@@ -38,6 +40,22 @@ impl DatasetPaths {
         Self {
             database,
             spatial_index,
+            ship_data: None,
+        }
+    }
+
+    /// Create paths for a database and an optional cached ship data CSV path.
+    pub fn for_database_with_ship(database: PathBuf, ship_data: Option<PathBuf>) -> Self {
+        let index_path = spatial_index_path(&database);
+        let spatial_index = if index_path.exists() {
+            Some(index_path)
+        } else {
+            None
+        };
+        Self {
+            database,
+            spatial_index,
+            ship_data,
         }
     }
 }
@@ -172,7 +190,20 @@ fn ensure_or_download(path: &Path, release: &DatasetRelease) -> Result<DatasetPa
 
     if path.exists() {
         match evaluate_cache_state(path, release)? {
-            CacheState::Fresh => return Ok(DatasetPaths::for_database(path.to_path_buf())),
+            CacheState::Fresh => {
+                // Try to locate a cached ship_data asset associated with the resolved
+                // release tag (if present) so callers can access the cached CSV.
+                let ship = match read_release_marker(path)? {
+                    Some(marker) => crate::github::find_cached_ship_for_tag(&marker.resolved_tag)
+                        .ok()
+                        .flatten(),
+                    None => None,
+                };
+                return Ok(DatasetPaths::for_database_with_ship(
+                    path.to_path_buf(),
+                    ship,
+                ));
+            }
             CacheState::Stale { .. } => {
                 // Stale cache detected; proceed with re-download
             }
@@ -188,9 +219,12 @@ fn ensure_or_download(path: &Path, release: &DatasetRelease) -> Result<DatasetPa
         "attempting to download dataset to {}",
         path.display()
     );
-    let resolved_tag = download_dataset_with_tag(path, release.clone())?;
+    let (resolved_tag, ship_data) = download_dataset_with_tag(path, release.clone())?;
     write_release_marker(path, release, &resolved_tag)?;
-    Ok(DatasetPaths::for_database(path.to_path_buf()))
+    Ok(DatasetPaths::for_database_with_ship(
+        path.to_path_buf(),
+        ship_data,
+    ))
 }
 
 fn canonical_dataset_path(path: &Path) -> PathBuf {
@@ -425,5 +459,53 @@ mod tests {
 
             assert_eq!(normalize_windows_data_dir(&input), expected);
         }
+    }
+
+    #[test]
+    fn ensure_dataset_includes_cached_ship_data() {
+        use tempfile::TempDir;
+
+        let tmp = TempDir::new().expect("tempdir");
+        let src = tmp.path().join("src");
+        let _ = std::fs::create_dir_all(&src);
+
+        // Create a dummy .db file and ship_data.csv in the source dir
+        let db_path = src.join("static_data.db");
+        std::fs::write(&db_path, b"dummy db").expect("write db");
+        let ship_path = src.join("ship_data.csv");
+        std::fs::write(&ship_path, b"name,mass\nTest,1000").expect("write ship csv");
+
+        let target = tmp.path().join("target_static.db");
+        let cache_dir = tmp.path().join("cache_dir");
+
+        // Ensure the helper and cache lookup use the same cache directory
+        std::env::set_var("EVEFRONTIER_DATASET_CACHE_DIR", &cache_dir);
+
+        // Populate cache and target using the test helper
+        let resolved = crate::github::download_from_source_with_cache(
+            &target,
+            crate::github::DatasetRelease::Latest,
+            &src,
+            &cache_dir,
+            "latest",
+        )
+        .expect("download from source with cache");
+
+        // Now ensure_dataset should detect the cached ship data and include it in the paths
+        let paths = super::ensure_dataset(Some(&target), crate::github::DatasetRelease::Latest)
+            .expect("ensure_dataset");
+
+        assert!(paths.ship_data.is_some(), "ship_data should be present");
+        let ship_cached = paths.ship_data.unwrap();
+        assert!(
+            ship_cached.exists(),
+            "cached ship_data path should exist: {}",
+            ship_cached.display()
+        );
+        assert!(
+            ship_cached.starts_with(&cache_dir),
+            "cached ship_data should be under cache_dir"
+        );
+        assert_eq!(resolved, "latest");
     }
 }

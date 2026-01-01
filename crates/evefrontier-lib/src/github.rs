@@ -193,7 +193,7 @@ pub fn download_from_source_with_cache(
 pub(crate) fn download_dataset_with_tag(
     target_path: &Path,
     release: DatasetRelease,
-) -> Result<String> {
+) -> Result<(String, Option<PathBuf>)> {
     if let Some(source) = env::var_os(DATASET_SOURCE_ENV) {
         let override_path = PathBuf::from(source);
         info!(
@@ -207,8 +207,11 @@ pub(crate) fn download_dataset_with_tag(
         // release tag. This honors the `EVEFRONTIER_DATASET_LATEST_TAG`
         // override used by tests (or other local tooling) so the release
         // marker reflects the actual resolved tag instead of the literal
-        // string "latest".
-        return resolve_release_tag(&release);
+        // string "latest". Additionally attempt to locate any cached ship
+        // CSV in the cache directory so callers can be informed of its path.
+        let resolved = resolve_release_tag(&release)?;
+        let ship = find_cached_ship_for_tag(&resolved).ok().flatten();
+        return Ok((resolved, ship));
     }
 
     let cache_dir = dataset_cache_dir()?;
@@ -248,6 +251,7 @@ pub(crate) fn download_dataset_with_tag(
     }
 
     // Attempt to cache ship_data.csv alongside the dataset when present in the release.
+    let mut ship_cached: Option<PathBuf> = None;
     if let Some(ship_asset) = select_ship_asset(&release_response) {
         let cached_ship = cache_dir.join(cache_file_name(
             &ship_asset,
@@ -292,11 +296,17 @@ pub(crate) fn download_dataset_with_tag(
             download_ship_asset(&client, &ship_asset.download_url, &cached_ship)?;
             let checksum = compute_sha256_hex(&cached_ship)?;
             write_checksum_sidecar(&cached_ship, &checksum)?;
+            ship_cached = Some(cached_ship.clone());
+        } else {
+            // cached and verified or written sidecar above
+            if cached_ship.exists() {
+                ship_cached = Some(cached_ship.clone());
+            }
         }
     }
 
     copy_cached_to_target(&cached_dataset, target_path)?;
-    Ok(release_response.tag_name)
+    Ok((release_response.tag_name, ship_cached))
 }
 
 pub(crate) fn resolve_release_tag(release: &DatasetRelease) -> Result<String> {
@@ -711,6 +721,53 @@ fn read_checksum_sidecar(file: &Path) -> Result<Option<String>> {
     }
     let s = fs::read_to_string(sidecar_path)?;
     Ok(Some(s.trim().to_string()))
+}
+
+/// Best-effort search for a cached ship_data file in the dataset cache directory.
+///
+/// This looks first for any file containing `ship_data` (case-insensitive), and
+/// falls back to files prefixed by the sanitized release tag containing `ship`.
+pub(crate) fn find_cached_ship_for_tag(tag: &str) -> Result<Option<PathBuf>> {
+    let cache_dir = dataset_cache_dir()?;
+    if !cache_dir.exists() {
+        return Ok(None);
+    }
+
+    // First pass: prefer explicit ship_data filenames
+    for entry in fs::read_dir(&cache_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+        let name = path
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_default();
+        if name.to_ascii_lowercase().contains("ship_data") {
+            return Ok(Some(path));
+        }
+    }
+
+    // Second pass: look for files prefixed with the tag that look like ship assets
+    let prefix = sanitize_component(tag).to_ascii_lowercase();
+    for entry in fs::read_dir(&cache_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+        let name = path
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let lname = name.to_ascii_lowercase();
+        if lname.starts_with(&prefix) && lname.contains("ship") {
+            return Ok(Some(path));
+        }
+    }
+
+    Ok(None)
 }
 
 fn download_to_file(client: &Client, url: &str, file: &mut File) -> Result<()> {
