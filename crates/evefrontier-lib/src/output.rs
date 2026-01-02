@@ -415,11 +415,12 @@ impl RouteSummary {
             let method = self.steps[idx].method.as_deref();
 
             if method == Some("gate") {
-                let remaining = if fuel_config.dynamic_mass {
-                    remaining_fuel
-                } else {
-                    (loadout.fuel_load - cumulative).max(0.0)
-                };
+                // Gate hops do not consume fuel, but remaining fuel should reflect
+                // the running remaining_fuel (which may have been updated by
+                // previous hops or refuels) rather than a static calculation from
+                // cumulative totals. This ensures the displayed remaining value is
+                // accurate even after a refuel.
+                let remaining = remaining_fuel;
 
                 let projection = FuelProjection {
                     hop_cost: 0.0,
