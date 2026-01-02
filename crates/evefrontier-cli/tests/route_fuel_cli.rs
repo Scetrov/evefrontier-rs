@@ -227,10 +227,11 @@ fn text_output_shows_refuel_when_insufficient_fuel() {
     let output = cmd.assert().success().get_output().stdout.clone();
     let stdout = String::from_utf8(output).unwrap();
 
-    // Should show a REFUEL tag on a step
-    assert!(
-        stdout.contains("REFUEL"),
-        "expected REFUEL tag in enhanced output"
+    // Should show a single REFUEL tag on the step where refueling is required
+    let refuel_count = stdout.matches("REFUEL").count();
+    assert_eq!(
+        refuel_count, 1,
+        "expected exactly one REFUEL tag in enhanced output"
     );
 
     // Remaining should reset to the original fuel load (1)

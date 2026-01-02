@@ -489,23 +489,24 @@ impl RouteSummary {
                     }
                 }
             } else {
-                let remaining_before = (loadout.fuel_load - (cumulative - hop_cost)).max(0.0);
-                if hop_cost > remaining_before {
-                    // Not enough fuel in static mode for this hop: mark refuel and show
-                    // remaining as the original fuel load.
+                // Use the running `remaining_fuel` for static mode as well so that a
+                // refuel only occurs when the tank is actually insufficient and a
+                // single refuel resets the remaining for subsequent hops.
+                if hop_cost > remaining_fuel {
                     refueled = true;
+                    remaining_fuel = loadout.fuel_load;
                     FuelProjection {
                         hop_cost,
                         cumulative,
-                        remaining: Some(loadout.fuel_load),
+                        remaining: Some(remaining_fuel),
                         warning: Some("REFUEL".to_string()),
                     }
                 } else {
-                    let remaining = (loadout.fuel_load - cumulative).max(0.0);
+                    remaining_fuel = (remaining_fuel - hop_cost).max(0.0);
                     FuelProjection {
                         hop_cost,
                         cumulative,
-                        remaining: Some(remaining),
+                        remaining: Some(remaining_fuel),
                         warning: None,
                     }
                 }
