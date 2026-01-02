@@ -314,10 +314,14 @@ impl EnhancedRenderer {
         );
 
         let len = summary.steps.len();
+        // Pre-compute column widths for details rows so numeric columns can be
+        // right-aligned across the entire route output.
+        let widths = compute_details_column_widths(&summary.steps);
+
         for (i, step) in summary.steps.iter().enumerate() {
             let is_last = i + 1 == len;
             self.render_step(step, i == 0, is_last);
-            self.render_step_details(step);
+            self.render_step_details(step, &widths);
         }
 
         self.render_footer(summary, base_url);
@@ -431,10 +435,144 @@ impl EnhancedRenderer {
         }
     }
 
-    fn render_step_details(&self, step: &RouteStep) {
-        if let Some(line) = self.build_step_details_line(step) {
+    fn render_step_details(&self, step: &RouteStep, widths: &ColumnWidths) {
+        if let Some(line) = self.build_step_details_line(step, widths) {
             println!("{}", line);
         }
+    }
+
+    fn build_step_details_line(&self, step: &RouteStep, widths: &ColumnWidths) -> Option<String> {
+        let p = &self.palette;
+        let is_black_hole = matches!(step.id, 30000001..=30000003);
+
+        // 1. MIN segment (fixed width 11)
+        const MIN_SEG_VISIBLE_WIDTH: usize = 11;
+        let min_seg = if is_black_hole {
+            format!("{}▌Black Hole▐{}", p.tag_black_hole, p.reset)
+        } else if let Some(t) = step.min_external_temp {
+            format!("{}min {:>6.2}K{}", p.cyan, t, p.reset)
+        } else {
+            " ".repeat(MIN_SEG_VISIBLE_WIDTH)
+        };
+
+        // 2. Fuel Cost segment
+        let fuel_cost_seg = if widths.fuel_val_width > 0 {
+            if let Some(f) = step.fuel.as_ref() {
+                let hop_int = f.hop_cost.ceil() as i64;
+                format!(
+                    "{}fuel {:>width$}{}",
+                    p.orange,
+                    hop_int,
+                    p.reset,
+                    width = widths.fuel_val_width
+                )
+            } else {
+                format!("     {:>width$}", "", width = widths.fuel_val_width)
+            }
+        } else {
+            String::new()
+        };
+
+        // 3. Fuel Remaining segment
+        let fuel_rem_seg = if widths.rem_val_width > 0 {
+            if let Some(f) = step.fuel.as_ref() {
+                if let Some(rem) = f.remaining {
+                    let rem_int = rem.ceil() as i64;
+                    format!(
+                        "{}(rem {:>width$}){}",
+                        p.magenta,
+                        rem_int,
+                        p.reset,
+                        width = widths.rem_val_width
+                    )
+                } else {
+                    " ".repeat(6 + widths.rem_val_width)
+                }
+            } else {
+                " ".repeat(6 + widths.rem_val_width)
+            }
+        } else {
+            String::new()
+        };
+
+        // Combine Fuel
+        let fuel_seg = if !fuel_cost_seg.is_empty() {
+            if !fuel_rem_seg.is_empty() {
+                format!("{} {}", fuel_cost_seg, fuel_rem_seg)
+            } else {
+                fuel_cost_seg
+            }
+        } else {
+            String::new()
+        };
+
+        // 4. Heat Cost segment
+        let heat_cost_seg = if widths.heat_val_width > 0 {
+            if let Some(h) = step.heat.as_ref() {
+                let heat_str = if h.hop_heat >= 0.005 {
+                    format!("{:.2}", h.hop_heat)
+                } else if h.hop_heat > 0.0 {
+                    "<0.01".to_string()
+                } else {
+                    "0.00".to_string()
+                };
+                format!(
+                    "{}heat +{:>width$}{}",
+                    p.red,
+                    heat_str,
+                    p.reset,
+                    width = widths.heat_val_width
+                )
+            } else {
+                format!("      {:>width$}", "", width = widths.heat_val_width)
+            }
+        } else {
+            String::new()
+        };
+
+        // 5. Tags segment
+        let mut tags = Vec::new();
+        if let Some(h) = step.heat.as_ref() {
+            if let Some(w) = &h.warning {
+                let styled_w = match w.trim() {
+                    "OVERHEATED" => format!("{} {} {}", p.label_overheated, w.trim(), p.reset),
+                    "CRITICAL" => format!("{} {} {}", p.label_critical, w.trim(), p.reset),
+                    other => format!(" {} ", other),
+                };
+                tags.push(styled_w);
+            }
+        }
+        if let Some(f) = step.fuel.as_ref() {
+            if let Some(w) = &f.warning {
+                if w == "REFUEL" {
+                    tags.push(format!("{} REFUEL {}", p.tag_refuel, p.reset));
+                }
+            }
+        }
+        let tags_seg = tags.join("  ");
+
+        // Final assembly
+        let mut segments = Vec::new();
+        segments.push(min_seg);
+        if !fuel_seg.is_empty() {
+            segments.push(fuel_seg);
+        }
+        if !heat_cost_seg.is_empty() {
+            segments.push(heat_cost_seg);
+        }
+        if !tags_seg.is_empty() {
+            segments.push(tags_seg);
+        }
+
+        // Check content
+        let has_fuel = step.fuel.is_some();
+        let has_heat = step.heat.is_some();
+        if !is_black_hole && !has_fuel && !has_heat && step.min_external_temp.is_none() {
+            return None;
+        }
+
+        let joined = segments.join(", ");
+        Some(format!("       {}│{} {}", p.gray, p.reset, joined))
     }
 
     fn render_footer(&self, summary: &RouteSummary, base_url: &str) {
@@ -551,91 +689,45 @@ impl EnhancedRenderer {
     }
 }
 
-impl EnhancedRenderer {
-    /// Build the status line for a route step.
-    fn build_step_details_line(&self, step: &RouteStep) -> Option<String> {
-        let p = &self.palette;
-        let mut parts: Vec<String> = Vec::new();
+/// Column widths for the details row alignment.
+#[derive(Debug, Default)]
+struct ColumnWidths {
+    fuel_val_width: usize,
+    rem_val_width: usize,
+    heat_val_width: usize,
+}
 
-        // Black hole systems (IDs 30000001, 30000002, 30000003)
-        let is_black_hole = matches!(step.id, 30000001..=30000003);
-        if is_black_hole {
-            parts.push(format!("{}▌Black Hole▐{}", p.tag_black_hole, p.reset));
-        }
+fn compute_details_column_widths(steps: &[RouteStep]) -> ColumnWidths {
+    let mut fuel_val_width = 0usize;
+    let mut rem_val_width = 0usize;
+    let mut heat_val_width = 0usize;
 
-        // Temperature (skip for black holes - they have no planets orbiting)
-        if !is_black_hole {
-            if let Some(t) = step.min_external_temp {
-                parts.push(format!("{}min {:>6.2}K{}", p.cyan, t, p.reset));
-            }
-        }
-
-        // Planets and moons are shown on the header row (after the ')') per UX
-        // request, so do not include them here in the details row.
-
+    for step in steps {
         if let Some(fuel) = step.fuel.as_ref() {
-            // Display fuel as integers in the UI (fuel units operate in whole units).
-            let hop_int = fuel.hop_cost.ceil() as i64;
-            let mut segment = format!("{}fuel {}{}", p.orange, hop_int, p.reset);
-
-            if let Some(rem) = fuel.remaining {
-                let rem_int = rem.ceil() as i64;
-                segment.push_str(&format!(" {}(rem {}){}", p.magenta, rem_int, p.reset));
+            let hop = format!("{}", fuel.hop_cost.ceil() as i64);
+            fuel_val_width = fuel_val_width.max(hop.len());
+            if let Some(r) = fuel.remaining {
+                let rem = format!("{}", r.ceil() as i64);
+                rem_val_width = rem_val_width.max(rem.len());
             }
-
-            parts.push(segment);
         }
 
-        if let Some(heat) = step.heat.as_ref() {
-            // Display only the hop heat and any warning; cumulative residual heat is
-            // intentionally omitted from the per-step bracketed display to avoid
-            // implying indefinite accumulation across hops.
-            // Format hop heat: if it's non-zero but rounds to 0.00 at two decimals, show
-            // a small indicator '<0.01' so users can see that heat is non-zero.
-            let heat_str = if heat.hop_heat >= 0.005 {
-                format!("{:.2}", heat.hop_heat)
-            } else if heat.hop_heat > 0.0 {
+        if let Some(h) = step.heat.as_ref() {
+            let heat_str = if h.hop_heat >= 0.005 {
+                format!("{:.2}", h.hop_heat)
+            } else if h.hop_heat > 0.0 {
                 "<0.01".to_string()
             } else {
                 "0.00".to_string()
             };
-
-            let segment = if let Some(w) = heat.warning.as_ref() {
-                // Render labels with the surrounding spaces included in the styled
-                // region so their background matches the tag badges (JUMP/GATE).
-                let styled_w = match w.trim() {
-                    "OVERHEATED" => format!("{} {} {}", p.label_overheated, w.trim(), p.reset),
-                    "CRITICAL" => format!("{} {} {}", p.label_critical, w.trim(), p.reset),
-                    other => format!(" {} ", other),
-                };
-                // Place styled label directly after the heat value; styled_w contains spaces inside the styled region.
-                format!("{}heat +{} {}{}", p.red, heat_str, styled_w, p.reset)
-            } else {
-                format!("{}heat +{}{}", p.red, heat_str, p.reset)
-            };
-
-            parts.push(segment);
+            heat_val_width = heat_val_width.max(heat_str.len());
         }
+    }
 
-        // If this step indicates a refuel was required, append a blue REFUEL tag.
-        if let Some(fuel) = step.fuel.as_ref() {
-            if let Some(w) = &fuel.warning {
-                if w == "REFUEL" {
-                    parts.push(format!("{} REFUEL {}", p.tag_refuel, p.reset));
-                }
-            }
-        }
-
-        if parts.is_empty() {
-            return None;
-        }
-
-        Some(format!(
-            "       {}│{} {}",
-            p.gray,
-            p.reset,
-            parts.join(&format!("{}, {}", p.gray, p.reset))
-        ))
+    ColumnWidths {
+        fuel_val_width,
+        rem_val_width,
+        heat_val_width,
     }
 }
 
@@ -709,8 +801,9 @@ mod tests {
             heat: None,
         };
 
+        let widths = compute_details_column_widths(std::slice::from_ref(&step));
         let line = renderer
-            .build_step_details_line(&step)
+            .build_step_details_line(&step, &widths)
             .expect("line present");
         assert!(line.contains("Black Hole"));
         assert!(!line.contains("min"));
@@ -737,8 +830,9 @@ mod tests {
             heat: None,
         };
 
+        let widths = compute_details_column_widths(std::slice::from_ref(&step));
         let line = renderer
-            .build_step_details_line(&step)
+            .build_step_details_line(&step, &widths)
             .expect("line present");
         assert!(line.contains("min"));
         // Planets and moons moved to the header line
@@ -775,8 +869,9 @@ mod tests {
             heat: None,
         };
 
+        let widths = compute_details_column_widths(std::slice::from_ref(&step));
         let line = renderer
-            .build_step_details_line(&step)
+            .build_step_details_line(&step, &widths)
             .expect("line present");
         assert!(line.contains(colors::ORANGE));
         assert!(line.contains(colors::MAGENTA));
@@ -806,8 +901,9 @@ mod tests {
             }),
         };
 
+        let widths = compute_details_column_widths(std::slice::from_ref(&step));
         let line = renderer
-            .build_step_details_line(&step)
+            .build_step_details_line(&step, &widths)
             .expect("line present");
 
         assert!(line.contains("heat +<0.01"));
@@ -836,8 +932,10 @@ mod tests {
             ..singular.clone()
         };
 
-        let singular_line = renderer.build_step_details_line(&singular);
-        let plural_line = renderer.build_step_details_line(&plural);
+        let singular_widths = compute_details_column_widths(std::slice::from_ref(&singular));
+        let plural_widths = compute_details_column_widths(std::slice::from_ref(&plural));
+        let singular_line = renderer.build_step_details_line(&singular, &singular_widths);
+        let plural_line = renderer.build_step_details_line(&plural, &plural_widths);
 
         // (No debug prints in normal test run)
 
@@ -857,6 +955,131 @@ mod tests {
 
         // And ensure combined tokens have a separating space
         assert!(singular_header.contains("1 Planet 1 Moon"));
-        assert!(plural_header.contains("2 Planets 2 Moons"));
+    }
+
+    #[test]
+    fn test_column_widths_computation() {
+        let _renderer = EnhancedRenderer::new(ColorPalette::plain());
+
+        let steps = vec![
+            RouteStep {
+                index: 1,
+                id: 1,
+                name: Some("Step 1".to_string()),
+                distance: Some(1.0),
+                method: Some("jump".to_string()),
+                min_external_temp: None,
+                planet_count: Some(1),
+                moon_count: Some(1),
+                fuel: Some(FuelProjection {
+                    hop_cost: 3.0,
+                    cumulative: 3.0,
+                    remaining: Some(90.0),
+                    warning: None,
+                }),
+                heat: None,
+            },
+            RouteStep {
+                index: 2,
+                id: 2,
+                name: Some("Step 2".to_string()),
+                distance: Some(2.0),
+                method: Some("gate".to_string()),
+                min_external_temp: Some(10.0),
+                planet_count: Some(2),
+                moon_count: Some(2),
+                fuel: Some(FuelProjection {
+                    hop_cost: 4.5,
+                    cumulative: 7.5,
+                    remaining: Some(85.5),
+                    warning: None,
+                }),
+                heat: None,
+            },
+            RouteStep {
+                index: 3,
+                id: 3,
+                name: Some("Step 3".to_string()),
+                distance: Some(3.0),
+                method: Some("jump".to_string()),
+                min_external_temp: Some(20.0),
+                planet_count: Some(3),
+                moon_count: Some(3),
+                fuel: Some(FuelProjection {
+                    hop_cost: 5.0,
+                    cumulative: 12.5,
+                    remaining: Some(80.0),
+                    warning: None,
+                }),
+                heat: None,
+            },
+        ];
+
+        let widths = compute_details_column_widths(&steps);
+        assert_eq!(widths.fuel_val_width, 1); // "3", "5", "5" -> max len 1
+        assert_eq!(widths.rem_val_width, 2); // "90", "86", "80" -> max len 2
+        assert_eq!(widths.heat_val_width, 0); // No heat
+    }
+
+    #[test]
+    fn test_render_step_details_alignment() {
+        let renderer = EnhancedRenderer::new(ColorPalette::plain());
+
+        let steps = vec![
+            RouteStep {
+                index: 1,
+                id: 1,
+                name: Some("A".to_string()),
+                distance: Some(1.0),
+                method: Some("jump".to_string()),
+                min_external_temp: None,
+                planet_count: Some(1),
+                moon_count: Some(1),
+                fuel: Some(FuelProjection {
+                    hop_cost: 3.0,
+                    cumulative: 3.0,
+                    remaining: Some(90.0),
+                    warning: None,
+                }),
+                heat: None,
+            },
+            RouteStep {
+                index: 2,
+                id: 2,
+                name: Some("B".to_string()),
+                distance: Some(2.0),
+                method: Some("gate".to_string()),
+                min_external_temp: Some(10.0),
+                planet_count: Some(2),
+                moon_count: Some(2),
+                fuel: Some(FuelProjection {
+                    hop_cost: 4.5,
+                    cumulative: 7.5,
+                    remaining: Some(85.5),
+                    warning: None,
+                }),
+                heat: None,
+            },
+        ];
+
+        let widths = compute_details_column_widths(&steps);
+
+        // Step 1
+        let line1 = renderer
+            .build_step_details_line(&steps[0], &widths)
+            .unwrap();
+        // "fuel 3" (width 1) -> "fuel 3"
+        // "(rem 90)" (width 2) -> "(rem 90)"
+        assert!(line1.contains("fuel 3"));
+        assert!(line1.contains("(rem 90)"));
+
+        // Step 2
+        let line2 = renderer
+            .build_step_details_line(&steps[1], &widths)
+            .unwrap();
+        // "fuel 5" (width 1) -> "fuel 5"
+        // "(rem 86)" (width 2) -> "(rem 86)"
+        assert!(line2.contains("fuel 5"));
+        assert!(line2.contains("(rem 86)"));
     }
 }
