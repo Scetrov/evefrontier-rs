@@ -448,19 +448,40 @@ impl EnhancedRenderer {
             let total_str = format_with_separators(fuel.total.ceil() as u64);
             // Append fuel quality percent, e.g. " (10% Fuel)"
             let quality_suffix = format!(" ({:.0}% Fuel)", fuel.quality);
+
+            // Compute number column width that lines up with distance numbers
+            let mut num_width = max_width;
+            num_width = num_width.max(total_str.len());
+
+            // Remaining (if present) might be wider; include in width calculation
+            let remaining_str_opt = fuel
+                .remaining
+                .map(|r| format_with_separators(r.ceil() as u64));
+            if let Some(ref rem) = remaining_str_opt {
+                num_width = num_width.max(rem.len());
+            }
+
             println!(
-                "  {}Fuel ({}):{}   {}{}{}{}",
-                p.cyan, ship, p.reset, p.white_bold, total_str, p.reset, quality_suffix
+                "  {}Fuel ({}):{}   {}{:>width$}{}{}",
+                p.cyan,
+                ship,
+                p.reset,
+                p.white_bold,
+                total_str,
+                p.reset,
+                quality_suffix,
+                width = num_width
             );
 
-            if let Some(remaining) = fuel.remaining {
+            if let Some(remaining) = remaining_str_opt {
                 println!(
-                    "  {}Remaining:{}      {}{}{}",
+                    "  {}Remaining:{}      {}{:>width$}{}",
                     p.green,
                     p.reset,
                     p.white_bold,
-                    format_with_separators(remaining.ceil() as u64),
-                    p.reset
+                    remaining,
+                    p.reset,
+                    width = num_width
                 );
             }
 

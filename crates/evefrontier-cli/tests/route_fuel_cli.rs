@@ -162,6 +162,51 @@ fn text_output_mentions_fuel_when_ship_selected() {
 }
 
 #[test]
+fn text_output_fuel_and_remaining_align() {
+    let (mut cmd, _temp) = prepare_command();
+    cmd.arg("route")
+        .arg("--from")
+        .arg("Nod")
+        .arg("--to")
+        .arg("Brana")
+        .arg("--ship")
+        .arg("Reflex")
+        .arg("--fuel-quality")
+        .arg("10")
+        .arg("--fuel-load")
+        .arg("1750")
+        .arg("--format")
+        .arg("enhanced");
+
+    let output = cmd.assert().success().get_output().stdout.clone();
+    let stdout = String::from_utf8(output).unwrap();
+
+    let lines: Vec<&str> = stdout.lines().collect();
+    let fuel_line = lines
+        .iter()
+        .find(|l| l.contains("Fuel (Reflex):"))
+        .expect("fuel line present");
+    let rem_line = lines
+        .iter()
+        .find(|l| l.contains("Remaining:"))
+        .expect("remaining line present");
+
+    let fuel_pos = fuel_line
+        .chars()
+        .position(|c| c.is_ascii_digit())
+        .expect("digit in fuel");
+    let rem_pos = rem_line
+        .chars()
+        .position(|c| c.is_ascii_digit())
+        .expect("digit in remaining");
+
+    assert_eq!(
+        fuel_pos, rem_pos,
+        "Fuel and Remaining numbers should start at the same column"
+    );
+}
+
+#[test]
 fn cli_accepts_cooling_mode_flag() {
     // Cooling mode flag was removed; test not needed.
 }
