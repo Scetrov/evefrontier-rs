@@ -462,8 +462,12 @@ async fn main() -> Result<()> {
 
 fn handle_download(context: &AppContext) -> Result<()> {
     let release = context.dataset_release();
-    let paths = ensure_dataset(context.target_path(), release.clone())
-        .context("failed to locate or download the EVE Frontier dataset")?;
+    // Ensure dataset operation runs in a blocking region so it can perform
+    // reqwest::blocking operations (which create their own runtime) without
+    // being dropped from inside the async runtime which causes panics.
+    let paths =
+        tokio::task::block_in_place(|| ensure_dataset(context.target_path(), release.clone()))
+            .context("failed to locate or download the EVE Frontier dataset")?;
     // Prefer DatasetPaths.ship_data, fall back to env var if provided
     let ship_path_buf: Option<PathBuf> = if let Some(p) = &paths.ship_data {
         Some(p.clone())
@@ -476,8 +480,10 @@ fn handle_download(context: &AppContext) -> Result<()> {
 }
 
 fn handle_index_build(context: &AppContext, args: &IndexBuildArgs) -> Result<()> {
-    let paths = ensure_dataset(context.target_path(), context.dataset_release())
-        .context("failed to locate or download the EVE Frontier dataset")?;
+    let paths = tokio::task::block_in_place(|| {
+        ensure_dataset(context.target_path(), context.dataset_release())
+    })
+    .context("failed to locate or download the EVE Frontier dataset")?;
 
     let index_path = spatial_index_path(&paths.database);
 
@@ -558,9 +564,11 @@ mod exit_codes {
 fn handle_index_verify(context: &AppContext, args: &IndexVerifyArgs) -> Result<()> {
     let start = std::time::Instant::now();
 
-    // Resolve paths
-    let paths = ensure_dataset(context.target_path(), context.dataset_release())
-        .context("failed to locate or download the EVE Frontier dataset")?;
+    // Resolve paths (run in blocking region to allow internal blocking I/O).
+    let paths = tokio::task::block_in_place(|| {
+        ensure_dataset(context.target_path(), context.dataset_release())
+    })
+    .context("failed to locate or download the EVE Frontier dataset")?;
     let index_path = spatial_index_path(&paths.database);
 
     // Run verification
@@ -725,8 +733,12 @@ fn handle_route_command(
     args: &RouteCommandArgs,
     kind: RouteOutputKind,
 ) -> Result<()> {
-    let paths = ensure_dataset(context.target_path(), context.dataset_release())
-        .context("failed to locate or download the EVE Frontier dataset")?;
+    // Resolve dataset in a blocking region to avoid constructing blocking
+    // HTTP clients inside the async runtime thread (see tokio reqwest runtime drop issue).
+    let paths = tokio::task::block_in_place(|| {
+        ensure_dataset(context.target_path(), context.dataset_release())
+    })
+    .context("failed to locate or download the EVE Frontier dataset")?;
 
     let starmap = load_starmap(&paths.database)
         .with_context(|| format!("failed to load dataset from {}", paths.database.display()))?;
@@ -831,8 +843,10 @@ fn handle_route_command(
 }
 
 fn handle_list_ships(context: &AppContext) -> Result<()> {
-    let paths = ensure_dataset(context.target_path(), context.dataset_release())
-        .context("failed to locate or download the EVE Frontier dataset")?;
+    let paths = tokio::task::block_in_place(|| {
+        ensure_dataset(context.target_path(), context.dataset_release())
+    })
+    .context("failed to locate or download the EVE Frontier dataset")?;
 
     let catalog = load_ship_catalog(&paths)?;
     print_ship_catalog(&catalog);

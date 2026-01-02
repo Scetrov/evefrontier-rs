@@ -183,7 +183,17 @@ pub fn download_from_source_with_cache(
             DatasetRelease::Latest => "latest",
             DatasetRelease::Tag(_) => "tag",
         };
-        let contents = format!("requested={}\nresolved={}\n", requested, resolved);
+        // Include a cache_dir entry so callers can deterministically locate
+        // cached companion assets (like ship_data.csv) without relying on
+        // global environment variables which may be modified concurrently
+        // during tests.
+        let cache_dir = PathBuf::from(cache_dir);
+        let contents = format!(
+            "requested={}\nresolved={}\ncache_dir={}\n",
+            requested,
+            resolved,
+            cache_dir.display(),
+        );
         fs::write(marker_path, contents)?;
     }
 
@@ -510,7 +520,7 @@ fn copy_from_override_with_cache(source: &Path, target: &Path, cache_dir: &Path)
     copy_cached_to_target(&cached_dataset, target)
 }
 
-fn dataset_cache_dir() -> Result<PathBuf> {
+pub(crate) fn dataset_cache_dir() -> Result<PathBuf> {
     if let Some(override_dir) = env::var_os(CACHE_DIR_ENV) {
         return Ok(PathBuf::from(override_dir));
     }
@@ -759,6 +769,18 @@ fn read_checksum_sidecar(file: &Path) -> Result<Option<String>> {
 /// falls back to files prefixed by the sanitized release tag containing `ship`.
 pub(crate) fn find_cached_ship_for_tag(tag: &str) -> Result<Option<PathBuf>> {
     let cache_dir = dataset_cache_dir()?;
+    find_cached_ship_for_tag_in_dir(tag, &cache_dir)
+}
+
+/// Search for a cached ship CSV file for `tag` under the provided `cache_dir`.
+///
+/// This deterministic helper avoids re-reading environment configuration so
+/// callers can pass a pre-resolved cache directory (useful for tests that
+/// manipulate env vars concurrently).
+pub(crate) fn find_cached_ship_for_tag_in_dir(
+    tag: &str,
+    cache_dir: &Path,
+) -> Result<Option<PathBuf>> {
     if !cache_dir.exists() {
         return Ok(None);
     }
@@ -769,7 +791,8 @@ pub(crate) fn find_cached_ship_for_tag(tag: &str) -> Result<Option<PathBuf>> {
     let mut fallback: Option<PathBuf> = None;
     let prefix = sanitize_component(tag).to_ascii_lowercase();
 
-    for entry in fs::read_dir(&cache_dir)? {
+    // First pass: prefer files that start with the sanitized tag (e.g. `e6c4-ship_data.csv`).
+    for entry in fs::read_dir(cache_dir)? {
         let entry = entry?;
         let path = entry.path();
         if !path.is_file() {
@@ -781,11 +804,61 @@ pub(crate) fn find_cached_ship_for_tag(tag: &str) -> Result<Option<PathBuf>> {
             .unwrap_or_default();
         let lname = name.to_ascii_lowercase();
 
-        if lname.contains("ship_data") {
+        if !lname.ends_with(".sha256") && lname.starts_with(&prefix) && lname.contains("ship") {
+            if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+                if ext.eq_ignore_ascii_case("csv") {
+                    return Ok(Some(path));
+                }
+            }
+        }
+    }
+
+    // Second pass: prefer explicit `ship_data.csv` filenames if present.
+    for entry in fs::read_dir(cache_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+        let name = path
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let lname = name.to_ascii_lowercase();
+
+        if lname.ends_with("ship_data.csv") {
             return Ok(Some(path));
         }
 
-        if fallback.is_none() && lname.starts_with(&prefix) && lname.contains("ship") {
+        // If the name contains 'ship_data' but does not end with .csv, only
+        // consider it a candidate if it has a CSV extension (case-insensitive).
+        if lname.contains("ship_data") {
+            if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+                if ext.eq_ignore_ascii_case("csv") {
+                    return Ok(Some(path));
+                }
+            }
+        }
+    }
+
+    // Fallback: select the first tag-like ship file that is not a checksum sidecar.
+    for entry in fs::read_dir(cache_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+        let name = path
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let lname = name.to_ascii_lowercase();
+
+        if fallback.is_none()
+            && !lname.ends_with(".sha256")
+            && lname.starts_with(&prefix)
+            && lname.contains("ship")
+        {
             fallback = Some(path);
         }
     }
@@ -924,6 +997,7 @@ fn copy_file_atomic(source: &Path, destination: &Path) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::tempdir;
 
     #[test]
     fn classify_detects_ship_data_by_name() {
@@ -968,5 +1042,40 @@ mod tests {
         let selected = select_ship_asset(&release).expect("ship asset should be found");
         assert_eq!(selected.kind, AssetKind::ShipCsv);
         assert!(selected.name.contains("ship_data"));
+    }
+
+    #[test]
+    fn find_cached_ship_prefers_csv_over_sidecar() {
+        let cache = tempdir().expect("create cache dir");
+
+        // Create a sidecar file and the actual CSV in the cache dir
+        let sidecar = cache.path().join("e6c4-ship_data.csv.sha256");
+        fs::write(&sidecar, "deadbeef").expect("write sidecar");
+
+        let csv = cache.path().join("e6c4-ship_data.csv");
+        fs::write(&csv, "name,base_mass_kg,fuel_capacity,cargo_capacity,specific_heat,max_heat_tolerance,heat_dissipation_rate\nReflex,1000,500,100,1.0,1000,0.1").expect("write csv");
+
+        // Temporarily override cache dir via env var
+        std::env::set_var(CACHE_DIR_ENV, cache.path());
+        let found = find_cached_ship_for_tag("e6c4").expect("search should succeed");
+        assert!(found.is_some(), "should find a ship file");
+        let found = found.unwrap();
+        assert_eq!(
+            found.file_name().unwrap().to_string_lossy(),
+            "e6c4-ship_data.csv"
+        );
+    }
+
+    #[test]
+    fn find_cached_ship_ignores_only_sidecar() {
+        let cache = tempdir().expect("create cache dir");
+
+        // Only a sidecar exists
+        let sidecar = cache.path().join("e6c4-ship_data.csv.sha256");
+        fs::write(&sidecar, "deadbeef").expect("write sidecar");
+
+        std::env::set_var(CACHE_DIR_ENV, cache.path());
+        let found = find_cached_ship_for_tag("e6c4").expect("search should succeed");
+        assert!(found.is_none(), "should not return sidecar as ship data");
     }
 }
