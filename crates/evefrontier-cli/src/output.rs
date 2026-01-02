@@ -499,9 +499,9 @@ impl EnhancedRenderer {
                     let styled_labels: Vec<String> = ordered
                         .into_iter()
                         .map(|label| match label.as_str() {
-                            "OVERHEATED" => format!("{}{}{}", p.label_overheated, label, p.reset),
-                            "CRITICAL" => format!("{}{}{}", p.label_critical, label, p.reset),
-                            other => other.to_string(),
+                            "OVERHEATED" => format!(" {}{}{} ", p.label_overheated, label, p.reset),
+                            "CRITICAL" => format!(" {}{}{} ", p.label_critical, label, p.reset),
+                            other => format!(" {} ", other),
                         })
                         .collect();
 
@@ -602,13 +602,14 @@ impl EnhancedRenderer {
             };
 
             let segment = if let Some(w) = heat.warning.as_ref() {
+                // Render labels with a space on either side for readability.
                 let styled_w = match w.trim() {
-                    "OVERHEATED" => format!("{}{}{}", p.label_overheated, w.trim(), p.reset),
-                    "CRITICAL" => format!("{}{}{}", p.label_critical, w.trim(), p.reset),
-                    _ => w.trim().to_string(),
+                    "OVERHEATED" => format!(" {}{}{} ", p.label_overheated, w.trim(), p.reset),
+                    "CRITICAL" => format!(" {}{}{} ", p.label_critical, w.trim(), p.reset),
+                    other => format!(" {} ", other),
                 };
-                // Do not bracket the warning label — show it inline after the heat value.
-                format!("{}heat +{} {}{}", p.red, heat_str, styled_w, p.reset)
+                // Place styled label directly after the heat value; styled_w contains surrounding spaces.
+                format!("{}heat +{}{}{}", p.red, heat_str, styled_w, p.reset)
             } else {
                 format!("{}heat +{}{}", p.red, heat_str, p.reset)
             };
