@@ -41,6 +41,10 @@ pub mod colors {
     pub const MAGENTA: &str = "\x1b[35m";
     /// Bold reverse magenta for black hole badge.
     pub const TAG_BLACK_HOLE: &str = "\x1b[1;7;35m";
+    /// Black text on yellow background for ' OVERHEATED ' label
+    pub const LABEL_OVERHEATED: &str = "\x1b[1;30;43m";
+    /// Black text on red background for ' CRITICAL ' label
+    pub const LABEL_CRITICAL: &str = "\x1b[1;30;41m";
 }
 
 /// A collection of resolved color codes, either actual ANSI sequences
@@ -62,6 +66,8 @@ pub struct ColorPalette {
     pub orange: &'static str,
     pub red: &'static str,
     pub magenta: &'static str,
+    pub label_overheated: &'static str,
+    pub label_critical: &'static str,
 }
 
 impl ColorPalette {
@@ -83,6 +89,8 @@ impl ColorPalette {
             orange: colors::ORANGE,
             red: colors::RED,
             magenta: colors::MAGENTA,
+            label_overheated: colors::LABEL_OVERHEATED,
+            label_critical: colors::LABEL_CRITICAL,
         }
     }
 
@@ -104,6 +112,8 @@ impl ColorPalette {
             orange: "",
             red: "",
             magenta: "",
+            label_overheated: "",
+            label_critical: "",
         }
     }
 

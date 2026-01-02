@@ -446,15 +446,39 @@ impl EnhancedRenderer {
         if let Some(fuel) = &summary.fuel {
             let ship = fuel.ship_name.as_deref().unwrap_or("<unknown ship>");
             println!(
-                "  {}Fuel ({}):{}   {}{:.2}{}",
-                p.cyan, ship, p.reset, p.white_bold, fuel.total, p.reset
+                "  {}Fuel ({}):{}   {}{}{}",
+                p.cyan,
+                ship,
+                p.reset,
+                p.white_bold,
+                fuel.total.ceil() as i64,
+                p.reset
             );
 
             if let Some(remaining) = fuel.remaining {
                 println!(
-                    "  {}Remaining:{}      {}{:.2}{}",
-                    p.green, p.reset, p.white_bold, remaining, p.reset
+                    "  {}Remaining:{}      {}{}{}",
+                    p.green,
+                    p.reset,
+                    p.white_bold,
+                    remaining.ceil() as i64,
+                    p.reset
                 );
+            }
+
+            // Heat summary (if present) — print warnings only (no cumulative total)
+            if let Some(heat) = &summary.heat {
+                println!("  {}Heat:{}", p.cyan, p.reset);
+
+                for warning in &heat.warnings {
+                    // Style known labels for terminal output; fall back to raw text for unknown warnings.
+                    let styled = match warning.trim() {
+                        "OVERHEATED" => format!("{}{}{}", p.label_overheated, warning, p.reset),
+                        "CRITICAL" => format!("{}{}{}", p.label_critical, warning, p.reset),
+                        _ => warning.clone(),
+                    };
+                    println!("  Warning: {}", styled);
+                }
             }
         }
 
@@ -518,11 +542,43 @@ impl EnhancedRenderer {
         }
 
         if let Some(fuel) = step.fuel.as_ref() {
-            let mut segment = format!("{}fuel {:.2}{}", p.orange, fuel.hop_cost, p.reset);
+            // Display fuel as integers in the UI (fuel units operate in whole units).
+            let hop_int = fuel.hop_cost.ceil() as i64;
+            let mut segment = format!("{}fuel {}{}", p.orange, hop_int, p.reset);
 
             if let Some(rem) = fuel.remaining {
-                segment.push_str(&format!(" {}(rem {:.2}){}", p.magenta, rem, p.reset));
+                let rem_int = rem.ceil() as i64;
+                segment.push_str(&format!(" {}(rem {}){}", p.magenta, rem_int, p.reset));
             }
+
+            parts.push(segment);
+        }
+
+        if let Some(heat) = step.heat.as_ref() {
+            // Display only the hop heat and any warning; cumulative residual heat is
+            // intentionally omitted from the per-step bracketed display to avoid
+            // implying indefinite accumulation across hops.
+            // Format hop heat: if it's non-zero but rounds to 0.00 at two decimals, show
+            // a small indicator '<0.01' so users can see that heat is non-zero.
+            let heat_str = if heat.hop_heat >= 0.005 {
+                format!("{:.2}", heat.hop_heat)
+            } else if heat.hop_heat > 0.0 {
+                "<0.01".to_string()
+            } else {
+                "0.00".to_string()
+            };
+
+            let segment = if let Some(w) = heat.warning.as_ref() {
+                let styled_w = match w.trim() {
+                    "OVERHEATED" => format!("{}{}{}", p.label_overheated, w.trim(), p.reset),
+                    "CRITICAL" => format!("{}{}{}", p.label_critical, w.trim(), p.reset),
+                    _ => w.trim().to_string(),
+                };
+                // Do not bracket the warning label — show it inline after the heat value.
+                format!("{}heat +{} {}{}", p.red, heat_str, styled_w, p.reset)
+            } else {
+                format!("{}heat +{}{}", p.red, heat_str, p.reset)
+            };
 
             parts.push(segment);
         }
@@ -544,9 +600,13 @@ fn format_fuel_suffix(step: &RouteStep) -> Option<String> {
     let fuel = step.fuel.as_ref()?;
     let remaining = fuel
         .remaining
-        .map(|v| format!(" (remaining: {:.2})", v))
+        .map(|v| format!(" (remaining: {})", v.ceil() as i64))
         .unwrap_or_default();
-    Some(format!(" | fuel: {:.2}{}", fuel.hop_cost, remaining))
+    Some(format!(
+        " | fuel: {}{}",
+        fuel.hop_cost.ceil() as i64,
+        remaining
+    ))
 }
 
 #[cfg(test)]
@@ -603,6 +663,7 @@ mod tests {
             planet_count: Some(0),
             moon_count: Some(0),
             fuel: None,
+            heat: None,
         };
 
         let line = renderer
@@ -630,6 +691,7 @@ mod tests {
                 remaining: Some(95.0),
                 warning: None,
             }),
+            heat: None,
         };
 
         let line = renderer
@@ -659,6 +721,7 @@ mod tests {
                 remaining: Some(96.5),
                 warning: None,
             }),
+            heat: None,
         };
 
         let line = renderer
@@ -666,8 +729,37 @@ mod tests {
             .expect("line present");
         assert!(line.contains(colors::ORANGE));
         assert!(line.contains(colors::MAGENTA));
-        assert!(line.contains("fuel 3.50"));
-        assert!(line.contains("(rem 96.50)"));
+        assert!(line.contains("fuel 4"));
+        assert!(line.contains("(rem 97)"));
+    }
+
+    #[test]
+    fn test_small_heat_shows_less_than_marker() {
+        let renderer = EnhancedRenderer::new(ColorPalette::plain());
+        let step = RouteStep {
+            index: 2,
+            id: 42,
+            name: Some("Test".to_string()),
+            distance: Some(10.0),
+            method: Some("jump".to_string()),
+            min_external_temp: None,
+            planet_count: None,
+            moon_count: None,
+            fuel: None,
+            heat: Some(evefrontier_lib::ship::HeatProjection {
+                hop_heat: 0.0001,
+                warning: None,
+                wait_time_seconds: None,
+                residual_heat: Some(0.0001),
+                can_proceed: true,
+            }),
+        };
+
+        let line = renderer
+            .build_step_details_line(&step)
+            .expect("line present");
+
+        assert!(line.contains("heat +<0.01"));
     }
 
     #[test]
@@ -684,6 +776,7 @@ mod tests {
             planet_count: Some(1),
             moon_count: Some(1),
             fuel: None,
+            heat: None,
         };
 
         let plural = RouteStep {

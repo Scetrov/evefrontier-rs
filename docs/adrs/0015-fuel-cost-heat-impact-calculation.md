@@ -30,8 +30,8 @@ The `evefrontier_datasets` repository (https://github.com/Scetrov/evefrontier_da
 | `specific_heat`          | f64    | Specific heat capacity (J/kg·K)                       |
 | `fuel_capacity`          | f64    | Maximum fuel tank capacity (units)                    |
 | `cargo_capacity`         | f64    | Maximum cargo hold capacity (m³)                      |
-| `max_heat_tolerance`     | f64    | Maximum heat the ship can tolerate before damage      |
-| `heat_dissipation_rate`  | f64    | Heat dissipation rate per time unit (units/s)        |
+| `max_heat_tolerance`     | *removed*    | Per-ship tolerance is not provided by the canonical game CSV; heat warnings use canonical thresholds (HEAT_OVERHEATED/HEAT_CRITICAL) |
+| `heat_dissipation_rate`  | *removed*    | Per-ship dissipation is not provided by the canonical game CSV; dissipation may be modelled using environment and future research |
 
 ### Mass Calculation
 
@@ -147,6 +147,17 @@ In dynamic mass mode, heat generation decreases with each hop as fuel is consume
 
 _Note: Heat accumulates across the entire route; total route heat differs in dynamic vs static modes_
 
+### Heat Implementation Details
+
+The library implements heat projections with the following behaviour:
+
+- **Function**: `calculate_jump_heat(total_mass_kg, distance_ly, hull_mass_kg, calibration)` — a pure function returning per-hop heat as f64.
+- **Calibration**: default `calibration_constant = 1.0` (configurable via `HeatConfig`).
+- **Mass modes**: mirrors fuel (`static` default, `dynamic_mass` recalculates mass after each hop).
+- **Types**: `HeatProjection` (per-step) and `HeatSummary` (route-level) are serialisable and included in CLI and Lambda responses.
+- **Warnings**: cumulative heat > 75% yields a warning, > 100% yields an error-level warning.
+
+
 **Heat accumulation and dissipation:**
 
 Ships accumulate heat during spatial jumps. The exact dissipation rate and maximum heat tolerance
@@ -192,10 +203,10 @@ pub struct ShipAttributes {
     pub fuel_capacity: f64,
     /// Maximum cargo hold capacity (m³)
     pub cargo_capacity: f64,
-    /// Maximum heat the ship can tolerate before damage occurs (units)
-    pub max_heat_tolerance: f64,
-    /// Heat dissipation rate per time unit (units/s)
-    pub heat_dissipation_rate: f64,
+    // NOTE: Per-ship tolerance and dissipation fields are not present in the canonical
+    // dataset and are intentionally omitted from the `ShipAttributes` model. Heat warnings
+    // are produced using canonical thresholds (HEAT_OVERHEATED, HEAT_CRITICAL) described in
+    // the research documentation.
 }
 
 /// Current ship loadout for mass calculations

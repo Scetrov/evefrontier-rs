@@ -1,8 +1,8 @@
 # Heat mechanics and fuel range (summary)
 
-This document summarizes community-sourced formulas and reasoning about ship heat and fuel
-influence on jump range. It is intended as a research note and a starting point for a
-formal ADR or implementation in `ship.rs` (see ADR 0015).
+This document summarizes community-sourced formulas and reasoning about ship heat and fuel influence
+on jump range. It is intended as a research note and a starting point for a formal ADR or
+implementation in `ship.rs` (see ADR 0015).
 
 Summary formula (informational):
 
@@ -18,12 +18,90 @@ range = fuel_volume × fuel_quality / (FUEL_CONSTANT × ship_mass)
 Notes:
 
 - This is a community-derived formula and should be validated before use in production.
-- Keep the document concise — implementation choices (units, normalization) must be documented
-  in the ship data ADR before this formula is used for route fuel/heat calculations.
+- Keep the document concise — implementation choices (units, normalization) must be documented in
+  the ship data ADR before this formula is used for route fuel/heat calculations.
+
+Display and dataset notes:
+
+- The canonical game CSV does **not** include per-ship `max_heat_tolerance` or
+  `heat_dissipation_rate`, so the implementation does not rely on per-ship tolerances.
+- The system uses canonical absolute heat thresholds (NOMINAL / OVERHEATED / CRITICAL) to
+  classify cumulative route heat and drive warnings: `HEAT_OVERHEATED` and `HEAT_CRITICAL`.
 
 References
-- Jump Calculators: Understanding Your Ships Heat and Fuel Limits — https://ef-map.com/blog/jump-calculators-heat-fuel-range
+
+- [Jump Calculators: Understanding Your Ships Heat and Fuel Limits](https://ef-map.com/blog/jump-calculators-heat-fuel-range)
 
 TODO
+
 - Add a short table of example calculations.
 - Link this doc from `docs/USAGE.md` and `docs/ADR` once the formula is agreed and tests are added.
+
+## Integration with the game Temperature Service
+
+Finding: The game's `TemperatureSvc` (decompiled) exposes a compact set of primitives that
+are useful for implementing a realistic cooling/dissipation model:
+
+- Current and base temperatures via `current_temperature()` and `base_temperature()`
+- A `temperature_time_scale()` value used by the game to scale time-based temperature changes
+- Threshold callbacks and predictions (`get_next_state_change()`, `get_current_state()`) for
+  `TemperatureThreshold` → `TemperatureState` transitions (nominal → overheated → critical)
+- Zone detection (`get_current_temperature_zone()`), derived from ship position and
+  `get_temperature_zone(distance_from_sun, system_data)` and signalled via `zone_changed_signal()`
+- Active signals for state/zone changes (`state_change_signal`, `zone_changed_signal`) and an
+  attribute update handler (`OnAttributes`) that triggers recalculation.
+
+Practical implications:
+
+- We can compute a location-aware cooling efficiency by combining a **base dissipation rate**
+  with a **zone factor** (e.g., cold/frostline → high cooling, inner/hot zones → low cooling).
+- For higher fidelity, use the game-provided `current_temperature`/`base_temperature` and the
+  `temperature_time_scale()` to convert the game's natural temperature decay/growth into an
+  effective dissipation per second.
+- Use the `get_next_state_change()` and `state_change_signal` to invalidate cached wait-time
+  calculations when system or ship state changes (prevents stale recommendations).
+
+Suggested cooling/dissipation models
+
+1. Zone-based (conservative, opt-in)
+   - `dissipation_per_sec = BASE_DISSIPATION * zone_factor(zone)`
+   - `zone_factor` may be: FROSTLINE=1.0, OUTER=0.8, NOMINAL=0.5, INNER=0.2, HOT=0.0
+   - Pros: simple, predictable, easy to test
+   - Cons: less realistic than a game-driven model
+
+2. Game-driven (recommended for realism)
+   - Use `current_temperature()`, `base_temperature()` and `temperature_time_scale()` to
+     compute a per-second cooling rate consistent with how the game models temperature
+     evolution. Translate the game's next-state predictions into wait-time estimates.
+   - Pros: faithful to in-game behavior, responsive to system state
+   - Cons: requires careful unit validation and more tests
+
+Using dissipation to compute `HeatProjection` fields
+
+- Required reduction = (cumulative + hop_heat) - target_threshold (HEAT_OVERHEATED or HEAT_CRITICAL)
+- wait_seconds = required_reduction / dissipation_per_sec (if dissipation_per_sec > 0)
+- cooled_cumulative_heat = max(0.0, (cumulative + hop_heat) - dissipation_per_sec × wait_seconds)
+- If dissipation_per_sec == 0 and required_reduction > 0, mark `can_proceed = false` (infeasible)
+
+Tests & validation
+
+- Unit tests for zone-based factors: assert that wait times and cooled heat are smaller for icy
+  zones than for hot zones with identical inputs.
+- Integration tests mocking `TemperatureSvc` (or substituting deterministic values) to ensure
+  `wait_time_seconds` and `cooled_cumulative_heat` are consistent with `temperature_time_scale()`
+  and `get_next_state_change()` predictions.
+- Contract tests: ensure JSON output (`HeatProjection`) includes `wait_time_seconds` and
+  `cooled_cumulative_heat` when waiting is recommended and `can_proceed=false` when infeasible.
+
+Notes & caveats
+
+- The decompiled code is a guide — verify numeric semantics (units, scaling) with canonical
+  game data before relying on precise numeric thresholds or rates.
+- Keep dissipation models configurable and opt-in initially (feature flag or CLI option) and
+  document default behavior in `docs/USAGE.md`.
+
+Next steps
+
+- Decide whether to implement a zone-based prototype (fast) or the game-driven model (realistic).
+- Add tests (unit + integration) and examples in `docs/USAGE.md` and this file.
+- If you prefer, I can implement the chosen model and add the tests and docs now.

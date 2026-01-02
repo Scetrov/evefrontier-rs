@@ -75,6 +75,64 @@ fn json_output_includes_fuel_projection() {
 }
 
 #[test]
+fn json_output_includes_heat_projection() {
+    let (mut cmd, _temp) = prepare_command();
+    cmd.arg("--format")
+        .arg("json")
+        .arg("route")
+        .arg("--from")
+        .arg("Nod")
+        .arg("--to")
+        .arg("Brana")
+        .arg("--ship")
+        .arg("Reflex")
+        .arg("--fuel-quality")
+        .arg("10")
+        .arg("--fuel-load")
+        .arg("1750")
+        .arg("--cargo-mass")
+        .arg("0");
+
+    let output = cmd.assert().success();
+    let stdout = String::from_utf8(output.get_output().stdout.clone()).unwrap();
+
+    let value: Value = serde_json::from_str(&stdout).expect("valid JSON");
+    assert!(value.get("heat").is_some(), "summary heat present");
+    // `warnings` may be omitted when empty; accept either an array or absence.
+    if let Some(warnings) = value["heat"].get("warnings") {
+        assert!(warnings.is_array(), "summary heat warnings present");
+    }
+
+    let steps = value["steps"].as_array().expect("steps array");
+    assert!(steps.len() >= 2, "at least origin and one hop");
+    let hop_heat = &steps[1]["heat"];
+    assert!(hop_heat.is_object(), "hop heat present");
+    assert!(hop_heat["hop_heat"].as_f64().unwrap() >= 0.0);
+}
+
+#[test]
+fn text_output_mentions_heat_when_ship_selected() {
+    let (mut cmd, _temp) = prepare_command();
+    cmd.arg("route")
+        .arg("--from")
+        .arg("Nod")
+        .arg("--to")
+        .arg("Brana")
+        .arg("--ship")
+        .arg("Reflex")
+        .arg("--fuel-quality")
+        .arg("10")
+        .arg("--fuel-load")
+        .arg("1750")
+        .arg("--format")
+        .arg("enhanced");
+
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("Heat:"));
+}
+
+#[test]
 fn text_output_mentions_fuel_when_ship_selected() {
     let (mut cmd, _temp) = prepare_command();
     cmd.arg("route")
@@ -96,4 +154,44 @@ fn text_output_mentions_fuel_when_ship_selected() {
         .success()
         .stdout(predicate::str::contains("Fuel (Reflex):"))
         .stdout(predicate::str::contains("Remaining:"));
+}
+
+#[test]
+fn cli_accepts_cooling_mode_flag() {
+    // Cooling mode flag was removed; test not needed.
+}
+
+#[test]
+fn cli_default_calibration_produces_heat() {
+    let (mut cmd, _temp) = prepare_command();
+    cmd.arg("--format")
+        .arg("json")
+        .arg("route")
+        .arg("--from")
+        .arg("Nod")
+        .arg("--to")
+        .arg("Brana")
+        .arg("--ship")
+        .arg("Reflex")
+        .arg("--fuel-quality")
+        .arg("10")
+        .arg("--fuel-load")
+        .arg("1750")
+        .arg("--cargo-mass")
+        .arg("0");
+
+    let output = cmd.assert().success();
+    let stdout = String::from_utf8(output.get_output().stdout.clone()).unwrap();
+    let value: Value = serde_json::from_str(&stdout).expect("valid JSON");
+    let steps = value["steps"].as_array().expect("steps array");
+    let hop_heat = steps[1]["heat"]["hop_heat"].as_f64().unwrap();
+    // Ensure the fixed default calibration produces non-zero hop heat for jump hops.
+    if let Some(method) = steps[1]["method"].as_str() {
+        if method == "jump" {
+            assert!(
+                hop_heat > 0.0,
+                "hop heat should be > 0 for jump with default calibration"
+            );
+        }
+    }
 }

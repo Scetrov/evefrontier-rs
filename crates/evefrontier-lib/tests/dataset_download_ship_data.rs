@@ -195,7 +195,11 @@ fn ship_catalog_from_sidecar_resolves_csv() {
     let csv = tmp.path().join("e6c4-ship_data.csv");
     let sidecar = tmp.path().join("e6c4-ship_data.csv.sha256");
 
-    fs::write(&csv, "name,base_mass_kg,specific_heat,fuel_capacity,cargo_capacity,max_heat_tolerance,heat_dissipation_rate\nReflex,1000,1.0,500,100,1000,0.1").expect("write csv");
+    fs::write(
+        &csv,
+        "name,base_mass_kg,specific_heat,fuel_capacity,cargo_capacity\nReflex,1000,1.0,500,100",
+    )
+    .expect("write csv");
     fs::write(&sidecar, "deadbeef").expect("write sidecar");
 
     // Calling from_path with the sidecar should resolve to the CSV and succeed
@@ -234,4 +238,36 @@ fn ship_data_header_variants_parse() {
         reflex.is_some(),
         "Reflex should be parsed from variant header CSV"
     );
+}
+
+/// Real-world-ish ship CSV sample from current cycle: ensure parser tolerates multi-column
+/// header variants used by dataset providers and correctly maps fields like `Mass_kg` and
+/// `FuelCapacity_units` to library fields.
+#[test]
+fn ship_data_realistic_cycle_parse() {
+    use std::fs;
+    use tempfile::tempdir;
+
+    let tmp = tempdir().expect("create temp dir");
+    let csv = tmp.path().join("realistic_ship_data.csv");
+
+    let content = "Faction,ShipName,Class,StructureHP,Capacity_m3,FuelCapacity_units,Mass_kg,VolumeUnpackaged_m3,VolumePackaged_m3,InertiaModifier,ShieldRecharge_s,Capacitor_GJ,SpecificHeat_C,Conductance_k,MaxTargetRange_km,MaxLockedTargets,SignatureRadius_m,ScanResolution_mm,MaxVelocity_mps,WarpSpeed_c\n\
+Keep,Wend,Shuttle,750,520,200,6800000,4000,500,0.46,240,32,2,1.5,100,5,30,500,134,1.5\n\
+Synod,Carom,Corvette,1300,300,3000,7200000,12000,1000,0.45,240,50,8.5,0.875,100,5,50,500,270,1.5\n\
+Synod,Stride,Corvette,1450,320,3200,7900000,12000,1000,0.56,240,40,8,0.875,100,5,50,500,255,1.5\n\
+Keep,Reflex,Corvette,1250,520,1750,9750000,13000,1000,0.4,240,50,2,0.875,100,5,50,500,184,1.75\n\
+Keep,Reiver,Corvette,1900,520,1416,10200000,12000,1000,0.35,240,50,1,0.875,100,5,50,500,435,1.5\n";
+
+    fs::write(&csv, content).expect("write csv");
+
+    let catalog = ShipCatalog::from_path(&csv).expect("realistic csv should parse");
+
+    // Reflex should be present and key fields should map correctly
+    let reflex = catalog
+        .get("Reflex")
+        .expect("Reflex should be parsed from realistic CSV");
+    assert_eq!(reflex.base_mass_kg as i64, 9_750_000i64);
+    assert_eq!(reflex.fuel_capacity as i64, 1_750i64);
+    // Specific heat from header `SpecificHeat_C` should be parsed
+    assert_eq!(reflex.specific_heat as i64, 2i64);
 }

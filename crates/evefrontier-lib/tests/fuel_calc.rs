@@ -63,3 +63,63 @@ fn calculates_dynamic_mass_and_reduces_total_cost() {
     let last_dynamic = dynamic_proj.last().unwrap();
     assert!((last_dynamic.remaining.unwrap() - 896.0508517954859).abs() < 1e-6);
 }
+
+#[test]
+fn calculate_jump_cost_direct() {
+    use evefrontier_lib::ship::calculate_jump_fuel_cost;
+
+    // Known case: mass 12_383_006, distance 18.95, quality 10 (10%)
+    // mass_factor = mass / 100_000 = 123.83006
+    // quality_factor = 0.10
+    // hop_cost = mass_factor * quality_factor * distance = 123.83006 * 0.1 * 18.95
+    let mass = 12_383_006.0;
+    let distance = 18.95;
+    let cfg = FuelConfig {
+        quality: 10.0,
+        dynamic_mass: false,
+    };
+
+    let hop = calculate_jump_fuel_cost(mass, distance, &cfg).expect("should compute hop cost");
+    let expected = (mass / 100_000.0) * (cfg.quality / 100.0) * distance;
+    assert!(
+        (hop - expected).abs() < 1e-12,
+        "hop {} expected {}",
+        hop,
+        expected
+    );
+}
+
+#[test]
+fn calculate_maximum_distance_roundtrip() {
+    use evefrontier_lib::ship::calculate_maximum_distance;
+
+    // Given fuel_units=1750, ship_mass=9_750_000, quality=10 (10%)
+    // expected max_distance = (1750 * 0.1 * 100000) / 9_750_000
+    let maxd = calculate_maximum_distance(1750.0, 9_750_000.0, 10.0).expect("max distance");
+    let expected = (1750.0 * 0.1 * 100_000.0) / 9_750_000.0;
+    assert!((maxd - expected).abs() < 1e-12);
+}
+
+#[test]
+fn calculate_maximum_distance_invalid_inputs() {
+    use evefrontier_lib::ship::calculate_maximum_distance;
+
+    assert!(calculate_maximum_distance(-1.0, 1_000_000.0, 10.0).is_err());
+    assert!(calculate_maximum_distance(100.0, 0.0, 10.0).is_err());
+    assert!(calculate_maximum_distance(100.0, 1_000_000.0, f64::NAN).is_err());
+}
+
+#[test]
+fn calculate_jump_cost_invalid_quality() {
+    use evefrontier_lib::ship::calculate_jump_fuel_cost;
+
+    let res = calculate_jump_fuel_cost(
+        1_000_000.0,
+        10.0,
+        &FuelConfig {
+            quality: 0.0,
+            dynamic_mass: false,
+        },
+    );
+    assert!(res.is_err(), "quality 0 should be rejected by validation");
+}

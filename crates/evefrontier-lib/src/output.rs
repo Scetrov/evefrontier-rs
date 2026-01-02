@@ -65,6 +65,9 @@ pub struct RouteStep {
     /// Fuel projection for this hop (present when ship data supplied).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fuel: Option<FuelProjection>,
+    /// Heat projection for this hop (present when ship data is supplied).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub heat: Option<crate::ship::HeatProjection>,
 }
 
 impl RouteStep {
@@ -91,9 +94,191 @@ pub struct RouteSummary {
     /// Aggregated fuel projection when ship data is provided.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fuel: Option<FuelSummary>,
+    /// Aggregated heat summary when ship data is provided.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub heat: Option<crate::ship::HeatSummary>,
     /// fmap URL token for sharing/bookmarking the route.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fmap_url: Option<String>,
+}
+
+impl RouteSummary {
+    /// Attach heat projections to each hop using the supplied ship/loadout/config.
+    ///
+    /// Mirrors `attach_fuel()` behavior: gate steps have zero heat, jumps compute heat using
+    /// `calculate_jump_heat()` and the cumulative heat is tracked in the summary.
+    pub fn attach_heat(
+        &mut self,
+        ship: &ShipAttributes,
+        loadout: &ShipLoadout,
+        config: &crate::ship::HeatConfig,
+    ) -> Result<()> {
+        if self.steps.len() <= 1 {
+            return Ok(());
+        }
+
+        // Note: we do not track a global generated heat total in the summary; per-step residuals
+        // and warnings are used instead.
+        let remaining_fuel = loadout.fuel_load;
+
+        let mut warnings = Vec::new();
+
+        for idx in 1..self.steps.len() {
+            // previous residual heat (cooled) carried from previous step, if any
+            let prev_residual = if let Some(prev_step) = self.steps.get(idx - 1) {
+                prev_step
+                    .heat
+                    .as_ref()
+                    .and_then(|h| h.residual_heat)
+                    .unwrap_or(0.0)
+            } else {
+                0.0
+            };
+
+            let method = self.steps[idx].method.as_deref();
+
+            if method == Some("gate") {
+                let projection = crate::ship::HeatProjection {
+                    hop_heat: 0.0,
+                    warning: None,
+                    wait_time_seconds: None,
+                    residual_heat: Some(prev_residual),
+                    can_proceed: true,
+                };
+
+                if let Some(step) = self.steps.get_mut(idx) {
+                    step.heat = Some(projection);
+                }
+
+                continue;
+            }
+
+            let distance = self.steps[idx]
+                .distance
+                .ok_or_else(|| Error::ShipDataValidation {
+                    message: "distance must be present for heat calculation".to_string(),
+                })?;
+
+            if !distance.is_finite() || distance < 0.0 {
+                return Err(Error::ShipDataValidation {
+                    message: format!("distance must be finite and non-negative, got {}", distance),
+                });
+            }
+
+            let effective_fuel = if config.dynamic_mass {
+                remaining_fuel
+            } else {
+                loadout.fuel_load
+            };
+
+            let mass = ship.base_mass_kg
+                + loadout.cargo_mass_kg
+                + (effective_fuel * FUEL_MASS_PER_UNIT_KG);
+
+            if !mass.is_finite() || mass <= 0.0 {
+                return Err(Error::ShipDataValidation {
+                    message: format!("computed mass must be finite and positive, got {}", mass),
+                });
+            }
+
+            // Calculate heat energy and convert to a temperature change using the ship's
+            // specific heat: delta_T = energy / (mass * specific_heat)
+            let hop_energy = crate::ship::calculate_jump_heat(
+                mass,
+                distance,
+                ship.base_mass_kg,
+                config.calibration_constant,
+            )?;
+            if !ship.specific_heat.is_finite() || ship.specific_heat <= 0.0 {
+                return Err(crate::error::Error::ShipDataValidation {
+                    message: format!("invalid specific_heat for ship: {}", ship.specific_heat),
+                });
+            }
+            let hop_heat = hop_energy / (mass * ship.specific_heat);
+            // Track generated total separately from residual (cooled) cumulative heat
+            // generated hop_heat tracked per-step; no running cumulative total stored
+
+            // Cooling model: compute dissipation per second using ship specific_heat and
+            // the local environment (min_external_temp). Apply wait time if needed to
+            // reduce the residual cumulative heat to the overheated threshold.
+            let prev_residual = if let Some(prev_step) = self.steps.get(idx - 1) {
+                prev_step
+                    .heat
+                    .as_ref()
+                    .and_then(|h| h.residual_heat)
+                    .unwrap_or(0.0)
+            } else {
+                0.0
+            };
+
+            let candidate = prev_residual + hop_heat;
+            // Use the zone dissipation model by default. The previous multi-mode
+            // implementation was removed in favor of a single, conservative model
+            // for dissipation which uses the local ambient temperature.
+            let dissipation_per_sec = crate::ship::compute_dissipation_per_sec(
+                mass,
+                ship.specific_heat,
+                self.steps[idx].min_external_temp,
+            );
+
+            let mut wait_time: Option<f64> = None;
+            let mut residual = candidate;
+            let mut can_proceed = true;
+
+            // Target conservatively: reduce to HEAT_OVERHEATED for a safe proceeding point
+            let target = crate::ship::HEAT_OVERHEATED;
+            if candidate >= target {
+                if dissipation_per_sec > 0.0 {
+                    let required = candidate - target;
+                    let wait = required / dissipation_per_sec;
+                    wait_time = Some(wait);
+                    // residual approximates target after waiting
+                    residual = (candidate - dissipation_per_sec * wait).max(0.0);
+                    can_proceed = residual < crate::ship::HEAT_CRITICAL;
+                } else {
+                    // No cooling available here
+                    wait_time = None;
+                    can_proceed = false;
+                    residual = candidate;
+                }
+            }
+
+            // Compute warnings based on canonical absolute thresholds (HEAT_OVERHEATED/CRITICAL).
+            // Warnings are emitted when the *instantaneous* temperature experienced during the
+            // jump (system ambient temperature + the hop's temperature delta) exceeds thresholds.
+            // This avoids triggering warnings solely from accumulated residuals carried between hops.
+            let system_temp = self.steps[idx].min_external_temp.unwrap_or(0.0);
+            let instant_temp = system_temp + hop_heat;
+            let mut warn: Option<String> = None;
+            if instant_temp >= crate::ship::HEAT_CRITICAL {
+                // Use concise label form for warnings displayed in the UI/API.
+                warn = Some("CRITICAL".to_string());
+            } else if instant_temp >= crate::ship::HEAT_OVERHEATED {
+                warn = Some("OVERHEATED".to_string());
+            }
+
+            if let Some(ref w) = warn {
+                warnings.push(w.clone());
+            }
+
+            let projection = crate::ship::HeatProjection {
+                hop_heat,
+                // For per-step display show residual heat after optional waiting
+                warning: warn,
+                wait_time_seconds: wait_time,
+                residual_heat: Some(residual),
+                can_proceed,
+            };
+
+            if let Some(step) = self.steps.get_mut(idx) {
+                step.heat = Some(projection);
+            }
+        }
+
+        self.heat = Some(crate::ship::HeatSummary { warnings });
+
+        Ok(())
+    }
 }
 
 /// Fuel summary aggregated across all route steps.
@@ -163,6 +348,7 @@ impl RouteSummary {
                 planet_count,
                 moon_count,
                 fuel: None,
+                heat: None,
             });
         }
 
@@ -193,6 +379,7 @@ impl RouteSummary {
             goal,
             steps,
             fuel: None,
+            heat: None,
             fmap_url: None,
         })
     }
