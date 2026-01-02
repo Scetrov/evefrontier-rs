@@ -608,6 +608,15 @@ impl EnhancedRenderer {
             parts.push(segment);
         }
 
+        // If this step indicates a refuel was required, append a blue REFUEL tag.
+        if let Some(fuel) = step.fuel.as_ref() {
+            if let Some(w) = &fuel.warning {
+                if w == "REFUEL" {
+                    parts.push(format!("{} REFUEL {}", p.tag_refuel, p.reset));
+                }
+            }
+        }
+
         if parts.is_empty() {
             return None;
         }

@@ -207,6 +207,51 @@ fn text_output_fuel_and_remaining_align() {
 }
 
 #[test]
+fn text_output_shows_refuel_when_insufficient_fuel() {
+    let (mut cmd, _temp) = prepare_command();
+    cmd.arg("route")
+        .arg("--from")
+        .arg("Nod")
+        .arg("--to")
+        .arg("Brana")
+        .arg("--ship")
+        .arg("Reflex")
+        .arg("--fuel-quality")
+        .arg("10")
+        // Intentionally tiny fuel load to force a refuel
+        .arg("--fuel-load")
+        .arg("1")
+        .arg("--format")
+        .arg("enhanced");
+
+    let output = cmd.assert().success().get_output().stdout.clone();
+    let stdout = String::from_utf8(output).unwrap();
+
+    // Should show a REFUEL tag on a step
+    assert!(
+        stdout.contains("REFUEL"),
+        "expected REFUEL tag in enhanced output"
+    );
+
+    // Remaining should reset to the original fuel load (1)
+    let remaining_line = stdout
+        .lines()
+        .find(|l| l.contains("Remaining:"))
+        .expect("remaining line present");
+    let rem_part = remaining_line.split("Remaining:").nth(1).unwrap().trim();
+    // Strip common ANSI sequences (color codes) used in the enhanced output
+    let rem_clean = rem_part
+        .replace("\x1b[0m", "")
+        .replace("\x1b[1;97m", "")
+        .trim()
+        .to_string();
+    assert_eq!(
+        rem_clean, "1",
+        "expected remaining to show original fuel load"
+    );
+}
+
+#[test]
 fn cli_accepts_cooling_mode_flag() {
     // Cooling mode flag was removed; test not needed.
 }

@@ -409,6 +409,7 @@ impl RouteSummary {
 
         let mut cumulative = 0.0;
         let mut remaining_fuel = loadout.fuel_load;
+        let mut refueled = false;
 
         for idx in 1..self.steps.len() {
             let method = self.steps[idx].method.as_deref();
@@ -465,21 +466,48 @@ impl RouteSummary {
             let hop_cost = calculate_jump_fuel_cost(mass, distance, fuel_config)?;
             cumulative += hop_cost;
 
+            // Detect insufficient fuel for the hop and mark refuel when necessary.
             let projection = if fuel_config.dynamic_mass {
-                remaining_fuel = (remaining_fuel - hop_cost).max(0.0);
-                FuelProjection {
-                    hop_cost,
-                    cumulative,
-                    remaining: Some(remaining_fuel),
-                    warning: None,
+                if hop_cost > remaining_fuel {
+                    // Not enough fuel for this hop: simulate a refuel here by resetting
+                    // remaining to the original load and mark a REFUEL warning.
+                    refueled = true;
+                    remaining_fuel = loadout.fuel_load;
+                    FuelProjection {
+                        hop_cost,
+                        cumulative,
+                        remaining: Some(remaining_fuel),
+                        warning: Some("REFUEL".to_string()),
+                    }
+                } else {
+                    remaining_fuel = (remaining_fuel - hop_cost).max(0.0);
+                    FuelProjection {
+                        hop_cost,
+                        cumulative,
+                        remaining: Some(remaining_fuel),
+                        warning: None,
+                    }
                 }
             } else {
-                let remaining = (loadout.fuel_load - cumulative).max(0.0);
-                FuelProjection {
-                    hop_cost,
-                    cumulative,
-                    remaining: Some(remaining),
-                    warning: None,
+                let remaining_before = (loadout.fuel_load - (cumulative - hop_cost)).max(0.0);
+                if hop_cost > remaining_before {
+                    // Not enough fuel in static mode for this hop: mark refuel and show
+                    // remaining as the original fuel load.
+                    refueled = true;
+                    FuelProjection {
+                        hop_cost,
+                        cumulative,
+                        remaining: Some(loadout.fuel_load),
+                        warning: Some("REFUEL".to_string()),
+                    }
+                } else {
+                    let remaining = (loadout.fuel_load - cumulative).max(0.0);
+                    FuelProjection {
+                        hop_cost,
+                        cumulative,
+                        remaining: Some(remaining),
+                        warning: None,
+                    }
                 }
             };
 
@@ -490,7 +518,9 @@ impl RouteSummary {
 
         self.fuel = Some(FuelSummary {
             total: cumulative,
-            remaining: Some(if fuel_config.dynamic_mass {
+            remaining: Some(if refueled {
+                loadout.fuel_load
+            } else if fuel_config.dynamic_mass {
                 remaining_fuel
             } else {
                 (loadout.fuel_load - cumulative).max(0.0)
