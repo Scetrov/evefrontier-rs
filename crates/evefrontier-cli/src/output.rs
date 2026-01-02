@@ -367,19 +367,28 @@ impl EnhancedRenderer {
                 )
             };
 
-            // Append planets/moons if present (use singular/plural labels and include
-            // spacing so tokens don't run together).
+            // Append planets/moons if present (use singular/plural labels).
+            // Build tokens without leading/trailing spaces and then join them with a
+            // single space to guarantee at least one visible gap between tokens.
+            let mut tokens: Vec<String> = Vec::new();
             if let Some(planets) = step.planet_count {
                 if planets > 0 {
                     let label = if planets == 1 { "Planet" } else { "Planets" };
-                    line.push_str(&format!("   {}{} {}{} ", p.green, planets, label, p.reset));
+                    tokens.push(format!("{}{} {}{}", p.green, planets, label, p.reset));
                 }
             }
             if let Some(moons) = step.moon_count {
                 if moons > 0 {
                     let label = if moons == 1 { "Moon" } else { "Moons" };
-                    line.push_str(&format!(" {}{} {}{} ", p.blue, moons, label, p.reset));
+                    tokens.push(format!("{}{} {}{}", p.blue, moons, label, p.reset));
                 }
+            }
+
+            if !tokens.is_empty() {
+                // Prefix with three spaces for alignment and join tokens with single space
+                line.push_str("   ");
+                line.push_str(&tokens.join(" "));
+                line.push(' ');
             }
 
             line
@@ -737,10 +746,12 @@ mod tests {
         assert!(!line.contains("Moon"));
         assert!(line.contains("fuel"));
 
-        // Header should include the planets/moons counts
+        // Header should include the planets/moons counts and they should be separated
         let header = renderer.build_step_header_line(&step, false, false);
         assert!(header.contains("2 Planets"));
         assert!(header.contains("1 Moon"));
+        // Ensure there is at least one space between the tokens (no accidental run-together)
+        assert!(header.contains("2 Planets 1 Moon"));
     }
 
     #[test]
@@ -843,5 +854,9 @@ mod tests {
 
         assert!(singular_header.contains(" 1 Moon ")); // padded
         assert!(plural_header.contains(" 2 Moons"));
+
+        // And ensure combined tokens have a separating space
+        assert!(singular_header.contains("1 Planet 1 Moon"));
+        assert!(plural_header.contains("2 Planets 2 Moons"));
     }
 }
