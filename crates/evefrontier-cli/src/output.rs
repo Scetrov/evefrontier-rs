@@ -466,18 +466,51 @@ impl EnhancedRenderer {
                 );
             }
 
-            // Heat summary (if present) — print warnings only (no cumulative total)
+            // Heat summary (if present) — print unique warnings once on a single line.
             if let Some(heat) = &summary.heat {
-                println!("  {}Heat:{}", p.cyan, p.reset);
+                // Deduplicate warnings while preserving severity ordering.
+                use std::collections::HashSet;
 
-                for warning in &heat.warnings {
-                    // Style known labels for terminal output; fall back to raw text for unknown warnings.
-                    let styled = match warning.trim() {
-                        "OVERHEATED" => format!("{}{}{}", p.label_overheated, warning, p.reset),
-                        "CRITICAL" => format!("{}{}{}", p.label_critical, warning, p.reset),
-                        _ => warning.clone(),
-                    };
-                    println!("  Warning: {}", styled);
+                let mut seen: HashSet<String> = HashSet::new();
+                let mut uniques: Vec<String> = Vec::new();
+                for w in &heat.warnings {
+                    let t = w.trim().to_string();
+                    if seen.insert(t.clone()) {
+                        uniques.push(t);
+                    }
+                }
+
+                if !uniques.is_empty() {
+                    // Prefer showing the most severe label first (CRITICAL, then OVERHEATED),
+                    // then any other labels in encountered order.
+                    let mut ordered: Vec<String> = Vec::new();
+                    if uniques.iter().any(|u| u == "CRITICAL") {
+                        ordered.push("CRITICAL".to_string());
+                    }
+                    if uniques.iter().any(|u| u == "OVERHEATED") {
+                        ordered.push("OVERHEATED".to_string());
+                    }
+                    for u in uniques.into_iter() {
+                        if u != "CRITICAL" && u != "OVERHEATED" {
+                            ordered.push(u);
+                        }
+                    }
+
+                    let styled_labels: Vec<String> = ordered
+                        .into_iter()
+                        .map(|label| match label.as_str() {
+                            "OVERHEATED" => format!("{}{}{}", p.label_overheated, label, p.reset),
+                            "CRITICAL" => format!("{}{}{}", p.label_critical, label, p.reset),
+                            other => other.to_string(),
+                        })
+                        .collect();
+
+                    println!(
+                        "  {}Heat:{}   {}",
+                        p.cyan,
+                        p.reset,
+                        styled_labels.join(", ")
+                    );
                 }
             }
         }
