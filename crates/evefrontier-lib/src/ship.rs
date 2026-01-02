@@ -276,7 +276,14 @@ impl ShipCatalog {
             })?
             .clone();
 
-        // Helper to normalize header strings for robust matching
+        // Helper to normalize header strings for robust matching.
+        // Normalization lower-cases the header and strips any non-alphanumeric
+        // characters except underscores. This makes common variants like
+        // "Fuel-Capacity" or "Fuel.Capacity" normalize to the same token
+        // (e.g. "fuelcapacity"), and converts "capacity_m^3" to
+        // "capacity_m3" which is handled by the synonyms below. This is a
+        // documented transformation and the synonym set accounts for typical
+        // variations.
         let normalize = |s: &str| {
             s.to_ascii_lowercase()
                 .chars()
@@ -295,12 +302,7 @@ impl ShipCatalog {
             ),
             (
                 "specific_heat",
-                &[
-                    "specific_heat",
-                    "specificheat_c",
-                    "specificheat",
-                    "specificheat_c",
-                ],
+                &["specific_heat", "specificheat_c", "specificheat"],
             ),
             (
                 "fuel_capacity",
@@ -313,16 +315,17 @@ impl ShipCatalog {
             ),
             (
                 "cargo_capacity",
-                &["cargo_capacity", "capacity_m3", "capacity_m^3", "capacity"],
+                &[
+                    "cargo_capacity",
+                    "capacity_m3",
+                    "capacity_m^3",
+                    "capacity",
+                    "m3",
+                ],
             ),
             (
                 "max_heat_tolerance",
-                &[
-                    "max_heat_tolerance",
-                    "max_heat_tolerance",
-                    "maxheat_tolerance",
-                    "maxheat",
-                ],
+                &["max_heat_tolerance", "maxheat_tolerance", "maxheat"],
             ),
             (
                 "heat_dissipation_rate",
@@ -381,10 +384,16 @@ impl ShipCatalog {
 
         let mut ships = HashMap::new();
 
+        // Track record position for better error messages (helps identify bad rows).
+        // We maintain a manual row counter to avoid borrowing `csv_reader`
+        // immutably while iterating via `records()` (which borrows it mutably).
+        let mut row_num: usize = 1; // header is typically line 1
         for result in csv_reader.records() {
+            row_num += 1; // first record will be row 2
             let record = result.map_err(|e| Error::ShipDataValidation {
                 message: e.to_string(),
             })?;
+            let row = row_num as u64;
 
             let get = |field: &str| -> Option<String> {
                 index_map
@@ -396,35 +405,47 @@ impl ShipCatalog {
             let name = get("name").unwrap_or_default();
             let base_mass_kg: f64 = get("base_mass_kg")
                 .ok_or_else(|| Error::ShipDataValidation {
-                    message: "missing base_mass_kg".to_string(),
+                    message: format!("missing base_mass_kg for ship '{}' at row {}", name, row),
                 })?
                 .parse::<f64>()
                 .map_err(|e| Error::ShipDataValidation {
-                    message: e.to_string(),
+                    message: format!(
+                        "invalid base_mass_kg for ship '{}' at row {}: {}",
+                        name, row, e
+                    ),
                 })?;
             let specific_heat: f64 = get("specific_heat")
                 .ok_or_else(|| Error::ShipDataValidation {
-                    message: "missing specific_heat".to_string(),
+                    message: format!("missing specific_heat for ship '{}' at row {}", name, row),
                 })?
                 .parse::<f64>()
                 .map_err(|e| Error::ShipDataValidation {
-                    message: e.to_string(),
+                    message: format!(
+                        "invalid specific_heat for ship '{}' at row {}: {}",
+                        name, row, e
+                    ),
                 })?;
             let fuel_capacity: f64 = get("fuel_capacity")
                 .ok_or_else(|| Error::ShipDataValidation {
-                    message: "missing fuel_capacity".to_string(),
+                    message: format!("missing fuel_capacity for ship '{}' at row {}", name, row),
                 })?
                 .parse::<f64>()
                 .map_err(|e| Error::ShipDataValidation {
-                    message: e.to_string(),
+                    message: format!(
+                        "invalid fuel_capacity for ship '{}' at row {}: {}",
+                        name, row, e
+                    ),
                 })?;
             let cargo_capacity: f64 = get("cargo_capacity")
                 .ok_or_else(|| Error::ShipDataValidation {
-                    message: "missing cargo_capacity".to_string(),
+                    message: format!("missing cargo_capacity for ship '{}' at row {}", name, row),
                 })?
                 .parse::<f64>()
                 .map_err(|e| Error::ShipDataValidation {
-                    message: e.to_string(),
+                    message: format!(
+                        "invalid cargo_capacity for ship '{}' at row {}: {}",
+                        name, row, e
+                    ),
                 })?;
             let max_heat_tolerance: f64 = match get("max_heat_tolerance") {
                 Some(v) => v.parse::<f64>().map_err(|e| Error::ShipDataValidation {
