@@ -12,9 +12,17 @@ use crate::{error::Result, Error};
 
 /// Mass of one fuel unit in kilograms.
 pub const FUEL_MASS_PER_UNIT_KG: f64 = 1.0;
-// Defaults used when release CSV does not provide heat-related columns
+/// Defaults used when release CSV does not provide heat-related columns.
+/// These defaults must be finite and strictly positive.
 const DEFAULT_MAX_HEAT_TOLERANCE: f64 = 1000.0;
 const DEFAULT_HEAT_DISSIPATION_RATE: f64 = 0.1;
+
+// Compile-time check to ensure defaults satisfy runtime validation expectations.
+const _: () = {
+    // These will fail at compile time if changed to invalid values.
+    assert!(DEFAULT_MAX_HEAT_TOLERANCE.is_finite() && DEFAULT_MAX_HEAT_TOLERANCE > 0.0);
+    assert!(DEFAULT_HEAT_DISSIPATION_RATE.is_finite() && DEFAULT_HEAT_DISSIPATION_RATE > 0.0);
+};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ShipAttributes {
@@ -315,13 +323,7 @@ impl ShipCatalog {
             ),
             (
                 "cargo_capacity",
-                &[
-                    "cargo_capacity",
-                    "capacity_m3",
-                    "capacity_m^3",
-                    "capacity",
-                    "m3",
-                ],
+                &["cargo_capacity", "capacity_m3", "capacity"],
             ),
             (
                 "max_heat_tolerance",
@@ -449,13 +451,19 @@ impl ShipCatalog {
                 })?;
             let max_heat_tolerance: f64 = match get("max_heat_tolerance") {
                 Some(v) => v.parse::<f64>().map_err(|e| Error::ShipDataValidation {
-                    message: e.to_string(),
+                    message: format!(
+                        "invalid max_heat_tolerance for ship '{}' at row {}: {}",
+                        name, row, e
+                    ),
                 })?,
                 None => DEFAULT_MAX_HEAT_TOLERANCE,
             };
             let heat_dissipation_rate: f64 = match get("heat_dissipation_rate") {
                 Some(v) => v.parse::<f64>().map_err(|e| Error::ShipDataValidation {
-                    message: e.to_string(),
+                    message: format!(
+                        "invalid heat_dissipation_rate for ship '{}' at row {}: {}",
+                        name, row, e
+                    ),
                 })?,
                 None => DEFAULT_HEAT_DISSIPATION_RATE,
             };
@@ -508,4 +516,45 @@ impl ShipCatalog {
 
 fn normalize_name(name: &str) -> String {
     name.trim().to_lowercase()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Cursor;
+
+    #[test]
+    fn defaults_are_valid() {
+        assert!(DEFAULT_MAX_HEAT_TOLERANCE.is_finite() && DEFAULT_MAX_HEAT_TOLERANCE > 0.0);
+        assert!(DEFAULT_HEAT_DISSIPATION_RATE.is_finite() && DEFAULT_HEAT_DISSIPATION_RATE > 0.0);
+    }
+
+    #[test]
+    fn parse_error_includes_ship_and_row_for_max_heat() {
+        let csv = "name,base_mass_kg,fuel_capacity,cargo_capacity,specific_heat,max_heat_tolerance\nReflex,1000,500,100,1.0,not_a_number\n";
+        let r = Cursor::new(csv);
+        let err = ShipCatalog::from_reader(r).unwrap_err();
+        let msg = format!("{}", err);
+        assert!(msg.contains("invalid max_heat_tolerance for ship 'Reflex' at row 2"));
+    }
+
+    #[test]
+    fn parse_error_includes_ship_and_row_for_heat_dissipation() {
+        let csv = "name,base_mass_kg,fuel_capacity,cargo_capacity,specific_heat,heat_dissipation_rate\nReflex,1000,500,100,1.0,not_a_number\n";
+        let r = Cursor::new(csv);
+        let err = ShipCatalog::from_reader(r).unwrap_err();
+        let msg = format!("{}", err);
+        assert!(msg.contains("invalid heat_dissipation_rate for ship 'Reflex' at row 2"));
+    }
+
+    #[test]
+    fn capacity_m_caret_normalizes_to_capacity_m3_and_is_accepted() {
+        let csv =
+            "name,base_mass_kg,fuel_capacity,capacity_m^3,specific_heat\nReflex,1000,500,100,1.0\n";
+        let r = Cursor::new(csv);
+        let catalog = ShipCatalog::from_reader(r)
+            .expect("should parse capacity_m^3 header via normalization");
+        let ship = catalog.get("Reflex").expect("ship exists");
+        assert_eq!(ship.cargo_capacity, 100.0);
+    }
 }
