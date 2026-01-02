@@ -289,6 +289,8 @@ pub struct FuelSummary {
     pub remaining: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ship_name: Option<String>,
+    /// Fuel quality percentage used when computing the projection (1..100)
+    pub quality: f64,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub warnings: Vec<String>,
 }
@@ -494,6 +496,7 @@ impl RouteSummary {
                 (loadout.fuel_load - cumulative).max(0.0)
             }),
             ship_name: Some(ship.name.clone()),
+            quality: fuel_config.quality,
             warnings: Vec::new(),
         });
 

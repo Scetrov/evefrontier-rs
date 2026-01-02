@@ -445,14 +445,12 @@ impl EnhancedRenderer {
         );
         if let Some(fuel) = &summary.fuel {
             let ship = fuel.ship_name.as_deref().unwrap_or("<unknown ship>");
+            let total_str = format_with_separators(fuel.total.ceil() as u64);
+            // Append fuel quality percent, e.g. " (10% Fuel)"
+            let quality_suffix = format!(" ({:.0}% Fuel)", fuel.quality);
             println!(
-                "  {}Fuel ({}):{}   {}{}{}",
-                p.cyan,
-                ship,
-                p.reset,
-                p.white_bold,
-                fuel.total.ceil() as i64,
-                p.reset
+                "  {}Fuel ({}):{}   {}{}{}{}",
+                p.cyan, ship, p.reset, p.white_bold, total_str, p.reset, quality_suffix
             );
 
             if let Some(remaining) = fuel.remaining {
@@ -461,7 +459,7 @@ impl EnhancedRenderer {
                     p.green,
                     p.reset,
                     p.white_bold,
-                    remaining.ceil() as i64,
+                    format_with_separators(remaining.ceil() as u64),
                     p.reset
                 );
             }
@@ -480,38 +478,9 @@ impl EnhancedRenderer {
                     }
                 }
 
-                if !uniques.is_empty() {
-                    // Prefer showing the most severe label first (CRITICAL, then OVERHEATED),
-                    // then any other labels in encountered order.
-                    let mut ordered: Vec<String> = Vec::new();
-                    if uniques.iter().any(|u| u == "CRITICAL") {
-                        ordered.push("CRITICAL".to_string());
-                    }
-                    if uniques.iter().any(|u| u == "OVERHEATED") {
-                        ordered.push("OVERHEATED".to_string());
-                    }
-                    for u in uniques.into_iter() {
-                        if u != "CRITICAL" && u != "OVERHEATED" {
-                            ordered.push(u);
-                        }
-                    }
-
-                    let styled_labels: Vec<String> = ordered
-                        .into_iter()
-                        .map(|label| match label.as_str() {
-                            "OVERHEATED" => format!(" {}{}{} ", p.label_overheated, label, p.reset),
-                            "CRITICAL" => format!(" {}{}{} ", p.label_critical, label, p.reset),
-                            other => format!(" {} ", other),
-                        })
-                        .collect();
-
-                    println!(
-                        "  {}Heat:{}   {}",
-                        p.cyan,
-                        p.reset,
-                        styled_labels.join(", ")
-                    );
-                }
+                // Heat footer removed: warnings were noisy and added little value in the
+                // enhanced footer. Individual per-step warnings are still shown inline
+                // next to hop heat values.
             }
         }
 
@@ -602,14 +571,15 @@ impl EnhancedRenderer {
             };
 
             let segment = if let Some(w) = heat.warning.as_ref() {
-                // Render labels with a space on either side for readability.
+                // Render labels with the surrounding spaces included in the styled
+                // region so their background matches the tag badges (JUMP/GATE).
                 let styled_w = match w.trim() {
-                    "OVERHEATED" => format!(" {}{}{} ", p.label_overheated, w.trim(), p.reset),
-                    "CRITICAL" => format!(" {}{}{} ", p.label_critical, w.trim(), p.reset),
+                    "OVERHEATED" => format!("{} {} {}", p.label_overheated, w.trim(), p.reset),
+                    "CRITICAL" => format!("{} {} {}", p.label_critical, w.trim(), p.reset),
                     other => format!(" {} ", other),
                 };
-                // Place styled label directly after the heat value; styled_w contains surrounding spaces.
-                format!("{}heat +{}{}{}", p.red, heat_str, styled_w, p.reset)
+                // Place styled label directly after the heat value; styled_w contains spaces inside the styled region.
+                format!("{}heat +{} {}{}", p.red, heat_str, styled_w, p.reset)
             } else {
                 format!("{}heat +{}{}", p.red, heat_str, p.reset)
             };

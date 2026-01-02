@@ -127,9 +127,10 @@ fn text_output_mentions_heat_when_ship_selected() {
         .arg("--format")
         .arg("enhanced");
 
+    // The footer heat summary was removed; ensure per-step heat is shown instead.
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains("Heat:"));
+        .stdout(predicate::str::contains("heat +"));
 }
 
 #[test]
@@ -154,6 +155,10 @@ fn text_output_mentions_fuel_when_ship_selected() {
         .success()
         .stdout(predicate::str::contains("Fuel (Reflex):"))
         .stdout(predicate::str::contains("Remaining:"));
+    // Fuel total should use thousand separators and include fuel quality suffix
+    cmd.assert()
+        .stdout(predicate::str::contains("(10% Fuel)"))
+        .stdout(predicate::str::contains(","));
 }
 
 #[test]
