@@ -324,49 +324,76 @@ impl EnhancedRenderer {
     }
 
     fn render_step(&self, step: &RouteStep, is_first: bool, is_last: bool) {
+        println!("{}", self.build_step_header_line(step, is_first, is_last));
+    }
+
+    fn build_step_header_line(&self, step: &RouteStep, is_first: bool, is_last: bool) -> String {
         let p = &self.palette;
         let name = step.name.as_deref().unwrap_or("<unknown>");
 
-        // Determine tag based on position and method
         let (tag_color, tag_text) = self.get_step_tag(step, is_first, is_last);
-
-        // Determine jump type label
         let jump_type = match step.method.as_deref() {
             Some("gate") => "gate",
             Some("jump") => "jump",
             _ => "",
         };
 
-        // Circle color based on temperature
-        let circle = self.get_temp_circle(step.min_external_temp.unwrap_or(0.0));
-
-        // Print the tag and system name
         if let Some(distance) = step.distance {
             let dist_str = format_with_separators(distance as u64);
-            if !jump_type.is_empty() {
-                println!(
+            let mut line = if !jump_type.is_empty() {
+                format!(
                     "{}{}{} {} {}{}{} ({}, {}ly)",
                     tag_color,
                     tag_text,
                     p.reset,
-                    circle,
+                    self.get_temp_circle(step.min_external_temp.unwrap_or(0.0)),
                     p.white_bold,
                     name,
                     p.reset,
                     jump_type,
                     dist_str
-                );
+                )
             } else {
-                println!(
+                format!(
                     "{}{}{} {} {}{}{} ({}ly)",
-                    tag_color, tag_text, p.reset, circle, p.white_bold, name, p.reset, dist_str
-                );
+                    tag_color,
+                    tag_text,
+                    p.reset,
+                    self.get_temp_circle(step.min_external_temp.unwrap_or(0.0)),
+                    p.white_bold,
+                    name,
+                    p.reset,
+                    dist_str
+                )
+            };
+
+            // Append planets/moons if present (use singular/plural labels and include
+            // spacing so tokens don't run together).
+            if let Some(planets) = step.planet_count {
+                if planets > 0 {
+                    let label = if planets == 1 { "Planet" } else { "Planets" };
+                    line.push_str(&format!("   {}{} {}{} ", p.green, planets, label, p.reset));
+                }
             }
+            if let Some(moons) = step.moon_count {
+                if moons > 0 {
+                    let label = if moons == 1 { "Moon" } else { "Moons" };
+                    line.push_str(&format!(" {}{} {}{} ", p.blue, moons, label, p.reset));
+                }
+            }
+
+            line
         } else {
-            println!(
+            format!(
                 "{}{}{} {} {}{}{}",
-                tag_color, tag_text, p.reset, circle, p.white_bold, name, p.reset
-            );
+                self.get_step_tag(step, is_first, is_last).0,
+                self.get_step_tag(step, is_first, is_last).1,
+                p.reset,
+                self.get_temp_circle(step.min_external_temp.unwrap_or(0.0)),
+                p.white_bold,
+                name,
+                p.reset
+            )
         }
     }
 
@@ -534,35 +561,8 @@ impl EnhancedRenderer {
             }
         }
 
-        // Planets (omit if zero)
-        let planets = step.planet_count.unwrap_or(0);
-        if planets > 0 {
-            let label = if planets == 1 { "Planet" } else { "Planets" };
-            let label_width = "Planets".len();
-            parts.push(format!(
-                "{}{:>2} {:<label_width$}{}",
-                p.green,
-                planets,
-                label,
-                p.reset,
-                label_width = label_width,
-            ));
-        }
-
-        // Moons (omit if zero)
-        let moons = step.moon_count.unwrap_or(0);
-        if moons > 0 {
-            let label = if moons == 1 { "Moon" } else { "Moons" };
-            let label_width = "Moons".len();
-            parts.push(format!(
-                "{}{:>2} {:<label_width$}{}",
-                p.blue,
-                moons,
-                label,
-                p.reset,
-                label_width = label_width,
-            ));
-        }
+        // Planets and moons are shown on the header row (after the ')') per UX
+        // request, so do not include them here in the details row.
 
         if let Some(fuel) = step.fuel.as_ref() {
             // Display fuel as integers in the UI (fuel units operate in whole units).
@@ -732,9 +732,15 @@ mod tests {
             .build_step_details_line(&step)
             .expect("line present");
         assert!(line.contains("min"));
-        assert!(line.contains(" 2 Planets"));
-        assert!(line.contains(" 1 Moon "));
+        // Planets and moons moved to the header line
+        assert!(!line.contains("Planets"));
+        assert!(!line.contains("Moon"));
         assert!(line.contains("fuel"));
+
+        // Header should include the planets/moons counts
+        let header = renderer.build_step_header_line(&step, false, false);
+        assert!(header.contains("2 Planets"));
+        assert!(header.contains("1 Moon"));
     }
 
     #[test]
@@ -819,19 +825,23 @@ mod tests {
             ..singular.clone()
         };
 
-        let singular_line = renderer
-            .build_step_details_line(&singular)
-            .expect("line present");
-        let plural_line = renderer
-            .build_step_details_line(&plural)
-            .expect("line present");
+        let singular_line = renderer.build_step_details_line(&singular);
+        let plural_line = renderer.build_step_details_line(&plural);
 
-        // Planet label padded to match plural width ("Planets" -> 7 chars)
-        assert!(singular_line.contains(" 1 Planet "));
-        assert!(plural_line.contains(" 2 Planets"));
+        // (No debug prints in normal test run)
 
-        // Moon label padded to match plural width ("Moons" -> 5 chars)
-        assert!(singular_line.contains(" 1 Moon "));
-        assert!(plural_line.contains(" 2 Moons"));
+        // Planets/moons moved into header; details should be absent when there is
+        // no other per-step metadata (min/temp/heat/fuel)
+        assert!(singular_line.is_none());
+        assert!(plural_line.is_none());
+
+        // Header should include singular and plural labels with padding
+        let singular_header = renderer.build_step_header_line(&singular, true, false);
+        let plural_header = renderer.build_step_header_line(&plural, true, false);
+        assert!(singular_header.contains(" 1 Planet ")); // padded
+        assert!(plural_header.contains(" 2 Planets"));
+
+        assert!(singular_header.contains(" 1 Moon ")); // padded
+        assert!(plural_header.contains(" 2 Moons"));
     }
 }
