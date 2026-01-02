@@ -11,8 +11,12 @@ All notable changes to this project will be documented in this file.
   - Added "Black Hole" indicator for systems 30000001-30000003 which have no celestial bodies
   - Fuel information in enhanced format uses color coding: orange for hop cost, magenta for remaining fuel
   - Fixed padding alignment for planet/moon count labels to maintain consistent layout in enhanced output
+  - Fixed panic when running dataset download under the CLI's Tokio runtime by running blocking dataset operations in a blocking region (`tokio::task::block_in_place`). This prevents dropping an internal reqwest runtime from inside an async context.
 - **Library** (`evefrontier-lib`)
   - Fuel projections no longer consume fuel on gate hops; gate steps report zero fuel cost
+  - Fix: avoid parsing checksum sidecar files (e.g., `*.sha256`) as ship CSVs. The downloader cache discovery now prefers `*_ship_data.csv` files and `ShipCatalog::from_path` resolves an adjacent `.csv` when given a `.sha256` sidecar.
+  - Add: make ship CSV parsing tolerant of common header variants (e.g., `ShipName`, `Mass_kg`, `SpecificHeat_C`, `FuelCapacity_units`) and provide reasonable defaults for missing heat-related columns to preserve backward compatibility with older releases.
+  - Tests: added unit tests covering cache discovery, sidecar resolution, and header-variant parsing.
 
 ### Added
 

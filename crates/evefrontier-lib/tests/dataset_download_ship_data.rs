@@ -185,3 +185,53 @@ fn ship_data_includes_freshness_metadata() {
     // - Verify metadata contains: version, hash, tag, timestamp
     // - Use metadata to determine if re-download is needed
 }
+
+#[test]
+fn ship_catalog_from_sidecar_resolves_csv() {
+    use std::fs;
+    use tempfile::tempdir;
+
+    let tmp = tempdir().expect("create temp dir");
+    let csv = tmp.path().join("e6c4-ship_data.csv");
+    let sidecar = tmp.path().join("e6c4-ship_data.csv.sha256");
+
+    fs::write(&csv, "name,base_mass_kg,specific_heat,fuel_capacity,cargo_capacity,max_heat_tolerance,heat_dissipation_rate\nReflex,1000,1.0,500,100,1000,0.1").expect("write csv");
+    fs::write(&sidecar, "deadbeef").expect("write sidecar");
+
+    // Calling from_path with the sidecar should resolve to the CSV and succeed
+    let catalog = evefrontier_lib::ship::ShipCatalog::from_path(&sidecar)
+        .expect("should load from adjacent csv");
+    assert!(catalog.get("Reflex").is_some());
+}
+
+#[test]
+fn ship_catalog_from_sidecar_without_csv_errors() {
+    use std::fs;
+    use tempfile::tempdir;
+
+    let tmp = tempdir().expect("create temp dir");
+    let sidecar = tmp.path().join("e6c4-ship_data.csv.sha256");
+    fs::write(&sidecar, "deadbeef").expect("write sidecar");
+
+    let res = evefrontier_lib::ship::ShipCatalog::from_path(&sidecar);
+    assert!(res.is_err(), "should error when only sidecar exists");
+}
+
+#[test]
+fn ship_data_header_variants_parse() {
+    use std::fs;
+    use tempfile::tempdir;
+
+    let tmp = tempdir().expect("create temp dir");
+    let csv = tmp.path().join("variant_ship_data.csv");
+    // Header matches what was in cache (Faction,ShipName,...SpecificHeat_C, FuelCapacity_units, Mass_kg)
+    let content = "Faction,ShipName,Class,StructureHP,Capacity_m3,FuelCapacity_units,Mass_kg,VolumeUnpackaged_m3,VolumePackaged_m3,InertiaModifier,ShieldRecharge_s,Capacitor_GJ,SpecificHeat_C,Conductance_k,MaxTargetRange_km,MaxLockedTargets,SignatureRadius_m,ScanResolution_mm,MaxVelocity_mps,WarpSpeed_c\nKeep,Reflex,Corvette,1250,520,1750,9750000,13000,1000,0.4,240,50,2,0.875,100,5,50,500,184,1.75\n";
+    fs::write(&csv, content).expect("write csv");
+
+    let catalog = ShipCatalog::from_path(&csv).expect("variant header csv should parse");
+    let reflex = catalog.get("Reflex");
+    assert!(
+        reflex.is_some(),
+        "Reflex should be parsed from variant header CSV"
+    );
+}

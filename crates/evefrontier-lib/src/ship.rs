@@ -12,6 +12,17 @@ use crate::{error::Result, Error};
 
 /// Mass of one fuel unit in kilograms.
 pub const FUEL_MASS_PER_UNIT_KG: f64 = 1.0;
+/// Defaults used when release CSV does not provide heat-related columns.
+/// These defaults must be finite and strictly positive.
+const DEFAULT_MAX_HEAT_TOLERANCE: f64 = 1000.0;
+const DEFAULT_HEAT_DISSIPATION_RATE: f64 = 0.1;
+
+// Compile-time check to ensure defaults satisfy runtime validation expectations.
+const _: () = {
+    // These will fail at compile time if changed to invalid values.
+    assert!(DEFAULT_MAX_HEAT_TOLERANCE.is_finite() && DEFAULT_MAX_HEAT_TOLERANCE > 0.0);
+    assert!(DEFAULT_HEAT_DISSIPATION_RATE.is_finite() && DEFAULT_HEAT_DISSIPATION_RATE > 0.0);
+};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ShipAttributes {
@@ -234,6 +245,29 @@ pub struct ShipCatalog {
 
 impl ShipCatalog {
     pub fn from_path(path: &Path) -> Result<Self> {
+        // If the provided path appears to be a checksum sidecar (e.g. `.../e6c4-ship_data.csv.sha256`),
+        // attempt to locate the corresponding CSV (`.../e6c4-ship_data.csv`) next to it and use that
+        // file instead. This handles cases where cache discovery accidentally returns the sidecar
+        // path; attempting to parse the sidecar as CSV leads to confusing "missing columns" errors.
+        if path
+            .extension()
+            .and_then(|e| e.to_str())
+            .map(|s| s.eq_ignore_ascii_case("sha256"))
+            .unwrap_or(false)
+        {
+            if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
+                if let Some(stripped) = file_name.strip_suffix(".sha256") {
+                    let candidate = path.with_file_name(stripped);
+                    if candidate.exists() {
+                        let file = fs::File::open(&candidate)?;
+                        let mut catalog = Self::from_reader(file)?;
+                        catalog.source = Some(candidate);
+                        return Ok(catalog);
+                    }
+                }
+            }
+        }
+
         let file = fs::File::open(path)?;
         let mut catalog = Self::from_reader(file)?;
         catalog.source = Some(path.to_path_buf());
@@ -250,45 +284,206 @@ impl ShipCatalog {
             })?
             .clone();
 
-        let required_headers = [
+        // Helper to normalize header strings for robust matching.
+        // Normalization lower-cases the header and strips any non-alphanumeric
+        // characters except underscores. This makes common variants like
+        // "Fuel-Capacity" or "Fuel.Capacity" normalize to the same token
+        // (e.g. "fuelcapacity"), and converts "capacity_m^3" to
+        // "capacity_m3" which is handled by the synonyms below. This is a
+        // documented transformation and the synonym set accounts for typical
+        // variations.
+        let normalize = |s: &str| {
+            s.to_ascii_lowercase()
+                .chars()
+                .filter(|c| c.is_ascii_alphanumeric() || *c == '_')
+                .collect::<String>()
+        };
+
+        let normalized_headers: Vec<String> = headers.iter().map(&normalize).collect();
+
+        // Mapping of canonical field name -> possible header synonyms (normalized)
+        let synonyms: &[(&str, &[&str])] = &[
+            ("name", &["name", "shipname", "ship_name", "ship"]),
+            (
+                "base_mass_kg",
+                &["base_mass_kg", "mass_kg", "mass", "masskg", "masskg_kg"],
+            ),
+            (
+                "specific_heat",
+                &["specific_heat", "specificheat_c", "specificheat"],
+            ),
+            (
+                "fuel_capacity",
+                &[
+                    "fuel_capacity",
+                    "fuel_capacity_units",
+                    "fuelcapacity_units",
+                    "fuelcapacity",
+                ],
+            ),
+            (
+                "cargo_capacity",
+                &["cargo_capacity", "capacity_m3", "capacity"],
+            ),
+            (
+                "max_heat_tolerance",
+                &["max_heat_tolerance", "maxheat_tolerance", "maxheat"],
+            ),
+            (
+                "heat_dissipation_rate",
+                &[
+                    "heat_dissipation_rate",
+                    "heat_dissipation",
+                    "heatdissipation_rate",
+                ],
+            ),
+        ];
+
+        // Build index map for each canonical field
+        use std::collections::BTreeMap;
+        let mut index_map: BTreeMap<&str, usize> = BTreeMap::new();
+
+        for (canon, alts) in synonyms {
+            'outer: for alt in *alts {
+                let alt_n = normalize(alt);
+                for (i, h) in normalized_headers.iter().enumerate() {
+                    if h == &alt_n {
+                        index_map.insert(*canon, i);
+                        break 'outer;
+                    }
+                }
+            }
+        }
+
+        // Check required fields presence
+        // Required fields exclude heat-specific metrics which we can default when
+        // releases omit them (older releases may not include heat columns).
+        let required: Vec<&str> = vec![
             "name",
             "base_mass_kg",
             "specific_heat",
             "fuel_capacity",
             "cargo_capacity",
-            "max_heat_tolerance",
-            "heat_dissipation_rate",
         ];
-
-        let missing: Vec<&str> = required_headers
-            .iter()
-            .copied()
-            .filter(|header| !headers.iter().any(|h| h == *header))
+        let missing: Vec<&str> = required
+            .into_iter()
+            .filter(|c| !index_map.contains_key(c))
             .collect();
 
         if !missing.is_empty() {
             return Err(Error::ShipDataValidation {
                 message: format!(
-                    "ship_data.csv missing required columns: {}",
-                    missing.join(", ")
+                    "ship_data.csv missing required columns: {}. Available: {}",
+                    missing.join(", "),
+                    headers
+                        .iter()
+                        .map(|h| h.to_string())
+                        .collect::<Vec<_>>()
+                        .join(", ")
                 ),
             });
         }
 
         let mut ships = HashMap::new();
 
-        for record in csv_reader.deserialize::<ShipAttributes>() {
-            let mut ship: ShipAttributes = record.map_err(|err| Error::ShipDataValidation {
-                message: err.to_string(),
+        // Track record position for better error messages (helps identify bad rows).
+        // We maintain a manual row counter to avoid borrowing `csv_reader`
+        // immutably while iterating via `records()` (which borrows it mutably).
+        let mut row_num: usize = 1; // header is typically line 1
+        for result in csv_reader.records() {
+            row_num += 1; // first record will be row 2
+            let record = result.map_err(|e| Error::ShipDataValidation {
+                message: e.to_string(),
             })?;
-            ship.name = ship.name.trim().to_string();
+            let row = row_num as u64;
+
+            let get = |field: &str| -> Option<String> {
+                index_map
+                    .get(field)
+                    .and_then(|&i| record.get(i))
+                    .map(|s| s.trim().to_string())
+            };
+
+            let name = get("name").unwrap_or_default();
+            let base_mass_kg: f64 = get("base_mass_kg")
+                .ok_or_else(|| Error::ShipDataValidation {
+                    message: format!("missing base_mass_kg for ship '{}' at row {}", name, row),
+                })?
+                .parse::<f64>()
+                .map_err(|e| Error::ShipDataValidation {
+                    message: format!(
+                        "invalid base_mass_kg for ship '{}' at row {}: {}",
+                        name, row, e
+                    ),
+                })?;
+            let specific_heat: f64 = get("specific_heat")
+                .ok_or_else(|| Error::ShipDataValidation {
+                    message: format!("missing specific_heat for ship '{}' at row {}", name, row),
+                })?
+                .parse::<f64>()
+                .map_err(|e| Error::ShipDataValidation {
+                    message: format!(
+                        "invalid specific_heat for ship '{}' at row {}: {}",
+                        name, row, e
+                    ),
+                })?;
+            let fuel_capacity: f64 = get("fuel_capacity")
+                .ok_or_else(|| Error::ShipDataValidation {
+                    message: format!("missing fuel_capacity for ship '{}' at row {}", name, row),
+                })?
+                .parse::<f64>()
+                .map_err(|e| Error::ShipDataValidation {
+                    message: format!(
+                        "invalid fuel_capacity for ship '{}' at row {}: {}",
+                        name, row, e
+                    ),
+                })?;
+            let cargo_capacity: f64 = get("cargo_capacity")
+                .ok_or_else(|| Error::ShipDataValidation {
+                    message: format!("missing cargo_capacity for ship '{}' at row {}", name, row),
+                })?
+                .parse::<f64>()
+                .map_err(|e| Error::ShipDataValidation {
+                    message: format!(
+                        "invalid cargo_capacity for ship '{}' at row {}: {}",
+                        name, row, e
+                    ),
+                })?;
+            let max_heat_tolerance: f64 = match get("max_heat_tolerance") {
+                Some(v) => v.parse::<f64>().map_err(|e| Error::ShipDataValidation {
+                    message: format!(
+                        "invalid max_heat_tolerance for ship '{}' at row {}: {}",
+                        name, row, e
+                    ),
+                })?,
+                None => DEFAULT_MAX_HEAT_TOLERANCE,
+            };
+            let heat_dissipation_rate: f64 = match get("heat_dissipation_rate") {
+                Some(v) => v.parse::<f64>().map_err(|e| Error::ShipDataValidation {
+                    message: format!(
+                        "invalid heat_dissipation_rate for ship '{}' at row {}: {}",
+                        name, row, e
+                    ),
+                })?,
+                None => DEFAULT_HEAT_DISSIPATION_RATE,
+            };
+
+            let ship = ShipAttributes {
+                name: name.trim().to_string(),
+                base_mass_kg,
+                specific_heat,
+                fuel_capacity,
+                cargo_capacity,
+                max_heat_tolerance,
+                heat_dissipation_rate,
+            };
+
             ship.validate()?;
 
             let key = normalize_name(&ship.name);
             if ships.contains_key(&key) {
                 return Err(Error::DuplicateShipName { name: key });
             }
-
             ships.insert(key, ship);
         }
 
@@ -321,4 +516,45 @@ impl ShipCatalog {
 
 fn normalize_name(name: &str) -> String {
     name.trim().to_lowercase()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Cursor;
+
+    #[test]
+    fn defaults_are_valid() {
+        assert!(DEFAULT_MAX_HEAT_TOLERANCE.is_finite() && DEFAULT_MAX_HEAT_TOLERANCE > 0.0);
+        assert!(DEFAULT_HEAT_DISSIPATION_RATE.is_finite() && DEFAULT_HEAT_DISSIPATION_RATE > 0.0);
+    }
+
+    #[test]
+    fn parse_error_includes_ship_and_row_for_max_heat() {
+        let csv = "name,base_mass_kg,fuel_capacity,cargo_capacity,specific_heat,max_heat_tolerance\nReflex,1000,500,100,1.0,not_a_number\n";
+        let r = Cursor::new(csv);
+        let err = ShipCatalog::from_reader(r).unwrap_err();
+        let msg = format!("{}", err);
+        assert!(msg.contains("invalid max_heat_tolerance for ship 'Reflex' at row 2"));
+    }
+
+    #[test]
+    fn parse_error_includes_ship_and_row_for_heat_dissipation() {
+        let csv = "name,base_mass_kg,fuel_capacity,cargo_capacity,specific_heat,heat_dissipation_rate\nReflex,1000,500,100,1.0,not_a_number\n";
+        let r = Cursor::new(csv);
+        let err = ShipCatalog::from_reader(r).unwrap_err();
+        let msg = format!("{}", err);
+        assert!(msg.contains("invalid heat_dissipation_rate for ship 'Reflex' at row 2"));
+    }
+
+    #[test]
+    fn capacity_m_caret_normalizes_to_capacity_m3_and_is_accepted() {
+        let csv =
+            "name,base_mass_kg,fuel_capacity,capacity_m^3,specific_heat\nReflex,1000,500,100,1.0\n";
+        let r = Cursor::new(csv);
+        let catalog = ShipCatalog::from_reader(r)
+            .expect("should parse capacity_m^3 header via normalization");
+        let ship = catalog.get("Reflex").expect("ship exists");
+        assert_eq!(ship.cargo_capacity, 100.0);
+    }
 }
