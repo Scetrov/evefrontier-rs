@@ -46,25 +46,28 @@ The user may provide:
 
 ### Phase 2: Retrieve All Review Comments
 
-1. **Get all review threads** using GitHub MCP or gh CLI:
+1. **Get repository details**:
    ```bash
-   gh api repos/{owner}/{repo}/pulls/{pr_number}/comments --paginate
+   gh repo view --json owner,name --jq '{owner: .owner.login, name: .name}'
    ```
 
 2. **Get all PR review threads with resolution status**:
    ```bash
+   # Replace OWNER, REPO, and PR_NUMBER with actual values
    gh api graphql -f query='
      query($owner: String!, $repo: String!, $pr: Int!) {
        repository(owner: $owner, name: $repo) {
          pullRequest(number: $pr) {
            reviewThreads(first: 100) {
              nodes {
+               id
                isResolved
                isOutdated
                path
                line
                comments(first: 10) {
                  nodes {
+                   databaseId
                    body
                    author { login }
                    createdAt
@@ -179,7 +182,8 @@ For each comment requiring code changes:
 For each addressed comment, post a reply using GitHub MCP or gh CLI:
 
 ```bash
-gh api repos/{owner}/{repo}/pulls/{pr_number}/comments/{comment_id}/replies \
+# Replace OWNER, REPO, PR_NUMBER, and COMMENT_ID with actual values
+gh api --method POST repos/{owner}/{repo}/pulls/{pr_number}/comments/{comment_id}/replies \
   -f body="Addressed in commit abc1234:
   - Added null check for empty input
   - Updated tests to cover edge case"
@@ -262,7 +266,7 @@ gh pr view <number> --comments
 gh api graphql -f query='...'
 
 # Reply to a review comment
-gh api repos/{owner}/{repo}/pulls/{pr}/comments/{id}/replies -f body="..."
+gh api --method POST repos/{owner}/{repo}/pulls/{pr}/comments/{id}/replies -f body="..."
 
 # Push and update PR
 git push origin HEAD
