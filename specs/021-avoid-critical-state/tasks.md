@@ -37,8 +37,8 @@ Summary: When `--avoid-critical-state` is enabled (requires `--ship`), the plann
 ### Future / Deferred (P3+)
 - [ ] T014 [US4] (Deferred) Implement stateful pathfinding (track residual heat per node, extend heuristic) — design & ADR (`crates/evefrontier-lib/src/path.rs`, `docs/adrs/`) — Not started
 
-## Final Phase — Polish & Release
-- [ ] T013 Prepare PR, include tests, changelog entry, and request required reviewers (follow GPG signing & branch protections) — Not started
+## Final Phase — Polish & Release ✅
+- [x] T013 Prepare PR, include tests, changelog entry, and request required reviewers (follow GPG signing & branch protections) — Completed
 
 ---
 
