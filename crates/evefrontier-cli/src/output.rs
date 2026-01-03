@@ -742,23 +742,24 @@ impl EnhancedRenderer {
     fn print_estimation_warning_box(&self) {
         let p = &self.palette;
         let msg = "All fuel and heat values are based upon estimations of the code that CCP uses; they may deviate by up to ±10%";
-        let prefix_visible = "🛈 INFO ";
-        let inner_width = prefix_visible.chars().count() + msg.chars().count() + 2;
+        let prefix_visible = "🛈 INFO";
+        // left padding (1) + separator (1) + right padding (1)
+        let inner_width = prefix_visible.chars().count() + 1 + msg.chars().count() + 1;
 
-        // Build colored prefix using palette (blue)
+        // Build colored prefix using palette (blue, no trailing space)
         let prefix_colored = if crate::terminal::supports_color() {
-            format!("{}🛈 INFO{} ", p.blue, p.reset)
+            format!("{}🛈 INFO{}", p.blue, p.reset)
         } else {
             prefix_visible.to_string()
         };
 
         if crate::terminal::supports_unicode() {
             println!("{}┌{}┐{}", p.gray, "─".repeat(inner_width), p.reset);
-            println!("{}│ {}{}{}", p.gray, prefix_colored, msg, p.reset);
+            println!("{}│ {} {} │{}", p.gray, prefix_colored, msg, p.reset);
             println!("{}└{}┘{}", p.gray, "─".repeat(inner_width), p.reset);
         } else {
             println!("{}+{}+{}", p.gray, "-".repeat(inner_width), p.reset);
-            println!("{}| {}{}{}", p.gray, prefix_colored, msg, p.reset);
+            println!("{}| {} {} |{}", p.gray, prefix_colored, msg, p.reset);
             println!("{}+{}+{}", p.gray, "-".repeat(inner_width), p.reset);
         }
     }
@@ -823,23 +824,24 @@ fn format_fuel_suffix(step: &RouteStep) -> Option<String> {
 fn print_estimation_warning_box_gray_reset(gray: &str, reset: &str) {
     use crate::terminal::colors;
     let msg = "All fuel and heat values are based upon estimations of the code that CCP uses; they may deviate by up to ±10%";
-    let prefix_visible = "🛈 INFO ";
-    let inner_width = prefix_visible.chars().count() + msg.chars().count() + 2; // padding
+    let prefix_visible = "🛈 INFO";
+    // left padding (1) + space between prefix & msg (1) + right padding (1)
+    let inner_width = prefix_visible.chars().count() + 1 + msg.chars().count() + 1; // padding
 
     // Build colored prefix if colors are enabled
     let prefix = if crate::terminal::supports_color() {
-        format!("{}{}{} ", colors::BLUE, "🛈 INFO", reset)
+        format!("{}{}{}", colors::BLUE, "🛈 INFO", reset)
     } else {
         prefix_visible.to_string()
     };
 
     if crate::terminal::supports_unicode() {
         println!("{}┌{}┐{}", gray, "─".repeat(inner_width), reset);
-        println!("{}│ {}{}{}", gray, prefix, msg, reset);
+        println!("{}│ {} {} │{}", gray, prefix, msg, reset);
         println!("{}└{}┘{}", gray, "─".repeat(inner_width), reset);
     } else {
         println!("{}+{}+{}", gray, "-".repeat(inner_width), reset);
-        println!("{}| {}{}{}", gray, prefix, msg, reset);
+        println!("{}| {} {} {}", gray, prefix, msg, reset);
         println!("{}+{}+{}", gray, "-".repeat(inner_width), reset);
     }
 }
