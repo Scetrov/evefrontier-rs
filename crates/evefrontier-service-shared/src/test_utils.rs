@@ -11,7 +11,7 @@ use crate::state::AppState;
 /// Path to the test fixture database.
 pub const TEST_FIXTURE_PATH: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../docs/fixtures/minimal_static_data.db"
+    "/../../docs/fixtures/minimal/static_data.db"
 );
 
 /// Lazily-initialized test state using the fixture database.

@@ -278,10 +278,10 @@ Precomputes a KD-tree spatial index for efficient neighbor queries during routin
 saved alongside the database with a `.spatial.bin` extension.
 
 ```bash
-evefrontier-cli index-build --data-dir docs/fixtures/minimal_static_data.db
+evefrontier-cli index-build --data-dir docs/fixtures/minimal/static_data.db
 ```
 
-Output: `docs/fixtures/minimal_static_data.db.spatial.bin`
+Output: `docs/fixtures/minimal/static_data.db.spatial.bin`
 
 Options:
 
@@ -513,7 +513,7 @@ Run unit tests across the workspace:
 cargo test --workspace
 ```
 
-The library test suite uses the bundled fixture located at `docs/fixtures/minimal_static_data.db`.
+The library test suite uses the bundled fixture located at `docs/fixtures/minimal/static_data.db`.
 This fixture is pinned to the e6c3 dataset release and uses legacy system names (Nod, Brana, etc.)
 for deterministic testing. The fixture is protected from accidental overwrites.
 
@@ -528,7 +528,7 @@ For development and testing you can override the GitHub download by setting the
 wrappers like `ensure_e6c3_dataset`) copy or extract the local file instead of contacting GitHub.
 
 ```pwsh
-$env:EVEFRONTIER_DATASET_SOURCE = "docs/fixtures/minimal_static_data.db"
+$env:EVEFRONTIER_DATASET_SOURCE = "docs/fixtures/minimal/static_data.db"
 evefrontier-cli download --data-dir target/fixtures
 ```
 
@@ -710,7 +710,7 @@ use std::path::Path;
 let path = ensure_dataset(None, DatasetRelease::tag("e6c3"))?;
 
 // Or point to a local fixture
-let fixture_path = Path::new("docs/fixtures/minimal_static_data.db");
+let fixture_path = Path::new("docs/fixtures/minimal/static_data.db");
 let starmap = load_starmap(fixture_path)?;
 ```
 
@@ -747,7 +747,7 @@ Run the MCP server using an explicit dataset fixture (recommended for developmen
 
 ```bash
 # Run the MCP server (stdio transport)
-evefrontier-cli mcp --data-dir ./docs/fixtures/minimal_static_data.db
+evefrontier-cli mcp --data-dir ./docs/fixtures/minimal/static_data.db
 ```
 
 When using an environment variable to set the dataset location:
@@ -760,7 +760,7 @@ evefrontier-cli mcp
 Control logging verbosity via `RUST_LOG` (logs appear on stderr):
 
 ```bash
-RUST_LOG=info evefrontier-cli mcp --data-dir ./docs/fixtures/minimal_static_data.db
+RUST_LOG=info evefrontier-cli mcp --data-dir ./docs/fixtures/minimal/static_data.db
 ```
 
 The server responds to the standard MCP `initialize` handshake. The `initialize` response includes

@@ -57,6 +57,10 @@ struct GlobalOptions {
     #[arg(long, action = ArgAction::SetTrue, global = true)]
     no_logo: bool,
 
+    /// Disable ANSI colors in CLI output (overrides NO_COLOR env var when set).
+    #[arg(long = "no-color", action = ArgAction::SetTrue, global = true)]
+    no_color: bool,
+
     /// Suppress the footer with timing information.
     #[arg(long, action = ArgAction::SetTrue, global = true)]
     no_footer: bool,
@@ -430,6 +434,8 @@ impl AppContext {
 async fn main() -> Result<()> {
     let cli = Cli::parse();
     let context = AppContext::new(cli.global);
+    // Apply --no-color override early so all downstream rendering respects it.
+    crate::terminal::set_color_disabled(context.options.no_color);
 
     // For JSON output, suppress tracing to keep stdout clean. If launching the MCP
     // subcommand, skip global tracing initialization so the MCP command can set

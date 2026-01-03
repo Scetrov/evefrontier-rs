@@ -69,7 +69,7 @@ All deviations are intentional, well-documented, and tracked in `docs/TODO.md` w
 - ✅ Supports explicit path injection for tests via `ensure_e6c3_dataset(Some(path))`
 - ✅ Extraction logic handles both `.db` files and `.zip` releases
 
-**Validation:** Tests use `docs/fixtures/minimal_static_data.db` fixture with guard to prevent accidental overwrites
+**Validation:** Tests use `docs/fixtures/minimal/static_data.db` fixture with guard to prevent accidental overwrites
 
 **Alignment:** ✅ **Full** - Implementation matches decision exactly
 
@@ -225,7 +225,7 @@ All deviations are intentional, well-documented, and tracked in `docs/TODO.md` w
 **Decision:** Use real subset of e6c3 dataset (8 systems) instead of synthetic fixture
 
 **Implementation:**
-- ✅ `docs/fixtures/minimal_static_data.db` — Real e6c3 data with 8 systems (Nod, Brana, D:2NAS, G:3OA0, H:2L2S, J:35IA, Y:3R7E, E1J-M5G)
+- ✅ `docs/fixtures/minimal/static_data.db` — Real e6c3 data with 8 systems (Nod, Brana, D:2NAS, G:3OA0, H:2L2S, J:35IA, Y:3R7E, E1J-M5G)
 - ✅ Fixture protection: `ensure_e6c3_dataset()` rejects downloads targeting fixture path
 - ✅ Fixture generation: `scripts/extract_fixture_from_dataset.py` automates extraction
 - ✅ Schema validation: Loader tests against real e6c3 schema (camelCase field names)

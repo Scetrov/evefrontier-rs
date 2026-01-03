@@ -5,7 +5,7 @@
 **Prerequisites**: 
 - Existing Lambda crates: `evefrontier-lambda-route`, `evefrontier-lambda-scout-gates`, `evefrontier-lambda-scout-range`
 - Shared infrastructure: `evefrontier-lambda-shared`
-- Fixture database: `docs/fixtures/minimal_static_data.db` (8 systems: Nod, Brana, D:2NAS, G:3OA0, H:2L2S, J:35IA, Y:3R7E, E1J-M5G)
+ - Fixture database: `docs/fixtures/minimal/static_data.db` (8 systems: Nod, Brana, D:2NAS, G:3OA0, H:2L2S, J:35IA, Y:3R7E, E1J-M5G)
 
 **Tests**: This feature IS about tests - all tasks implement test coverage.
 
@@ -32,7 +32,7 @@
 
 - [X] T001 Add `tokio` and `lambda_runtime` to dev-dependencies in `crates/evefrontier-lambda-shared/Cargo.toml`
 - [X] T002 Create test utilities module at `crates/evefrontier-lambda-shared/src/test_utils.rs`
-- [X] T003 Implement `fixture_db_bytes()` function using `include_bytes!` for `docs/fixtures/minimal_static_data.db`
+ - [X] T003 Implement `fixture_db_bytes()` function using `include_bytes!` for `docs/fixtures/minimal/static_data.db`
 - [X] T004 Implement `mock_request_id()` helper returning a test request ID (Context is non-exhaustive)
 - [X] T005 Export test utilities from `crates/evefrontier-lambda-shared/src/lib.rs` under `#[cfg(test)]`
 
@@ -216,7 +216,7 @@ T017 → T018 → T019
 - [P] tasks = different test functions, can be written independently
 - [US#] label maps task to specific Lambda handler
 - Each Lambda should be independently testable
-- Use `docs/fixtures/minimal_static_data.db` for all fixture data
+- Use `docs/fixtures/minimal/static_data.db` for all fixture data
 - Systems available: Nod, Brana, D:2NAS, G:3OA0, H:2L2S, J:35IA, Y:3R7E, E1J-M5G
 - Spatial index needed for scout-range tests - will need to build from fixture
 - Commit after each phase for incremental progress

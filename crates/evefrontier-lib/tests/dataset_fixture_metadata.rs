@@ -70,7 +70,7 @@ fn count_tables(conn: &Connection, tables: &HashMap<String, u64>) -> HashMap<Str
 #[test]
 fn fixture_metadata_matches_record() {
     let fixtures = fixtures_dir();
-    let fixture_db = fixtures.join("minimal_static_data.db");
+    let fixture_db = fixtures.join("minimal/static_data.db");
     let metadata = read_metadata();
 
     if let Some(resolved) = read_release_marker() {

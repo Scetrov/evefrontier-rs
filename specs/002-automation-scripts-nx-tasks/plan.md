@@ -130,7 +130,7 @@
         "cwd": "{workspaceRoot}"
       },
       "inputs": [
-        "{workspaceRoot}/docs/fixtures/minimal_static_data.db",
+        "{workspaceRoot}/docs/fixtures/minimal/static_data.db",
         "{workspaceRoot}/docs/fixtures/minimal_static_data.meta.json",
         "{workspaceRoot}/scripts/fixture_status.py"
       ],
@@ -291,7 +291,7 @@ Test each task:
 2. `pnpm nx run scripts:fixture-verify`
 3. `pnpm nx run scripts:fixture-status`
 4. `pnpm nx run scripts:fixture-record`
-5. `pnpm nx run scripts:inspect-db -- --args.path=docs/fixtures/minimal_static_data.db`
+5. `pnpm nx run scripts:inspect-db -- --args.path=docs/fixtures/minimal/static_data.db`
 6. `pnpm nx run scripts:verify-all`
 
 **Acceptance Criteria**:

@@ -7,7 +7,7 @@ use std::hint::black_box;
 use std::path::PathBuf;
 
 fn fixture_path() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/fixtures/minimal_static_data.db")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/fixtures/minimal/static_data.db")
 }
 
 static STARMAP: Lazy<Starmap> = Lazy::new(|| load_starmap(&fixture_path()).expect("fixture loads"));

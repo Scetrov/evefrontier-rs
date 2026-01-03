@@ -8,7 +8,7 @@ use tempfile::tempdir;
 
 fn fixture_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../docs/fixtures/minimal_static_data.db")
+        .join("../../docs/fixtures/minimal/static_data.db")
         .canonicalize()
         .expect("fixture dataset present")
 }

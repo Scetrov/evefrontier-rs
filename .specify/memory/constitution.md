@@ -115,7 +115,7 @@ Testing follows a three-tier strategy in both local development and CI:
    behind branch protection.
 
 All three tiers are required to pass before merging. Local developers run tiers 1 and 2; CI runs
-tier 3. Fixture dataset at `docs/fixtures/minimal_static_data.db` is used for reproducible testing.
+tier 3. Fixture dataset at `docs/fixtures/minimal/static_data.db` is used for reproducible testing.
 
 **Rationale**: Three tiers balance speed (catch bugs early locally) with confidence (CI validates
 production readiness). Smoke tests catch integration issues that unit tests may miss.

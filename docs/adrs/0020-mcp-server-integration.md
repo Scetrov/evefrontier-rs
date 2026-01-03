@@ -241,7 +241,7 @@ The MCP crate follows Nx orchestration patterns established in ADR 0017:
 ### Testing Strategy
 
 1. **Unit Tests**: Error types, fuzzy matching, constraint validation (in `evefrontier-mcp/tests/`)
-2. **Integration Tests**: Tool handlers with fixture database (via `docs/fixtures/minimal_static_data.db`)
+2. **Integration Tests**: Tool handlers with fixture database (via `docs/fixtures/minimal/static_data.db`)
 3. **Protocol Tests**: JSON-RPC 2.0 message exchange, MCP handshake (via test client mock)
 4. **Container Tests**: Dockerfile builds, image runs, security scan passes
 5. **E2E Tests**: Real AI client (Claude Desktop) connects and executes tools

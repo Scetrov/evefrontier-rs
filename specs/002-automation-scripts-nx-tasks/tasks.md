@@ -164,7 +164,7 @@ description: "Task list for automation scripts and Nx task integration"
   - Args: db (database path), csv (routes CSV path)
 
 - [X] T031 [US3] Test inspection utilities with fixture database
-  - Run: `pnpm nx run scripts:inspect-db -- --args.path=docs/fixtures/minimal_static_data.db`
+  - Run: `pnpm nx run scripts:inspect-db -- --args.path=docs/fixtures/minimal/static_data.db`
   - Verify output shows tables: SolarSystems, Jumps, Planets, Moons, etc.
 
 **Checkpoint**: User Story 3 complete - Database inspection available via Nx
@@ -309,10 +309,10 @@ pnpm nx run scripts:fixture-status       # Show fixture information
 pnpm nx run scripts:fixture-record       # Record current fixture state to metadata
 
 # Fixture generation (requires source database)
-pnpm nx run scripts:fixture-sync -- --args.source=/path/to/static_data.db --args.target=docs/fixtures/minimal_static_data.db
+pnpm nx run scripts:fixture-sync -- --args.source=/path/to/static_data.db --args.target=docs/fixtures/minimal/static_data.db
 
 # Database inspection
-pnpm nx run scripts:inspect-db -- --args.path=docs/fixtures/minimal_static_data.db
+pnpm nx run scripts:inspect-db -- --args.path=docs/fixtures/minimal/static_data.db
 
 # Route analysis
 pnpm nx run scripts:analyze-routes -- --args.db=/path/to/static_data.db --args.csv=docs/SampleRoutes.csv
@@ -346,7 +346,7 @@ echo "4. Testing fixture-verify..."
 pnpm nx run scripts:fixture-verify
 
 echo "5. Testing inspect-db..."
-pnpm nx run scripts:inspect-db -- --args.path=docs/fixtures/minimal_static_data.db
+pnpm nx run scripts:inspect-db -- --args.path=docs/fixtures/minimal/static_data.db
 
 echo "6. Testing verify-all meta-task..."
 pnpm nx run scripts:verify-all

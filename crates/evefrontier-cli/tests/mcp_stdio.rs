@@ -15,7 +15,7 @@ fn spawn_server() -> std::io::Result<Child> {
     Command::new(exe)
         .arg("mcp")
         .arg("--data-dir")
-        .arg("./docs/fixtures/minimal_static_data.db")
+        .arg("./docs/fixtures/minimal/static_data.db")
         .env("RUST_LOG", "info")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())

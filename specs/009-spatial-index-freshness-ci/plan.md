@@ -199,7 +199,7 @@ Format evolution:
 ### Testing Strategy
 
 - Unit tests for all new functions in `spatial.rs`
-- Integration tests with `docs/fixtures/minimal_static_data.db`
+- Integration tests with `docs/fixtures/minimal/static_data.db`
 - CLI integration tests using `assert_cmd` crate
 - CI workflow tested with both fresh and stale scenarios
 

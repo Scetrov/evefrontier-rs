@@ -28,7 +28,7 @@
 ### Testing (if applicable)
 - [ ] I have added tests that prove my fix is effective or that my feature works
 - [ ] New and existing unit tests pass locally
-- [ ] I have tested my changes with the fixture dataset (`docs/fixtures/minimal_static_data.db`)
+-- [ ] I have tested my changes with the fixture dataset (`docs/fixtures/minimal/static_data.db`)
 
 ### Documentation (if applicable)
 - [ ] I have updated `CHANGELOG.md` with my changes under the `Unreleased` section

@@ -10,11 +10,13 @@ fn avoid_critical_state_without_ship_errors() {
     let dir = tempdir().expect("tempdir");
     let dest_db = dir.path().join("minimal_static_data.db");
     let src_db = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../docs/fixtures/minimal_static_data.db");
+        .join("../../docs/fixtures/minimal/static_data.db");
     fs::copy(&src_db, &dest_db).expect("copy db");
 
     let mut cmd = cargo_bin_cmd!("evefrontier-cli");
     cmd.arg("route")
+        .arg("--dataset")
+        .arg("e6c3")
         .arg("--from")
         .arg("Nod")
         .arg("--to")
@@ -44,7 +46,7 @@ fn avoid_critical_state_with_ship_succeeds_or_blocks() {
     fs::copy(&src_ship, &dest_ship).expect("copy ship csv");
 
     let src_release = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../docs/fixtures/static_data.db.release");
+        .join("../../docs/fixtures/minimal/static_data.db.release");
     let dest_release = dir.path().join("minimal_static_data.db.release");
     if src_release.exists() {
         fs::copy(&src_release, &dest_release).expect("copy release marker");
@@ -52,6 +54,8 @@ fn avoid_critical_state_with_ship_succeeds_or_blocks() {
 
     let mut cmd = cargo_bin_cmd!("evefrontier-cli");
     cmd.arg("route")
+        .arg("--dataset")
+        .arg("e6c3")
         .arg("--from")
         .arg("Nod")
         .arg("--to")
@@ -83,7 +87,7 @@ fn avoid_critical_state_with_ship_allows_route_when_gates_allowed() {
     let dir = tempdir().expect("tempdir");
     let dest_db = dir.path().join("minimal_static_data.db");
     let src_db = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../docs/fixtures/minimal_static_data.db");
+        .join("../../docs/fixtures/minimal/static_data.db");
     fs::copy(&src_db, &dest_db).expect("copy db");
     let src_ship =
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/fixtures/ship_data.csv");
@@ -92,7 +96,7 @@ fn avoid_critical_state_with_ship_allows_route_when_gates_allowed() {
 
     // Copy release marker so ensure_dataset treats the copy as fresh
     let src_release = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../docs/fixtures/static_data.db.release");
+        .join("../../docs/fixtures/minimal/static_data.db.release");
     let dest_release = dir.path().join("minimal_static_data.db.release");
     if src_release.exists() {
         fs::copy(&src_release, &dest_release).expect("copy release marker");
@@ -100,6 +104,8 @@ fn avoid_critical_state_with_ship_allows_route_when_gates_allowed() {
 
     let mut cmd = cargo_bin_cmd!("evefrontier-cli");
     cmd.arg("route")
+        .arg("--dataset")
+        .arg("e6c3")
         .arg("--from")
         .arg("Nod")
         .arg("--to")

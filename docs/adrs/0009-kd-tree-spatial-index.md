@@ -73,7 +73,7 @@ Key points:
 4. Integration points
    - Add an index builder CLI subcommand (or a separate small tool) that reads the DB, builds the
      K‑D Tree, and writes the index file next to the `static_data.db` (or the checked-in
-     `minimal_static_data.db` fixture) in the release bundle or cache.
+    `minimal/static_data.db` fixture) in the release bundle or cache.
    - Extend `ensure_e6c3_dataset` to look for and return the index path together with the DB
      path, or provide a `load_spatial_index` function in `evefrontier-lib`.
    - Route planning: when `--min-temp` is specified, pass a temperature predicate to KD-tree queries
@@ -211,7 +211,7 @@ impl SpatialIndex {
 ## Implementation plan
 
 1. Prototype: implement a small index builder in `crates/evefrontier-lib/examples` that reads the
-  checked-in fixture `minimal_static_data.db`, converts coordinates, builds a `kiddo` tree,
+  checked-in fixture `minimal/static_data.db`, converts coordinates, builds a `kiddo` tree,
   serializes with `postcard`, compresses with `zstd`, and writes `spatial_index.bin`.
 2. Add an `evefrontier-cli index-build` subcommand that runs the builder locally and writes the
   index into the cache dir used by `ensure_e6c3_dataset`. (For development, invoke as
@@ -224,7 +224,7 @@ impl SpatialIndex {
   to the public API.
 3b. Temperature-aware build: compute and embed `min_external_temp` for each system in the index;
     include a header flag to indicate presence and a simple version bump.
-4. Add unit tests using `minimal_static_data.db` to validate nearest-neighbour and radius queries
+4. Add unit tests using `minimal/static_data.db` to validate nearest-neighbour and radius queries
   and to assert round-trip integrity (checksum) of the serialized index.
 5. Measure performance (build time, cold-start load time and query latency) and tune defaults
   (coordinate precision, serialization, compression level).

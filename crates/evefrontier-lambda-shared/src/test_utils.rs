@@ -32,7 +32,7 @@ use evefrontier_lib::spatial::SpatialIndex;
 ///
 /// Contains 8 systems: Nod, Brana, D:2NAS, G:3OA0, H:2L2S, J:35IA, Y:3R7E, E1J-M5G.
 fn fixture_db_path() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/fixtures/minimal_static_data.db")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/fixtures/minimal/static_data.db")
 }
 
 /// Load the fixture database bytes for bundling tests.

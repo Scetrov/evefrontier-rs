@@ -50,7 +50,7 @@ Located in `crates/*/tests/` directories, these tests provide comprehensive cove
 
 - Nod, Brana, D:2NAS, G:3OA0, H:2L2S, J:35IA, Y:3R7E, E1J-M5G
 - 12 jump gates, 26 planets, 43 moons
-- Located at: `docs/fixtures/minimal_static_data.db`
+- Located at: `docs/fixtures/minimal/static_data.db`
 
 **Run with:**
 
@@ -132,7 +132,7 @@ The GitHub Actions CI workflow (`.github/workflows/ci.yml`) runs two jobs:
 
 ### When Writing Tests
 
-1. **Use the fixture** - Don't create new test data; use `docs/fixtures/minimal_static_data.db`
+1. **Use the fixture** - Don't create new test data; use `docs/fixtures/minimal/static_data.db`
 2. **Use real system names** - Nod, Brana, D:2NAS, G:3OA0, H:2L2S, J:35IA, Y:3R7E, E1J-M5G
 3. **Isolated environments** - Tests use temporary directories via `tempfile` crate
 4. **Clear assertions** - Use descriptive predicates from `assert_cmd` and `predicates` crates
@@ -196,7 +196,7 @@ Smoke tests use environment variables to control behavior:
 
 ```bash
 # Run manually with debug output
-EVEFRONTIER_DATASET_SOURCE=docs/fixtures/minimal_static_data.db \
+EVEFRONTIER_DATASET_SOURCE=docs/fixtures/minimal/static_data.db \
 RUST_LOG=debug \
 ./target/release/evefrontier-cli --data-dir /tmp/test route --from "Nod" --to "Brana"
 ```

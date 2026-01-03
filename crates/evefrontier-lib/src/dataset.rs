@@ -63,7 +63,7 @@ impl DatasetPaths {
 /// Absolute path to the checked-in minimal fixture database, when available.
 static PROTECTED_FIXTURE_DATASET: Lazy<Option<PathBuf>> = Lazy::new(|| {
     let path =
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/fixtures/minimal_static_data.db");
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/fixtures/minimal/static_data.db");
     path.canonicalize().ok()
 });
 

@@ -21,7 +21,7 @@ use tempfile::TempDir;
 
 /// Path to the test fixture database.
 fn fixture_path() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/fixtures/minimal_static_data.db")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/fixtures/minimal/static_data.db")
 }
 
 /// Helper to create a temporary directory with test files.
