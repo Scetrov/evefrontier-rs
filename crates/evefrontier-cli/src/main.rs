@@ -139,7 +139,9 @@ impl RouteCommandArgs {
                 avoid_gates: self.options.avoid_gates,
                 max_temperature: self.options.max_temp,
                 avoid_critical_state: self.options.avoid_critical_state,
-                ..RouteConstraints::default()
+                ship: None,
+                loadout: None,
+                heat_config: None,
             },
             spatial_index: None, // Will be set separately after loading
         }
