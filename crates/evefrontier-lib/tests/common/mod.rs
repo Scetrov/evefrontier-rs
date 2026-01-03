@@ -7,7 +7,26 @@ use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
 
+use evefrontier_lib::output;
+use evefrontier_lib::ship::{ShipAttributes, ShipCatalog};
 use tempfile::TempDir;
+
+/// Path to fixtures directory used by tests (ship data, minimal DB, etc.)
+#[allow(dead_code)]
+pub fn fixtures_dir() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/fixtures")
+}
+
+/// Convenience helper to load the "Reflex" ship from test fixtures.
+#[allow(dead_code)]
+pub fn reflex_ship() -> ShipAttributes {
+    let path = fixtures_dir().join("ship_data.csv");
+    let catalog = ShipCatalog::from_path(&path).expect("load fixture ship_data.csv");
+    catalog
+        .get("Reflex")
+        .expect("Reflex ship present in fixtures")
+        .clone()
+}
 
 /// Path to the minimal test fixture database.
 pub fn fixture_db_path() -> PathBuf {
@@ -18,6 +37,7 @@ pub fn fixture_db_path() -> PathBuf {
 ///
 /// Provides a clean directory with a copy of the fixture database,
 /// and helper methods to create release markers and spatial index files.
+#[allow(dead_code)]
 pub struct SpatialTestEnv {
     /// Temp directory (dropped on struct drop)
     _temp_dir: TempDir,
@@ -27,6 +47,7 @@ pub struct SpatialTestEnv {
     pub index_path: PathBuf,
 }
 
+#[allow(dead_code)]
 impl SpatialTestEnv {
     /// Create a new test environment by copying the fixture database.
     pub fn new() -> Self {
@@ -109,6 +130,67 @@ pub fn from_hex(s: &str) -> Vec<u8> {
         .step_by(2)
         .map(|i| u8::from_str_radix(&s[i..i + 2], 16).expect("valid hex"))
         .collect()
+}
+
+/// Minimal `RouteStep` builder for use across integration tests.
+#[allow(dead_code)]
+pub struct RouteStepBuilder {
+    step: output::RouteStep,
+}
+
+impl RouteStepBuilder {
+    pub fn new() -> Self {
+        Self {
+            step: output::RouteStep {
+                index: 1,
+                id: 1,
+                name: Some("Step 1".to_string()),
+                distance: Some(1.0),
+                method: Some("jump".to_string()),
+                min_external_temp: None,
+                planet_count: None,
+                moon_count: None,
+                fuel: None,
+                heat: None,
+            },
+        }
+    }
+
+    pub fn index(mut self, idx: usize) -> Self {
+        self.step.index = idx;
+        self
+    }
+
+    pub fn id(mut self, id: i64) -> Self {
+        self.step.id = id;
+        self
+    }
+
+    pub fn name(mut self, name: &str) -> Self {
+        self.step.name = Some(name.to_string());
+        self
+    }
+
+    pub fn distance(mut self, d: f64) -> Self {
+        self.step.distance = Some(d);
+        self
+    }
+
+    #[allow(dead_code)]
+    pub fn method(mut self, method: &str) -> Self {
+        self.step.method = Some(method.to_string());
+        self
+    }
+
+    #[allow(dead_code)]
+    pub fn min_temp(mut self, t: f64) -> Self {
+        self.step.min_external_temp = Some(t);
+        self
+    }
+
+    pub fn build(self) -> output::RouteStep {
+        self.step
+    }
 }
 
 #[cfg(test)]

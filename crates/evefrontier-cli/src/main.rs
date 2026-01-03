@@ -9,7 +9,10 @@ use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 mod commands;
 mod output;
+mod output_helpers;
 mod terminal;
+#[cfg(test)]
+mod test_helpers;
 
 use evefrontier_lib::{
     compute_dataset_checksum, decode_fmap_token, encode_fmap_token, ensure_dataset, load_starmap,
@@ -456,7 +459,7 @@ async fn main() -> Result<()> {
 
     if result.is_ok() && context.should_show_footer() {
         let elapsed = start.elapsed();
-        output::print_footer(elapsed);
+        crate::output_helpers::print_footer(elapsed);
     }
 
     result

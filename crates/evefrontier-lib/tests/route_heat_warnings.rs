@@ -1,56 +1,34 @@
-use evefrontier_lib::output::{RouteEndpoint, RouteOutputKind, RouteStep, RouteSummary};
+use evefrontier_lib::output::{RouteEndpoint, RouteOutputKind, RouteSummary};
 use evefrontier_lib::RouteAlgorithm;
+mod common;
+use common::RouteStepBuilder;
 
 fn make_reflex_route_summary() -> RouteSummary {
     let steps = vec![
-        RouteStep {
-            index: 0,
-            id: 30000001,
-            name: Some("Nod".to_string()),
-            distance: None,
-            method: None,
-            min_external_temp: None,
-            planet_count: None,
-            moon_count: None,
-            fuel: None,
-            heat: None,
-        },
-        RouteStep {
-            index: 1,
-            id: 30000003,
-            name: Some("D:2NAS".to_string()),
-            distance: Some(18.95),
-            method: Some("jump".to_string()),
-            min_external_temp: None,
-            planet_count: None,
-            moon_count: None,
-            fuel: None,
-            heat: None,
-        },
-        RouteStep {
-            index: 2,
-            id: 30000004,
-            name: Some("G:3OA0".to_string()),
-            distance: Some(38.26),
-            method: Some("jump".to_string()),
-            min_external_temp: None,
-            planet_count: None,
-            moon_count: None,
-            fuel: None,
-            heat: None,
-        },
-        RouteStep {
-            index: 3,
-            id: 30000002,
-            name: Some("Brana".to_string()),
-            distance: Some(23.09),
-            method: Some("jump".to_string()),
-            min_external_temp: None,
-            planet_count: None,
-            moon_count: None,
-            fuel: None,
-            heat: None,
-        },
+        RouteStepBuilder::new()
+            .index(0)
+            .id(30000001)
+            .name("Nod")
+            .distance(0.0)
+            .build(),
+        RouteStepBuilder::new()
+            .index(1)
+            .id(30000003)
+            .name("D:2NAS")
+            .distance(18.95)
+            .build(),
+        RouteStepBuilder::new()
+            .index(2)
+            .id(30000004)
+            .name("G:3OA0")
+            .distance(38.26)
+            .build(),
+        RouteStepBuilder::new()
+            .index(3)
+            .id(30000002)
+            .name("Brana")
+            .distance(23.09)
+            .build(),
     ];
 
     RouteSummary {

@@ -88,6 +88,8 @@ pub mod routing;
 pub mod ship;
 pub mod spatial;
 pub mod temperature;
+#[cfg(test)]
+pub mod test_helpers;
 
 pub use dataset::{default_dataset_path, ensure_dataset, ensure_e6c3_dataset, DatasetPaths};
 pub use db::{
