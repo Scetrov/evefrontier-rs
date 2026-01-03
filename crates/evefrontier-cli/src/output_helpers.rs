@@ -73,11 +73,7 @@ pub(crate) fn build_estimation_warning_box(
     let prefix_count = strip_ansi_to_string(prefix_visible).chars().count();
     let msg_count = strip_ansi_to_string(msg).chars().count();
     // include left padding (1), separator (1), and right padding (1)
-<<<<<<< HEAD
-    let inner_width = prefix_count + 1 + msg_count + 1;
-=======
     let inner_width = prefix_count + 1 + msg_count + 2;
->>>>>>> a47807d (output: fix off-by-one in estimation warning box (include trailing padding) and remove debug prints)
 
     if supports_unicode {
         let mut out = String::new();
