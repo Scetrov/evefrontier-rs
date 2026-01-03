@@ -67,10 +67,13 @@ pub(crate) fn build_estimation_warning_box(
 ) -> String {
     // Compute visible width while ignoring ANSI color escape sequences so callers can
     // pass colored prefixes (e.g., "\x1b[34m🛈 INFO\x1b[0m") without breaking alignment.
-    let visible_prefix = strip_ansi_to_string(prefix_visible);
-    let visible_msg = strip_ansi_to_string(msg);
-    // left padding (1) + separator (1) + right padding (1)
-    let inner_width = visible_prefix.chars().count() + 1 + visible_msg.chars().count() + 1;
+    // left padding (1) + separator (1) + (message + prefix) visible width
+    // The visible inner content measured by tests strips the leading and trailing
+    // single-space padding, so compute the repeat count accordingly.
+    let prefix_count = strip_ansi_to_string(prefix_visible).chars().count();
+    let msg_count = strip_ansi_to_string(msg).chars().count();
+    // include left padding (1), separator (1), and right padding (1)
+    let inner_width = prefix_count + 1 + msg_count + 1;
 
     if supports_unicode {
         let mut out = String::new();
@@ -471,6 +474,7 @@ mod tests {
         // Top and bottom should match the inner width (count of box drawing dashes)
         let expected_top = format!("┌{}┐", "─".repeat(inner_len));
         let expected_bot = format!("└{}┘", "─".repeat(inner_len));
+        // (no debug prints)
         assert_eq!(top, expected_top);
         assert_eq!(bot, expected_bot);
         assert!(mid.contains("🛈 INFO"));
