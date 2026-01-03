@@ -105,3 +105,67 @@ Next steps
 - Decide whether to implement a zone-based prototype (fast) or the game-driven model (realistic).
 - Add tests (unit + integration) and examples in `docs/USAGE.md` and this file.
 - If you prefer, I can implement the chosen model and add the tests and docs now.
+
+### Conservative avoidance: `--avoid-critical-state`
+
+We implemented a conservative, opt-in avoidance check to help pilots avoid single jumps that would
+instantly push a ship's drive into the **CRITICAL** heat band. The behaviour is intentionally
+simple and deterministic so it can be applied at planning time without requiring expensive
+stateful searches or lookahead logic.
+
+- **What it does:** When the CLI is invoked with `--avoid-critical-state` (requires `--ship`), the
+  planner computes the hop-specific heat for each spatial edge using:
+
+  1. `calculate_jump_heat(total_mass_kg, distance_ly, hull_mass_kg, calibration_constant)` to
+     compute an energy-like quantity.
+  2. Convert to a temperature delta using the ship's specific heat: `delta_T = energy / (mass * specific_heat)`.
+  3. The instantaneous temperature experienced during the jump is `ambient_temperature + delta_T`.
+  4. If that instantaneous temperature is >= `HEAT_CRITICAL` (150.0 units), the spatial edge is
+     rejected and not considered by the pathfinder.
+
+- **Why conservative:** This check is per-hop and *does not* model residual cumulative heat
+  carried between hops. It therefore errs on the side of caution: any jump that would by itself
+  be immediately dangerous is avoided. This is a practical, low-complexity mitigation that fits
+  current routing infrastructure and avoids introducing non-deterministic or expensive stateful
+  pathfinding into the MVP. Tests covering both static and `dynamic_mass` cases are included in
+  `crates/evefrontier-lib/tests/route_dynamic_heat.rs` and `crates/evefrontier-lib/tests/routing_critical.rs`.
+
+- **Dynamic mass behaviour:** Currently the instantaneous avoidance check uses the provided
+  `ShipLoadout` to compute mass (static at planning time). `HeatConfig::dynamic_mass` affects how
+  route *projections* are calculated (fuel consumption across hops) but does not relax the
+  avoidance decision for the current MVP. The justification: modeling per-hop mass changes for
+  avoidance requires carrying per-node state in the search, which is a planned follow-up (see
+  `Future work` below).
+
+- **CLI usage example:**
+
+```bash
+# Avoid any single jump that would reach CRITICAL temperature; requires --ship
+evefrontier-cli route --from "Nod" --to "Brana" --avoid-critical-state --ship "Reflex"
+```
+
+- **Notes & tests:**
+  - If `--avoid-critical-state` is used without `--ship` the CLI errors with a helpful message to
+    avoid ambiguous behavior.
+  - Unit & integration tests added: `routing_critical.rs`, `route_dynamic_heat.rs`, and
+    `crates/evefrontier-cli/tests/route_avoid_critical.rs` (covers both error and success cases).
+
+### Future work (stateful heat modeling and observability)
+
+If higher fidelity is desired we propose a follow-up design that adds state to the search so the
+planner can reason about residual heat carried between hops and dynamically changing mass due to
+fuel consumption. Key considerations for such a design:
+
+- **Stateful search:** Extend the search node to include residual heat and remaining fuel; this
+  increases the search state-space and requires careful pruning and heuristics to remain
+  performant.
+- **Heuristic design:** Heuristics must remain admissible for A* and avoid introducing correctness
+  regressions; a conservative admissible heuristic could estimate minimum additional heat to reach
+  goal under optimistic cooling assumptions.
+- **Observability:** Add `tracing` events when edges are rejected due to heat checks (e.g.
+  `tracing::debug!(from = %u, to = %v, instant_temp = %f, "blocking edge due to critical heat")`)
+  to help users and operators debug blocked routes without enabling expensive verbose logging by
+  default.
+
+These improvements are tracked as planned follow-ups in the feature tasks and require an ADR if we
+choose to adopt a stateful approach.

@@ -134,6 +134,8 @@ impl RouteCommandArgs {
                 avoid_systems: self.options.avoid.clone(),
                 avoid_gates: self.options.avoid_gates,
                 max_temperature: self.options.max_temp,
+                avoid_critical_state: self.options.avoid_critical_state,
+                ..RouteConstraints::default()
             },
             spatial_index: None, // Will be set separately after loading
         }
@@ -199,8 +201,10 @@ struct RouteOptionsArgs {
     /// Recalculate mass after each hop as fuel is consumed.
     #[arg(long = "dynamic-mass", action = ArgAction::SetTrue)]
     dynamic_mass: bool,
-    // Heat calibration removed: the system uses a fixed internal calibration constant
-    // (1e-7) to match canonical in-game magnitudes.
+
+    /// Avoid hops that would cause engine to reach critical heat state (requires --ship)
+    #[arg(long = "avoid-critical-state", action = ArgAction::SetTrue)]
+    avoid_critical_state: bool,
 }
 
 #[derive(Args, Debug, Clone)]
@@ -762,6 +766,33 @@ fn handle_route_command(
         request = request.with_spatial_index(index);
     }
 
+    // If the user requested heat-aware planning or provided a ship, load ship data and populate
+    // the request constraints so pathfinding can evaluate heat-based restrictions.
+    if args.options.avoid_critical_state || args.options.ship.is_some() {
+        let catalog = load_ship_catalog(&paths)?;
+        let ship_name = args
+            .options
+            .ship
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("--ship is required for heat-aware planning"))?;
+        let ship = catalog
+            .get(ship_name)
+            .ok_or_else(|| anyhow::anyhow!(format!("ship '{}' not found in catalog", ship_name)))?;
+
+        let fuel_load = args.options.fuel_load.unwrap_or(ship.fuel_capacity);
+        let loadout = ShipLoadout::new(ship, fuel_load, args.options.cargo_mass)
+            .context("invalid ship loadout")?;
+
+        let heat_config = evefrontier_lib::ship::HeatConfig {
+            calibration_constant: 1e-7,
+            dynamic_mass: args.options.dynamic_mass,
+        };
+
+        request.constraints.ship = Some(ship.clone());
+        request.constraints.loadout = Some(loadout);
+        request.constraints.heat_config = Some(heat_config);
+    }
+
     let plan = match plan_route(&starmap, &request) {
         Ok(plan) => plan,
         Err(err) => return Err(handle_route_failure(&request, err)),
@@ -919,6 +950,11 @@ fn format_route_not_found_message(
     }
     if constraints.max_temperature.is_some() {
         tips.push("raise --max-temp");
+    }
+    if constraints.avoid_critical_state {
+        // If the user explicitly asked to avoid critical engine states, suggest removing
+        // the restriction or supplying a ship so the planner can evaluate heat safer.
+        tips.push("omit --avoid-critical-state or specify a ship with --ship");
     }
     if tips.is_empty() {
         message.push_str(

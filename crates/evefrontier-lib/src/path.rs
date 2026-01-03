@@ -3,6 +3,7 @@ use std::collections::{BinaryHeap, HashMap, HashSet, VecDeque};
 
 use crate::db::{Starmap, SystemId};
 use crate::graph::{Edge, EdgeKind, Graph};
+use crate::ship::{calculate_jump_heat, HeatConfig, ShipAttributes, ShipLoadout, HEAT_CRITICAL};
 
 /// Constraints applied during pathfinding.
 #[derive(Debug, Default, Clone)]
@@ -15,14 +16,20 @@ pub struct PathConstraints {
     pub avoided_systems: HashSet<SystemId>,
     /// Maximum allowed stellar surface temperature in Kelvin (only enforced for spatial jumps).
     pub max_temperature: Option<f64>,
+    /// Avoid hops that would cause the engine to become critical (requires ship/loadout).
+    pub avoid_critical_state: bool,
+    /// Optional ship attributes used to evaluate heat for a hop.
+    pub ship: Option<ShipAttributes>,
+    /// Optional loadout used to compute mass for heat calculation.
+    pub loadout: Option<ShipLoadout>,
+    /// Optional heat configuration (calibration constant etc.).
+    pub heat_config: Option<HeatConfig>,
 }
 
 impl PathConstraints {
     fn allows(&self, starmap: Option<&Starmap>, edge: &Edge, target: SystemId) -> bool {
-        if let Some(limit) = self.max_jump {
-            if edge.distance > limit {
-                return false;
-            }
+        if self.max_jump.is_some_and(|limit| edge.distance > limit) {
+            return false;
         }
 
         if self.avoid_gates && edge.kind == EdgeKind::Gate {
@@ -33,17 +40,54 @@ impl PathConstraints {
             return false;
         }
 
-        // Temperature constraint only applies to spatial jumps (ships overheat)
-        // Gate jumps are unaffected by system temperature
-        if edge.kind == EdgeKind::Spatial {
-            if let Some(limit) = self.max_temperature {
-                if let Some(map) = starmap {
-                    if let Some(system) = map.systems.get(&target) {
-                        if let Some(temperature) = system.metadata.star_temperature {
-                            if temperature > limit {
-                                return false;
-                            }
-                        }
+        // Temperature and heat constraints only apply to spatial jumps
+        if edge.kind != EdgeKind::Spatial {
+            return true;
+        }
+
+        if let Some(limit) = self.max_temperature {
+            let temp = starmap
+                .and_then(|m| m.systems.get(&target))
+                .and_then(|s| s.metadata.star_temperature);
+            if temp.is_some_and(|t| t > limit) {
+                return false;
+            }
+        }
+
+        // If configured, avoid hops that would result in critical engine state.
+        if self.avoid_critical_state {
+            if let (Some(ship), Some(loadout)) = (&self.ship, &self.loadout) {
+                let ambient_temp = starmap
+                    .and_then(|m| m.systems.get(&target))
+                    .and_then(|s| s.metadata.star_temperature)
+                    .unwrap_or(0.0);
+
+                let mass = loadout.total_mass_kg(ship);
+                let heat_config = self.heat_config.unwrap_or_default();
+                let hop_energy = calculate_jump_heat(
+                    mass,
+                    edge.distance,
+                    ship.base_mass_kg,
+                    heat_config.calibration_constant,
+                );
+
+                if let Ok(energy) = hop_energy {
+                    let hop_heat = energy / (mass * ship.specific_heat);
+                    if ambient_temp + hop_heat >= HEAT_CRITICAL {
+                        let to_name = starmap
+                            .and_then(|m| m.systems.get(&target))
+                            .map(|s| s.name.as_str())
+                            .unwrap_or("unknown");
+
+                        tracing::debug!(
+                            "blocking edge to {} due to critical heat: ambient={:.1}K, jump_heat={:.1}K, total={:.1}K (limit={:.1}K)",
+                            to_name,
+                            ambient_temp,
+                            hop_heat,
+                            ambient_temp + hop_heat,
+                            HEAT_CRITICAL
+                        );
+                        return false;
                     }
                 }
             }
@@ -338,3 +382,5 @@ impl PartialOrd for AStarEntry {
         Some(self.cmp(other))
     }
 }
+
+// End of path.rs

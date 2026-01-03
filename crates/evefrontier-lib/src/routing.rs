@@ -48,6 +48,12 @@ pub struct RouteConstraints {
     pub avoid_systems: Vec<String>,
     pub avoid_gates: bool,
     pub max_temperature: Option<f64>,
+    /// Avoid hops that would result in the engine becoming critical (requires ship/loadout).
+    pub avoid_critical_state: bool,
+    /// Optional ship information used when evaluating heat-based constraints.
+    pub ship: Option<crate::ship::ShipAttributes>,
+    pub loadout: Option<crate::ship::ShipLoadout>,
+    pub heat_config: Option<crate::ship::HeatConfig>,
 }
 
 impl RouteConstraints {
@@ -57,6 +63,10 @@ impl RouteConstraints {
             avoid_gates: self.avoid_gates,
             avoided_systems: avoided,
             max_temperature: self.max_temperature,
+            avoid_critical_state: self.avoid_critical_state,
+            ship: self.ship.clone(),
+            loadout: self.loadout,
+            heat_config: self.heat_config,
         }
     }
 }

@@ -167,9 +167,18 @@ The routing subcommands accept several flags that map directly to the library's 
   jumps to systems with star temperature exceeding this threshold are blocked (ships would
   overheat). Gate jumps are unaffected by temperature. Systems without temperature data are treated
   as safe.
+- `--avoid-critical-state` — when used **with** `--ship`, instructs the planner to avoid spatial hops whose instantaneous temperature (ambient + hop delta-T) would reach or exceed the canonical `HEAT_CRITICAL` threshold (150.0 units). This flag is conservative and **requires** `--ship` to be present; using it without a ship will error. It is useful for pilots who want routes that avoid risking critical engine heat during any single jump.
 
-<!-- `--heat-calibration` flag removed. Calibration is fixed server-side to `1e-7`. -->
+### Example: avoid critical heat hops (requires `--ship`)
 
+```bash
+# Plan a route avoiding spatial hops that would reach CRITICAL instant temperature
+evefrontier-cli route --from "Nod" --to "Brana" --avoid-gates --avoid-critical-state --ship "Reflex"
+```
+
+Add to Heat display section:
+
+- When `--avoid-critical-state` is active, the planner will conservatively omit any spatial jump that would cause the instantaneous temperature (local ambient + computed hop temperature delta) to meet or exceed the `CRITICAL` threshold. This check is performed per-hop and does not model residual cumulative heat across multiple hops (future work).
 ### `index-build`
 
 ### Fuel projection (optional)
