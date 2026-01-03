@@ -75,26 +75,44 @@ impl PathConstraints {
                     heat_config.calibration_constant,
                 );
 
-                if let Ok(energy) = hop_energy {
-                    let hop_heat = energy / (mass * ship.specific_heat);
-                    let total_heat = ambient_temp + hop_heat;
-                    if total_heat >= HEAT_CRITICAL {
+                match hop_energy {
+                    Ok(energy) => {
+                        let hop_heat = energy / (mass * ship.specific_heat);
+                        let total_heat = ambient_temp + hop_heat;
+                        if total_heat >= HEAT_CRITICAL {
+                            let to_name = starmap
+                                .and_then(|m| m.systems.get(&target))
+                                .map(|s| s.name.as_str())
+                                .unwrap_or("unknown");
+
+                            tracing::debug!(
+                                "blocking edge to {} due to critical heat: ambient={:.1}K, hop_heat={:.1}K, total={:.1}K (limit={:.1}K)",
+                                to_name,
+                                ambient_temp,
+                                hop_heat,
+                                total_heat,
+                                HEAT_CRITICAL
+                            );
+                            return false;
+                        }
+                    }
+                    Err(e) => {
+                        // Fail-safe: if heat calculation errors, allow the edge and log a warning so
+                        // routes are not spuriously blocked by calculation issues.
                         let to_name = starmap
                             .and_then(|m| m.systems.get(&target))
                             .map(|s| s.name.as_str())
                             .unwrap_or("unknown");
-
-                        tracing::debug!(
-                            "blocking edge to {} due to critical heat: ambient={:.1}K, hop_heat={:.1}K, total={:.1}K (limit={:.1}K)",
-                            to_name,
-                            ambient_temp,
-                            hop_heat,
-                            total_heat,
-                            HEAT_CRITICAL
+                        tracing::warn!(
+                            "skipping critical-heat check for {} due to calculation error: {e:#?}; allowing edge",
+                            to_name
                         );
-                        return false;
                     }
                 }
+            } else {
+                tracing::debug!(
+                    "avoid_critical_state requested but missing ship/loadout; skipping check"
+                );
             }
         }
 
@@ -389,3 +407,73 @@ impl PartialOrd for AStarEntry {
 }
 
 // End of path.rs
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::{Starmap, System, SystemMetadata};
+
+    #[test]
+    fn default_constraints_are_non_blocking() {
+        let c = PathConstraints::default();
+        assert!(!c.avoid_critical_state);
+        assert!(c.ship.is_none());
+        assert!(c.loadout.is_none());
+    }
+
+    #[test]
+    fn heat_calc_error_is_fail_safe_and_allows_edge() {
+        // Build a minimal starmap with a single system target having a known ambient temp
+        let mut systems = std::collections::HashMap::new();
+        let sys = System {
+            id: 1,
+            name: "Target".to_string(),
+            metadata: SystemMetadata {
+                constellation_id: None,
+                constellation_name: None,
+                region_id: None,
+                region_name: None,
+                security_status: None,
+                star_temperature: None,
+                star_luminosity: None,
+                min_external_temp: Some(10.0),
+                planet_count: None,
+                moon_count: None,
+            },
+            position: None,
+        };
+        systems.insert(1, sys);
+        let starmap = Starmap {
+            systems,
+            name_to_id: std::collections::HashMap::new(),
+            adjacency: std::sync::Arc::new(std::collections::HashMap::new()),
+        };
+
+        // Create constraints that request avoid_critical_state and provide a ship with an
+        // invalid hull_mass (0.0) so that calculate_jump_heat returns an error.
+        let constraints = PathConstraints {
+            avoid_critical_state: true,
+            ship: Some(ShipAttributes {
+                name: "BugShip".to_string(),
+                base_mass_kg: 0.0, // invalid to trigger error
+                specific_heat: 1.0,
+                fuel_capacity: 100.0,
+                cargo_capacity: 100.0,
+            }),
+            loadout: Some(ShipLoadout {
+                fuel_load: 10.0,
+                cargo_mass_kg: 0.0,
+            }),
+            ..Default::default()
+        };
+
+        let edge = crate::graph::Edge {
+            target: 1,
+            kind: crate::graph::EdgeKind::Spatial,
+            distance: 10.0,
+        };
+
+        // Should allow the edge because heat calculation errors are fail-safe
+        assert!(constraints.allows(Some(&starmap), &edge, 1));
+    }
+}

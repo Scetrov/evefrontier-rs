@@ -147,9 +147,13 @@ combining gates + spatial jumps). If the dataset is not already present, the CLI
 automatically before computing the route.
 
 ```pwsh
+Computes a route between two system names using the selected algorithm (default: `dijkstra` —
+weighted distance optimization over the hybrid graph combining gates + spatial jumps). If the
+dataset is not already present, the CLI downloads it automatically before computing the route.
 evefrontier-cli route --from "ER1-MM7" --to "ENQ-PB6"
 ```
 
+  # A* (heuristic-guided; use when coordinates are complete and admissible)
 ### Routing options
 
 The routing subcommands accept several flags that map directly to the library's route planner:
@@ -175,8 +179,6 @@ The routing subcommands accept several flags that map directly to the library's 
 # Plan a route avoiding spatial hops that would reach CRITICAL instant temperature
 evefrontier-cli route --from "Nod" --to "Brana" --avoid-gates --avoid-critical-state --ship "Reflex"
 ```
-
-Add to Heat display section:
 
 - When `--avoid-critical-state` is active, the planner will conservatively omit any spatial jump that would cause the instantaneous temperature (local ambient + computed hop temperature delta) to meet or exceed the `CRITICAL` threshold. This check is performed per-hop and does not model residual cumulative heat across multiple hops (future work).
 ### `index-build`

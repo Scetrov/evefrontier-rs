@@ -42,8 +42,11 @@ total_mass_kg = base_mass_kg + fuel_mass_kg + cargo_mass_kg
 ```
 
 Where:
-
+The library implements heat projections with the following behavior:
 - `base_mass_kg` = Ship hull mass (from CSV)
+**Heat Implementation Details**
+
+The library implements heat projections with the following behavior:
 - `fuel_mass_kg` = Current fuel load × fuel density (assumed 1 kg per fuel unit)
 - `cargo_mass_kg` = Current cargo mass (user-specified or assumed empty)
 

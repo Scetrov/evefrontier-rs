@@ -109,7 +109,7 @@ Next steps
 ### Conservative avoidance: `--avoid-critical-state`
 
 We implemented a conservative, opt-in avoidance check to help pilots avoid single jumps that would
-instantly push a ship's drive into the **CRITICAL** heat band. The behaviour is intentionally
+instantly push a ship's drive into the **CRITICAL** heat band. The behavior is intentionally
 simple and deterministic so it can be applied at planning time without requiring expensive
 stateful searches or lookahead logic.
 
@@ -138,7 +138,7 @@ stateful searches or lookahead logic.
   pathfinding into the MVP. Tests covering both static and `dynamic_mass` cases are included in
   `crates/evefrontier-lib/tests/route_dynamic_heat.rs` and `crates/evefrontier-lib/tests/routing_critical.rs`.
 
-- **Dynamic mass behaviour:** Currently the instantaneous avoidance check uses the provided
+**Dynamic mass behavior:** Currently the instantaneous avoidance check uses the provided
   `ShipLoadout` to compute mass (static at planning time). `HeatConfig::dynamic_mass` affects how
   route *projections* are calculated (fuel consumption across hops) but does not relax the
   avoidance decision for the current MVP. The justification: modeling per-hop mass changes for
