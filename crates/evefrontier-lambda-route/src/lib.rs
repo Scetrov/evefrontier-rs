@@ -108,6 +108,10 @@ fn handle_route_request(request: &RouteRequest, request_id: &str) -> Response {
             avoid_systems: request.avoid.clone(),
             avoid_gates: request.avoid_gates,
             max_temperature: request.max_temperature,
+            avoid_critical_state: false,
+            ship: None,
+            loadout: None,
+            heat_config: None,
         },
         spatial_index: Some(runtime.spatial_index_arc()),
     };
