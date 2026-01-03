@@ -17,6 +17,8 @@ All notable changes to this project will be documented in this file.
   - Fixed panic when running dataset download under the CLI's Tokio runtime by running blocking
     dataset operations in a blocking region (`tokio::task::block_in_place`). This prevents dropping
     an internal reqwest runtime from inside an async context.
+  - Add: show an estimation warning box in route footers when fuel or heat values are present
+    to indicate values are approximate and may deviate by ±10%.
 - **Library** (`evefrontier-lib`)
   - Fuel projections no longer consume fuel on gate hops; gate steps report zero fuel cost
   - Fix: avoid parsing checksum sidecar files (e.g., `*.sha256`) as ship CSVs. The downloader cache

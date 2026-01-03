@@ -119,6 +119,18 @@ pub fn render_text(summary: &RouteSummary, show_temps: bool, base_url: &str) {
             base_url, fmap_url, FMAP_TYPE_WIDTH_PARAM
         );
     }
+
+    // Print estimation warning box when fuel or heat values are present
+    if summary.fuel.is_some() || summary.heat.is_some() {
+        use crate::terminal::colors;
+        let (gray, reset) = if crate::terminal::supports_color() {
+            (colors::GRAY, colors::RESET)
+        } else {
+            ("", "")
+        };
+        println!();
+        print_estimation_warning_box_gray_reset(gray, reset);
+    }
 }
 
 fn render_step_with_prefix(prefix: &str, step: &RouteStep, name: &str, show_temps: bool) {
@@ -184,6 +196,17 @@ pub fn render_rich(summary: &RouteSummary, show_temps: bool, _base_url: &str) {
         "{}",
         summary.render_with(RouteRenderMode::RichText, show_temps)
     );
+
+    if summary.fuel.is_some() || summary.heat.is_some() {
+        use crate::terminal::colors;
+        let (gray, reset) = if crate::terminal::supports_color() {
+            (colors::GRAY, colors::RESET)
+        } else {
+            ("", "")
+        };
+        println!();
+        print_estimation_warning_box_gray_reset(gray, reset);
+    }
 }
 
 /// Render a route summary in JSON format.
@@ -226,6 +249,17 @@ pub fn render_basic(summary: &RouteSummary, show_temps: bool, _base_url: &str) {
         }
     }
     println!("via {} gates / {} jump drive", summary.gates, summary.jumps);
+
+    if summary.fuel.is_some() || summary.heat.is_some() {
+        use crate::terminal::colors;
+        let (gray, reset) = if crate::terminal::supports_color() {
+            (colors::GRAY, colors::RESET)
+        } else {
+            ("", "")
+        };
+        println!();
+        print_estimation_warning_box_gray_reset(gray, reset);
+    }
 }
 
 /// Render a route summary in emoji format.
@@ -251,6 +285,17 @@ pub fn render_emoji(summary: &RouteSummary, show_temps: bool, _base_url: &str) {
     }
     println!("\nTotal distance: {:.0}ly", summary.total_distance);
     println!("Total ly jumped: {:.0}ly", summary.jump_distance);
+
+    if summary.fuel.is_some() || summary.heat.is_some() {
+        use crate::terminal::colors;
+        let (gray, reset) = if crate::terminal::supports_color() {
+            (colors::GRAY, colors::RESET)
+        } else {
+            ("", "")
+        };
+        println!();
+        print_estimation_warning_box_gray_reset(gray, reset);
+    }
 }
 
 fn render_emoji_step(icon: &str, step: &RouteStep, name: &str, show_temps: bool) {
@@ -686,6 +731,28 @@ impl EnhancedRenderer {
                 p.cyan, p.reset, p.white_bold, base_url, fmap_url, FMAP_TYPE_WIDTH_PARAM, p.reset
             );
         }
+
+        // Print estimation warning box when fuel or heat values are present
+        if summary.fuel.is_some() || summary.heat.is_some() {
+            println!();
+            self.print_estimation_warning_box();
+        }
+    }
+
+    fn print_estimation_warning_box(&self) {
+        let p = &self.palette;
+        let msg = "All fuel and heat values are based upon estimations of the code that CCP uses; they may deviate by up to ±10%";
+        let inner_width = msg.chars().count() + 2;
+
+        if crate::terminal::supports_unicode() {
+            println!("{}┌{}┐{}", p.gray, "─".repeat(inner_width), p.reset);
+            println!("{}│ {} │{}", p.gray, msg, p.reset);
+            println!("{}└{}┘{}", p.gray, "─".repeat(inner_width), p.reset);
+        } else {
+            println!("{}+{}+{}", p.gray, "-".repeat(inner_width), p.reset);
+            println!("{}| {} |{}", p.gray, msg, p.reset);
+            println!("{}+{}+{}", p.gray, "-".repeat(inner_width), p.reset);
+        }
     }
 }
 
@@ -742,6 +809,23 @@ fn format_fuel_suffix(step: &RouteStep) -> Option<String> {
         fuel.hop_cost.ceil() as i64,
         remaining
     ))
+}
+
+/// Print a small warning box informing users that fuel/heat values are estimates.
+fn print_estimation_warning_box_gray_reset(gray: &str, reset: &str) {
+    let msg = "All fuel and heat values are based upon estimations of the code that CCP uses; they may deviate by up to ±10%";
+    // Use character counts for box width so Unicode characters are handled more reasonably.
+    let inner_width = msg.chars().count() + 2; // one space padding each side
+
+    if crate::terminal::supports_unicode() {
+        println!("{}┌{}┐{}", gray, "─".repeat(inner_width), reset);
+        println!("{}│ {} │{}", gray, msg, reset);
+        println!("{}└{}┘{}", gray, "─".repeat(inner_width), reset);
+    } else {
+        println!("{}+{}+{}", gray, "-".repeat(inner_width), reset);
+        println!("{}| {} |{}", gray, msg, reset);
+        println!("{}+{}+{}", gray, "-".repeat(inner_width), reset);
+    }
 }
 
 #[cfg(test)]
