@@ -238,8 +238,8 @@ struct FmapDecodeArgs {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum, Default)]
 enum RouteAlgorithmArg {
     Bfs,
-    Dijkstra,
     #[default]
+    Dijkstra,
     #[value(name = "a-star")]
     AStar,
 }
