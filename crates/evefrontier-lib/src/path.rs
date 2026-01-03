@@ -55,11 +55,15 @@ impl PathConstraints {
         }
 
         // If configured, avoid hops that would result in critical engine state.
+        // Check: ambient_temp + hop_heat >= HEAT_CRITICAL (150K)
+        // Note: ambient_temp is min_external_temp (0.1K-99.9K range), not star surface temperature
         if self.avoid_critical_state {
             if let (Some(ship), Some(loadout)) = (&self.ship, &self.loadout) {
+                // Get the minimum external temperature at the destination system
+                // This is the temperature at the coldest habitable zone (furthest planet/moon)
                 let ambient_temp = starmap
                     .and_then(|m| m.systems.get(&target))
-                    .and_then(|s| s.metadata.star_temperature)
+                    .and_then(|s| s.metadata.min_external_temp)
                     .unwrap_or(0.0);
 
                 let mass = loadout.total_mass_kg(ship);
@@ -73,18 +77,19 @@ impl PathConstraints {
 
                 if let Ok(energy) = hop_energy {
                     let hop_heat = energy / (mass * ship.specific_heat);
-                    if ambient_temp + hop_heat >= HEAT_CRITICAL {
+                    let total_heat = ambient_temp + hop_heat;
+                    if total_heat >= HEAT_CRITICAL {
                         let to_name = starmap
                             .and_then(|m| m.systems.get(&target))
                             .map(|s| s.name.as_str())
                             .unwrap_or("unknown");
 
                         tracing::debug!(
-                            "blocking edge to {} due to critical heat: ambient={:.1}K, jump_heat={:.1}K, total={:.1}K (limit={:.1}K)",
+                            "blocking edge to {} due to critical heat: ambient={:.1}K, hop_heat={:.1}K, total={:.1}K (limit={:.1}K)",
                             to_name,
                             ambient_temp,
                             hop_heat,
-                            ambient_temp + hop_heat,
+                            total_heat,
                             HEAT_CRITICAL
                         );
                         return false;

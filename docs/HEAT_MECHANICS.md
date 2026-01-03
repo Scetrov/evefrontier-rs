@@ -120,8 +120,16 @@ stateful searches or lookahead logic.
      compute an energy-like quantity.
   2. Convert to a temperature delta using the ship's specific heat: `delta_T = energy / (mass * specific_heat)`.
   3. The instantaneous temperature experienced during the jump is `ambient_temperature + delta_T`.
-  4. If that instantaneous temperature is >= `HEAT_CRITICAL` (150.0 units), the spatial edge is
+  4. If that instantaneous temperature is >= `HEAT_CRITICAL` (150.0 K), the spatial edge is
      rejected and not considered by the pathfinder.
+
+- **Important temperature clarification:** The `ambient_temperature` used in this check is the
+  **minimum external temperature** (`min_external_temp`) calculated using the EVE Frontier logistic
+  curve formula (range 0.1K-99.9K). This represents the black body temperature at the coldest
+  habitable zone (typically at the furthest planet/moon from the star). It is **NOT** the stellar
+  surface temperature (`star_temperature` in the database), which is in the thousands of Kelvin and
+  represents the photosphere temperature of the star itself. The confusion between these two values
+  was a critical bug that caused all routes to be rejected when first implemented.
 
 - **Why conservative:** This check is per-hop and *does not* model residual cumulative heat
   carried between hops. It therefore errs on the side of caution: any jump that would by itself
