@@ -297,8 +297,8 @@ This research documents the patterns, rationale, and current implementation to i
 
 **Current**: `index-build` subcommand in CLI, not in Nx tasks  
 **Future**: Could add Nx target `build:spatial-index` that:
-- Takes `minimal_static_data.db` as input
-- Outputs `minimal_static_data.db.spatial.bin`
+- Takes `minimal/static_data.db` as input
+- Outputs `minimal/static_data.db.spatial.bin`
 - Is cached (so re-runs only when DB changes)
 - Runs as part of release workflow
 

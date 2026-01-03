@@ -6,13 +6,13 @@ This directory contains test fixture databases used by integration and unit test
 
 | Fixture | Systems | Jumps | Purpose |
 |---------|---------|-------|---------|
-| `minimal_static_data.db` | 8 | 12 | Core routing tests, schema validation |
+| `minimal/static_data.db` | 8 | 12 | Core routing tests, schema validation |
 | `route_testing.db` | 717 | 344 | Sample route validation (~50% coverage) |
 | `ship_data.csv` | n/a | n/a | Ship catalog fixture for fuel projection tests |
 
 ## Current Fixtures
 
-### 1. `minimal_static_data.db` - Core Fixture
+### 1. `minimal/static_data.db` - Core Fixture
 
 A minimal fixture with 8 real EVE Frontier systems for unit testing:
 
@@ -52,7 +52,7 @@ A minimal ship catalog for fuel projection testing:
 
 **Protection note:** This fixture should not be overwritten by dataset downloads. The library
 includes a safety guard (`ensure_e6c3_dataset`) that rejects download targets resolving to
-`docs/fixtures/minimal_static_data.db`, preventing accidental fixture replacement.
+`docs/fixtures/minimal/static_data.db`, preventing accidental fixture replacement.
 
 **Using the fixture in tests:**
 
@@ -103,7 +103,7 @@ To regenerate the fixture from the latest e6c3 dataset:
 cargo run -p evefrontier-cli -- download --data-dir /tmp/e6c3_source
 
 # 2. Extract the fixture subset
-python3 scripts/extract_fixture_from_dataset.py /tmp/e6c3_source/static_data.db docs/fixtures/minimal_static_data.db
+python3 scripts/extract_fixture_from_dataset.py /tmp/e6c3_source/static_data.db docs/fixtures/minimal/static_data.db
 ```
 
 Or use the wrapper script:
@@ -164,7 +164,7 @@ The CI workflow generates the fixture fresh for each test run to ensure:
 
 ### Local Testing
 
-The git-tracked `minimal_static_data.db` is provided for convenience during local development. To ensure consistency:
+The git-tracked `minimal/static_data.db` is provided for convenience during local development. To ensure consistency:
 
 > [!IMPORTANT]
 > **Do not replace it by running download commands with `--data-dir docs/fixtures/`.**

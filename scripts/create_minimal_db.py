@@ -43,7 +43,7 @@ def main():
         print("  cargo run -p evefrontier-cli -- download --data-dir /tmp/e6c3_source", file=sys.stderr)
         sys.exit(1)
     
-    output_db = script_dir.parent / 'docs' / 'fixtures' / 'minimal_static_data.db'
+    output_db = script_dir.parent / 'docs' / 'fixtures' / 'minimal' / 'static_data.db'
     
     print(f"Extracting fixture from {source_db}...")
     result = subprocess.run(
@@ -72,7 +72,7 @@ def create_legacy_synthetic_fixture():
 
     out_dir = os.path.join('docs','fixtures')
     os.makedirs(out_dir, exist_ok=True)
-    db_path = os.path.join(out_dir, 'minimal_static_data.db')
+    db_path = os.path.join(out_dir, 'minimal', 'static_data.db')
     if os.path.exists(db_path):
         os.remove(db_path)
 

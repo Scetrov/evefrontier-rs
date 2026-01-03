@@ -46,12 +46,15 @@ All notable changes to this project will be documented in this file.
     - Default values: Reflex ship with 10% fuel quality applied automatically
     - Enhanced output mode displays fuel consumption per hop and total fuel required
     - Lambda support: Extended RouteRequest/RouteSummary with optional fuel projection fields
+- **CLI** (`evefrontier-cli`)
+  - Add `--avoid-critical-state` flag to `route` to conservatively avoid single spatial hops
+    that would reach the canonical `CRITICAL` heat threshold; requires `--ship` and is
+    documented in `docs/USAGE.md` and `docs/HEAT_MECHANICS.md`.
     - Dynamic mass recalculation mode where fuel weight decreases after each jump
     - 8 integration tests for ship catalog parsing, fuel calculation, and route aggregation
     - 3 specification tests for future ship data downloader features
     - Documentation in `docs/USAGE.md` with fuel calculation examples and formula reference
-
-    - **Heat mechanics** (Library, CLI & Lambda)
+  - **Heat mechanics** (Library, CLI & Lambda)
       - Add `calculate_jump_heat()` and `HeatConfig` to `evefrontier-lib` for per-hop heat
         calculation
       - Add `HeatProjection` and `HeatSummary` types, included in CLI and Lambda outputs when a ship

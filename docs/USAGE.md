@@ -149,7 +149,6 @@ automatically before computing the route.
 ```pwsh
 evefrontier-cli route --from "ER1-MM7" --to "ENQ-PB6"
 ```
-
 ### Routing options
 
 The routing subcommands accept several flags that map directly to the library's route planner:
@@ -167,9 +166,16 @@ The routing subcommands accept several flags that map directly to the library's 
   jumps to systems with star temperature exceeding this threshold are blocked (ships would
   overheat). Gate jumps are unaffected by temperature. Systems without temperature data are treated
   as safe.
+- `--avoid-critical-state` — when used **with** `--ship`, instructs the planner to avoid spatial hops whose instantaneous temperature (ambient + hop delta-T) would reach or exceed the canonical `HEAT_CRITICAL` threshold (150.0 units). This flag is conservative and **requires** `--ship` to be present; using it without a ship will error. It is useful for pilots who want routes that avoid risking critical engine heat during any single jump.
 
-<!-- `--heat-calibration` flag removed. Calibration is fixed server-side to `1e-7`. -->
+### Example: avoid critical heat hops (requires `--ship`)
 
+```bash
+# Plan a route avoiding spatial hops that would reach CRITICAL instant temperature
+evefrontier-cli route --from "Nod" --to "Brana" --avoid-gates --avoid-critical-state --ship "Reflex"
+```
+
+- When `--avoid-critical-state` is active, the planner will conservatively omit any spatial jump that would cause the instantaneous temperature (local ambient + computed hop temperature delta) to meet or exceed the `CRITICAL` threshold. This check is performed per-hop and does not model residual cumulative heat across multiple hops (future work).
 ### `index-build`
 
 ### Fuel projection (optional)
@@ -269,10 +275,10 @@ Precomputes a KD-tree spatial index for efficient neighbor queries during routin
 saved alongside the database with a `.spatial.bin` extension.
 
 ```bash
-evefrontier-cli index-build --data-dir docs/fixtures/minimal_static_data.db
+evefrontier-cli index-build --data-dir docs/fixtures/minimal/static_data.db
 ```
 
-Output: `docs/fixtures/minimal_static_data.db.spatial.bin`
+Output: `docs/fixtures/minimal/static_data.db.spatial.bin`
 
 Options:
 
@@ -504,7 +510,7 @@ Run unit tests across the workspace:
 cargo test --workspace
 ```
 
-The library test suite uses the bundled fixture located at `docs/fixtures/minimal_static_data.db`.
+The library test suite uses the bundled fixture located at `docs/fixtures/minimal/static_data.db`.
 This fixture is pinned to the e6c3 dataset release and uses legacy system names (Nod, Brana, etc.)
 for deterministic testing. The fixture is protected from accidental overwrites.
 
@@ -519,7 +525,7 @@ For development and testing you can override the GitHub download by setting the
 wrappers like `ensure_e6c3_dataset`) copy or extract the local file instead of contacting GitHub.
 
 ```pwsh
-$env:EVEFRONTIER_DATASET_SOURCE = "docs/fixtures/minimal_static_data.db"
+$env:EVEFRONTIER_DATASET_SOURCE = "docs/fixtures/minimal/static_data.db"
 evefrontier-cli download --data-dir target/fixtures
 ```
 
@@ -701,7 +707,7 @@ use std::path::Path;
 let path = ensure_dataset(None, DatasetRelease::tag("e6c3"))?;
 
 // Or point to a local fixture
-let fixture_path = Path::new("docs/fixtures/minimal_static_data.db");
+let fixture_path = Path::new("docs/fixtures/minimal/static_data.db");
 let starmap = load_starmap(fixture_path)?;
 ```
 
@@ -738,7 +744,7 @@ Run the MCP server using an explicit dataset fixture (recommended for developmen
 
 ```bash
 # Run the MCP server (stdio transport)
-evefrontier-cli mcp --data-dir ./docs/fixtures/minimal_static_data.db
+evefrontier-cli mcp --data-dir ./docs/fixtures/minimal/static_data.db
 ```
 
 When using an environment variable to set the dataset location:
@@ -751,7 +757,7 @@ evefrontier-cli mcp
 Control logging verbosity via `RUST_LOG` (logs appear on stderr):
 
 ```bash
-RUST_LOG=info evefrontier-cli mcp --data-dir ./docs/fixtures/minimal_static_data.db
+RUST_LOG=info evefrontier-cli mcp --data-dir ./docs/fixtures/minimal/static_data.db
 ```
 
 The server responds to the standard MCP `initialize` handshake. The `initialize` response includes

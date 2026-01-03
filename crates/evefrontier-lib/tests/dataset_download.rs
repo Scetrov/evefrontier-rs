@@ -8,7 +8,7 @@ use zip::write::FileOptions;
 use zip::ZipWriter;
 
 fn fixture_path() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/fixtures/minimal_static_data.db")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/fixtures/minimal/static_data.db")
 }
 
 fn with_cache_dir<F>(f: F)

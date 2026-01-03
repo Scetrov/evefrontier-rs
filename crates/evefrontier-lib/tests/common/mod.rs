@@ -30,7 +30,7 @@ pub fn reflex_ship() -> ShipAttributes {
 
 /// Path to the minimal test fixture database.
 pub fn fixture_db_path() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/fixtures/minimal_static_data.db")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/fixtures/minimal/static_data.db")
 }
 
 /// Test environment with temporary files for spatial index testing.

@@ -143,5 +143,5 @@ fn spatial_graph_has_edges_with_positions_in_fixture() {
 
 fn fixture_path() -> std::path::PathBuf {
     std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../docs/fixtures/minimal_static_data.db")
+        .join("../../docs/fixtures/minimal/static_data.db")
 }

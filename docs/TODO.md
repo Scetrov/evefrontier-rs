@@ -61,7 +61,7 @@ For detailed alignment report, see `docs/adr-alignment-report_2025-12-30.md`
 - [x] Add fixture protection to prevent accidental overwrites:
   - [x] Document in `docs/fixtures/README.md` that fixture should not be replaced with downloads
     - [x] Library guard rejects download targets that resolve to
-          `docs/fixtures/minimal_static_data.db`
+          `docs/fixtures/minimal/static_data.db`
 - [x] Document `.vscode/mcp.json` in README or CONTRIBUTING guide (GitHub Copilot MCP server config;
       clarify if required or optional for developers)
 - [x] Add CI validation step that runs example commands from README/USAGE docs to ensure they
@@ -259,7 +259,7 @@ For detailed alignment report, see `docs/adr-alignment-report_2025-12-30.md`
   - Scout-Range Lambda: 16 tests covering request parsing, validation, spatial queries, response
     serialization
   - Added test utilities module in `evefrontier-lambda-shared` for shared fixtures
-  - All tests use `docs/fixtures/minimal_static_data.db` fixture
+      - All tests use `docs/fixtures/minimal/static_data.db` fixture
 - [x] Integrate KD-tree spatial index loading at cold start if artifact bundled.
   - `SpatialIndex::load_from_bytes()` and `load_from_reader()` added to library
   - Lambda runtime loads spatial index from bundled bytes at cold start

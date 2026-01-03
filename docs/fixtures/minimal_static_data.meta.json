@@ -1,5 +1,5 @@
 {
-  "fixture": "docs/fixtures/minimal_static_data.db",
+  "fixture": "docs/fixtures/minimal/static_data.db",
   "release": "e6c3",
   "sha256": "aa21f7284309ccffe154edf318ebfd2aa47ade5b6bcf57520379c49b67c2baad",
   "tables": {

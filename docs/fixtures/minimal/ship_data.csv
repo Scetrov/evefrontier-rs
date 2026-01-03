@@ -1,0 +1,4 @@
+name,base_mass_kg,specific_heat,fuel_capacity,cargo_capacity
+Reflex,10000000,0.9,1750,800000
+Forager,15000000,0.85,2200,1200000
+Warden,8000000,1.1,1400,500000

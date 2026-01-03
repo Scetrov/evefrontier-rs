@@ -57,6 +57,10 @@ struct GlobalOptions {
     #[arg(long, action = ArgAction::SetTrue, global = true)]
     no_logo: bool,
 
+    /// Disable ANSI colors in CLI output (overrides NO_COLOR env var when set).
+    #[arg(long = "no-color", action = ArgAction::SetTrue, global = true)]
+    no_color: bool,
+
     /// Suppress the footer with timing information.
     #[arg(long, action = ArgAction::SetTrue, global = true)]
     no_footer: bool,
@@ -134,6 +138,10 @@ impl RouteCommandArgs {
                 avoid_systems: self.options.avoid.clone(),
                 avoid_gates: self.options.avoid_gates,
                 max_temperature: self.options.max_temp,
+                avoid_critical_state: self.options.avoid_critical_state,
+                ship: None,
+                loadout: None,
+                heat_config: None,
             },
             spatial_index: None, // Will be set separately after loading
         }
@@ -199,8 +207,10 @@ struct RouteOptionsArgs {
     /// Recalculate mass after each hop as fuel is consumed.
     #[arg(long = "dynamic-mass", action = ArgAction::SetTrue)]
     dynamic_mass: bool,
-    // Heat calibration removed: the system uses a fixed internal calibration constant
-    // (1e-7) to match canonical in-game magnitudes.
+
+    /// Avoid hops that would cause engine to reach critical heat state (requires --ship)
+    #[arg(long = "avoid-critical-state", action = ArgAction::SetTrue)]
+    avoid_critical_state: bool,
 }
 
 #[derive(Args, Debug, Clone)]
@@ -234,11 +244,14 @@ struct FmapDecodeArgs {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum, Default)]
 enum RouteAlgorithmArg {
     Bfs,
-    Dijkstra,
     #[default]
+    Dijkstra,
     #[value(name = "a-star")]
     AStar,
 }
+
+// Note: Dijkstra is the intentionally selected default algorithm (marked with #[default]).
+// The ordering here is chosen for presentation and the default is explicit via the attribute.
 
 impl From<RouteAlgorithmArg> for RouteAlgorithm {
     fn from(value: RouteAlgorithmArg) -> Self {
@@ -426,6 +439,8 @@ impl AppContext {
 async fn main() -> Result<()> {
     let cli = Cli::parse();
     let context = AppContext::new(cli.global);
+    // Apply --no-color override early so all downstream rendering respects it.
+    crate::terminal::set_color_disabled(context.options.no_color);
 
     // For JSON output, suppress tracing to keep stdout clean. If launching the MCP
     // subcommand, skip global tracing initialization so the MCP command can set
@@ -762,6 +777,38 @@ fn handle_route_command(
         request = request.with_spatial_index(index);
     }
 
+    // If the user requested heat-aware planning or provided a ship, load ship data and populate
+    // the request constraints so pathfinding can evaluate heat-based restrictions. We load the
+    // ship when either flag is present because a provided `--ship` is also used for fuel
+    // projection output even when `--avoid-critical-state` is not set.
+    if args.options.avoid_critical_state || args.options.ship.is_some() {
+        let catalog = load_ship_catalog(&paths)?;
+        let ship_name = args
+            .options
+            .ship
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("--ship is required for heat-aware planning"))?;
+        let ship = catalog
+            .get(ship_name)
+            .ok_or_else(|| anyhow::anyhow!(format!("ship {} not found in catalog", ship_name)))?;
+
+        let fuel_load = args.options.fuel_load.unwrap_or(ship.fuel_capacity);
+        let loadout = ShipLoadout::new(ship, fuel_load, args.options.cargo_mass)
+            .context("invalid ship loadout")?;
+
+        request.constraints.ship = Some(ship.clone());
+        request.constraints.loadout = Some(loadout);
+
+        // Only populate heat-specific configuration when heat-aware planning is requested.
+        if args.options.avoid_critical_state {
+            let heat_config = evefrontier_lib::ship::HeatConfig {
+                calibration_constant: 1e-7,
+                dynamic_mass: args.options.dynamic_mass,
+            };
+            request.constraints.heat_config = Some(heat_config);
+        }
+    }
+
     let plan = match plan_route(&starmap, &request) {
         Ok(plan) => plan,
         Err(err) => return Err(handle_route_failure(&request, err)),
@@ -919,6 +966,17 @@ fn format_route_not_found_message(
     }
     if constraints.max_temperature.is_some() {
         tips.push("raise --max-temp");
+    }
+    if constraints.avoid_critical_state {
+        // If the user explicitly asked to avoid critical engine states, suggest removing
+        // the restriction. If no ship was supplied, also suggest specifying one so the
+        // planner can evaluate heat-aware routes; when a ship is already present, only
+        // recommend omitting the restriction since adding a ship is redundant.
+        if constraints.ship.is_some() {
+            tips.push("omit --avoid-critical-state");
+        } else {
+            tips.push("omit --avoid-critical-state or specify a ship with --ship");
+        }
     }
     if tips.is_empty() {
         message.push_str(

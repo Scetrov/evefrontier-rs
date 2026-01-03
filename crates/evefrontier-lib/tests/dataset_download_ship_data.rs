@@ -36,7 +36,7 @@ fn download_from_source_with_cache_copies_ship_csv_from_directory() {
 
     // Copy fixture DB and ship_data.csv into source dir
     fs::copy(
-        fixture_dir.join("minimal_static_data.db"),
+        fixture_dir.join("minimal/static_data.db"),
         source.path().join("static_data.db"),
     )
     .expect("copy db");

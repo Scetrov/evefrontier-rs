@@ -24,7 +24,7 @@
         "cwd": "{workspaceRoot}"
       },
       "inputs": [
-        "{workspaceRoot}/docs/fixtures/minimal_static_data.db",
+        "{workspaceRoot}/docs/fixtures/minimal/static_data.db",
         "{workspaceRoot}/docs/fixtures/minimal_static_data.meta.json",
         "{workspaceRoot}/scripts/fixture_status.py"
       ],

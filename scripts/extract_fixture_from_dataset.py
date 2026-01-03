@@ -212,13 +212,13 @@ if __name__ == '__main__':
     if len(sys.argv) > 2:
         output_path = sys.argv[2]
     else:
-        output_path = 'docs/fixtures/minimal_static_data.db'
+        output_path = 'docs/fixtures/minimal/static_data.db'
     
     if not Path(source_path).exists():
         print(f"Error: Source database not found: {source_path}", file=sys.stderr)
         print(f"Usage: {sys.argv[0]} [source_db] [output_db]", file=sys.stderr)
         print(f"  source_db: Path to full e6c3 dataset (default: /tmp/e6c3_source/static_data.db)", file=sys.stderr)
-        print(f"  output_db: Path to output fixture (default: docs/fixtures/minimal_static_data.db)", file=sys.stderr)
+        print(f"  output_db: Path to output fixture (default: docs/fixtures/minimal/static_data.db)", file=sys.stderr)
         sys.exit(1)
     
     extract_fixture_data(source_path, output_path)

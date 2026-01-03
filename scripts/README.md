@@ -84,7 +84,7 @@ For local development, run `fixture-status` to check current state without faili
 
 ```bash
 # Inspect the fixture database
-pnpm nx run scripts:inspect-db -- --args.path=docs/fixtures/minimal_static_data.db
+pnpm nx run scripts:inspect-db -- --args.path=docs/fixtures/minimal/static_data.db
 
 # Inspect any SQLite database
 pnpm nx run scripts:inspect-db -- --args.path=/path/to/database.db
@@ -94,7 +94,7 @@ pnpm nx run scripts:inspect-db -- --args.path=/path/to/database.db
 
 ```bash
 # Analyze routes from sample data
-pnpm nx run scripts:analyze-routes -- --args.db=docs/fixtures/minimal_static_data.db --args.csv=docs/SampleRoutes.csv
+pnpm nx run scripts:analyze-routes -- --args.db=docs/fixtures/minimal/static_data.db --args.csv=docs/SampleRoutes.csv
 ```
 
 ### Create Fixture from Source
@@ -108,7 +108,7 @@ pnpm nx run scripts:fixture-create -- --args.source=/tmp/e6c3_source/static_data
 
 ```bash
 # Extract and sync fixture from source to target
-pnpm nx run scripts:fixture-sync -- --args.source=/tmp/e6c3_source/static_data.db --args.target=docs/fixtures/minimal_static_data.db
+pnpm nx run scripts:fixture-sync -- --args.source=/tmp/e6c3_source/static_data.db --args.target=docs/fixtures/minimal/static_data.db
 ```
 
 ## Adding New Scripts

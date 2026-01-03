@@ -34,17 +34,17 @@ test-smoke: build-release
 	@echo ""
 	@echo "1. Download command"
 	@mkdir -p /tmp/evefrontier-smoke
-	EVEFRONTIER_DATASET_SOURCE=docs/fixtures/minimal_static_data.db \
+	EVEFRONTIER_DATASET_SOURCE=docs/fixtures/minimal/static_data.db \
 	./target/release/evefrontier-cli --data-dir /tmp/evefrontier-smoke download --no-logo --no-footer
 	@echo ""
 	@echo "2. Basic route (Nod → Brana)"
-	EVEFRONTIER_DATASET_SOURCE=docs/fixtures/minimal_static_data.db \
+	EVEFRONTIER_DATASET_SOURCE=docs/fixtures/minimal/static_data.db \
 	./target/release/evefrontier-cli --data-dir /tmp/evefrontier-smoke route \
 		--from "Nod" --to "Brana" \
 		--no-logo --no-footer
 	@echo ""
 	@echo "3. JSON output validation"
-	EVEFRONTIER_DATASET_SOURCE=docs/fixtures/minimal_static_data.db \
+	EVEFRONTIER_DATASET_SOURCE=docs/fixtures/minimal/static_data.db \
 	./target/release/evefrontier-cli --data-dir /tmp/evefrontier-smoke --format json route \
 		--from "Nod" --to "Brana" \
 		--no-logo | jq -e '.kind == "route"' > /dev/null || (echo "❌ JSON validation failed" && exit 1)

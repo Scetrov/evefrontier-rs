@@ -153,6 +153,10 @@ impl Default for ColorPalette {
 /// `true` if color output should be used, `false` otherwise.
 #[must_use]
 pub fn supports_color() -> bool {
+    // If CLI explicitly requested no color, honour that first
+    if COLOR_DISABLED_OVERRIDE.load(std::sync::atomic::Ordering::SeqCst) {
+        return false;
+    }
     // Respect NO_COLOR convention
     if std::env::var_os("NO_COLOR").is_some() {
         return false;
@@ -164,6 +168,17 @@ pub fn supports_color() -> bool {
         }
     }
     true
+}
+
+use std::sync::atomic::{AtomicBool, Ordering};
+
+/// Global override to disable colors at runtime (set via CLI flag).
+static COLOR_DISABLED_OVERRIDE: AtomicBool = AtomicBool::new(false);
+
+/// Set the global color-disabled override. When true, `supports_color()` will
+/// return false regardless of environment variables.
+pub fn set_color_disabled(disabled: bool) {
+    COLOR_DISABLED_OVERRIDE.store(disabled, Ordering::SeqCst);
 }
 
 /// Check if the terminal supports Unicode characters.
@@ -353,6 +368,28 @@ mod tests {
                     assert!(supports_color(), "Normal terminal should support colors");
                 },
             );
+        }
+
+        #[test]
+        fn test_set_color_disabled_override() {
+            // Ensure override takes precedence over environment variables
+            let _guard = ENV_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+            // Start with colors enabled
+            std::env::remove_var("NO_COLOR");
+            std::env::set_var("TERM", "xterm-256color");
+            set_color_disabled(false);
+            assert!(
+                supports_color(),
+                "colors should be enabled when override is false"
+            );
+            // Disable via override
+            set_color_disabled(true);
+            assert!(
+                !supports_color(),
+                "colors should be disabled when override is true"
+            );
+            // Reset override
+            set_color_disabled(false);
         }
     }
 

@@ -371,7 +371,7 @@ for fixture management, database inspection, and development tooling.
 pnpm nx run scripts:fixture-verify
 
 # Inspect a database file
-pnpm nx run scripts:inspect-db docs/fixtures/minimal_static_data.db
+  pnpm nx run scripts:inspect-db docs/fixtures/minimal/static_data.db
 
 # Run all verification tasks
 pnpm nx run scripts:verify-all
@@ -406,7 +406,7 @@ cargo build --workspace
 cargo test --workspace
 ```
 
-4. Use the included `minimal_static_data.db` fixture for deterministic tests. See `docs/USAGE.md`
+4. Use the included `minimal/static_data.db` fixture for deterministic tests. See `docs/USAGE.md`
    for an example of wiring `EVEFRONTIER_DATA_DIR`.
 
 ## Formatting & linting

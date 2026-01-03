@@ -25,8 +25,8 @@ Display and dataset notes:
 
 - The canonical game CSV does **not** include per-ship `max_heat_tolerance` or
   `heat_dissipation_rate`, so the implementation does not rely on per-ship tolerances.
-- The system uses canonical absolute heat thresholds (NOMINAL / OVERHEATED / CRITICAL) to
-  classify cumulative route heat and drive warnings: `HEAT_OVERHEATED` and `HEAT_CRITICAL`.
+- The system uses canonical absolute heat thresholds (NOMINAL / OVERHEATED / CRITICAL) to classify
+  cumulative route heat and drive warnings: `HEAT_OVERHEATED` and `HEAT_CRITICAL`.
 
 References
 
@@ -39,8 +39,8 @@ TODO
 
 ## Integration with the game Temperature Service
 
-Finding: The game's `TemperatureSvc` (decompiled) exposes a compact set of primitives that
-are useful for implementing a realistic cooling/dissipation model:
+Finding: The game's `TemperatureSvc` (decompiled) exposes a compact set of primitives that are
+useful for implementing a realistic cooling/dissipation model:
 
 - Current and base temperatures via `current_temperature()` and `base_temperature()`
 - A `temperature_time_scale()` value used by the game to scale time-based temperature changes
@@ -53,8 +53,8 @@ are useful for implementing a realistic cooling/dissipation model:
 
 Practical implications:
 
-- We can compute a location-aware cooling efficiency by combining a **base dissipation rate**
-  with a **zone factor** (e.g., cold/frostline → high cooling, inner/hot zones → low cooling).
+- We can compute a location-aware cooling efficiency by combining a **base dissipation rate** with a
+  **zone factor** (e.g., cold/frostline → high cooling, inner/hot zones → low cooling).
 - For higher fidelity, use the game-provided `current_temperature`/`base_temperature` and the
   `temperature_time_scale()` to convert the game's natural temperature decay/growth into an
   effective dissipation per second.
@@ -70,9 +70,9 @@ Suggested cooling/dissipation models
    - Cons: less realistic than a game-driven model
 
 2. Game-driven (recommended for realism)
-   - Use `current_temperature()`, `base_temperature()` and `temperature_time_scale()` to
-     compute a per-second cooling rate consistent with how the game models temperature
-     evolution. Translate the game's next-state predictions into wait-time estimates.
+   - Use `current_temperature()`, `base_temperature()` and `temperature_time_scale()` to compute a
+     per-second cooling rate consistent with how the game models temperature evolution. Translate
+     the game's next-state predictions into wait-time estimates.
    - Pros: faithful to in-game behavior, responsive to system state
    - Cons: requires careful unit validation and more tests
 
@@ -95,8 +95,8 @@ Tests & validation
 
 Notes & caveats
 
-- The decompiled code is a guide — verify numeric semantics (units, scaling) with canonical
-  game data before relying on precise numeric thresholds or rates.
+- The decompiled code is a guide — verify numeric semantics (units, scaling) with canonical game
+  data before relying on precise numeric thresholds or rates.
 - Keep dissipation models configurable and opt-in initially (feature flag or CLI option) and
   document default behavior in `docs/USAGE.md`.
 
@@ -104,4 +104,68 @@ Next steps
 
 - Decide whether to implement a zone-based prototype (fast) or the game-driven model (realistic).
 - Add tests (unit + integration) and examples in `docs/USAGE.md` and this file.
-- If you prefer, I can implement the chosen model and add the tests and docs now.
+- Implement the chosen model and add tests and docs in a follow-up (tracked in tasks.md).
+
+### Conservative avoidance: `--avoid-critical-state`
+
+We implemented a conservative, opt-in avoidance check to help pilots avoid single jumps that would
+instantly push a ship's drive into the **CRITICAL** heat band. The behavior is intentionally simple
+and deterministic so it can be applied at planning time without requiring expensive stateful
+searches or lookahead logic.
+
+- **What it does:** When the CLI is invoked with `--avoid-critical-state` (requires `--ship`), the
+  planner computes the hop-specific heat for each spatial edge using:
+  1. `calculate_jump_heat(total_mass_kg, distance_ly, hull_mass_kg, calibration_constant)` to
+     compute an energy-like quantity.
+  2. Convert to a temperature delta using the ship's specific heat:
+     `delta_T = energy / (mass * specific_heat)`.
+  3. The instantaneous temperature experienced during the jump is `ambient_temperature + delta_T`.
+  4. If that instantaneous temperature is >= `HEAT_CRITICAL` (150.0 K), the spatial edge is rejected
+     and not considered by the pathfinder.
+
+- **Important temperature clarification:** The `ambient_temperature` used in this check is the
+  **minimum external temperature** (`min_external_temp`) calculated using the EVE Frontier logistic
+  curve formula (range 0.1K-99.9K). This represents the black body temperature at the coldest
+  habitable zone (typically at the furthest planet/moon from the star). It is **NOT** the stellar
+  surface temperature (`star_temperature` in the database), which is in the thousands of Kelvin and
+  represents the photosphere temperature of the star itself. The confusion between these two values
+  was a critical bug that caused all routes to be rejected when first implemented.
+
+- **Why conservative:** This check is per-hop and _does not_ model residual cumulative heat carried
+  between hops. It therefore errs on the side of caution: any jump that would by itself be
+  immediately dangerous is avoided. This is a practical, low-complexity mitigation that fits current
+  routing infrastructure and avoids introducing non-deterministic or expensive stateful pathfinding
+  into the MVP. Tests covering both static and `dynamic_mass` cases are included in
+  `crates/evefrontier-lib/tests/route_dynamic_heat.rs` and
+  `crates/evefrontier-lib/tests/routing_critical.rs`.
+
+**Dynamic mass behavior:** Currently the instantaneous avoidance check uses the provided
+`ShipLoadout` to compute mass (static at planning time). `HeatConfig::dynamic_mass` affects how
+route _projections_ are calculated (fuel consumption across hops) but does not relax the avoidance
+decision for the current MVP. The justification: modeling per-hop mass changes for avoidance
+requires carrying per-node state in the search, which is a planned follow-up (see `Future work`
+below).
+
+- **CLI usage example:**
+
+```bash
+# Avoid any single jump that would reach CRITICAL temperature; requires --ship
+evefrontier-cli route --from "Nod" --to "Brana" --avoid-critical-state --ship "Reflex"
+```
+
+- **Notes & tests:**
+  - If `--avoid-critical-state` is used without `--ship` the CLI errors with a helpful message to
+    avoid ambiguous behavior.
+  - Unit & integration tests added: `routing_critical.rs`, `route_dynamic_heat.rs`, and
+    `crates/evefrontier-cli/tests/route_avoid_critical.rs` (covers both error and success cases).
+
+### Residual Heat and Cooldown
+
+Residual heat modeling is not especially helpful in the context of this tool as it's normal practice
+to wait for the ship to cool down after jumps (Newton's Law of Cooling). Because of this, we do
+not believe it is valuable to include a cumulative heat model in this or any future implementation
+of the tool.
+
+It may, however, be useful to include cooldown time estimates in the output to help pilots plan
+their routes; these will be indicative because they won't include time spent warping between the
+jump-in point and the outermost celestial body in the destination system.

@@ -160,6 +160,14 @@ async fn route_handler(
             avoid_systems: request.avoid.clone(),
             avoid_gates: request.avoid_gates,
             max_temperature: request.max_temperature,
+            // NOTE: `avoid_critical_state` is intentionally not exposed on the service API in
+            // this change and is currently CLI-only. If we decide to support it via the
+            // service, add a request field, validation, and tests; consider adding a
+            // follow-up issue to track the work.
+            avoid_critical_state: false,
+            ship: None,
+            loadout: None,
+            heat_config: None,
         },
         spatial_index: state.spatial_index_arc(),
     };
