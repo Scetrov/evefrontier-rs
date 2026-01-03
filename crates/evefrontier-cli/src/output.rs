@@ -742,15 +742,23 @@ impl EnhancedRenderer {
     fn print_estimation_warning_box(&self) {
         let p = &self.palette;
         let msg = "All fuel and heat values are based upon estimations of the code that CCP uses; they may deviate by up to ±10%";
-        let inner_width = msg.chars().count() + 2;
+        let prefix_visible = "I INFO ";
+        let inner_width = prefix_visible.chars().count() + msg.chars().count() + 2;
+
+        // Build colored prefix using palette (blue)
+        let prefix_colored = if crate::terminal::supports_color() {
+            format!("{}I INFO{} ", p.blue, p.reset)
+        } else {
+            prefix_visible.to_string()
+        };
 
         if crate::terminal::supports_unicode() {
             println!("{}┌{}┐{}", p.gray, "─".repeat(inner_width), p.reset);
-            println!("{}│ {} │{}", p.gray, msg, p.reset);
+            println!("{}│ {}{}{}", p.gray, prefix_colored, msg, p.reset);
             println!("{}└{}┘{}", p.gray, "─".repeat(inner_width), p.reset);
         } else {
             println!("{}+{}+{}", p.gray, "-".repeat(inner_width), p.reset);
-            println!("{}| {} |{}", p.gray, msg, p.reset);
+            println!("{}| {}{}{}", p.gray, prefix_colored, msg, p.reset);
             println!("{}+{}+{}", p.gray, "-".repeat(inner_width), p.reset);
         }
     }
@@ -813,17 +821,25 @@ fn format_fuel_suffix(step: &RouteStep) -> Option<String> {
 
 /// Print a small warning box informing users that fuel/heat values are estimates.
 fn print_estimation_warning_box_gray_reset(gray: &str, reset: &str) {
+    use crate::terminal::colors;
     let msg = "All fuel and heat values are based upon estimations of the code that CCP uses; they may deviate by up to ±10%";
-    // Use character counts for box width so Unicode characters are handled more reasonably.
-    let inner_width = msg.chars().count() + 2; // one space padding each side
+    let prefix_visible = "I INFO ";
+    let inner_width = prefix_visible.chars().count() + msg.chars().count() + 2; // padding
+
+    // Build colored prefix if colors are enabled
+    let prefix = if crate::terminal::supports_color() {
+        format!("{}{}{} ", colors::BLUE, "I INFO", reset)
+    } else {
+        prefix_visible.to_string()
+    };
 
     if crate::terminal::supports_unicode() {
         println!("{}┌{}┐{}", gray, "─".repeat(inner_width), reset);
-        println!("{}│ {} │{}", gray, msg, reset);
+        println!("{}│ {}{}{}", gray, prefix, msg, reset);
         println!("{}└{}┘{}", gray, "─".repeat(inner_width), reset);
     } else {
         println!("{}+{}+{}", gray, "-".repeat(inner_width), reset);
-        println!("{}| {} |{}", gray, msg, reset);
+        println!("{}| {}{}{}", gray, prefix, msg, reset);
         println!("{}+{}+{}", gray, "-".repeat(inner_width), reset);
     }
 }
