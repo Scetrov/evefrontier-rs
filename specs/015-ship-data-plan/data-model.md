@@ -3,7 +3,7 @@
 ## Entities
 
 ### ShipAttributes
-- **Fields**: `name:String`, `base_mass_kg:f64`, `specific_heat:f64`, `fuel_capacity:f64`, `cargo_capacity:f64`, `max_heat_tolerance:f64`, `heat_dissipation_rate:f64`
+- **Fields**: `name:String`, `base_mass_kg:f64`, `specific_heat:f64`, `fuel_capacity:f64`, `cargo_capacity:f64`
 - **Validation**: All numeric fields > 0; names unique (case-insensitive); reject NaN/inf; optional trimming on name.
 - **Source**: Parsed from `ship_data.csv` (cached alongside DB).
 

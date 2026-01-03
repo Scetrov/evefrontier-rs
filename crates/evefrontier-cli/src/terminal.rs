@@ -21,6 +21,8 @@ pub mod colors {
     pub const TAG_JUMP: &str = "\x1b[1;7;33m";
     /// Bold reverse magenta for GOAL tags.
     pub const TAG_GOAL: &str = "\x1b[1;7;35m";
+    /// Bold reverse blue for REFUEL tags.
+    pub const TAG_REFUEL: &str = "\x1b[1;7;34m";
 
     // Text colors
     /// Bright bold white for emphasis (system names).
@@ -41,6 +43,10 @@ pub mod colors {
     pub const MAGENTA: &str = "\x1b[35m";
     /// Bold reverse magenta for black hole badge.
     pub const TAG_BLACK_HOLE: &str = "\x1b[1;7;35m";
+    /// Black text on yellow background for ' OVERHEATED ' label
+    pub const LABEL_OVERHEATED: &str = "\x1b[1;30;43m";
+    /// Black text on red background for ' CRITICAL ' label
+    pub const LABEL_CRITICAL: &str = "\x1b[1;30;41m";
 }
 
 /// A collection of resolved color codes, either actual ANSI sequences
@@ -53,6 +59,7 @@ pub struct ColorPalette {
     pub tag_gate: &'static str,
     pub tag_jump: &'static str,
     pub tag_goal: &'static str,
+    pub tag_refuel: &'static str,
     pub tag_black_hole: &'static str,
     pub white_bold: &'static str,
     pub gray: &'static str,
@@ -62,6 +69,8 @@ pub struct ColorPalette {
     pub orange: &'static str,
     pub red: &'static str,
     pub magenta: &'static str,
+    pub label_overheated: &'static str,
+    pub label_critical: &'static str,
 }
 
 impl ColorPalette {
@@ -74,6 +83,7 @@ impl ColorPalette {
             tag_gate: colors::TAG_GATE,
             tag_jump: colors::TAG_JUMP,
             tag_goal: colors::TAG_GOAL,
+            tag_refuel: colors::TAG_REFUEL,
             tag_black_hole: colors::TAG_BLACK_HOLE,
             white_bold: colors::WHITE_BOLD,
             gray: colors::GRAY,
@@ -83,6 +93,8 @@ impl ColorPalette {
             orange: colors::ORANGE,
             red: colors::RED,
             magenta: colors::MAGENTA,
+            label_overheated: colors::LABEL_OVERHEATED,
+            label_critical: colors::LABEL_CRITICAL,
         }
     }
 
@@ -95,6 +107,7 @@ impl ColorPalette {
             tag_gate: "",
             tag_jump: "",
             tag_goal: "",
+            tag_refuel: "",
             tag_black_hole: "",
             white_bold: "",
             gray: "",
@@ -104,6 +117,8 @@ impl ColorPalette {
             orange: "",
             red: "",
             magenta: "",
+            label_overheated: "",
+            label_critical: "",
         }
     }
 

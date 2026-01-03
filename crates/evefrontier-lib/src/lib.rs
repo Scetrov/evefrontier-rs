@@ -88,6 +88,8 @@ pub mod routing;
 pub mod ship;
 pub mod spatial;
 pub mod temperature;
+#[cfg(test)]
+pub mod test_helpers;
 
 pub use dataset::{default_dataset_path, ensure_dataset, ensure_e6c3_dataset, DatasetPaths};
 pub use db::{
@@ -115,6 +117,7 @@ pub use ship::{
     calculate_jump_fuel_cost, calculate_route_fuel, FuelConfig, FuelProjection, ShipAttributes,
     ShipCatalog, ShipLoadout, FUEL_MASS_PER_UNIT_KG,
 };
+pub use ship::{calculate_jump_heat, HeatConfig};
 pub use spatial::{
     compute_dataset_checksum, read_release_tag, spatial_index_path, try_load_spatial_index,
     verify_freshness, DatasetMetadata, FreshnessResult, IndexNode, NeighbourQuery, SpatialIndex,

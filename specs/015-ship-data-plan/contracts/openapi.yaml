@@ -138,7 +138,7 @@ components:
             type: string
     ShipAttributes:
       type: object
-      required: [name, base_mass_kg, specific_heat, fuel_capacity, cargo_capacity, max_heat_tolerance, heat_dissipation_rate]
+      required: [name, base_mass_kg, specific_heat, fuel_capacity, cargo_capacity]
       properties:
         name:
           type: string
@@ -158,14 +158,9 @@ components:
           type: number
           format: double
           minimum: 0
-        max_heat_tolerance:
-          type: number
-          format: double
-          minimum: 0
-        heat_dissipation_rate:
-          type: number
-          format: double
-          minimum: 0
+        # Note: per-ship heat tolerance and dissipation fields are intentionally omitted; the
+        # canonical ship CSV does not provide these. Heat warnings use canonical HEAT_* thresholds
+        # defined in the library (HEAT_NOMINAL, HEAT_OVERHEATED, HEAT_CRITICAL).
     ProblemDetails:
       type: object
       required: [title, status]

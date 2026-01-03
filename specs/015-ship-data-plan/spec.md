@@ -44,7 +44,7 @@ Downloader fetches `ship_data.csv` alongside the database and caches it. Calls r
 ### Functional Requirements
 
 - **FR-001**: Load `ship_data.csv` from dataset releases and cache it next to the DB (`evefrontier_datasets/`).
-- **FR-002**: Parse ship data with strict validation (fields: name, base_mass_kg, specific_heat, fuel_capacity, cargo_capacity, max_heat_tolerance, heat_dissipation_rate); reject invalid rows with actionable errors.
+-- **FR-002**: Parse ship data with strict validation (fields: name, base_mass_kg, specific_heat, fuel_capacity, cargo_capacity); reject invalid rows with actionable errors. Note: per-ship heat tolerance and dissipation fields are not part of the canonical dataset and are not required.
 - **FR-003**: Expose ship catalog APIs in `evefrontier-lib` (e.g., `ShipCatalog`, `ShipAttributes`, `ShipLoadout`) to retrieve ships by name and list all ships.
 - **FR-004**: Implement fuel cost calculation `(total_mass_kg / 10^5) × (fuel_quality / 100) × distance_ly` supporting static and dynamic mass modes.
 - **FR-005**: Implement route-level fuel projection returning per-hop and cumulative values; include remaining fuel when initial fuel load provided.

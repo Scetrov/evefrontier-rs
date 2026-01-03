@@ -45,8 +45,10 @@ A minimal ship catalog for fuel projection testing:
 
 - **Ships included:** Reflex, and other EVE Frontier ships (see file for complete list)
 - **Default test ship:** Reflex (used in CLI/Lambda tests with 10% fuel quality default)
-- **Schema:** Base mass (kg), fuel capacity, cargo capacity, specific heat, max heat tolerance,
-  heat dissipation rate
+- **Schema:** Base mass (kg), fuel capacity, cargo capacity, specific heat.
+   Note: The canonical game CSV does **not** include per-ship `max_heat_tolerance` or
+   `heat_dissipation_rate`. The implementation does not expect per-ship tolerances; heat
+   warnings are calculated using canonical absolute thresholds (e.g., NOMINAL/OVERHEATED/CRITICAL).
 
 **Protection note:** This fixture should not be overwritten by dataset downloads. The library
 includes a safety guard (`ensure_e6c3_dataset`) that rejects download targets resolving to
@@ -237,7 +239,7 @@ Additional tables: `Regions`, `Constellations`, `Planets`, `Moons`
 
 ### 3. `ship_data.csv` - Ship Catalog Fixture
 
-- **Fields**: `name,base_mass_kg,specific_heat,fuel_capacity,cargo_capacity,max_heat_tolerance,heat_dissipation_rate`
+- **Fields**: `name,base_mass_kg,specific_heat,fuel_capacity,cargo_capacity`
 - **Entries**: 3 representative ships (Reflex, Forager, Warden) with validated positive values
 - **Checksum**: `ship_data.csv.sha256` (refresh when regenerating the CSV)
 

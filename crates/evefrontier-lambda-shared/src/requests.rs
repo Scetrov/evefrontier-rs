@@ -63,6 +63,10 @@ pub struct RouteRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fuel_load: Option<f64>,
 
+    /// Optional heat calibration constant to scale heat energy calculations.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    // `heat_calibration` removed: calibration is fixed server-side to 1e-7
+
     /// Enable per-hop dynamic mass recalculation.
     #[serde(default)]
     pub dynamic_mass: Option<bool>,
@@ -160,6 +164,8 @@ impl Validate for RouteRequest {
                 )));
             }
         }
+
+        // No validation required; calibration is fixed.
 
         Ok(())
     }

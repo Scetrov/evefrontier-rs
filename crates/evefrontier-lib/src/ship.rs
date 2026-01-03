@@ -12,17 +12,50 @@ use crate::{error::Result, Error};
 
 /// Mass of one fuel unit in kilograms.
 pub const FUEL_MASS_PER_UNIT_KG: f64 = 1.0;
-/// Defaults used when release CSV does not provide heat-related columns.
-/// These defaults must be finite and strictly positive.
-const DEFAULT_MAX_HEAT_TOLERANCE: f64 = 1000.0;
-const DEFAULT_HEAT_DISSIPATION_RATE: f64 = 0.1;
+/// Canonical heat classification thresholds (game-provided constants)
+/// These represent absolute heat units used for route warnings.
+pub const HEAT_NOMINAL: f64 = 30.0;
+pub const HEAT_OVERHEATED: f64 = 90.0;
+pub const HEAT_CRITICAL: f64 = 150.0;
 
-// Compile-time check to ensure defaults satisfy runtime validation expectations.
-const _: () = {
-    // These will fail at compile time if changed to invalid values.
-    assert!(DEFAULT_MAX_HEAT_TOLERANCE.is_finite() && DEFAULT_MAX_HEAT_TOLERANCE > 0.0);
-    assert!(DEFAULT_HEAT_DISSIPATION_RATE.is_finite() && DEFAULT_HEAT_DISSIPATION_RATE > 0.0);
-};
+/// Base cooling power (arbitrary heat-units per second). Tunable constant used for prototype
+/// cooling model. This value is chosen to produce reasonable wait times in tests and can be
+/// adjusted after field validation.
+pub const BASE_COOLING_POWER: f64 = 1e8;
+
+/// Compute a zone factor from an external temperature (Kelvin). Colder environments cool more
+/// effectively (factor closer to 1.0); hot environments cool poorly (factor near 0.0).
+pub fn compute_zone_factor(min_external_temp: Option<f64>) -> f64 {
+    match min_external_temp {
+        None => 0.1, // conservative default when unknown
+        Some(t) if !t.is_finite() => 0.1,
+        Some(t) if t <= 30.0 => 1.0,
+        Some(t) if t <= 100.0 => 0.7,
+        Some(t) if t <= 300.0 => 0.4,
+        Some(t) if t <= 1000.0 => 0.2,
+        Some(_) => 0.05,
+    }
+}
+
+/// Compute dissipation (heat-units per second) for a ship given its mass and specific heat and
+/// an optional external temperature. The returned value represents how many "heat units"
+/// the ship will lose per second when waiting in this environment.
+pub fn compute_dissipation_per_sec(
+    total_mass_kg: f64,
+    specific_heat: f64,
+    min_external_temp: Option<f64>,
+) -> f64 {
+    if !total_mass_kg.is_finite()
+        || total_mass_kg <= 0.0
+        || !specific_heat.is_finite()
+        || specific_heat <= 0.0
+    {
+        return 0.0; // invalid inputs -> no cooling
+    }
+    let zone_factor = compute_zone_factor(min_external_temp);
+    // Cooling power scaled by ship thermal mass (mass * specific_heat)
+    (BASE_COOLING_POWER * zone_factor) / (total_mass_kg * specific_heat)
+}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ShipAttributes {
@@ -31,8 +64,9 @@ pub struct ShipAttributes {
     pub specific_heat: f64,
     pub fuel_capacity: f64,
     pub cargo_capacity: f64,
-    pub max_heat_tolerance: f64,
-    pub heat_dissipation_rate: f64,
+    // Per-ship heat tolerance and dissipation are not provided by the canonical
+    // game CSV; we do not store per-ship tolerances. Heat warnings are based
+    // on canonical thresholds (HEAT_OVERHEATED, HEAT_CRITICAL).
 }
 
 impl ShipAttributes {
@@ -48,8 +82,6 @@ impl ShipAttributes {
             (self.specific_heat, "specific_heat"),
             (self.fuel_capacity, "fuel_capacity"),
             (self.cargo_capacity, "cargo_capacity"),
-            (self.max_heat_tolerance, "max_heat_tolerance"),
-            (self.heat_dissipation_rate, "heat_dissipation_rate"),
         ];
 
         for (value, field) in fields {
@@ -156,6 +188,17 @@ pub struct FuelProjection {
     pub warning: Option<String>,
 }
 
+/// Calculate fuel units required for a single jump.
+///
+/// Formula: hop_cost = (total_mass_kg / 100_000) × (fuel_quality / 100) × distance_ly
+///
+/// Arguments:
+/// - `total_mass_kg`: total operational mass (hull + fuel + cargo) in kilograms
+/// - `distance_ly`: jump distance in light-years (must be > 0)
+/// - `fuel_config`: contains `quality` (1..100) used as percentage and `dynamic_mass` flag
+///
+/// Returns a `Result<f64>` with the fuel units required for the hop or an error if inputs
+/// are invalid (e.g., non-finite values or invalid quality).
 pub fn calculate_jump_fuel_cost(
     total_mass_kg: f64,
     distance_ly: f64,
@@ -182,6 +225,60 @@ pub fn calculate_jump_fuel_cost(
     Ok(mass_factor * quality_factor * distance_ly)
 }
 
+/// Calculate the maximum distance (light-years) a ship can travel given a fuel load and
+/// fuel quality using the same mass-distance conversion factor used by the fuel cost formula.
+///
+/// Formula (consistent with `calculate_jump_fuel_cost`):
+/// max_distance = (fuel_units * quality_factor * CONVERSION) / ship_mass
+///
+/// Where:
+/// - `fuel_units` is the fuel load in units
+/// - `quality_factor` is `fuel_quality / 100.0` (same scale used by `FuelConfig`)
+/// - `CONVERSION` is 100_000.0 (mass-distance conversion factor)
+pub fn calculate_maximum_distance(
+    fuel_units: f64,
+    ship_mass_kg: f64,
+    fuel_quality: f64,
+) -> Result<f64> {
+    if !fuel_units.is_finite() || fuel_units < 0.0 {
+        return Err(Error::ShipDataValidation {
+            message: format!(
+                "fuel_units must be finite and non-negative, got {}",
+                fuel_units
+            ),
+        });
+    }
+
+    if !ship_mass_kg.is_finite() || ship_mass_kg <= 0.0 {
+        return Err(Error::ShipDataValidation {
+            message: format!(
+                "ship_mass_kg must be finite and positive, got {}",
+                ship_mass_kg
+            ),
+        });
+    }
+
+    if !fuel_quality.is_finite() {
+        return Err(Error::ShipDataValidation {
+            message: format!("fuel_quality must be finite, got {}", fuel_quality),
+        });
+    }
+
+    // Interpret quality as percent (1..100) to match FuelConfig behavior
+    let quality_factor = fuel_quality / 100.0;
+    let conversion = 100_000.0;
+
+    Ok((fuel_units * quality_factor * conversion) / ship_mass_kg)
+}
+
+/// Compute per-hop and cumulative fuel projections for a full route.
+///
+/// Repeatedly calls `calculate_jump_fuel_cost` for each hop. When `fuel_config.dynamic_mass` is
+/// true, remaining fuel is decremented per hop and used to recompute mass; otherwise static
+/// mode uses the initial fuel load for all hops.
+///
+/// Returns a vector of `FuelProjection` containing `hop_cost`, `cumulative`, `remaining` and
+/// optional `warning` fields.
 pub fn calculate_route_fuel(
     ship: &ShipAttributes,
     loadout: &ShipLoadout,
@@ -235,6 +332,118 @@ pub fn calculate_route_fuel(
     }
 
     Ok(projections)
+}
+
+/// Configuration for heat calculations.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct HeatConfig {
+    pub calibration_constant: f64,
+    pub dynamic_mass: bool,
+}
+
+impl Default for HeatConfig {
+    fn default() -> Self {
+        Self {
+            // Use fixed internal calibration by default to keep outputs stable.
+            calibration_constant: 1e-7,
+            dynamic_mass: false,
+            // cooling_mode removed: library uses Zone model by default
+        }
+    }
+}
+
+// CoolingMode removed: the library uses the Zone cooling model by default. If a
+// more sophisticated or configurable cooling model is required in the future,
+// reintroduce an explicit enum and associated configuration and tests.
+
+/// Calculate the heat energy generated by a single jump.
+///
+/// Formula: energy = (3 × total_mass_kg × distance_ly) / (calibration_constant × hull_mass_kg)
+///
+/// Note: this function returns an energy-like value; callers may convert this to a temperature
+/// change by dividing by (mass × specific_heat) to obtain delta-T in Kelvin.
+pub fn calculate_jump_heat(
+    total_mass_kg: f64,
+    distance_ly: f64,
+    hull_mass_kg: f64,
+    calibration_constant: f64,
+) -> Result<f64> {
+    // Distance of zero is allowed (gate transitions -> zero heat)
+    if !distance_ly.is_finite() || distance_ly < 0.0 {
+        return Err(Error::ShipDataValidation {
+            message: format!(
+                "distance must be finite and non-negative, got {}",
+                distance_ly
+            ),
+        });
+    }
+
+    if !total_mass_kg.is_finite() || total_mass_kg <= 0.0 {
+        return Err(Error::ShipDataValidation {
+            message: format!(
+                "total_mass_kg must be finite and positive, got {}",
+                total_mass_kg
+            ),
+        });
+    }
+
+    if !hull_mass_kg.is_finite() || hull_mass_kg <= 0.0 {
+        return Err(Error::ShipDataValidation {
+            message: format!(
+                "hull_mass_kg must be finite and positive, got {}",
+                hull_mass_kg
+            ),
+        });
+    }
+
+    if !calibration_constant.is_finite() || calibration_constant <= 0.0 {
+        return Err(Error::ShipDataValidation {
+            message: format!(
+                "calibration_constant must be finite and positive, got {}",
+                calibration_constant
+            ),
+        });
+    }
+
+    if distance_ly == 0.0 {
+        return Ok(0.0);
+    }
+
+    // Compute heat using formula from research.md
+    let heat = (3.0 * total_mass_kg * distance_ly) / (calibration_constant * hull_mass_kg);
+
+    if !heat.is_finite() {
+        return Err(Error::ShipDataValidation {
+            message: "calculated heat must be finite".to_string(),
+        });
+    }
+
+    if heat < 0.0 {
+        return Err(Error::ShipDataValidation {
+            message: format!("calculated heat must be non-negative, got {}", heat),
+        });
+    }
+
+    Ok(heat)
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct HeatProjection {
+    pub hop_heat: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub warning: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub wait_time_seconds: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub residual_heat: Option<f64>,
+    pub can_proceed: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct HeatSummary {
+    // No cumulative total is exposed; per-step residuals and warnings describe thermal risk.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub warnings: Vec<String>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -325,18 +534,8 @@ impl ShipCatalog {
                 "cargo_capacity",
                 &["cargo_capacity", "capacity_m3", "capacity"],
             ),
-            (
-                "max_heat_tolerance",
-                &["max_heat_tolerance", "maxheat_tolerance", "maxheat"],
-            ),
-            (
-                "heat_dissipation_rate",
-                &[
-                    "heat_dissipation_rate",
-                    "heat_dissipation",
-                    "heatdissipation_rate",
-                ],
-            ),
+            // Note: heat-specific columns (tolerance, dissipation) are NOT
+            // expected in the canonical CSV and are intentionally omitted here.
         ];
 
         // Build index map for each canonical field
@@ -449,24 +648,7 @@ impl ShipCatalog {
                         name, row, e
                     ),
                 })?;
-            let max_heat_tolerance: f64 = match get("max_heat_tolerance") {
-                Some(v) => v.parse::<f64>().map_err(|e| Error::ShipDataValidation {
-                    message: format!(
-                        "invalid max_heat_tolerance for ship '{}' at row {}: {}",
-                        name, row, e
-                    ),
-                })?,
-                None => DEFAULT_MAX_HEAT_TOLERANCE,
-            };
-            let heat_dissipation_rate: f64 = match get("heat_dissipation_rate") {
-                Some(v) => v.parse::<f64>().map_err(|e| Error::ShipDataValidation {
-                    message: format!(
-                        "invalid heat_dissipation_rate for ship '{}' at row {}: {}",
-                        name, row, e
-                    ),
-                })?,
-                None => DEFAULT_HEAT_DISSIPATION_RATE,
-            };
+            // Heat-specific fields are not parsed from CSV (canonical CSV does not include them).
 
             let ship = ShipAttributes {
                 name: name.trim().to_string(),
@@ -474,8 +656,7 @@ impl ShipCatalog {
                 specific_heat,
                 fuel_capacity,
                 cargo_capacity,
-                max_heat_tolerance,
-                heat_dissipation_rate,
+                // no per-ship heat fields
             };
 
             ship.validate()?;
@@ -525,26 +706,10 @@ mod tests {
 
     #[test]
     fn defaults_are_valid() {
-        assert!(DEFAULT_MAX_HEAT_TOLERANCE.is_finite() && DEFAULT_MAX_HEAT_TOLERANCE > 0.0);
-        assert!(DEFAULT_HEAT_DISSIPATION_RATE.is_finite() && DEFAULT_HEAT_DISSIPATION_RATE > 0.0);
-    }
-
-    #[test]
-    fn parse_error_includes_ship_and_row_for_max_heat() {
-        let csv = "name,base_mass_kg,fuel_capacity,cargo_capacity,specific_heat,max_heat_tolerance\nReflex,1000,500,100,1.0,not_a_number\n";
-        let r = Cursor::new(csv);
-        let err = ShipCatalog::from_reader(r).unwrap_err();
-        let msg = format!("{}", err);
-        assert!(msg.contains("invalid max_heat_tolerance for ship 'Reflex' at row 2"));
-    }
-
-    #[test]
-    fn parse_error_includes_ship_and_row_for_heat_dissipation() {
-        let csv = "name,base_mass_kg,fuel_capacity,cargo_capacity,specific_heat,heat_dissipation_rate\nReflex,1000,500,100,1.0,not_a_number\n";
-        let r = Cursor::new(csv);
-        let err = ShipCatalog::from_reader(r).unwrap_err();
-        let msg = format!("{}", err);
-        assert!(msg.contains("invalid heat_dissipation_rate for ship 'Reflex' at row 2"));
+        // No per-ship heat defaults; thresholds are canonical constants validated elsewhere.
+        assert!(HEAT_NOMINAL.is_finite());
+        assert!(HEAT_OVERHEATED.is_finite());
+        assert!(HEAT_CRITICAL.is_finite());
     }
 
     #[test]

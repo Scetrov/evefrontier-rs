@@ -9,7 +9,10 @@ use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 mod commands;
 mod output;
+mod output_helpers;
 mod terminal;
+#[cfg(test)]
+mod test_helpers;
 
 use evefrontier_lib::{
     compute_dataset_checksum, decode_fmap_token, encode_fmap_token, ensure_dataset, load_starmap,
@@ -196,6 +199,8 @@ struct RouteOptionsArgs {
     /// Recalculate mass after each hop as fuel is consumed.
     #[arg(long = "dynamic-mass", action = ArgAction::SetTrue)]
     dynamic_mass: bool,
+    // Heat calibration removed: the system uses a fixed internal calibration constant
+    // (1e-7) to match canonical in-game magnitudes.
 }
 
 #[derive(Args, Debug, Clone)]
@@ -454,7 +459,7 @@ async fn main() -> Result<()> {
 
     if result.is_ok() && context.should_show_footer() {
         let elapsed = start.elapsed();
-        output::print_footer(elapsed);
+        crate::output_helpers::print_footer(elapsed);
     }
 
     result
@@ -834,6 +839,16 @@ fn handle_route_command(
         summary
             .attach_fuel(ship, &loadout, &fuel_config)
             .context("failed to attach fuel projection")?;
+        // Attach heat projections using same dynamic_mass behaviour
+        let heat_config = evefrontier_lib::ship::HeatConfig {
+            // Fixed calibration constant (matches historical default used in tests and examples)
+            calibration_constant: 1e-7,
+            dynamic_mass: args.options.dynamic_mass,
+        };
+
+        summary
+            .attach_heat(ship, &loadout, &heat_config)
+            .context("failed to attach heat projection")?;
     }
 
     let show_temps = !args.options.no_temp;

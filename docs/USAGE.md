@@ -65,8 +65,7 @@ Route-only options (ignored by other subcommands):
   evefrontier-cli download --data-dir docs/fixtures --dataset e6c3
   ```
 
-> [!NOTE]
-> The `download` subcommand always emits plain text regardless of `--format`.
+> [!NOTE] The `download` subcommand always emits plain text regardless of `--format`.
 
 - Calculate a route between two systems using the downloaded dataset:
 
@@ -138,8 +137,8 @@ location. When `--dataset` is omitted the downloader uses the latest release fro
 evefrontier-cli download --data-dir docs/fixtures
 ```
 
-When a `ship_data.csv` file is present in the dataset cache, `evefrontier-cli download` will
-print the resolved path to the ship data alongside the dataset path for convenience.
+When a `ship_data.csv` file is present in the dataset cache, `evefrontier-cli download` will print
+the resolved path to the ship data alongside the dataset path for convenience.
 
 ### `route`
 
@@ -169,7 +168,10 @@ The routing subcommands accept several flags that map directly to the library's 
   overheat). Gate jumps are unaffected by temperature. Systems without temperature data are treated
   as safe.
 
+<!-- `--heat-calibration` flag removed. Calibration is fixed server-side to `1e-7`. -->
+
 ### `index-build`
+
 ### Fuel projection (optional)
 
 When planning routes, you can optionally calculate fuel consumption by specifying a ship and fuel
@@ -200,7 +202,32 @@ The fuel cost for a jump is calculated using:
 fuel_cost = (total_mass_kg / 100,000) × (fuel_quality / 100) × distance_ly
 ```
 
+**Heat display:**
+
+- The CLI displays **per-hop heat** (in game units) and emits warnings when canonical thresholds are
+  exceeded (`HEAT_OVERHEATED`, `HEAT_CRITICAL`). Per-ship tolerances are not available from the
+  canonical dataset and are not used for warnings.
+- Very small non-zero hop heat values are shown as `"<0.01"` in the CLI to avoid misleading
+  `0.00` readings. The CLI no longer shows a bracketed cumulative per-step heat value; residual heat
+  and recommended wait times (when applicable) are included in the `json` output and Lambda
+  responses for programmatic consumers.
+ - Calibration is fixed at `1e-7` and is not user-configurable.
+
+**Canonical thresholds:**
+
+- Nominal: 30.0
+- Overheated (warn): 90.0
+- Critical (error): 150.0
+
+These thresholds are applied uniformly; the per-ship `max_heat_tolerance` field was removed and is
+not used for warnings.
+ 
+Styled labels: the CLI renders warnings as short, high-visibility labels — ` OVERHEATED ` (black on
+yellow) and ` CRITICAL ` (black on red) — which are also present as plain label strings in JSON
+responses for programmatic consumers.
+
 Where `total_mass_kg` includes:
+
 - Ship base mass
 - Fuel currently loaded
 - Cargo mass (if specified)
@@ -212,6 +239,20 @@ Where `total_mass_kg` includes:
 - **Dynamic mode (`--dynamic-mass`):** After each jump, fuel mass decreases. Subsequent hops cost
   less fuel because the ship is lighter. Useful for calculating actual fuel remaining and detecting
   fuel shortfalls.
+
+**Fuel units & rounding:**
+
+- Fuel values shown in the CLI and returned in Lambda/JSON responses are integer units. Internally
+  computed fuel floats are converted to integers by **ceiling (always round up)** before rendering
+  or serializing. Tests and the JSON schema reflect this policy.
+
+**Lambda notes:**
+
+- When invoking the Lambda `route` handler, the `RouteRequest` no longer accepts a
+  `heat_calibration` field — calibration is fixed server-side to `1e-7` and cannot be overridden
+  by clients. The Lambda `RouteResponse` includes `FuelProjection` and `FuelSummary` fields as
+  integers (e.g. `hop_cost`, `cumulative`, `remaining`, `total`) to maintain a stable, simple
+  contract for API consumers.
 
 **List available ships:**
 
@@ -268,14 +309,14 @@ Options:
 
 Exit codes:
 
-| Code | Status         | Description                           |
-|------|----------------|---------------------------------------|
-| 0    | SUCCESS        | Index is fresh (matches dataset)      |
-| 1    | STALE          | Index doesn't match dataset           |
-| 2    | MISSING        | Spatial index file not found          |
-| 3    | FORMAT_ERROR   | Legacy v1 format or corrupt file      |
-| 4    | DATASET_MISSING| Dataset file not found                |
-| 5    | ERROR          | Unexpected error during verification  |
+| Code | Status          | Description                          |
+| ---- | --------------- | ------------------------------------ |
+| 0    | SUCCESS         | Index is fresh (matches dataset)     |
+| 1    | STALE           | Index doesn't match dataset          |
+| 2    | MISSING         | Spatial index file not found         |
+| 3    | FORMAT_ERROR    | Legacy v1 format or corrupt file     |
+| 4    | DATASET_MISSING | Dataset file not found               |
+| 5    | ERROR           | Unexpected error during verification |
 
 **Examples:**
 
@@ -365,10 +406,10 @@ directly in the index file, enabling automated freshness checks.
 
 **Feature flags** (byte 5 of header):
 
-| Bit | Flag              | Description                        |
-|-----|-------------------|------------------------------------|
-| 0   | HAS_TEMPERATURE   | Index includes temperature data    |
-| 1   | HAS_METADATA      | v2 format with source metadata     |
+| Bit | Flag            | Description                     |
+| --- | --------------- | ------------------------------- |
+| 0   | HAS_TEMPERATURE | Index includes temperature data |
+| 1   | HAS_METADATA    | v2 format with source metadata  |
 
 **Backward compatibility:**
 
@@ -411,9 +452,8 @@ Ship data (`ship_data.csv`) can be bundled into Lambda artifacts to provide an i
 `ShipCatalog` at cold start. This enables fast ship lookups for fuel projection and validation
 without performing disk I/O at runtime.
 
-- To include ship data in a Lambda build, enable the `bundle-ship-data` Cargo feature for the
-  Lambda crate (e.g., `evefrontier-lambda-route`) and ensure `data/ship_data.csv` is present at
-  build time.
+- To include ship data in a Lambda build, enable the `bundle-ship-data` Cargo feature for the Lambda
+  crate (e.g., `evefrontier-lambda-route`) and ensure `data/ship_data.csv` is present at build time.
 - When bundled, `evefrontier-lambda-shared::init_runtime()` will parse the CSV and expose the
   catalog via `LambdaRuntime::ship_catalog()` for handlers to use.
 - If bundling is not used, set the `EVEFRONTIER_SHIP_DATA` environment variable to the path of a
@@ -468,9 +508,8 @@ The library test suite uses the bundled fixture located at `docs/fixtures/minima
 This fixture is pinned to the e6c3 dataset release and uses legacy system names (Nod, Brana, etc.)
 for deterministic testing. The fixture is protected from accidental overwrites.
 
-> [!NOTE]
-> The test fixture uses system names from the e6c3 release (Nod, Brana, H:2L2S, etc.).
-> The production dataset uses different names. See `docs/fixtures/README.md` for details.
+> [!NOTE] The test fixture uses system names from the e6c3 release (Nod, Brana, H:2L2S, etc.). The
+> production dataset uses different names. See `docs/fixtures/README.md` for details.
 
 ### Local dataset overrides
 
@@ -682,15 +721,16 @@ let starmap = load_starmap(fixture_path)?;
 ## MCP Server (stdio)
 
 The CLI can run a Model Context Protocol (MCP) server over stdio using the `mcp` subcommand. This
-mode is useful for integrating the EVE Frontier dataset with AI assistants (Claude Desktop, VS
-Code Copilot, Cursor) or any client that speaks JSON-RPC over `stdin`/`stdout`.
+mode is useful for integrating the EVE Frontier dataset with AI assistants (Claude Desktop, VS Code
+Copilot, Cursor) or any client that speaks JSON-RPC over `stdin`/`stdout`.
 
 Key points:
+
 - Protocol: JSON-RPC 2.0 over newline-delimited messages on `stdout`/`stdin`.
 - Logs: All logs and diagnostic output are written to `stderr` only so `stdout` remains a clean
   JSON-RPC channel.
-- Dataset resolution: `--data-dir <PATH>` overrides `EVEFRONTIER_DATA_DIR`; if not provided the
-  CLI will attempt to download or locate a dataset via the usual resolver.
+- Dataset resolution: `--data-dir <PATH>` overrides `EVEFRONTIER_DATA_DIR`; if not provided the CLI
+  will attempt to download or locate a dataset via the usual resolver.
 
 ### Basic usage
 
@@ -714,9 +754,9 @@ Control logging verbosity via `RUST_LOG` (logs appear on stderr):
 RUST_LOG=info evefrontier-cli mcp --data-dir ./docs/fixtures/minimal_static_data.db
 ```
 
-The server responds to the standard MCP `initialize` handshake. The `initialize` response
-includes capability keys for `tools` and `resources` (currently present as empty objects); tool
-discovery is performed via `tools/list` and actual invocation via `tools/call`.
+The server responds to the standard MCP `initialize` handshake. The `initialize` response includes
+capability keys for `tools` and `resources` (currently present as empty objects); tool discovery is
+performed via `tools/list` and actual invocation via `tools/call`.
 
 ### Client configuration examples
 
@@ -755,19 +795,20 @@ VS Code extension / launch config (example `launch.json` snippet):
 }
 ```
 
-> NOTE: Different AI clients may have different ways to configure an external process. The
-> essential properties are the executable path, `mcp` argument, and environment variables.
+> NOTE: Different AI clients may have different ways to configure an external process. The essential
+> properties are the executable path, `mcp` argument, and environment variables.
 
 ### Troubleshooting
 
-- If the client fails to parse responses, ensure the CLI is launched **without** banners or
-  messages on `stdout`. The MCP mode suppresses the ASCII banner and routes all logs to `stderr`.
-- If the server cannot find the dataset, confirm the `--data-dir` path or set `EVEFRONTIER_DATA_DIR`.
-  The CLI will attempt to download the dataset if `--data-dir` is not explicit.
+- If the client fails to parse responses, ensure the CLI is launched **without** banners or messages
+  on `stdout`. The MCP mode suppresses the ASCII banner and routes all logs to `stderr`.
+- If the server cannot find the dataset, confirm the `--data-dir` path or set
+  `EVEFRONTIER_DATA_DIR`. The CLI will attempt to download the dataset if `--data-dir` is not
+  explicit.
 - If the client disconnects unexpectedly, the server handles EOF and exits gracefully. Client-side
   tools must keep `stdout` open until finished reading JSON-RPC responses.
 
-If you'd like, I can add a short example showing the JSON `initialize` exchange and a minimal
-Claude Desktop configuration file in the `docs/` directory.
+If you'd like, I can add a short example showing the JSON `initialize` exchange and a minimal Claude
+Desktop configuration file in the `docs/` directory.
 
 ---

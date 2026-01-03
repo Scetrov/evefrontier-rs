@@ -173,6 +173,16 @@ fn handle_route_request(request: &RouteRequest, request_id: &str) -> Response {
         if let Err(err) = summary.attach_fuel(ship, &loadout, &fuel_config) {
             return Response::Error(from_lib_error(&err, request_id));
         }
+        // Attach heat projections mirroring fuel calculations
+        let heat_config = evefrontier_lib::ship::HeatConfig {
+            // Fixed calibration constant; API no longer accepts overrides.
+            calibration_constant: 1e-7,
+            dynamic_mass: request.dynamic_mass.unwrap_or(false),
+        };
+
+        if let Err(err) = summary.attach_heat(ship, &loadout, &heat_config) {
+            return Response::Error(from_lib_error(&err, request_id));
+        }
     }
 
     let response = RouteResponseDto::from_summary(&summary);
@@ -270,6 +280,37 @@ mod tests {
             Response::Success(inner) => {
                 assert!(inner.data.summary.hops >= 1);
                 assert!(inner.data.summary.fuel.is_none());
+            }
+            Response::Error(err) => panic!("unexpected error: {err:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn response_includes_heat_when_ship_provided() {
+        init_fixture_runtime();
+
+        let request = RouteRequest {
+            from: "Nod".to_string(),
+            to: "Brana".to_string(),
+            algorithm: evefrontier_lambda_shared::RouteAlgorithm::AStar,
+            max_jump: None,
+            avoid: vec![],
+            avoid_gates: false,
+            max_temperature: None,
+            ship: Some("Reflex".to_string()),
+            fuel_quality: None,
+            cargo_mass: Some(633_006.0),
+            fuel_load: None,
+            dynamic_mass: None,
+        };
+
+        let response = handle_route_request(&request, &mock_request_id("heat"));
+        match response {
+            Response::Success(inner) => {
+                // Summary should include heat
+                assert!(inner.data.summary.heat.is_some());
+                // At least one step should include heat projection
+                assert!(inner.data.steps.iter().any(|s| s.heat.is_some()));
             }
             Response::Error(err) => panic!("unexpected error: {err:?}"),
         }

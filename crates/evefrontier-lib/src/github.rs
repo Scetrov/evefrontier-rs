@@ -1077,7 +1077,11 @@ mod tests {
         fs::write(&sidecar, "deadbeef").expect("write sidecar");
 
         let csv = cache.path().join("e6c4-ship_data.csv");
-        fs::write(&csv, "name,base_mass_kg,fuel_capacity,cargo_capacity,specific_heat,max_heat_tolerance,heat_dissipation_rate\nReflex,1000,500,100,1.0,1000,0.1").expect("write csv");
+        fs::write(
+            &csv,
+            "name,base_mass_kg,fuel_capacity,cargo_capacity,specific_heat\nReflex,1000,500,100,1.0",
+        )
+        .expect("write csv");
 
         // Temporarily override cache dir via env var with scoped guard
         let _guard = ScopedEnvVar::new(CACHE_DIR_ENV, cache.path());
