@@ -742,12 +742,12 @@ impl EnhancedRenderer {
     fn print_estimation_warning_box(&self) {
         let p = &self.palette;
         let msg = "All fuel and heat values are based upon estimations of the code that CCP uses; they may deviate by up to ±10%";
-        let prefix_visible = "I INFO ";
+        let prefix_visible = "🛈 INFO ";
         let inner_width = prefix_visible.chars().count() + msg.chars().count() + 2;
 
         // Build colored prefix using palette (blue)
         let prefix_colored = if crate::terminal::supports_color() {
-            format!("{}I INFO{} ", p.blue, p.reset)
+            format!("{}🛈 INFO{} ", p.blue, p.reset)
         } else {
             prefix_visible.to_string()
         };
@@ -823,12 +823,12 @@ fn format_fuel_suffix(step: &RouteStep) -> Option<String> {
 fn print_estimation_warning_box_gray_reset(gray: &str, reset: &str) {
     use crate::terminal::colors;
     let msg = "All fuel and heat values are based upon estimations of the code that CCP uses; they may deviate by up to ±10%";
-    let prefix_visible = "I INFO ";
+    let prefix_visible = "🛈 INFO ";
     let inner_width = prefix_visible.chars().count() + msg.chars().count() + 2; // padding
 
     // Build colored prefix if colors are enabled
     let prefix = if crate::terminal::supports_color() {
-        format!("{}{}{} ", colors::BLUE, "I INFO", reset)
+        format!("{}{}{} ", colors::BLUE, "🛈 INFO", reset)
     } else {
         prefix_visible.to_string()
     };
