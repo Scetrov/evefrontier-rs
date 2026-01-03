@@ -22,7 +22,7 @@ pub struct PathConstraints {
     pub ship: Option<ShipAttributes>,
     /// Optional loadout used to compute mass for heat calculation.
     pub loadout: Option<ShipLoadout>,
-    /// Optional heat configuration (calibration constant etc.).
+    /// Optional heat configuration (calibration constant etc.); required when `avoid_critical_state` is `true`.
     pub heat_config: Option<HeatConfig>,
 }
 
@@ -122,9 +122,13 @@ impl PathConstraints {
                     }
                 }
             } else {
-                tracing::debug!(
-                    "avoid_critical_state requested but missing ship/loadout; skipping check"
+                // Missing ship/loadout is a configuration error when `avoid_critical_state` is
+                // requested. Conservatively reject the edge and log an error so callers can
+                // detect misconfiguration rather than silently weakening a safety check.
+                tracing::error!(
+                    "avoid_critical_state requested but missing ship/loadout; rejecting edge"
                 );
+                return false;
             }
         }
 

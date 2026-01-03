@@ -250,6 +250,9 @@ enum RouteAlgorithmArg {
     AStar,
 }
 
+// Note: Dijkstra is the intentionally selected default algorithm (marked with #[default]).
+// The ordering here is chosen for presentation and the default is explicit via the attribute.
+
 impl From<RouteAlgorithmArg> for RouteAlgorithm {
     fn from(value: RouteAlgorithmArg) -> Self {
         match value {
@@ -775,7 +778,9 @@ fn handle_route_command(
     }
 
     // If the user requested heat-aware planning or provided a ship, load ship data and populate
-    // the request constraints so pathfinding can evaluate heat-based restrictions.
+    // the request constraints so pathfinding can evaluate heat-based restrictions. We load the
+    // ship when either flag is present because a provided `--ship` is also used for fuel
+    // projection output even when `--avoid-critical-state` is not set.
     if args.options.avoid_critical_state || args.options.ship.is_some() {
         let catalog = load_ship_catalog(&paths)?;
         let ship_name = args
@@ -785,7 +790,7 @@ fn handle_route_command(
             .ok_or_else(|| anyhow::anyhow!("--ship is required for heat-aware planning"))?;
         let ship = catalog
             .get(ship_name)
-            .ok_or_else(|| anyhow::anyhow!(format!("ship '{}' not found in catalog", ship_name)))?;
+            .ok_or_else(|| anyhow::anyhow!(format!("ship {} not found in catalog", ship_name)))?;
 
         let fuel_load = args.options.fuel_load.unwrap_or(ship.fuel_capacity);
         let loadout = ShipLoadout::new(ship, fuel_load, args.options.cargo_mass)

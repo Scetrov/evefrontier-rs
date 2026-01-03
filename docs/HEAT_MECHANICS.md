@@ -162,10 +162,10 @@ evefrontier-cli route --from "Nod" --to "Brana" --avoid-critical-state --ship "R
 ### Residual Heat and Cooldown
 
 Residual heat modeling is not especially helpful in the context of this tool as it's normal practice
-to need to wait for the ship to cool down after jumps which follows Newton's Law of Cooling. Because
-of this we don't believe that it is valuable to include a culmulative heat model in this or any
-future implementation of the tool.
+to wait for the ship to cool down after jumps (Newton's Law of Cooling). Because of this, we do
+not believe it is valuable to include a cumulative heat model in this or any future implementation
+of the tool.
 
-It may however be useful to include cooldown times in the output of the tool to help pilots plan
-their routes, however this at best will be indicative as it won't include time taken to warp between
-the jump-in point and the outermost celestial object in the system.
+It may, however, be useful to include cooldown time estimates in the output to help pilots plan
+their routes; these will be indicative because they won't include time spent warping between the
+jump-in point and the outermost celestial body in the destination system.
