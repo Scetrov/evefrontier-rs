@@ -789,14 +789,17 @@ fn handle_route_command(
         let loadout = ShipLoadout::new(ship, fuel_load, args.options.cargo_mass)
             .context("invalid ship loadout")?;
 
-        let heat_config = evefrontier_lib::ship::HeatConfig {
-            calibration_constant: 1e-7,
-            dynamic_mass: args.options.dynamic_mass,
-        };
-
         request.constraints.ship = Some(ship.clone());
         request.constraints.loadout = Some(loadout);
-        request.constraints.heat_config = Some(heat_config);
+
+        // Only populate heat-specific configuration when heat-aware planning is requested.
+        if args.options.avoid_critical_state {
+            let heat_config = evefrontier_lib::ship::HeatConfig {
+                calibration_constant: 1e-7,
+                dynamic_mass: args.options.dynamic_mass,
+            };
+            request.constraints.heat_config = Some(heat_config);
+        }
     }
 
     let plan = match plan_route(&starmap, &request) {
@@ -959,8 +962,14 @@ fn format_route_not_found_message(
     }
     if constraints.avoid_critical_state {
         // If the user explicitly asked to avoid critical engine states, suggest removing
-        // the restriction or supplying a ship so the planner can evaluate heat safer.
-        tips.push("omit --avoid-critical-state or specify a ship with --ship");
+        // the restriction. If no ship was supplied, also suggest specifying one so the
+        // planner can evaluate heat-aware routes; when a ship is already present, only
+        // recommend omitting the restriction since adding a ship is redundant.
+        if constraints.ship.is_some() {
+            tips.push("omit --avoid-critical-state");
+        } else {
+            tips.push("omit --avoid-critical-state or specify a ship with --ship");
+        }
     }
     if tips.is_empty() {
         message.push_str(

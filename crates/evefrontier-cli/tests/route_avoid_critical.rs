@@ -33,12 +33,12 @@ fn avoid_critical_state_without_ship_errors() {
 }
 
 #[test]
-fn avoid_critical_state_with_ship_succeeds_or_blocks() {
+fn avoid_critical_state_with_ship_is_graceful_when_blocked_or_succeeds() {
     // Prepare a temporary copy of the fixture dataset and ship CSV to avoid protected fixture guard
     let dir = tempdir().expect("tempdir");
     let dest_db = dir.path().join("minimal_static_data.db");
     let src_db = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../docs/fixtures/minimal_static_data.db");
+        .join("../../docs/fixtures/minimal/static_data.db");
     fs::copy(&src_db, &dest_db).expect("copy db");
     let src_ship =
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/fixtures/ship_data.csv");
@@ -67,17 +67,16 @@ fn avoid_critical_state_with_ship_succeeds_or_blocks() {
         .arg("--ship")
         .arg("Reflex");
 
-    let assert = cmd.assert();
-    // Accept either a success (exit code 0) or a clean failure saying no route found.
-    let output = assert.get_output();
-    let success = output.status.success();
-    if success {
-        // Ensure some route output present
+    let assertion = cmd.assert();
+    let output = assertion.get_output();
+    // Ensure the command either succeeds and prints a route or fails gracefully with a
+    // clear "no route found" message rather than panicking or crashing.
+    if output.status.success() {
         assert!(String::from_utf8_lossy(&output.stdout).contains("Route"));
     } else {
-        // Check for helpful message
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(stderr.contains("No route found") || stderr.contains("no route found"));
+        assert!(!stderr.contains("panicked") && !stderr.contains("thread 'main' panicked"));
     }
 }
 

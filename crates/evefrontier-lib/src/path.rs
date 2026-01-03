@@ -67,7 +67,17 @@ impl PathConstraints {
                     .unwrap_or(0.0);
 
                 let mass = loadout.total_mass_kg(ship);
-                let heat_config = self.heat_config.unwrap_or_default();
+                // Require an explicit heat_config when avoid_critical_state is requested; if
+                // missing, treat as a configuration error and conservatively reject the edge.
+                let heat_config = if let Some(cfg) = self.heat_config {
+                    cfg
+                } else {
+                    tracing::error!(
+                        "heat_config must be set when avoid_critical_state is true; rejecting edge"
+                    );
+                    return false;
+                };
+
                 let hop_energy = calculate_jump_heat(
                     mass,
                     edge.distance,
@@ -97,16 +107,18 @@ impl PathConstraints {
                         }
                     }
                     Err(e) => {
-                        // Fail-safe: if heat calculation errors, allow the edge and log a warning so
-                        // routes are not spuriously blocked by calculation issues.
+                        // Conservative fail-safe: if heat calculation errors, reject the edge and
+                        // log the error so callers can surface problems instead of allowing
+                        // potentially unsafe routes.
                         let to_name = starmap
                             .and_then(|m| m.systems.get(&target))
                             .map(|s| s.name.as_str())
                             .unwrap_or("unknown");
                         tracing::warn!(
-                            "skipping critical-heat check for {} due to calculation error: {e:#?}; allowing edge",
+                            "heat calculation failed for {}: {e:#?}; rejecting edge as conservative fail-safe",
                             to_name
                         );
+                        return false;
                     }
                 }
             } else {
@@ -406,8 +418,6 @@ impl PartialOrd for AStarEntry {
     }
 }
 
-// End of path.rs
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -422,7 +432,7 @@ mod tests {
     }
 
     #[test]
-    fn heat_calc_error_is_fail_safe_and_allows_edge() {
+    fn heat_calc_error_blocks_edge() {
         // Build a minimal starmap with a single system target having a known ambient temp
         let mut systems = std::collections::HashMap::new();
         let sys = System {
@@ -464,6 +474,7 @@ mod tests {
                 fuel_load: 10.0,
                 cargo_mass_kg: 0.0,
             }),
+            heat_config: Some(HeatConfig::default()),
             ..Default::default()
         };
 
@@ -473,7 +484,7 @@ mod tests {
             distance: 10.0,
         };
 
-        // Should allow the edge because heat calculation errors are fail-safe
-        assert!(constraints.allows(Some(&starmap), &edge, 1));
+        // With conservative fail-safe, a heat calculation error should block the edge
+        assert!(!constraints.allows(Some(&starmap), &edge, 1));
     }
 }

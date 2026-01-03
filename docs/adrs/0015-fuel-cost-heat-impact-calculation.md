@@ -152,7 +152,7 @@ _Note: Heat accumulates across the entire route; total route heat differs in dyn
 
 ### Heat Implementation Details
 
-The library implements heat projections with the following behaviour:
+The library implements heat projections with the following behavior:
 
 - **Function**: `calculate_jump_heat(total_mass_kg, distance_ly, hull_mass_kg, calibration)` — a pure function returning per-hop heat as f64.
 - **Calibration**: default `calibration_constant = 1.0` (configurable via `HeatConfig`).

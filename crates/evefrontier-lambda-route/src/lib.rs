@@ -108,6 +108,10 @@ fn handle_route_request(request: &RouteRequest, request_id: &str) -> Response {
             avoid_systems: request.avoid.clone(),
             avoid_gates: request.avoid_gates,
             max_temperature: request.max_temperature,
+            // NOTE: This Lambda currently does not expose `avoid_critical_state` and
+            // therefore performs heat-unaware planning. If we want parity with the
+            // CLI, add the field to the API, validate it, and propagate it here. See
+            // TODO: create follow-up issue if API exposure is desired.
             avoid_critical_state: false,
             ship: None,
             loadout: None,

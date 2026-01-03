@@ -18,6 +18,7 @@ Minimal, low-risk implementation that performs a per-edge check during planning 
 - `--avoid-critical-state` without `--ship` errors with a helpful message.
 - Routes that would require an instantaneous hop into CRITICAL are excluded when feasible.
 - Heat calculation errors do not silently block routes (fail-safe allow and log warning).
+ - Heat calculation errors conservatively **block** edges and log a warning (conservative fail-safe behavior).
 - Relevant unit and integration tests pass and are included in the PR.
 
 ## Next Steps / Follow-ups

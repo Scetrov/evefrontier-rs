@@ -67,6 +67,8 @@ fn dynamic_mass_does_not_change_per_hop_avoidance_behavior() {
 
     // Current behavior: dynamic_mass does not enable per-hop relaxation in the avoidance check,
     // so both requests should produce the same result (both blocked in this aggressive calibration).
+    // TODO: If we later choose to relax avoidance when `dynamic_mass` is enabled, document the
+    // expected behavior in `docs/HEAT_MECHANICS.md` and add tests that assert the relaxed policy.
     assert!(
         err_static.is_some(),
         "expected static request to be blocked"

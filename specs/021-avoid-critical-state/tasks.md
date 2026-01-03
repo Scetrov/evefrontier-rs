@@ -73,4 +73,4 @@ Summary: When `--avoid-critical-state` is enabled (requires `--ship`), the plann
 
 ---
 
-If you want, I can now finish the in-progress task T006 (add the CLI integration test and assert the helpful error) and then complete the docs (T007/T008). Which task should I pick up next? ✅
+If you want, I can now finish the in-progress task T006 (add the CLI integration test and assert the helpful error) and then complete the docs (T007/T008). ✅

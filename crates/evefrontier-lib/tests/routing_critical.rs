@@ -33,6 +33,34 @@ fn a_star_blocked_by_avoid_critical_state() {
         spatial_index: None,
     };
 
+    // Sanity check: with this aggressive calibration constant a representative
+    // 100 ly hop would exceed the CRITICAL threshold for the provided loadout.
+    let brana_id = starmap.system_id_by_name("Brana").expect("Brana id");
+    let ambient = starmap
+        .systems
+        .get(&brana_id)
+        .and_then(|s| s.metadata.min_external_temp)
+        .unwrap_or(0.0);
+    let mass = request
+        .constraints
+        .loadout
+        .as_ref()
+        .unwrap()
+        .total_mass_kg(request.constraints.ship.as_ref().unwrap());
+    let energy = evefrontier_lib::ship::calculate_jump_heat(
+        mass,
+        100.0,
+        request.constraints.ship.as_ref().unwrap().base_mass_kg,
+        1e-8,
+    )
+    .expect("calc");
+    let hop_heat = energy / (mass * request.constraints.ship.as_ref().unwrap().specific_heat);
+    let total = ambient + hop_heat;
+    assert!(
+        total >= evefrontier_lib::ship::HEAT_CRITICAL,
+        "calibration did not produce critical heat as expected"
+    );
+
     let err =
         plan_route(&starmap, &request).expect_err("should be blocked by critical-state avoidance");
     assert!(format!("{err}").contains("no route found"));

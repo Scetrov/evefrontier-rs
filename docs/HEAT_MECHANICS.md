@@ -104,7 +104,7 @@ Next steps
 
 - Decide whether to implement a zone-based prototype (fast) or the game-driven model (realistic).
 - Add tests (unit + integration) and examples in `docs/USAGE.md` and this file.
-- If you prefer, I can implement the chosen model and add the tests and docs now.
+- Implement the chosen model and add tests and docs in a follow-up (tracked in tasks.md).
 
 ### Conservative avoidance: `--avoid-critical-state`
 

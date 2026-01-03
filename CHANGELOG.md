@@ -54,8 +54,7 @@ All notable changes to this project will be documented in this file.
     - 8 integration tests for ship catalog parsing, fuel calculation, and route aggregation
     - 3 specification tests for future ship data downloader features
     - Documentation in `docs/USAGE.md` with fuel calculation examples and formula reference
-
-    - **Heat mechanics** (Library, CLI & Lambda)
+  - **Heat mechanics** (Library, CLI & Lambda)
       - Add `calculate_jump_heat()` and `HeatConfig` to `evefrontier-lib` for per-hop heat
         calculation
       - Add `HeatProjection` and `HeatSummary` types, included in CLI and Lambda outputs when a ship

@@ -147,13 +147,8 @@ combining gates + spatial jumps). If the dataset is not already present, the CLI
 automatically before computing the route.
 
 ```pwsh
-Computes a route between two system names using the selected algorithm (default: `dijkstra` —
-weighted distance optimization over the hybrid graph combining gates + spatial jumps). If the
-dataset is not already present, the CLI downloads it automatically before computing the route.
 evefrontier-cli route --from "ER1-MM7" --to "ENQ-PB6"
 ```
-
-  # A* (heuristic-guided; use when coordinates are complete and admissible)
 ### Routing options
 
 The routing subcommands accept several flags that map directly to the library's route planner:

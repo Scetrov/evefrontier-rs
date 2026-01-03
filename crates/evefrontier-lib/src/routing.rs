@@ -282,3 +282,17 @@ fn classify_edges(graph: &Graph, steps: &[SystemId]) -> (usize, usize) {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_route_constraints_have_none_optional_fields() {
+        let c = RouteConstraints::default();
+        assert!(!c.avoid_critical_state);
+        assert!(c.ship.is_none());
+        assert!(c.loadout.is_none());
+        assert!(c.heat_config.is_none());
+    }
+}
