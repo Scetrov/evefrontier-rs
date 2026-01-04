@@ -144,6 +144,15 @@ impl RouteCommandArgs {
                 heat_config: None,
             },
             spatial_index: None, // Will be set separately after loading
+            max_spatial_neighbors: self.options.max_spatial_neighbours,
+            optimization: match self.options.optimize {
+                RouteOptimizeArg::Distance => evefrontier_lib::routing::RouteOptimization::Distance,
+                RouteOptimizeArg::Fuel => evefrontier_lib::routing::RouteOptimization::Fuel,
+            },
+            fuel_config: evefrontier_lib::ship::FuelConfig {
+                quality: self.options.fuel_quality,
+                dynamic_mass: self.options.dynamic_mass,
+            },
         }
     }
 }
@@ -211,6 +220,17 @@ struct RouteOptionsArgs {
     /// Avoid hops that would cause engine to reach critical heat state (requires --ship)
     #[arg(long = "avoid-critical-state", action = ArgAction::SetTrue)]
     avoid_critical_state: bool,
+
+    /// Maximum number of spatial neighbours to consider when building the spatial/hybrid graph.
+    /// Defaults to 0 (unlimited). When set to `0` the planner will not truncate neighbours and
+    /// will consider all spatial neighbours for each system; set to a positive value to limit
+    /// fan-out and reduce planning time/memory.
+    #[arg(long = "max-spatial-neighbours", default_value_t = 0usize)]
+    max_spatial_neighbours: usize,
+
+    /// Optimization objective for planning: distance or fuel.
+    #[arg(long = "optimize", value_enum, default_value = "distance")]
+    optimize: RouteOptimizeArg,
 }
 
 #[derive(Args, Debug, Clone)]
@@ -248,6 +268,14 @@ enum RouteAlgorithmArg {
     Dijkstra,
     #[value(name = "a-star")]
     AStar,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum)]
+enum RouteOptimizeArg {
+    /// Shortest distance (default)
+    Distance,
+    /// Minimize fuel consumption (requires --ship)
+    Fuel,
 }
 
 // Note: Dijkstra is the intentionally selected default algorithm (marked with #[default]).

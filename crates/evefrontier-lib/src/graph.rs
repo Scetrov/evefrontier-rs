@@ -7,24 +7,18 @@ use tracing::warn;
 use crate::db::{Starmap, SystemId, SystemPosition};
 use crate::spatial::{NeighbourQuery, SpatialIndex};
 
-/// Maximum number of nearest neighbors to include in the spatial graph.
-///
-/// This limits the fan-out per node when constructing spatial graphs. The value 12 was chosen
-/// because it matches the maximum number of bidirectional stargate connections observed in the
-/// production dataset, ensuring that spatial routing does not exclude any system reachable via
-/// gates in the densest regions.
-///
-/// # Trade-offs
-///
-/// - **Performance**: Limiting spatial neighbors reduces edges considered during graph construction
-///   and pathfinding, keeping memory usage and search times manageable in dense areas.
-/// - **Route Quality**: Setting this too low could miss nearby systems, resulting in suboptimal
-///   routes. Setting it too high increases computational cost with diminishing returns, as most
-///   systems don't have more than 12 meaningful spatial neighbors.
-///
-/// This value strikes a balance: high enough to avoid missing candidates in dense regions, but
-/// low enough to keep spatial graph operations performant.
-const MAX_SPATIAL_NEIGHBORS: usize = 12;
+/// Default maximum number of nearest neighbors to include in the spatial graph.
+/// This limits the fan-out per node when constructing spatial graphs. The default is `0`,
+/// which means "unlimited" neighbours (no truncation) — this avoids accidentally hiding
+/// ship-capable long jumps behind a small fixed fan-out. The behaviour can be tuned via
+/// the CLI flag `--max-spatial-neighbours`.
+const DEFAULT_MAX_SPATIAL_NEIGHBORS: usize = 0;
+/// For very large datasets, requesting unlimited neighbours can be pathological (O(n^2)).
+/// To avoid hang/very long runs we cap the number of neighbours fetched from the index when
+/// no `max_jump` radius is provided and the dataset is large.
+const LARGE_DATASET_NEIGHBOUR_THRESHOLD: usize = 5_000;
+/// Maximum neighbours to fetch per system when capping to avoid pathological behaviour.
+const MAX_SAFE_NEIGHBOURS: usize = 5_000;
 
 /// Routing graph variants supported by the planner.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -80,6 +74,22 @@ impl Default for Graph {
     }
 }
 
+impl Graph {
+    /// Create a Graph from explicit parts. This is crate-visible and useful for
+    /// testing or for internal operations that need to construct a graph with
+    /// a precomputed adjacency map (for example, a version with unsafe edges
+    /// pruned).
+    pub(crate) fn from_parts(
+        mode: GraphMode,
+        adjacency: std::collections::HashMap<SystemId, Vec<Edge>>,
+    ) -> Self {
+        Self {
+            mode,
+            adjacency: Arc::new(adjacency),
+        }
+    }
+}
+
 /// Build the default gate-based routing graph.
 pub fn build_graph(starmap: &Starmap) -> Graph {
     build_gate_graph(starmap)
@@ -95,10 +105,7 @@ pub fn build_gate_graph(starmap: &Starmap) -> Graph {
 
 /// Build a routing graph that only considers spatial jumps.
 pub fn build_spatial_graph(starmap: &Starmap) -> Graph {
-    Graph {
-        mode: GraphMode::Spatial,
-        adjacency: Arc::new(build_spatial_adjacency(starmap)),
-    }
+    build_spatial_graph_indexed(starmap, &GraphBuildOptions::default())
 }
 
 /// Build a routing graph that combines gate and spatial edges.
@@ -124,10 +131,29 @@ fn build_gate_adjacency(starmap: &Starmap) -> HashMap<SystemId, Vec<Edge>> {
                 targets
                     .iter()
                     .copied()
-                    .map(|target| Edge {
-                        target,
-                        kind: EdgeKind::Gate,
-                        distance: 1.0,
+                    .map(|target| {
+                        // Compute a physical distance for gate edges when both systems have
+                        // valid positions. This ensures the hybrid graph combines edges
+                        // using consistent units (light-years) rather than mixing a
+                        // unitless hop-count (1.0) with spatial distances. Using physical
+                        // distances prevents Dijkstra/A* from preferring many small gate
+                        // hops simply because they were assigned a low unit cost.
+                        let distance = if let (Some(from), Some(to)) = (
+                            starmap.systems.get(&system_id).and_then(|s| s.position),
+                            starmap.systems.get(&target).and_then(|s| s.position),
+                        ) {
+                            from.distance_to(&to)
+                        } else {
+                            // Fallback for systems without positions: keep previous behaviour
+                            // to avoid changing semantics when coordinates are missing.
+                            1.0
+                        };
+
+                        Edge {
+                            target,
+                            kind: EdgeKind::Gate,
+                            distance,
+                        }
                     })
                     .collect()
             })
@@ -164,7 +190,10 @@ fn build_spatial_adjacency(starmap: &Starmap) -> HashMap<SystemId, Vec<Edge>> {
             .collect();
 
         edges.sort_by(|a, b| compare_distance(a.distance, b.distance));
-        edges.truncate(MAX_SPATIAL_NEIGHBORS);
+        // If DEFAULT (0) or the configured max is 0, treat as unlimited (do not truncate).
+        if DEFAULT_MAX_SPATIAL_NEIGHBORS != 0 {
+            edges.truncate(DEFAULT_MAX_SPATIAL_NEIGHBORS);
+        }
 
         adjacency.insert(system_id, edges);
     }
@@ -220,7 +249,7 @@ fn compare_distance(a: f64, b: f64) -> Ordering {
 }
 
 /// Options for building spatial or hybrid graphs with index support.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct GraphBuildOptions {
     /// Pre-built spatial index. If None and spatial edges are needed,
     /// the index will be built automatically (with a warning).
@@ -230,6 +259,19 @@ pub struct GraphBuildOptions {
     /// Maximum temperature for spatial jump targets (Kelvin).
     /// Systems with min_external_temp above this are excluded.
     pub max_temperature: Option<f64>,
+    /// Maximum number of nearest neighbours to include for spatial edges.
+    pub max_spatial_neighbors: usize,
+}
+
+impl Default for GraphBuildOptions {
+    fn default() -> Self {
+        Self {
+            spatial_index: None,
+            max_jump: None,
+            max_temperature: None,
+            max_spatial_neighbors: DEFAULT_MAX_SPATIAL_NEIGHBORS,
+        }
+    }
 }
 
 /// Build a routing graph that only considers spatial jumps, using a spatial index.
@@ -290,25 +332,84 @@ fn build_spatial_adjacency_indexed(
         };
 
         let query_point = [position.x, position.y, position.z];
-        let query = NeighbourQuery {
-            // Fetch extra to account for self and filtering
-            k: MAX_SPATIAL_NEIGHBORS + 1,
-            radius: options.max_jump,
-            max_temperature: options.max_temperature,
+        let max_neighbors = options.max_spatial_neighbors;
+
+        // If the caller provided an explicit radius (`max_jump`) use an efficient
+        // radius query which returns only systems within that distance. This avoids
+        // fetching the whole dataset when a physical per-hop limit is known.
+        let neighbors: Vec<(SystemId, f64)> = if let Some(radius) = options.max_jump {
+            index.within_radius_filtered(query_point, radius, options.max_temperature)
+        } else if max_neighbors == 0 {
+            // Unlimited neighbours requested but no radius provided. For small datasets
+            // we can safely fetch all neighbours; for very large datasets this becomes
+            // O(n^2) and can take an exceptionally long time. Cap the fetch to a
+            // reasonable upper bound and emit a warning so callers can tune behaviour
+            // with `--max-spatial-neighbours` or `--max-jump`.
+            let system_count = starmap.systems.len();
+            if system_count > LARGE_DATASET_NEIGHBOUR_THRESHOLD {
+                warn!(
+                    systems = system_count,
+                    cap = MAX_SAFE_NEIGHBOURS,
+                    "unlimited spatial neighbours requested on large dataset; capping neighbours per-node for performance; consider using --max-spatial-neighbours or --max-jump"
+                );
+                let k = MAX_SAFE_NEIGHBOURS + 1; // +1 to account for self
+                let query = NeighbourQuery {
+                    k,
+                    radius: None,
+                    max_temperature: options.max_temperature,
+                };
+                index.nearest_filtered(query_point, &query)
+            } else {
+                // small dataset: fetch all
+                let k = system_count;
+                let query = NeighbourQuery {
+                    k,
+                    radius: None,
+                    max_temperature: options.max_temperature,
+                };
+                index.nearest_filtered(query_point, &query)
+            }
+        } else {
+            // Bounded number of neighbours requested
+            let k = max_neighbors + 1; // +1 to account for self
+            let query = NeighbourQuery {
+                k,
+                radius: None,
+                max_temperature: options.max_temperature,
+            };
+            index.nearest_filtered(query_point, &query)
         };
 
-        let neighbors = index.nearest_filtered(query_point, &query);
+        let iter = neighbors.into_iter().filter(|(id, _)| *id != system.id); // Exclude self
 
-        let edges: Vec<Edge> = neighbors
-            .into_iter()
-            .filter(|(id, _)| *id != system.id) // Exclude self
-            .take(MAX_SPATIAL_NEIGHBORS)
-            .map(|(target, distance)| Edge {
+        let edges: Vec<Edge> = if max_neighbors == 0
+            && options.max_jump.is_none()
+            && starmap.systems.len() > LARGE_DATASET_NEIGHBOUR_THRESHOLD
+        {
+            // We already capped neighbor fetch above; use all returned edges
+            iter.map(|(target, distance)| Edge {
                 target,
                 kind: EdgeKind::Spatial,
                 distance,
             })
-            .collect();
+            .collect()
+        } else if max_neighbors == 0 {
+            // Unlimited: use whatever the radius query returned
+            iter.map(|(target, distance)| Edge {
+                target,
+                kind: EdgeKind::Spatial,
+                distance,
+            })
+            .collect()
+        } else {
+            iter.take(max_neighbors)
+                .map(|(target, distance)| Edge {
+                    target,
+                    kind: EdgeKind::Spatial,
+                    distance,
+                })
+                .collect()
+        };
 
         adjacency.insert(system.id, edges);
     }
@@ -319,4 +420,174 @@ fn build_spatial_adjacency_indexed(
     }
 
     adjacency
+}
+
+// Tests for gate distance semantics and hybrid routing behaviour
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::{Starmap, System, SystemMetadata, SystemPosition};
+    use crate::path::find_route_dijkstra;
+
+    #[test]
+    fn gate_edges_use_physical_distance_when_positions_present() {
+        // Build two systems with positions and a gate between them
+        let a = System {
+            id: 1,
+            name: "A".to_string(),
+            metadata: SystemMetadata {
+                constellation_id: None,
+                constellation_name: None,
+                region_id: None,
+                region_name: None,
+                security_status: None,
+                star_temperature: None,
+                star_luminosity: None,
+                min_external_temp: None,
+                planet_count: None,
+                moon_count: None,
+            },
+            position: SystemPosition::new(0.0, 0.0, 0.0),
+        };
+        let b = System {
+            id: 2,
+            name: "B".to_string(),
+            metadata: SystemMetadata {
+                constellation_id: None,
+                constellation_name: None,
+                region_id: None,
+                region_name: None,
+                security_status: None,
+                star_temperature: None,
+                star_luminosity: None,
+                min_external_temp: None,
+                planet_count: None,
+                moon_count: None,
+            },
+            position: SystemPosition::new(3.0, 4.0, 0.0),
+        };
+
+        let mut systems = std::collections::HashMap::new();
+        systems.insert(a.id, a.clone());
+        systems.insert(b.id, b.clone());
+
+        let mut name_to_id = std::collections::HashMap::new();
+        name_to_id.insert(a.name.clone(), a.id);
+        name_to_id.insert(b.name.clone(), b.id);
+
+        let mut adj = std::collections::HashMap::new();
+        adj.insert(a.id, vec![b.id]);
+        adj.insert(b.id, vec![a.id]);
+
+        let starmap = Starmap {
+            systems,
+            name_to_id,
+            adjacency: std::sync::Arc::new(adj),
+        };
+
+        let gate_adj = build_gate_adjacency(&starmap);
+        let edges = gate_adj.get(&a.id).expect("adjacency present");
+        assert_eq!(edges.len(), 1);
+        // Distance between (0,0,0) and (3,4,0) is 5
+        assert!((edges[0].distance - 5.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn dijkstra_prefers_spatial_shortcut_over_many_gate_hops() {
+        // Construct three systems A,B,C where gates connect A->B->C but a spatial
+        // shortcut A->C exists that is shorter in physical distance than the
+        // sum of gate distances.
+        let a = System {
+            id: 1,
+            name: "A".to_string(),
+            metadata: SystemMetadata {
+                constellation_id: None,
+                constellation_name: None,
+                region_id: None,
+                region_name: None,
+                security_status: None,
+                star_temperature: None,
+                star_luminosity: None,
+                min_external_temp: None,
+                planet_count: None,
+                moon_count: None,
+            },
+            position: SystemPosition::new(0.0, 0.0, 0.0),
+        };
+        // Place B far off so A->B + B->C > A->C
+        let b = System {
+            id: 2,
+            name: "B".to_string(),
+            metadata: SystemMetadata {
+                constellation_id: None,
+                constellation_name: None,
+                region_id: None,
+                region_name: None,
+                security_status: None,
+                star_temperature: None,
+                star_luminosity: None,
+                min_external_temp: None,
+                planet_count: None,
+                moon_count: None,
+            },
+            position: SystemPosition::new(0.0, 50.0, 0.0),
+        };
+        let c = System {
+            id: 3,
+            name: "C".to_string(),
+            metadata: SystemMetadata {
+                constellation_id: None,
+                constellation_name: None,
+                region_id: None,
+                region_name: None,
+                security_status: None,
+                star_temperature: None,
+                star_luminosity: None,
+                min_external_temp: None,
+                planet_count: None,
+                moon_count: None,
+            },
+            position: SystemPosition::new(100.0, 0.0, 0.0),
+        };
+
+        let mut systems = std::collections::HashMap::new();
+        systems.insert(a.id, a.clone());
+        systems.insert(b.id, b.clone());
+        systems.insert(c.id, c.clone());
+
+        let mut name_to_id = std::collections::HashMap::new();
+        name_to_id.insert(a.name.clone(), a.id);
+        name_to_id.insert(b.name.clone(), b.id);
+        name_to_id.insert(c.name.clone(), c.id);
+
+        // Gate adjacency A<->B, B<->C (no direct gate A<->C)
+        let mut adj = std::collections::HashMap::new();
+        adj.insert(a.id, vec![b.id]);
+        adj.insert(b.id, vec![a.id, c.id]);
+        adj.insert(c.id, vec![b.id]);
+
+        let starmap = Starmap {
+            systems,
+            name_to_id,
+            adjacency: std::sync::Arc::new(adj),
+        };
+
+        // Build hybrid graph which includes spatial A->C edge
+        let graph = build_hybrid_graph(&starmap);
+
+        // Run Dijkstra from A to C; with gate edges weighted by physical distance
+        // the expected chosen route should be the direct spatial edge A->C.
+        let route = find_route_dijkstra(&graph, Some(&starmap), a.id, c.id, &Default::default())
+            .expect("route found");
+
+        assert_eq!(route, vec![a.id, c.id]);
+    }
+
+    #[test]
+    fn default_max_spatial_neighbors_is_unlimited() {
+        assert_eq!(
+            GraphBuildOptions::default().max_spatial_neighbors,
+            DEFAULT_MAX_SPATIAL_NEIGHBORS
+        );
+    }
 }

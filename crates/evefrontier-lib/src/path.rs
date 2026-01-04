@@ -27,8 +27,13 @@ pub struct PathConstraints {
 }
 
 impl PathConstraints {
-    fn allows(&self, starmap: Option<&Starmap>, edge: &Edge, target: SystemId) -> bool {
-        if self.max_jump.is_some_and(|limit| edge.distance > limit) {
+    pub(crate) fn allows(&self, starmap: Option<&Starmap>, edge: &Edge, target: SystemId) -> bool {
+        // The `max_jump` constraint limits the distance of spatial jumps (ship jumps).
+        // Gate traversals should not be constrained by ship jump range, so only apply
+        // this limit to spatial edges.
+        if edge.kind == EdgeKind::Spatial
+            && self.max_jump.is_some_and(|limit| edge.distance > limit)
+        {
             return false;
         }
 
@@ -134,6 +139,8 @@ impl PathConstraints {
 
         true
     }
+
+    // test moved into the #[cfg(test)] module below
 }
 
 /// Find a route between `start` and `goal` using breadth-first search without
@@ -223,6 +230,76 @@ pub fn find_route_dijkstra(
             }
 
             let next_cost = current_distance + edge.distance;
+            if next_cost < *distances.get(&next).unwrap_or(&f64::INFINITY) {
+                distances.insert(next, next_cost);
+                parents.insert(next, Some(entry.node));
+                queue.push(QueueEntry::new(next, next_cost));
+            }
+        }
+    }
+
+    None
+}
+
+/// Run Dijkstra's algorithm where edge costs are measured in fuel units instead
+/// of distance. Gate traversals have zero fuel cost; spatial hops compute fuel
+/// using `calculate_jump_fuel_cost` with a static total mass approximation.
+pub fn find_route_dijkstra_fuel(
+    graph: &Graph,
+    starmap: Option<&Starmap>,
+    start: SystemId,
+    goal: SystemId,
+    constraints: &PathConstraints,
+    total_mass_kg: f64,
+    fuel_config: &crate::ship::FuelConfig,
+) -> Option<Vec<SystemId>> {
+    if start == goal {
+        return Some(vec![start]);
+    }
+
+    let mut distances: HashMap<SystemId, f64> = HashMap::new();
+    let mut parents: HashMap<SystemId, Option<SystemId>> = HashMap::new();
+    let mut queue = BinaryHeap::new();
+
+    distances.insert(start, 0.0);
+    parents.insert(start, None);
+    queue.push(QueueEntry::new(start, 0.0));
+
+    while let Some(entry) = queue.pop() {
+        let Some(&current_distance) = distances.get(&entry.node) else {
+            continue;
+        };
+        if current_distance < entry.cost.0 {
+            continue;
+        }
+
+        if entry.node == goal {
+            return Some(reconstruct_path(&parents, start, goal));
+        }
+
+        for edge in graph.neighbours(entry.node) {
+            let next = edge.target;
+            if !constraints.allows(starmap, edge, next) {
+                continue;
+            }
+
+            // Compute fuel cost: gates are free, spatial edges consume fuel.
+            let edge_cost = match edge.kind {
+                EdgeKind::Gate => 0.0,
+                EdgeKind::Spatial => match crate::ship::calculate_jump_fuel_cost(
+                    total_mass_kg,
+                    edge.distance,
+                    fuel_config,
+                ) {
+                    Ok(c) => c,
+                    Err(_) => {
+                        // Conservative: if fuel calc fails, reject the edge
+                        continue;
+                    }
+                },
+            };
+
+            let next_cost = current_distance + edge_cost;
             if next_cost < *distances.get(&next).unwrap_or(&f64::INFINITY) {
                 distances.insert(next, next_cost);
                 parents.insert(next, Some(entry.node));
@@ -490,5 +567,116 @@ mod tests {
 
         // With conservative fail-safe, a heat calculation error should block the edge
         assert!(!constraints.allows(Some(&starmap), &edge, 1));
+    }
+
+    #[test]
+    fn dijkstra_fuel_prefers_gate_route_when_cheaper() {
+        use crate::db::{Starmap, System, SystemPosition};
+        use crate::ship::{FuelConfig, ShipAttributes, ShipLoadout};
+
+        // A spatial shortcut exists (A->C) shorter than A->B->C; distance-Dijkstra
+        // should pick A->C, but fuel optimization (gates free) should pick A->B->C.
+        let a = System {
+            id: 1,
+            name: "A".to_string(),
+            metadata: crate::db::SystemMetadata {
+                constellation_id: None,
+                constellation_name: None,
+                region_id: None,
+                region_name: None,
+                security_status: None,
+                star_temperature: None,
+                star_luminosity: None,
+                min_external_temp: None,
+                planet_count: None,
+                moon_count: None,
+            },
+            position: SystemPosition::new(0.0, 0.0, 0.0),
+        };
+        let b = System {
+            id: 2,
+            name: "B".to_string(),
+            metadata: crate::db::SystemMetadata {
+                constellation_id: None,
+                constellation_name: None,
+                region_id: None,
+                region_name: None,
+                security_status: None,
+                star_temperature: None,
+                star_luminosity: None,
+                min_external_temp: None,
+                planet_count: None,
+                moon_count: None,
+            },
+            position: SystemPosition::new(0.0, 150.0, 0.0),
+        };
+        let c = System {
+            id: 3,
+            name: "C".to_string(),
+            metadata: crate::db::SystemMetadata {
+                constellation_id: None,
+                constellation_name: None,
+                region_id: None,
+                region_name: None,
+                security_status: None,
+                star_temperature: None,
+                star_luminosity: None,
+                min_external_temp: None,
+                planet_count: None,
+                moon_count: None,
+            },
+            position: SystemPosition::new(120.0, 0.0, 0.0),
+        };
+
+        let mut systems = std::collections::HashMap::new();
+        systems.insert(a.id, a.clone());
+        systems.insert(b.id, b.clone());
+        systems.insert(c.id, c.clone());
+
+        let mut name_to_id = std::collections::HashMap::new();
+        name_to_id.insert(a.name.clone(), a.id);
+        name_to_id.insert(b.name.clone(), b.id);
+        name_to_id.insert(c.name.clone(), c.id);
+
+        let mut adj = std::collections::HashMap::new();
+        adj.insert(a.id, vec![b.id]);
+        adj.insert(b.id, vec![a.id, c.id]);
+        adj.insert(c.id, vec![b.id]);
+
+        let starmap = Starmap {
+            systems,
+            name_to_id,
+            adjacency: std::sync::Arc::new(adj),
+        };
+
+        let graph = crate::graph::build_hybrid_graph(&starmap);
+
+        let route_distance =
+            find_route_dijkstra(&graph, Some(&starmap), a.id, c.id, &Default::default())
+                .expect("route found");
+        assert_eq!(route_distance, vec![a.id, c.id]);
+
+        let ship = ShipAttributes {
+            name: "TestShip".to_string(),
+            base_mass_kg: 1e6,
+            specific_heat: 1.0,
+            fuel_capacity: 1000.0,
+            cargo_capacity: 1000.0,
+        };
+        let loadout = ShipLoadout::new(&ship, 500.0, 0.0).expect("valid loadout");
+        let fuel_cfg = FuelConfig::default();
+        let mass = loadout.total_mass_kg(&ship);
+
+        let route_fuel = find_route_dijkstra_fuel(
+            &graph,
+            Some(&starmap),
+            a.id,
+            c.id,
+            &Default::default(),
+            mass,
+            &fuel_cfg,
+        )
+        .expect("fuel route found");
+        assert_eq!(route_fuel, vec![a.id, b.id, c.id]);
     }
 }

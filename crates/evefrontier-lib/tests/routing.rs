@@ -25,8 +25,14 @@ fn dijkstra_route_plan_succeeds() {
         start: "Nod".to_string(),
         goal: "Brana".to_string(),
         algorithm: RouteAlgorithm::Dijkstra,
-        constraints: RouteConstraints::default(),
+        constraints: RouteConstraints {
+            max_jump: Some(80.0),
+            ..Default::default()
+        },
         spatial_index: None,
+        max_spatial_neighbors: evefrontier_lib::GraphBuildOptions::default().max_spatial_neighbors,
+        optimization: evefrontier_lib::routing::RouteOptimization::Distance,
+        fuel_config: evefrontier_lib::ship::FuelConfig::default(),
     };
 
     let plan = plan_route(&starmap, &request).expect("route exists");
@@ -48,6 +54,9 @@ fn a_star_respects_max_jump_constraint() {
             ..RouteConstraints::default()
         },
         spatial_index: None,
+        max_spatial_neighbors: evefrontier_lib::GraphBuildOptions::default().max_spatial_neighbors,
+        optimization: evefrontier_lib::routing::RouteOptimization::Distance,
+        fuel_config: evefrontier_lib::ship::FuelConfig::default(),
     };
 
     let plan = plan_route(&starmap, &request).expect("route exists");
@@ -70,6 +79,9 @@ fn avoided_goal_rejects_route() {
             ..RouteConstraints::default()
         },
         spatial_index: None,
+        max_spatial_neighbors: evefrontier_lib::GraphBuildOptions::default().max_spatial_neighbors,
+        optimization: evefrontier_lib::routing::RouteOptimization::Distance,
+        fuel_config: evefrontier_lib::ship::FuelConfig::default(),
     };
 
     let error = plan_route(&starmap, &request).expect_err("avoided goal");
@@ -96,6 +108,9 @@ fn temperature_limit_blocks_hot_systems() {
             ..RouteConstraints::default()
         },
         spatial_index: None,
+        max_spatial_neighbors: evefrontier_lib::GraphBuildOptions::default().max_spatial_neighbors,
+        optimization: evefrontier_lib::routing::RouteOptimization::Distance,
+        fuel_config: evefrontier_lib::ship::FuelConfig::default(),
     };
 
     let error = plan_route(&starmap, &request).expect_err("temperature filtered");
@@ -115,10 +130,114 @@ fn avoid_gates_switches_to_spatial_graph() {
             ..RouteConstraints::default()
         },
         spatial_index: None,
+        max_spatial_neighbors: evefrontier_lib::GraphBuildOptions::default().max_spatial_neighbors,
+        optimization: evefrontier_lib::routing::RouteOptimization::Distance,
+        fuel_config: evefrontier_lib::ship::FuelConfig::default(),
     };
 
     let plan = plan_route(&starmap, &request).expect("spatial route exists");
     assert_eq!(plan.algorithm, RouteAlgorithm::Dijkstra);
+}
+
+#[test]
+fn ship_max_jump_limits_spatial_edges() {
+    // Minimal in-memory starmap with two systems ~100 ly apart and no gates.
+    use evefrontier_lib::db::{Starmap, System, SystemId, SystemMetadata, SystemPosition};
+    use evefrontier_lib::ship::{FuelConfig, ShipAttributes, ShipLoadout};
+    use std::collections::HashMap;
+
+    let a: SystemId = 1;
+    let b: SystemId = 2;
+
+    let mut systems = HashMap::new();
+    systems.insert(
+        a,
+        System {
+            id: a,
+            name: "A".to_string(),
+            metadata: SystemMetadata {
+                constellation_id: None,
+                constellation_name: None,
+                region_id: None,
+                region_name: None,
+                security_status: None,
+                star_temperature: None,
+                star_luminosity: None,
+                min_external_temp: None,
+                planet_count: None,
+                moon_count: None,
+            },
+            position: SystemPosition::new(0.0, 0.0, 0.0),
+        },
+    );
+    systems.insert(
+        b,
+        System {
+            id: b,
+            name: "B".to_string(),
+            metadata: SystemMetadata {
+                constellation_id: None,
+                constellation_name: None,
+                region_id: None,
+                region_name: None,
+                security_status: None,
+                star_temperature: None,
+                star_luminosity: None,
+                min_external_temp: None,
+                planet_count: None,
+                moon_count: None,
+            },
+            position: SystemPosition::new(100.0, 0.0, 0.0),
+        },
+    );
+
+    let mut name_to_id = HashMap::new();
+    name_to_id.insert("A".to_string(), a);
+    name_to_id.insert("B".to_string(), b);
+
+    let adjacency: HashMap<SystemId, Vec<SystemId>> = HashMap::new();
+
+    let starmap = Starmap {
+        systems,
+        name_to_id,
+        adjacency: std::sync::Arc::new(adjacency),
+    };
+
+    // Ship with insufficient fuel to make the 100 ly hop
+    let ship = ShipAttributes {
+        name: "Tiny".to_string(),
+        base_mass_kg: 10000.0,
+        specific_heat: 1000.0,
+        fuel_capacity: 1.0,
+        cargo_capacity: 0.0,
+    };
+    let loadout = ShipLoadout::new(&ship, 1.0, 0.0).expect("valid loadout");
+
+    let request = evefrontier_lib::routing::RouteRequest {
+        start: "A".to_string(),
+        goal: "B".to_string(),
+        algorithm: RouteAlgorithm::AStar,
+        constraints: RouteConstraints {
+            ship: Some(ship.clone()),
+            loadout: Some(loadout),
+            // By default fuel does not block the route to allow for projection/refuelling
+            ..RouteConstraints::default()
+        },
+        spatial_index: None,
+        max_spatial_neighbors: evefrontier_lib::GraphBuildOptions::default().max_spatial_neighbors,
+        optimization: evefrontier_lib::routing::RouteOptimization::Distance,
+        fuel_config: FuelConfig::default(),
+    };
+
+    // With fuel-only limits, the route should now be found (to allow projection)
+    let plan = plan_route(&starmap, &request).expect("route found even with low fuel");
+    assert_eq!(plan.steps.len(), 2);
+
+    // But if we enable heat-based avoidance, it should be blocked (heat limit is ~50ly, distance is 100ly)
+    let mut strict_request = request.clone();
+    strict_request.constraints.avoid_critical_state = true;
+    let err = plan_route(&starmap, &strict_request).expect_err("heat limit should block route");
+    assert!(format!("{err}").contains("no route found"));
 }
 
 // inject_positions is no longer needed - real fixture data includes coordinates

@@ -27,8 +27,10 @@ fn attaches_fuel_projection_to_route_summary() {
         algorithm: RouteAlgorithm::AStar,
         constraints: RouteConstraints::default(),
         spatial_index: None,
+        max_spatial_neighbors: evefrontier_lib::GraphBuildOptions::default().max_spatial_neighbors,
+        optimization: evefrontier_lib::routing::RouteOptimization::Distance,
+        fuel_config: evefrontier_lib::ship::FuelConfig::default(),
     };
-
     let plan = plan_route(&starmap, &request).expect("route planned");
     let mut summary =
         RouteSummary::from_plan(RouteOutputKind::Route, &starmap, &plan).expect("summary builds");
@@ -74,8 +76,10 @@ fn gate_steps_do_not_consume_fuel() {
         algorithm: RouteAlgorithm::AStar,
         constraints: RouteConstraints::default(),
         spatial_index: None,
+        max_spatial_neighbors: evefrontier_lib::GraphBuildOptions::default().max_spatial_neighbors,
+        optimization: evefrontier_lib::routing::RouteOptimization::Distance,
+        fuel_config: evefrontier_lib::ship::FuelConfig::default(),
     };
-
     let plan = plan_route(&starmap, &request).expect("route planned");
     let mut summary =
         RouteSummary::from_plan(RouteOutputKind::Route, &starmap, &plan).expect("summary builds");

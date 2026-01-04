@@ -36,6 +36,9 @@
 //!     algorithm: RouteAlgorithm::AStar,
 //!     constraints: RouteConstraints::default(),
 //!     spatial_index: None,
+//!     max_spatial_neighbors: 50,
+//!     optimization: evefrontier_lib::routing::RouteOptimization::Distance,
+//!     fuel_config: evefrontier_lib::ship::FuelConfig::default(),
 //! };
 //!
 //! // 4. Plan the route

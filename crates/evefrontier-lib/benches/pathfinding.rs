@@ -18,6 +18,9 @@ static DIJKSTRA_REQUEST: Lazy<RouteRequest> = Lazy::new(|| RouteRequest {
     algorithm: RouteAlgorithm::Dijkstra,
     constraints: RouteConstraints::default(),
     spatial_index: None,
+    max_spatial_neighbors: evefrontier_lib::GraphBuildOptions::default().max_spatial_neighbors,
+    optimization: evefrontier_lib::routing::RouteOptimization::Distance,
+    fuel_config: evefrontier_lib::ship::FuelConfig::default(),
 });
 static ASTAR_HYBRID_REQUEST: Lazy<RouteRequest> = Lazy::new(|| RouteRequest {
     start: "Nod".to_string(),
@@ -25,6 +28,9 @@ static ASTAR_HYBRID_REQUEST: Lazy<RouteRequest> = Lazy::new(|| RouteRequest {
     algorithm: RouteAlgorithm::AStar,
     constraints: RouteConstraints::default(),
     spatial_index: None,
+    max_spatial_neighbors: evefrontier_lib::GraphBuildOptions::default().max_spatial_neighbors,
+    optimization: evefrontier_lib::routing::RouteOptimization::Distance,
+    fuel_config: evefrontier_lib::ship::FuelConfig::default(),
 });
 static ASTAR_SPATIAL_REQUEST: Lazy<RouteRequest> = Lazy::new(|| RouteRequest {
     start: "Nod".to_string(),
@@ -36,6 +42,9 @@ static ASTAR_SPATIAL_REQUEST: Lazy<RouteRequest> = Lazy::new(|| RouteRequest {
         ..RouteConstraints::default()
     },
     spatial_index: None,
+    max_spatial_neighbors: evefrontier_lib::GraphBuildOptions::default().max_spatial_neighbors,
+    optimization: evefrontier_lib::routing::RouteOptimization::Distance,
+    fuel_config: evefrontier_lib::ship::FuelConfig::default(),
 });
 
 fn benchmark_pathfinding(c: &mut Criterion) {
