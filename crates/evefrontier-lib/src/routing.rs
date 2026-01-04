@@ -30,6 +30,16 @@ pub enum RouteAlgorithm {
     AStar,
 }
 
+/// Optimization objective for route planning.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RouteOptimization {
+    /// Optimize for shortest distance (default behavior).
+    Distance,
+    /// Optimize for minimal fuel consumption (requires ship + loadout).
+    Fuel,
+}
+
 impl fmt::Display for RouteAlgorithm {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let value = match self {
@@ -81,6 +91,12 @@ pub struct RouteRequest {
     /// Pre-loaded spatial index for faster graph construction.
     /// If `None`, the index will be built on demand (with a warning for large datasets).
     pub spatial_index: Option<Arc<SpatialIndex>>,
+    /// Maximum spatial neighbours to consider when building the spatial/hybrid graph.
+    pub max_spatial_neighbors: usize,
+    /// Optimization objective used by the planner (distance or fuel).
+    pub optimization: RouteOptimization,
+    /// Fuel configuration used when optimizing for fuel (quality/dynamic_mass).
+    pub fuel_config: crate::ship::FuelConfig,
 }
 
 impl RouteRequest {
@@ -92,6 +108,9 @@ impl RouteRequest {
             algorithm: RouteAlgorithm::Bfs,
             constraints: RouteConstraints::default(),
             spatial_index: None,
+            max_spatial_neighbors: crate::graph::GraphBuildOptions::default().max_spatial_neighbors,
+            optimization: RouteOptimization::Distance,
+            fuel_config: crate::ship::FuelConfig::default(),
         }
     }
 
@@ -100,6 +119,24 @@ impl RouteRequest {
         self.spatial_index = Some(index);
         self
     }
+}
+
+fn build_filtered_adjacency_from_search(
+    graph: &Graph,
+    starmap: &Starmap,
+    sc: &SearchConstraints,
+) -> std::collections::HashMap<SystemId, Vec<crate::graph::Edge>> {
+    let mut filtered: std::collections::HashMap<_, _> = std::collections::HashMap::new();
+    for &sid in starmap.systems.keys() {
+        let mut out = Vec::new();
+        for e in graph.neighbours(sid) {
+            if sc.allows(Some(starmap), e, e.target) {
+                out.push(e.clone());
+            }
+        }
+        filtered.insert(sid, out);
+    }
+    filtered
 }
 
 /// Planned route returned by the library.
@@ -140,6 +177,67 @@ pub fn plan_route(starmap: &Starmap, request: &RouteRequest) -> Result<RoutePlan
     let avoided = resolve_avoided_systems(starmap, &request.constraints.avoid_systems)?;
     let constraints = request.constraints.to_search_constraints(avoided);
 
+    // Compute a ship-capability-based per-hop max_jump when ship & loadout are present.
+    // This computes the maximum distance a ship can traverse for a single jump constrained
+    // by fuel availability and heat limits at the origin system, and combines it with any
+    // explicitly-requested `max_jump` to produce an effective per-hop limit used for
+    // graph construction.
+    let mut effective_constraints = constraints.clone();
+    if let (Some(ship), Some(loadout)) = (&request.constraints.ship, &request.constraints.loadout) {
+        // Fuel-based maximum distance (uses current fuel load and requested fuel quality)
+        let fuel_quality = request.fuel_config.quality;
+        let mass = loadout.total_mass_kg(ship);
+        let per_ly_fuel = (mass / 100_000.0) * (fuel_quality / 100.0);
+        let fuel_max = if per_ly_fuel > 0.0 {
+            Some(loadout.fuel_load / per_ly_fuel)
+        } else {
+            None
+        };
+
+        // Heat-based maximum distance only applies when the caller requested avoidance of
+        // critical engine state; otherwise heat should not implicitly limit per-hop range.
+        let heat_max = if request.constraints.avoid_critical_state {
+            let ambient = starmap
+                .systems
+                .get(&start_id)
+                .and_then(|s| s.metadata.min_external_temp)
+                .unwrap_or(0.0);
+            let heat_cfg = request.constraints.heat_config.unwrap_or_default();
+
+            let allowed_delta = crate::ship::HEAT_CRITICAL - ambient;
+            if allowed_delta > 0.0 && heat_cfg.calibration_constant > 0.0 {
+                Some(
+                    allowed_delta
+                        * (heat_cfg.calibration_constant * ship.base_mass_kg * ship.specific_heat)
+                        / 3.0,
+                )
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        // For safety we only apply the heat-based limit to the per-hop max_jump when
+        // the caller explicitly requested avoidance of critical engine state. The
+        // fuel-based maximum is informative (used for fuel projections) but should not
+        // implicitly remove routes from consideration — a route may include long jumps
+        // that require refuelling or are otherwise outside the ship's current fuel range.
+        if let Some(h) = heat_max {
+            effective_constraints.max_jump = match effective_constraints.max_jump {
+                Some(user) => Some(user.min(h)),
+                None => Some(h),
+            };
+        }
+
+        tracing::debug!(
+            "computed ship-based max_jump: fuel={:?}, heat={:?}, applied_heat_limit={:?}",
+            fuel_max,
+            heat_max,
+            effective_constraints.max_jump
+        );
+    }
+
     if constraints.avoided_systems.contains(&start_id)
         || constraints.avoided_systems.contains(&goal_id)
         || !system_meets_temperature(starmap, start_id, constraints.max_temperature)
@@ -154,19 +252,93 @@ pub fn plan_route(starmap: &Starmap, request: &RouteRequest) -> Result<RoutePlan
     let graph = select_graph(
         starmap,
         request.algorithm,
-        &constraints,
+        &effective_constraints,
         request.spatial_index.as_ref().cloned(),
+        request.max_spatial_neighbors,
     );
 
     let route = match request.algorithm {
-        RouteAlgorithm::Bfs => {
-            find_route_bfs(&graph, Some(starmap), start_id, goal_id, &constraints)
-        }
+        RouteAlgorithm::Bfs => find_route_bfs(
+            &graph,
+            Some(starmap),
+            start_id,
+            goal_id,
+            &effective_constraints,
+        ),
         RouteAlgorithm::Dijkstra => {
-            find_route_dijkstra(&graph, Some(starmap), start_id, goal_id, &constraints)
+            if request.optimization == RouteOptimization::Fuel {
+                // Fuel optimization requires ship + loadout to compute hop costs. If missing,
+                // fall back to distance-based Dijkstra but warn the caller.
+                if let (Some(ship), Some(loadout)) =
+                    (&request.constraints.ship, &request.constraints.loadout)
+                {
+                    let mass = loadout.total_mass_kg(ship);
+                    crate::path::find_route_dijkstra_fuel(
+                        &graph,
+                        Some(starmap),
+                        start_id,
+                        goal_id,
+                        &effective_constraints,
+                        mass,
+                        &request.fuel_config,
+                    )
+                } else {
+                    tracing::warn!("fuel optimization requested but missing ship/loadout; falling back to distance optimization");
+                    find_route_dijkstra(
+                        &graph,
+                        Some(starmap),
+                        start_id,
+                        goal_id,
+                        &effective_constraints,
+                    )
+                }
+            } else {
+                find_route_dijkstra(
+                    &graph,
+                    Some(starmap),
+                    start_id,
+                    goal_id,
+                    &effective_constraints,
+                )
+            }
         }
         RouteAlgorithm::AStar => {
-            find_route_a_star(&graph, Some(starmap), start_id, goal_id, &constraints)
+            // A* with fuel optimization is approximated by running Dijkstra with fuel costs
+            // to keep heuristic admissibility simple. If fuel optimization requested and ship
+            // info is present, use fuel-based Dijkstra; otherwise use A* on distance.
+            if request.optimization == RouteOptimization::Fuel {
+                if let (Some(ship), Some(loadout)) =
+                    (&request.constraints.ship, &request.constraints.loadout)
+                {
+                    let mass = loadout.total_mass_kg(ship);
+                    crate::path::find_route_dijkstra_fuel(
+                        &graph,
+                        Some(starmap),
+                        start_id,
+                        goal_id,
+                        &effective_constraints,
+                        mass,
+                        &request.fuel_config,
+                    )
+                } else {
+                    tracing::warn!("fuel optimization requested but missing ship/loadout; falling back to distance A*");
+                    find_route_a_star(
+                        &graph,
+                        Some(starmap),
+                        start_id,
+                        goal_id,
+                        &effective_constraints,
+                    )
+                }
+            } else {
+                find_route_a_star(
+                    &graph,
+                    Some(starmap),
+                    start_id,
+                    goal_id,
+                    &effective_constraints,
+                )
+            }
         }
     };
 
@@ -176,6 +348,120 @@ pub fn plan_route(starmap: &Starmap, request: &RouteRequest) -> Result<RoutePlan
             goal: request.goal.clone(),
         });
     };
+
+    // Defensive validation: ensure every edge in the computed route satisfies the
+    // search constraints. This guards against any discrepancy where the planner
+    // might produce a route containing edges that should have been rejected (for
+    // example, heat-critical spatial hops). If such an edge is found, report
+    // the route as not found to surface a consistent error to callers.
+    for pair in route.windows(2) {
+        let u = pair[0];
+        let v = pair[1];
+        // Determine the planner's chosen edge for this hop (shortest distance). Validate
+        // the chosen edge against the avoidance constraints and reject the route if the
+        // chosen edge would be unsafe under the request.
+        let chosen = graph
+            .neighbours(u)
+            .iter()
+            .filter(|e| e.target == v)
+            .min_by(|a, b| a.distance.partial_cmp(&b.distance).unwrap());
+
+        if let Some(edge) = chosen {
+            // If this is a spatial edge and we are avoiding critical state, compute the
+            // expected total heat and reject the route if it would exceed the critical
+            // threshold. Gate edges are considered safe.
+            if edge.kind == crate::graph::EdgeKind::Spatial
+                && request.constraints.avoid_critical_state
+            {
+                if let (Some(ship), Some(loadout), Some(heat_cfg)) = (
+                    &request.constraints.ship,
+                    &request.constraints.loadout,
+                    &request.constraints.heat_config,
+                ) {
+                    let ambient_temp = starmap
+                        .systems
+                        .get(&v)
+                        .and_then(|s| s.metadata.min_external_temp)
+                        .unwrap_or(0.0);
+                    let mass = loadout.total_mass_kg(ship);
+                    if let Ok(energy) = crate::ship::calculate_jump_heat(
+                        mass,
+                        edge.distance,
+                        ship.base_mass_kg,
+                        heat_cfg.calibration_constant,
+                    ) {
+                        let hop_heat = energy / (mass * ship.specific_heat);
+                        let total = ambient_temp + hop_heat;
+                        if total >= crate::ship::HEAT_CRITICAL {
+                            // Found a critical hop in the chosen route. Instead of failing
+                            // immediately, try re-planning on a graph that removes unsafe
+                            // spatial edges to allow gate-based alternatives to be found.
+                            let search_constraints = request
+                                .constraints
+                                .to_search_constraints(std::collections::HashSet::new());
+                            let filtered = build_filtered_adjacency_from_search(
+                                &graph,
+                                starmap,
+                                &search_constraints,
+                            );
+
+                            let filtered_graph =
+                                crate::graph::Graph::from_parts(graph.mode(), filtered);
+
+                            // Re-run the requested algorithm on the filtered graph.
+                            let alt_route = match request.algorithm {
+                                RouteAlgorithm::Bfs => find_route_bfs(
+                                    &filtered_graph,
+                                    Some(starmap),
+                                    start_id,
+                                    goal_id,
+                                    &constraints,
+                                ),
+                                RouteAlgorithm::Dijkstra => find_route_dijkstra(
+                                    &filtered_graph,
+                                    Some(starmap),
+                                    start_id,
+                                    goal_id,
+                                    &constraints,
+                                ),
+                                RouteAlgorithm::AStar => find_route_a_star(
+                                    &filtered_graph,
+                                    Some(starmap),
+                                    start_id,
+                                    goal_id,
+                                    &constraints,
+                                ),
+                            };
+
+                            if let Some(alt) = alt_route {
+                                // Replace route with alternative if found and continue validation
+                                // using the filtered graph to avoid re-surfacing the same unsafe hop.
+                                let (g, j) = classify_edges(&filtered_graph, &alt);
+                                return Ok(RoutePlan {
+                                    algorithm: request.algorithm,
+                                    start: start_id,
+                                    goal: goal_id,
+                                    steps: alt,
+                                    gates: g,
+                                    jumps: j,
+                                });
+                            }
+
+                            return Err(Error::RouteNotFound {
+                                start: request.start.clone(),
+                                goal: request.goal.clone(),
+                            });
+                        }
+                    }
+                }
+            }
+        } else {
+            return Err(Error::RouteNotFound {
+                start: request.start.clone(),
+                goal: request.goal.clone(),
+            });
+        }
+    }
 
     let (gates, jumps) = classify_edges(&graph, &route);
 
@@ -222,12 +508,14 @@ fn select_graph(
     algorithm: RouteAlgorithm,
     constraints: &SearchConstraints,
     spatial_index: Option<Arc<SpatialIndex>>,
+    max_spatial_neighbors: usize,
 ) -> Graph {
     // Build options for indexed graph construction
     let options = GraphBuildOptions {
         spatial_index,
         max_jump: constraints.max_jump,
         max_temperature: constraints.max_temperature,
+        max_spatial_neighbors,
     };
 
     if constraints.avoid_gates {

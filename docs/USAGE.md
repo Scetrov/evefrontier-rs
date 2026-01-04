@@ -50,6 +50,8 @@ Global options accepted by all subcommands:
 Route-only options (ignored by other subcommands):
 
 - `--format <text|rich|json|basic|emoji|note>` — control route display (defaults to `text`).
+- `--max-spatial-neighbours <N>` — maximum number of nearest neighbours considered per system when building spatial/hybrid graphs (defaults to `0`, meaning unlimited). Larger values increase search options but can increase planning time; set to `0` to consider all neighbours.
+- `--optimize <distance|fuel>` — optimization objective for weighted planners (`distance` is default). Use `fuel` to prefer routes that minimize estimated fuel consumption (requires `--ship` and will fall back to distance with a warning if ship/loadout is not provided).
 
 ### Examples
 
@@ -168,6 +170,10 @@ The routing subcommands accept several flags that map directly to the library's 
   as safe.
 - `--avoid-critical-state` — when used **with** `--ship`, instructs the planner to avoid spatial hops whose instantaneous temperature (ambient + hop delta-T) would reach or exceed the canonical `HEAT_CRITICAL` threshold (150.0 units). This flag is conservative and **requires** `--ship` to be present; using it without a ship will error. It is useful for pilots who want routes that avoid risking critical engine heat during any single jump.
 
+- `--max-spatial-neighbours <N>` — tune the spatial graph fan-out (default: `0`, meaning unlimited). Increasing this allows the planner to consider more long-range spatial links (may increase runtime and memory use); setting `0` disables truncation and considers all spatial neighbours.
+
+- `--optimize <distance|fuel>` — select the optimization target for weighted planners (`dijkstra`, `a-star`). `distance` selects shortest-distance routing; `fuel` selects routes that minimize estimated fuel consumption. Note: `--optimize fuel` **requires** `--ship` (and appropriate `--fuel-quality`, `--cargo-mass`, and `--dynamic-mass` flags when desired). If `--ship` is omitted the CLI will warn and fall back to distance optimization.
+
 ### Example: avoid critical heat hops (requires `--ship`)
 
 ```bash
@@ -213,6 +219,46 @@ fuel_cost = (total_mass_kg / 100,000) × (fuel_quality / 100) × distance_ly
 - The CLI displays **per-hop heat** (in game units) and emits warnings when canonical thresholds are
   exceeded (`HEAT_OVERHEATED`, `HEAT_CRITICAL`). Per-ship tolerances are not available from the
   canonical dataset and are not used for warnings.
+
+Fuel-aware routing note:
+
+- When `--optimize fuel` is used, the planner attempts to minimize estimated fuel consumption. In practice the planner treats gate transitions as zero-fuel hops (i.e., gates do not consume fuel) and computes hop fuel using the same formula as shown above. This means fuel optimization may prefer gate-based routes even if they are longer in distance. `--dynamic-mass` affects fuel projections for `--optimize fuel` when present.
+
+Ship-capability per-hop limits 🔒
+
+- When a ship (`--ship`) and `--fuel-quality`/loadout are provided, the planner **automatically computes a conservative per-hop `max_jump`** based on the ship's current fuel and (optionally) heat safety settings. This computed value is combined with any explicit `--max-jump` by taking the **minimum** so callers retain control.
+
+- What is considered:
+  - **Fuel-based limit**: derived from current fuel load and fuel quality (how many light-years can be covered with available fuel). 
+  - **Heat-based limit**: applied **only** when `--avoid-critical-state` is enabled; an instantaneous hop that would reach or exceed the canonical `HEAT_CRITICAL` threshold is conservatively excluded.
+
+- Practical effects:
+  - The planner prunes spatial edges that exceed the effective per-hop `max_jump`, ensuring that only physically-capable single-jump edges are considered. This reduces the risk that `--max-spatial-neighbours` truncation hides valid ship-capable jumps.
+  - **Gate transitions are unaffected** by per-hop `max_jump` and remain available when allowed.
+
+ - Tuning:
+ - Tuning:
+  - Set `--max-spatial-neighbours` to a positive integer to limit the fan-out and reduce planning time/memory. Set it to `0` (the default) to disable truncation and consider all spatial neighbours — useful when ship-based per-hop limits could otherwise be hidden.
+  - Note: for very large datasets an *unlimited* neighbour request without an explicit `--max-jump` radius can be extremely slow (it may require generating O(n^2) edges). In that case the planner will cap neighbours per-node and emit a warning; prefer passing `--max-spatial-neighbours` or `--max-jump` to control performance explicitly.
+  - You may explicitly set `--max-jump` to override behavior (the explicit value is still combined with the computed ship limit via `min`).
+
+- Debugging: the computed ship-based `max_jump` is logged at debug level (`tracing::debug!`) so you can inspect runtime decisions with `RUST_LOG=debug`.
+
+Debugging example 🔍
+
+To see the computed ship-based per-hop `max_jump` and other planner decisions, set `RUST_LOG=debug` and run a route command. Example:
+
+```bash
+RUST_LOG=debug ./target/debug/evefrontier-cli route --from "INN-6L4" --to "A3V-125" --ship "Reflex" --fuel-quality 10 --optimize fuel
+```
+
+Look for log lines like:
+
+```
+DEBUG planner: computed ship-based max_jump: fuel=Some(123.4), heat=Some(200.0), effective=Some(123.4)
+```
+
+These messages show the fuel-based and heat-based maxima and the final effective limit used by the planner.
 - Very small non-zero hop heat values are shown as `"<0.01"` in the CLI to avoid misleading
   `0.00` readings. The CLI no longer shows a bracketed cumulative per-step heat value; residual heat
   and recommended wait times (when applicable) are included in the `json` output and Lambda

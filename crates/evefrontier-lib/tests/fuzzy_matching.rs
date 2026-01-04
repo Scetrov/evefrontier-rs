@@ -1,6 +1,8 @@
 use std::path::PathBuf;
 
-use evefrontier_lib::{load_starmap, plan_route, RouteRequest};
+use evefrontier_lib::{
+    load_starmap, plan_route, GraphBuildOptions, RouteAlgorithm, RouteConstraints, RouteRequest,
+};
 
 fn fixture_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/fixtures/minimal/static_data.db")
@@ -79,12 +81,15 @@ fn avoided_system_typo_includes_suggestions() {
     let request = RouteRequest {
         start: "Nod".to_string(),
         goal: "Brana".to_string(),
-        algorithm: evefrontier_lib::RouteAlgorithm::Bfs,
-        constraints: evefrontier_lib::RouteConstraints {
-            avoid_systems: vec!["2L2".to_string()], // Partial system name
+        algorithm: RouteAlgorithm::AStar,
+        constraints: RouteConstraints {
+            avoid_systems: vec!["2L2".to_string()],
             ..Default::default()
         },
         spatial_index: None,
+        max_spatial_neighbors: GraphBuildOptions::default().max_spatial_neighbors,
+        optimization: evefrontier_lib::routing::RouteOptimization::Distance,
+        fuel_config: evefrontier_lib::ship::FuelConfig::default(),
     };
 
     let err = plan_route(&starmap, &request).expect_err("should fail with unknown avoided system");

@@ -170,6 +170,9 @@ async fn route_handler(
             heat_config: None,
         },
         spatial_index: state.spatial_index_arc(),
+        max_spatial_neighbors: evefrontier_lib::GraphBuildOptions::default().max_spatial_neighbors,
+        optimization: evefrontier_lib::routing::RouteOptimization::Distance,
+        fuel_config: evefrontier_lib::ship::FuelConfig::default(),
     };
 
     // Plan the route

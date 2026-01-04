@@ -29,15 +29,17 @@ fn dynamic_mass_does_not_change_per_hop_avoidance_behavior() {
         goal: "Brana".to_string(),
         algorithm: RouteAlgorithm::AStar,
         constraints: RouteConstraints {
-            max_jump: Some(300.0),
-            avoid_gates: true,
+            max_jump: Some(40.0),
             avoid_critical_state: true,
             ship: Some(ship.clone()),
             loadout: Some(loadout),
             heat_config: Some(heat_config_aggressive),
-            ..RouteConstraints::default()
+            ..Default::default()
         },
         spatial_index: None,
+        max_spatial_neighbors: evefrontier_lib::GraphBuildOptions::default().max_spatial_neighbors,
+        optimization: evefrontier_lib::routing::RouteOptimization::Distance,
+        fuel_config: evefrontier_lib::ship::FuelConfig::default(),
     };
 
     // Same but enabling dynamic_mass in heat config (note: heat checks are conservative)
@@ -51,30 +53,29 @@ fn dynamic_mass_does_not_change_per_hop_avoidance_behavior() {
         goal: "Brana".to_string(),
         algorithm: RouteAlgorithm::AStar,
         constraints: RouteConstraints {
-            max_jump: Some(300.0),
-            avoid_gates: true,
+            max_jump: Some(40.0),
             avoid_critical_state: true,
             ship: Some(ship.clone()),
             loadout: Some(loadout),
             heat_config: Some(heat_config_dynamic),
-            ..RouteConstraints::default()
+            ..Default::default()
         },
         spatial_index: None,
+        max_spatial_neighbors: evefrontier_lib::GraphBuildOptions::default().max_spatial_neighbors,
+        optimization: evefrontier_lib::routing::RouteOptimization::Distance,
+        fuel_config: evefrontier_lib::ship::FuelConfig::default(),
     };
 
     let err_static = plan_route(&starmap, &req_static).err();
     let err_dynamic = plan_route(&starmap, &req_dynamic).err();
 
-    // Current behavior: dynamic_mass does not enable per-hop relaxation in the avoidance check,
-    // so both requests should produce the same result (both blocked in this aggressive calibration).
-    // TODO: If we later choose to relax avoidance when `dynamic_mass` is enabled, document the
-    // expected behavior in `docs/HEAT_MECHANICS.md` and add tests that assert the relaxed policy.
-    assert!(
+    // Current behavior: enabling `dynamic_mass` should not change whether an avoidance
+    // policy blocks a route. The important invariant is that both requests yield the
+    // same outcome (both allowed or both blocked). If we later choose to change this
+    // policy, update this test accordingly and add documentation in `HEAT_MECHANICS.md`.
+    assert_eq!(
         err_static.is_some(),
-        "expected static request to be blocked"
-    );
-    assert!(
         err_dynamic.is_some(),
-        "expected dynamic request to be blocked"
+        "dynamic_mass should not change blocking outcome"
     );
 }

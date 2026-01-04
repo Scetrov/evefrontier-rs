@@ -70,6 +70,10 @@ pub struct RouteRequest {
     /// Enable per-hop dynamic mass recalculation.
     #[serde(default)]
     pub dynamic_mass: Option<bool>,
+
+    /// Maximum number of spatial neighbors to consider (default from lib).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_spatial_neighbors: Option<usize>,
 }
 
 /// Supported routing algorithms.
@@ -277,6 +281,7 @@ mod tests {
             cargo_mass: None,
             fuel_load: None,
             dynamic_mass: None,
+            max_spatial_neighbors: None,
         };
         assert!(req.validate("req-123").is_ok());
     }
@@ -296,6 +301,7 @@ mod tests {
             cargo_mass: None,
             fuel_load: None,
             dynamic_mass: None,
+            max_spatial_neighbors: None,
         };
         let err = req.validate("req-123").unwrap_err();
         assert_eq!(err.status, 400);
@@ -317,6 +323,7 @@ mod tests {
             cargo_mass: None,
             fuel_load: None,
             dynamic_mass: None,
+            max_spatial_neighbors: None,
         };
         let err = req.validate("req-123").unwrap_err();
         assert!(err.detail.unwrap().contains("positive number"));
@@ -395,6 +402,7 @@ mod tests {
             cargo_mass: None,
             fuel_load: None,
             dynamic_mass: None,
+            max_spatial_neighbors: None,
         };
         assert!(req.validate("req-constraints").is_ok());
     }
@@ -414,6 +422,7 @@ mod tests {
             cargo_mass: None,
             fuel_load: None,
             dynamic_mass: None,
+            max_spatial_neighbors: None,
         };
         let err = req.validate("req-neg-temp").unwrap_err();
         assert!(err.detail.unwrap().contains("max_temperature"));
@@ -434,6 +443,7 @@ mod tests {
             cargo_mass: Some(1000.0),
             fuel_load: Some(500.0),
             dynamic_mass: Some(true),
+            max_spatial_neighbors: None,
         };
         assert!(req.validate("req-ship").is_ok());
     }
@@ -453,6 +463,7 @@ mod tests {
             cargo_mass: None,
             fuel_load: None,
             dynamic_mass: None,
+            max_spatial_neighbors: None,
         };
         let err = req.validate("req-fuel-quality").unwrap_err();
         assert!(err.detail.unwrap().contains("fuel_quality"));

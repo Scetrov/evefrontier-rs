@@ -118,6 +118,9 @@ fn handle_route_request(request: &RouteRequest, request_id: &str) -> Response {
             heat_config: None,
         },
         spatial_index: Some(runtime.spatial_index_arc()),
+        max_spatial_neighbors: evefrontier_lib::GraphBuildOptions::default().max_spatial_neighbors,
+        optimization: evefrontier_lib::routing::RouteOptimization::Distance,
+        fuel_config: evefrontier_lib::ship::FuelConfig::default(),
     };
 
     // Plan the route
@@ -281,6 +284,7 @@ mod tests {
             cargo_mass: None,
             fuel_load: None,
             dynamic_mass: None,
+            max_spatial_neighbors: None,
         };
 
         let response = handle_route_request(&request, &mock_request_id("validate"));
@@ -310,6 +314,7 @@ mod tests {
             cargo_mass: Some(633_006.0),
             fuel_load: None,
             dynamic_mass: None,
+            max_spatial_neighbors: None,
         };
 
         let response = handle_route_request(&request, &mock_request_id("heat"));
