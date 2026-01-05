@@ -105,9 +105,20 @@ pub struct RouteSummaryDto {
     pub jumps: usize,
     pub algorithm: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub parameters: Option<RouteParametersDto>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub fuel: Option<FuelSummaryDto>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub heat: Option<HeatSummaryDto>,
+}
+
+/// DTO for the effective routing parameters used to compute a plan.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct RouteParametersDto {
+    pub algorithm: String,
+    pub optimization: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ship_name: Option<String>,
 }
 
 /// Complete route response returned by the Lambda handler.
@@ -139,6 +150,11 @@ impl RouteResponseDto {
             gates: summary.gates,
             jumps: summary.jumps,
             algorithm: summary.algorithm.to_string(),
+            parameters: summary.parameters.as_ref().map(|p| RouteParametersDto {
+                algorithm: p.algorithm.to_string(),
+                optimization: format!("{:?}", p.optimization),
+                ship_name: p.ship_name.clone(),
+            }),
             fuel,
             heat,
         };

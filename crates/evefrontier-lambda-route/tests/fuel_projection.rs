@@ -43,6 +43,7 @@ async fn returns_fuel_projection_when_ship_provided() {
         max_spatial_neighbors: Some(
             evefrontier_lib::GraphBuildOptions::default().max_spatial_neighbors,
         ),
+        optimization: None,
     };
 
     let response = invoke(request).await;
@@ -78,6 +79,7 @@ async fn omits_fuel_projection_without_ship() {
         max_spatial_neighbors: Some(
             evefrontier_lib::GraphBuildOptions::default().max_spatial_neighbors,
         ),
+        optimization: None,
     };
 
     let response = invoke(request).await;
@@ -113,6 +115,7 @@ async fn rejects_unknown_ship_name() {
         max_spatial_neighbors: Some(
             evefrontier_lib::GraphBuildOptions::default().max_spatial_neighbors,
         ),
+        optimization: None,
     };
 
     let response = invoke(request).await;

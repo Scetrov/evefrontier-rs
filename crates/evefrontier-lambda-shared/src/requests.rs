@@ -79,6 +79,10 @@ pub struct RouteRequest {
     /// Maximum number of spatial neighbors to consider (default from lib).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_spatial_neighbors: Option<usize>,
+
+    /// Optional optimization objective: distance or fuel.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub optimization: Option<RouteOptimization>,
 }
 
 /// Supported routing algorithms.
@@ -100,6 +104,23 @@ impl From<RouteAlgorithm> for evefrontier_lib::RouteAlgorithm {
             RouteAlgorithm::Bfs => evefrontier_lib::RouteAlgorithm::Bfs,
             RouteAlgorithm::Dijkstra => evefrontier_lib::RouteAlgorithm::Dijkstra,
             RouteAlgorithm::AStar => evefrontier_lib::RouteAlgorithm::AStar,
+        }
+    }
+}
+
+/// Optional optimization objective for planning.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum RouteOptimization {
+    Distance,
+    Fuel,
+}
+
+impl From<RouteOptimization> for evefrontier_lib::routing::RouteOptimization {
+    fn from(value: RouteOptimization) -> Self {
+        match value {
+            RouteOptimization::Distance => evefrontier_lib::routing::RouteOptimization::Distance,
+            RouteOptimization::Fuel => evefrontier_lib::routing::RouteOptimization::Fuel,
         }
     }
 }
@@ -288,6 +309,7 @@ mod tests {
             dynamic_mass: None,
             avoid_critical_state: None,
             max_spatial_neighbors: None,
+            optimization: None,
         };
         assert!(req.validate("req-123").is_ok());
     }
@@ -309,6 +331,7 @@ mod tests {
             dynamic_mass: None,
             avoid_critical_state: None,
             max_spatial_neighbors: None,
+            optimization: None,
         };
         let err = req.validate("req-123").unwrap_err();
         assert_eq!(err.status, 400);
@@ -332,6 +355,7 @@ mod tests {
             dynamic_mass: None,
             avoid_critical_state: None,
             max_spatial_neighbors: None,
+            optimization: None,
         };
         let err = req.validate("req-123").unwrap_err();
         assert!(err.detail.unwrap().contains("positive number"));
@@ -412,6 +436,7 @@ mod tests {
             dynamic_mass: None,
             avoid_critical_state: None,
             max_spatial_neighbors: None,
+            optimization: None,
         };
         assert!(req.validate("req-constraints").is_ok());
     }
@@ -433,6 +458,7 @@ mod tests {
             dynamic_mass: None,
             avoid_critical_state: None,
             max_spatial_neighbors: None,
+            optimization: None,
         };
         let err = req.validate("req-neg-temp").unwrap_err();
         assert!(err.detail.unwrap().contains("max_temperature"));
@@ -455,6 +481,7 @@ mod tests {
             dynamic_mass: Some(true),
             avoid_critical_state: None,
             max_spatial_neighbors: None,
+            optimization: None,
         };
         assert!(req.validate("req-ship").is_ok());
     }
@@ -476,6 +503,7 @@ mod tests {
             dynamic_mass: None,
             avoid_critical_state: None,
             max_spatial_neighbors: None,
+            optimization: None,
         };
         let err = req.validate("req-fuel-quality").unwrap_err();
         assert!(err.detail.unwrap().contains("fuel_quality"));

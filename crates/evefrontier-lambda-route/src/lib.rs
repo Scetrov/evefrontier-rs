@@ -119,7 +119,7 @@ fn handle_route_request(request: &RouteRequest, request_id: &str) -> Response {
         max_spatial_neighbors: request
             .max_spatial_neighbors
             .unwrap_or(evefrontier_lib::GraphBuildOptions::default().max_spatial_neighbors),
-        optimization: evefrontier_lib::routing::RouteOptimization::Distance,
+        optimization: request.optimization.map(Into::into).unwrap_or_default(),
         fuel_config: evefrontier_lib::ship::FuelConfig::default(),
     };
 
@@ -258,6 +258,7 @@ fn ship_catalog() -> Result<&'static ShipCatalog, &'static LibError> {
 mod tests {
     use super::*;
     use evefrontier_lambda_shared::test_utils::{self, mock_request_id};
+    use evefrontier_lambda_shared::RouteOptimization as SharedRouteOptimization;
 
     fn init_fixture_runtime() {
         // Initialize the runtime with fixture data for tests.
@@ -287,6 +288,7 @@ mod tests {
             dynamic_mass: None,
             avoid_critical_state: None,
             max_spatial_neighbors: None,
+            optimization: None,
         };
 
         let response = handle_route_request(&request, &mock_request_id("validate"));
@@ -318,6 +320,7 @@ mod tests {
             dynamic_mass: None,
             avoid_critical_state: None,
             max_spatial_neighbors: None,
+            optimization: None,
         };
 
         let response = handle_route_request(&request, &mock_request_id("heat"));
@@ -327,6 +330,40 @@ mod tests {
                 assert!(inner.data.summary.heat.is_some());
                 // At least one step should include heat projection
                 assert!(inner.data.steps.iter().any(|s| s.heat.is_some()));
+            }
+            Response::Error(err) => panic!("unexpected error: {err:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn respects_optimization_field_when_set() {
+        init_fixture_runtime();
+
+        let request = RouteRequest {
+            from: "Nod".to_string(),
+            to: "Brana".to_string(),
+            algorithm: evefrontier_lambda_shared::RouteAlgorithm::AStar,
+            max_jump: None,
+            avoid: vec![],
+            avoid_gates: false,
+            max_temperature: None,
+            ship: None,
+            fuel_quality: None,
+            cargo_mass: None,
+            fuel_load: None,
+            dynamic_mass: None,
+            avoid_critical_state: None,
+            max_spatial_neighbors: None,
+            optimization: Some(SharedRouteOptimization::Fuel),
+        };
+
+        let response = handle_route_request(&request, &mock_request_id("opt"));
+        match response {
+            Response::Success(inner) => {
+                // Ensure parameters were included and optimization is reported as 'fuel'
+                assert!(inner.data.summary.parameters.is_some());
+                let params = inner.data.summary.parameters.unwrap();
+                assert_eq!(params.optimization.as_str(), "Fuel");
             }
             Response::Error(err) => panic!("unexpected error: {err:?}"),
         }
