@@ -863,25 +863,45 @@ fn handle_route_command(
     // Load ship data and populate loadout if we have an effective ship name (and it's not "None").
     if let Some(ship_name) = effective_ship_name {
         // If the user passed --ship "None" we would have resolved to None above.
-        let catalog = load_ship_catalog(&paths)?;
-        let ship = catalog
-            .get(&ship_name)
-            .ok_or_else(|| anyhow::anyhow!(format!("ship {} not found in catalog", ship_name)))?;
 
-        let fuel_load = args.options.fuel_load.unwrap_or(ship.fuel_capacity);
-        let loadout = ShipLoadout::new(ship, fuel_load, args.options.cargo_mass)
-            .context("invalid ship loadout")?;
+        // Attempt to load the ship catalog, but treat failures differently depending on
+        // whether the user explicitly requested a ship.
+        match load_ship_catalog(&paths) {
+            Ok(catalog) => {
+                let ship = catalog.get(&ship_name).ok_or_else(|| {
+                    anyhow::anyhow!(format!("ship {} not found in catalog", ship_name))
+                })?;
 
-        request.constraints.ship = Some(ship.clone());
-        request.constraints.loadout = Some(loadout);
+                let fuel_load = args.options.fuel_load.unwrap_or(ship.fuel_capacity);
+                let loadout = ShipLoadout::new(ship, fuel_load, args.options.cargo_mass)
+                    .context("invalid ship loadout")?;
 
-        // Only populate heat-specific configuration when heat-aware planning is requested.
-        if request.constraints.avoid_critical_state {
-            let heat_config = evefrontier_lib::ship::HeatConfig {
-                calibration_constant: 1e-7,
-                dynamic_mass: args.options.dynamic_mass,
-            };
-            request.constraints.heat_config = Some(heat_config);
+                request.constraints.ship = Some(ship.clone());
+                request.constraints.loadout = Some(loadout);
+
+                // Only populate heat-specific configuration when heat-aware planning is requested.
+                if request.constraints.avoid_critical_state {
+                    let heat_config = evefrontier_lib::ship::HeatConfig {
+                        calibration_constant: 1e-7,
+                        dynamic_mass: args.options.dynamic_mass,
+                    };
+                    request.constraints.heat_config = Some(heat_config);
+                }
+            }
+            Err(e) => {
+                if args.options.ship.is_some() {
+                    // User explicitly requested a ship — this is an error we should propagate.
+                    return Err(e).context("failed to load requested ship data");
+                } else {
+                    // Implicit default ship couldn't be loaded (missing ship_data.csv etc.).
+                    // Don't fail the entire command for this non-critical missing file; warn and
+                    // proceed without a default ship.
+                    eprintln!(
+                        "Warning: failed to load ship data: {}. Proceeding without default ship.",
+                        e
+                    );
+                }
+            }
         }
     }
 

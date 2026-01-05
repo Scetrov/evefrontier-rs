@@ -289,3 +289,17 @@ fn enhanced_format_shows_system_details() {
         .stdout(predicate::str::contains("GOAL")) // Goal tag
         .stdout(predicate::str::contains("Planet")); // System details
 }
+
+#[test]
+fn missing_ship_data_with_default_ship_proceeds() {
+    let (mut cmd, _temp) = prepare_command();
+    // Point the env var to a non-existent path and ensure the route still succeeds
+    cmd.env("EVEFRONTIER_SHIP_DATA", "/tmp/does-not-exist-ship_data.csv")
+        .arg("route")
+        .arg("--from")
+        .arg("Nod")
+        .arg("--to")
+        .arg("Brana");
+
+    cmd.assert().success();
+}
