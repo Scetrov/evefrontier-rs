@@ -28,7 +28,7 @@ fn summary_rejects_empty_plans() {
         jumps: 0,
     };
 
-    let err = RouteSummary::from_plan(RouteOutputKind::Route, &starmap, &plan)
+    let err = RouteSummary::from_plan(RouteOutputKind::Route, &starmap, &plan, None)
         .expect_err("empty plans are rejected");
     assert_eq!(format!("{err}"), "route plan was empty");
 }
@@ -51,8 +51,8 @@ fn summary_from_plan_populates_names() {
         jumps: 0,
     };
 
-    let summary =
-        RouteSummary::from_plan(RouteOutputKind::Route, &starmap, &plan).expect("summary builds");
+    let summary = RouteSummary::from_plan(RouteOutputKind::Route, &starmap, &plan, None)
+        .expect("summary builds");
 
     assert_eq!(summary.start.name.as_deref(), Some("Nod"));
     assert_eq!(summary.goal.name.as_deref(), Some("Brana"));
@@ -77,8 +77,8 @@ fn render_modes_include_expected_tokens() {
         jumps: 1,
     };
 
-    let summary =
-        RouteSummary::from_plan(RouteOutputKind::Route, &starmap, &plan).expect("summary builds");
+    let summary = RouteSummary::from_plan(RouteOutputKind::Route, &starmap, &plan, None)
+        .expect("summary builds");
 
     let plain = summary.render(RouteRenderMode::PlainText);
     assert!(plain.contains("Route: Nod -> Brana"));

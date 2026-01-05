@@ -169,10 +169,12 @@ The routing subcommands accept several flags that map directly to the library's 
   overheat). Gate jumps are unaffected by temperature. Systems without temperature data are treated
   as safe.
 - `--avoid-critical-state` — when used **with** `--ship`, instructs the planner to avoid spatial hops whose instantaneous temperature (ambient + hop delta-T) would reach or exceed the canonical `HEAT_CRITICAL` threshold (150.0 units). This flag is conservative and **requires** `--ship` to be present; using it without a ship will error. It is useful for pilots who want routes that avoid risking critical engine heat during any single jump.
+ - `--avoid-critical-state` — conservative heat-aware planning. This behavior is **enabled by default** when a ship is present, and you can opt out using `--no-avoid-critical-state` (CLI) or `avoid_critical_state=false` (API). When explicitly provided (`--avoid-critical-state`) the CLI will require `--ship` and will error if a ship is not supplied; when omitted the planner will only apply heat-aware avoidance if a ship is available or defaults are in use.
 
-- `--max-spatial-neighbours <N>` — tune the spatial graph fan-out (default: `0`, meaning unlimited). Increasing this allows the planner to consider more long-range spatial links (may increase runtime and memory use); setting `0` disables truncation and considers all spatial neighbours.
+ - `--max-spatial-neighbours <N>` — tune the spatial graph fan-out (default: `250`). Increasing this allows the planner to consider more long-range spatial links (may increase runtime and memory use); set to `0` for no truncation (unlimited neighbours) if you explicitly want that behaviour.
 
 - `--optimize <distance|fuel>` — select the optimization target for weighted planners (`dijkstra`, `a-star`). `distance` selects shortest-distance routing; `fuel` selects routes that minimize estimated fuel consumption. Note: `--optimize fuel` **requires** `--ship` (and appropriate `--fuel-quality`, `--cargo-mass`, and `--dynamic-mass` flags when desired). If `--ship` is omitted the CLI will warn and fall back to distance optimization.
+ - `--optimize <distance|fuel>` — select the optimization target for weighted planners (`dijkstra`, `a-star`). `distance` selects shortest-distance routing; `fuel` selects routes that minimize estimated fuel consumption. Note: `--optimize fuel` **requires** `--ship` (and appropriate `--fuel-quality`, `--cargo-mass`, and `--dynamic-mass` flags when desired). If `--ship` is omitted the CLI will warn and fall back to distance optimization. The CLI default optimization is now **fuel** to provide more fuel-efficient out-of-the-box routes.
 
 ### Example: avoid critical heat hops (requires `--ship`)
 
@@ -738,6 +740,10 @@ Route from Nod to Brana (3 jumps):
   Via Gates:       262ly
   Via Jumps:       110ly
 ```
+
+An additional footer line shows the **parameters applied** to the routing algorithm in a human-friendly form. Example:
+
+- Parameters: Algorithm: a-star • Optimize: Fuel • Ship: Reflex • Fuel quality: 10% • Avoid critical state: Yes • Max spatial neighbors: 250 • Avoid gates: No
 
 > Black hole systems (IDs 30000001–30000003) display a “Black Hole” badge on the status line.
 

@@ -218,18 +218,21 @@ struct RouteOptionsArgs {
     dynamic_mass: bool,
 
     /// Avoid hops that would cause engine to reach critical heat state (requires --ship)
+    /// This behavior is enabled by default; use `--no-avoid-critical-state` to opt out.
     #[arg(long = "avoid-critical-state", action = ArgAction::SetTrue)]
     avoid_critical_state: bool,
 
+    /// Disable the default avoidance of critical engine state (opt-out flag).
+    #[arg(long = "no-avoid-critical-state", action = ArgAction::SetTrue)]
+    no_avoid_critical_state: bool,
+
     /// Maximum number of spatial neighbours to consider when building the spatial/hybrid graph.
-    /// Defaults to 0 (unlimited). When set to `0` the planner will not truncate neighbours and
-    /// will consider all spatial neighbours for each system; set to a positive value to limit
-    /// fan-out and reduce planning time/memory.
-    #[arg(long = "max-spatial-neighbours", default_value_t = 0usize)]
+    /// Defaults to 250 to limit fan-out for common runs and improve performance.
+    #[arg(long = "max-spatial-neighbours", default_value_t = 250usize)]
     max_spatial_neighbours: usize,
 
     /// Optimization objective for planning: distance or fuel.
-    #[arg(long = "optimize", value_enum, default_value = "distance")]
+    #[arg(long = "optimize", value_enum, default_value = "fuel")]
     optimize: RouteOptimizeArg,
 }
 
@@ -805,19 +808,64 @@ fn handle_route_command(
         request = request.with_spatial_index(index);
     }
 
-    // If the user requested heat-aware planning or provided a ship, load ship data and populate
-    // the request constraints so pathfinding can evaluate heat-based restrictions. We load the
-    // ship when either flag is present because a provided `--ship` is also used for fuel
-    // projection output even when `--avoid-critical-state` is not set.
-    if args.options.avoid_critical_state || args.options.ship.is_some() {
+    // Respect explicit request semantics:
+    // - If user explicitly requested heat-aware planning (`--avoid-critical-state`) they must
+    //   also provide `--ship`. This preserves the historical behavior and avoids surprising
+    //   automatic ship injection when the user explicitly opted into heat checks.
+    if args.options.avoid_critical_state && args.options.ship.is_none() {
+        return Err(anyhow::anyhow!(
+            "--ship is required for heat-aware planning"
+        ));
+    }
+
+    // Determine whether the user provided any route-specific options; if not, we're in
+    // a zero-config invocation and may apply friendly defaults (like default ship).
+    let user_provided_options = args.options.max_jump.is_some()
+        || !args.options.avoid.is_empty()
+        || args.options.avoid_gates
+        || args.options.max_temp.is_some()
+        || args.options.ship.is_some()
+        || (args.options.fuel_quality - 10.0).abs() > f64::EPSILON
+        || args.options.cargo_mass != 0.0
+        || args.options.fuel_load.is_some()
+        || args.options.dynamic_mass
+        || args.options.no_avoid_critical_state
+        || args.options.avoid_critical_state
+        || args.options.max_spatial_neighbours != 250usize;
+
+    // Determine the effective ship name (support 'None' to explicitly disable ship-based planning).
+    // Only inject a default ship when the user did not provide other routing options (zero-config case).
+    let effective_ship_name: Option<String> = match args.options.ship.as_deref() {
+        Some(s) if s.eq_ignore_ascii_case("none") => None,
+        Some(s) => Some(s.to_string()),
+        None => {
+            if user_provided_options {
+                None
+            } else {
+                Some("Reflex".to_string())
+            }
+        }
+    };
+
+    // Determine whether we should avoid critical engine state for this request.
+    // Priority: explicit opt-out (--no-avoid-critical-state) > explicit opt-in (--avoid-critical-state) > implicit when a ship is available
+    let avoid_critical = if args.options.no_avoid_critical_state {
+        false
+    } else if args.options.avoid_critical_state {
+        true
+    } else {
+        // If a ship is available (explicit or default), enable avoid_critical_state behavior implicitly
+        effective_ship_name.is_some()
+    };
+
+    request.constraints.avoid_critical_state = avoid_critical;
+
+    // Load ship data and populate loadout if we have an effective ship name (and it's not "None").
+    if let Some(ship_name) = effective_ship_name {
+        // If the user passed --ship "None" we would have resolved to None above.
         let catalog = load_ship_catalog(&paths)?;
-        let ship_name = args
-            .options
-            .ship
-            .as_ref()
-            .ok_or_else(|| anyhow::anyhow!("--ship is required for heat-aware planning"))?;
         let ship = catalog
-            .get(ship_name)
+            .get(&ship_name)
             .ok_or_else(|| anyhow::anyhow!(format!("ship {} not found in catalog", ship_name)))?;
 
         let fuel_load = args.options.fuel_load.unwrap_or(ship.fuel_capacity);
@@ -828,7 +876,7 @@ fn handle_route_command(
         request.constraints.loadout = Some(loadout);
 
         // Only populate heat-specific configuration when heat-aware planning is requested.
-        if args.options.avoid_critical_state {
+        if request.constraints.avoid_critical_state {
             let heat_config = evefrontier_lib::ship::HeatConfig {
                 calibration_constant: 1e-7,
                 dynamic_mass: args.options.dynamic_mass,
@@ -842,7 +890,7 @@ fn handle_route_command(
         Err(err) => return Err(handle_route_failure(&request, err)),
     };
 
-    let mut summary = RouteSummary::from_plan(kind, &starmap, &plan)
+    let mut summary = RouteSummary::from_plan(kind, &starmap, &plan, Some(&request))
         .context("failed to build route summary for display")?;
 
     // Generate fmap URL for the route using the summary steps which have method info
@@ -895,34 +943,27 @@ fn handle_route_command(
         }
     }
 
-    if let Some(ship_name) = args.options.ship.as_ref() {
-        let catalog = load_ship_catalog(&paths)?;
-        let ship = catalog
-            .get(ship_name)
-            .ok_or_else(|| anyhow::anyhow!(format!("ship '{}' not found in catalog", ship_name)))?;
-
-        let fuel_load = args.options.fuel_load.unwrap_or(ship.fuel_capacity);
-
-        let loadout = ShipLoadout::new(ship, fuel_load, args.options.cargo_mass)
-            .context("invalid ship loadout")?;
-
+    // If we have an effective ship & loadout (explicit or injected default), attach
+    // fuel and heat projections so the summary reflects those values and the footer
+    // estimation box can be rendered when appropriate.
+    if let (Some(ship), Some(loadout)) = (&request.constraints.ship, &request.constraints.loadout) {
         let fuel_config = evefrontier_lib::ship::FuelConfig {
-            quality: args.options.fuel_quality,
-            dynamic_mass: args.options.dynamic_mass,
+            quality: request.fuel_config.quality,
+            dynamic_mass: request.fuel_config.dynamic_mass,
         };
 
         summary
-            .attach_fuel(ship, &loadout, &fuel_config)
+            .attach_fuel(ship, loadout, &fuel_config)
             .context("failed to attach fuel projection")?;
-        // Attach heat projections using same dynamic_mass behaviour
+
+        // Attach heat projections using the same dynamic_mass behaviour
         let heat_config = evefrontier_lib::ship::HeatConfig {
-            // Fixed calibration constant (matches historical default used in tests and examples)
             calibration_constant: 1e-7,
-            dynamic_mass: args.options.dynamic_mass,
+            dynamic_mass: request.fuel_config.dynamic_mass,
         };
 
         summary
-            .attach_heat(ship, &loadout, &heat_config)
+            .attach_heat(ship, loadout, &heat_config)
             .context("failed to attach heat projection")?;
     }
 

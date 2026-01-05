@@ -108,17 +108,17 @@ fn handle_route_request(request: &RouteRequest, request_id: &str) -> Response {
             avoid_systems: request.avoid.clone(),
             avoid_gates: request.avoid_gates,
             max_temperature: request.max_temperature,
-            // NOTE: This Lambda currently does not expose `avoid_critical_state` and
-            // therefore performs heat-unaware planning. If we want parity with the
-            // CLI, add the field to the API, validate it, and propagate it here. See
-            // TODO: create follow-up issue if API exposure is desired.
-            avoid_critical_state: false,
+            // Expose `avoid_critical_state` via the API; default to true when omitted to
+            // mirror CLI sensible defaults.
+            avoid_critical_state: request.avoid_critical_state.unwrap_or(true),
             ship: None,
             loadout: None,
             heat_config: None,
         },
         spatial_index: Some(runtime.spatial_index_arc()),
-        max_spatial_neighbors: evefrontier_lib::GraphBuildOptions::default().max_spatial_neighbors,
+        max_spatial_neighbors: request
+            .max_spatial_neighbors
+            .unwrap_or(evefrontier_lib::GraphBuildOptions::default().max_spatial_neighbors),
         optimization: evefrontier_lib::routing::RouteOptimization::Distance,
         fuel_config: evefrontier_lib::ship::FuelConfig::default(),
     };
@@ -132,10 +132,11 @@ fn handle_route_request(request: &RouteRequest, request_id: &str) -> Response {
         }
     };
 
-    let mut summary = match RouteSummary::from_plan(RouteOutputKind::Route, starmap, &plan) {
-        Ok(summary) => summary,
-        Err(e) => return Response::Error(from_lib_error(&e, request_id)),
-    };
+    let mut summary =
+        match RouteSummary::from_plan(RouteOutputKind::Route, starmap, &plan, Some(&lib_request)) {
+            Ok(summary) => summary,
+            Err(e) => return Response::Error(from_lib_error(&e, request_id)),
+        };
 
     if let Some(ship_name) = request.ship.as_ref() {
         let ship_name_trimmed = ship_name.trim();
@@ -284,6 +285,7 @@ mod tests {
             cargo_mass: None,
             fuel_load: None,
             dynamic_mass: None,
+            avoid_critical_state: None,
             max_spatial_neighbors: None,
         };
 
@@ -314,6 +316,7 @@ mod tests {
             cargo_mass: Some(633_006.0),
             fuel_load: None,
             dynamic_mass: None,
+            avoid_critical_state: None,
             max_spatial_neighbors: None,
         };
 

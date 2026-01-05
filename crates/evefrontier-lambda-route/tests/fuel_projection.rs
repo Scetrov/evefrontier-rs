@@ -39,6 +39,7 @@ async fn returns_fuel_projection_when_ship_provided() {
         cargo_mass: Some(1000.0),
         fuel_load: Some(1750.0),
         dynamic_mass: Some(false),
+        avoid_critical_state: None,
         max_spatial_neighbors: Some(
             evefrontier_lib::GraphBuildOptions::default().max_spatial_neighbors,
         ),
@@ -73,6 +74,7 @@ async fn omits_fuel_projection_without_ship() {
         cargo_mass: None,
         fuel_load: None,
         dynamic_mass: None,
+        avoid_critical_state: None,
         max_spatial_neighbors: Some(
             evefrontier_lib::GraphBuildOptions::default().max_spatial_neighbors,
         ),
@@ -107,6 +109,7 @@ async fn rejects_unknown_ship_name() {
         cargo_mass: None,
         fuel_load: None,
         dynamic_mass: None,
+        avoid_critical_state: None,
         max_spatial_neighbors: Some(
             evefrontier_lib::GraphBuildOptions::default().max_spatial_neighbors,
         ),

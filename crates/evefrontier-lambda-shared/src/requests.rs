@@ -71,6 +71,11 @@ pub struct RouteRequest {
     #[serde(default)]
     pub dynamic_mass: Option<bool>,
 
+    /// Enable conservative avoidance of hops that would reach critical engine heat.
+    /// If omitted, defaults to `true` to mirror CLI sensible defaults.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avoid_critical_state: Option<bool>,
+
     /// Maximum number of spatial neighbors to consider (default from lib).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_spatial_neighbors: Option<usize>,
@@ -281,6 +286,7 @@ mod tests {
             cargo_mass: None,
             fuel_load: None,
             dynamic_mass: None,
+            avoid_critical_state: None,
             max_spatial_neighbors: None,
         };
         assert!(req.validate("req-123").is_ok());
@@ -301,6 +307,7 @@ mod tests {
             cargo_mass: None,
             fuel_load: None,
             dynamic_mass: None,
+            avoid_critical_state: None,
             max_spatial_neighbors: None,
         };
         let err = req.validate("req-123").unwrap_err();
@@ -323,6 +330,7 @@ mod tests {
             cargo_mass: None,
             fuel_load: None,
             dynamic_mass: None,
+            avoid_critical_state: None,
             max_spatial_neighbors: None,
         };
         let err = req.validate("req-123").unwrap_err();
@@ -402,6 +410,7 @@ mod tests {
             cargo_mass: None,
             fuel_load: None,
             dynamic_mass: None,
+            avoid_critical_state: None,
             max_spatial_neighbors: None,
         };
         assert!(req.validate("req-constraints").is_ok());
@@ -422,6 +431,7 @@ mod tests {
             cargo_mass: None,
             fuel_load: None,
             dynamic_mass: None,
+            avoid_critical_state: None,
             max_spatial_neighbors: None,
         };
         let err = req.validate("req-neg-temp").unwrap_err();
@@ -443,6 +453,7 @@ mod tests {
             cargo_mass: Some(1000.0),
             fuel_load: Some(500.0),
             dynamic_mass: Some(true),
+            avoid_critical_state: None,
             max_spatial_neighbors: None,
         };
         assert!(req.validate("req-ship").is_ok());
@@ -463,6 +474,7 @@ mod tests {
             cargo_mass: None,
             fuel_load: None,
             dynamic_mass: None,
+            avoid_critical_state: None,
             max_spatial_neighbors: None,
         };
         let err = req.validate("req-fuel-quality").unwrap_err();
