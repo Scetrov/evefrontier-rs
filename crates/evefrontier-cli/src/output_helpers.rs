@@ -470,32 +470,45 @@ pub fn build_enhanced_footer(
         p.gray, p.reset
     ));
 
+    let lw = 20; // label width
+
     // Distances
+    let l_total = "Total Distance:";
     lines.push(format!(
-        "  {}Total Distance:{}      {}{:>width$}ly{}",
+        "  {}{:<lw$}{}  {}{:>width$} ly{}",
         p.cyan,
+        l_total,
         p.reset,
         p.white_bold,
         total_str,
         p.reset,
+        lw = lw,
         width = num_width
     ));
+
+    let l_gates = "Via Gates:";
     lines.push(format!(
-        "  {}Via Gates:{}           {}{:>width$}ly{}",
+        "  {}{:<lw$}{}  {}{:>width$} ly{}",
         p.green,
+        l_gates,
         p.reset,
         p.white_bold,
         gates_str,
         p.reset,
+        lw = lw,
         width = num_width
     ));
+
+    let l_jumps = "Via Jumps:";
     lines.push(format!(
-        "  {}Via Jumps:{}           {}{:>width$}ly{}",
+        "  {}{:<lw$}{}  {}{:>width$} ly{}",
         p.orange,
+        l_jumps,
         p.reset,
         p.white_bold,
         jumps_str,
         p.reset,
+        lw = lw,
         width = num_width
     ));
 
@@ -504,36 +517,34 @@ pub fn build_enhanced_footer(
         let ship = fuel.ship_name.as_deref().unwrap_or("<unknown ship>");
         let total_str = format_with_separators(fuel.total.ceil() as u64);
         let quality_suffix = format!(" ({:.0}% Fuel)", fuel.quality);
-
-        let label = format!("Fuel ({}):", ship);
-        let padding = if 21 > label.len() + 2 {
-            " ".repeat(21 - (label.len() + 2))
-        } else {
-            " ".to_string()
-        };
+        let l_fuel = format!("Fuel ({}):", ship);
 
         lines.push(format!(
-            "  {}{}:{}{}{}{:>width$}{}{}",
+            "  {}{:<lw$}{}  {}{:>width$}{}{}",
             p.cyan,
-            label,
+            l_fuel,
             p.reset,
-            padding,
             p.white_bold,
             total_str,
             p.reset,
             quality_suffix,
+            lw = lw,
             width = num_width
         ));
 
         if let Some(rem) = fuel.remaining {
             let rem_str = format_with_separators(rem.ceil() as u64);
+            let l_rem = "Remaining:";
             lines.push(format!(
-                "  {}Remaining:{}         {}{:>width$}{}",
+                "  {}{:<lw$}{}  {}{:>width$}{}{}",
                 p.green,
+                l_rem,
                 p.reset,
                 p.white_bold,
                 rem_str,
                 p.reset,
+                "",
+                lw = lw,
                 width = num_width
             ));
         }
@@ -542,24 +553,32 @@ pub fn build_enhanced_footer(
     // Heat Section
     if let Some(heat) = &summary.heat {
         let wait_str = format_cooldown_duration(heat.total_wait_time_seconds);
+        let l_wait = "Total Wait:";
         lines.push(format!(
-            "  {}Total Wait:{}        {}{:>width$}{}",
+            "  {}{:<lw$}{}  {}{:>width$}{}{}",
             p.cyan,
+            l_wait,
             p.reset,
             p.white_bold,
             wait_str,
             p.reset,
+            "",
+            lw = lw,
             width = num_width
         ));
 
         let final_heat_str = format!("{:.2}", heat.final_residual_heat);
+        let l_heat = "Final Heat:";
         lines.push(format!(
-            "  {}Final Heat:{}        {}{:>width$}{}",
+            "  {}{:<lw$}{}  {}{:>width$}{}{}",
             p.red,
+            l_heat,
             p.reset,
             p.white_bold,
             final_heat_str,
             p.reset,
+            "",
+            lw = lw,
             width = num_width
         ));
     }
