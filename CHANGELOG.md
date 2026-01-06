@@ -19,6 +19,7 @@ All notable changes to this project will be documented in this file.
     an internal reqwest runtime from inside an async context.
   - Add: show an estimation warning box in route footers when fuel or heat values are present
     to indicate values are approximate and may deviate by ±10%.
+  - UX: Removed redundant comma between warning tags (e.g., `OVERHEATED`, `REFUEL`) and their respective value segments in enhanced output.
 
 ### Changed
 
@@ -26,6 +27,7 @@ All notable changes to this project will be documented in this file.
   - Default route optimization changed from `Fuel` to `Distance`. The `Fuel` optimization (and ship injection) now strictly only occurs in "zero-config" runs (where no custom constraints like `--max-jump` are provided) to prevent misleading warnings when a ship is missing.
 - **Library** (`evefrontier-lib`)
   - Fuel projections no longer consume fuel on gate hops; gate steps report zero fuel cost
+  - Cooldown time estimates are now suppressed for steps immediately preceding a gate jump, as gates are heat-agnostic and do not require cooling to operate.
   - Fix: avoid parsing checksum sidecar files (e.g., `*.sha256`) as ship CSVs. The downloader cache
     discovery now prefers `*_ship_data.csv` files and `ShipCatalog::from_path` resolves an adjacent
     `.csv` when given a `.sha256` sidecar.

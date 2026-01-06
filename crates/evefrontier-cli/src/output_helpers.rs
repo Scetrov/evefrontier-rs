@@ -315,11 +315,19 @@ pub(crate) fn build_fuel_segment(
                 None
             };
 
-            if let Some(rem) = fuel_rem_seg {
-                Some(format!("{} {}", fuel_cost_seg, rem))
+            let mut res = if let Some(rem) = fuel_rem_seg {
+                format!("{} {}", fuel_cost_seg, rem)
             } else {
-                Some(fuel_cost_seg)
+                fuel_cost_seg
+            };
+
+            if let Some(w) = &f.warning {
+                if w == "REFUEL" {
+                    res.push_str(&format!(" {} REFUEL {}", palette.tag_refuel, palette.reset));
+                }
             }
+
+            Some(res)
         } else {
             Some(format!(
                 "     {:>width$}",
@@ -373,11 +381,31 @@ pub(crate) fn build_heat_segment(
                 None
             };
 
-            if let Some(cd) = cooldown_part {
-                Some(format!("{}{}", heat_part, cd))
+            let mut res = if let Some(cd) = cooldown_part {
+                format!("{}{}", heat_part, cd)
             } else {
-                Some(heat_part)
+                heat_part
+            };
+
+            if let Some(w) = &h.warning {
+                let styled_w = match w.trim() {
+                    "OVERHEATED" => {
+                        format!(
+                            " {} {} {}",
+                            palette.label_overheated,
+                            w.trim(),
+                            palette.reset
+                        )
+                    }
+                    "CRITICAL" => {
+                        format!(" {} {} {}", palette.label_critical, w.trim(), palette.reset)
+                    }
+                    other => format!(" {} ", other),
+                };
+                res.push_str(&styled_w);
             }
+
+            Some(res)
         } else {
             let mut padding = 6 + widths.heat_val_width;
             if widths.cooldown_val_width > 0 {
@@ -387,38 +415,6 @@ pub(crate) fn build_heat_segment(
         }
     } else {
         None
-    }
-}
-
-/// Build the tags segment for heat/fuel warnings if present.
-pub(crate) fn build_tags_segment(step: &RouteStep, palette: &ColorPalette) -> Option<String> {
-    let mut tags = Vec::new();
-    if let Some(h) = step.heat.as_ref() {
-        if let Some(w) = &h.warning {
-            let styled_w = match w.trim() {
-                "OVERHEATED" => format!(
-                    "{} {} {}",
-                    palette.label_overheated,
-                    w.trim(),
-                    palette.reset
-                ),
-                "CRITICAL" => format!("{} {} {}", palette.label_critical, w.trim(), palette.reset),
-                other => format!(" {} ", other),
-            };
-            tags.push(styled_w);
-        }
-    }
-    if let Some(f) = step.fuel.as_ref() {
-        if let Some(w) = &f.warning {
-            if w == "REFUEL" {
-                tags.push(format!("{} REFUEL {}", palette.tag_refuel, palette.reset));
-            }
-        }
-    }
-    if tags.is_empty() {
-        None
-    } else {
-        Some(tags.join("  "))
     }
 }
 
@@ -794,7 +790,7 @@ mod tests {
     }
 
     #[test]
-    fn build_tags_segment_overheated_and_refuel() {
+    fn build_segments_include_warning_tags() {
         let p = ColorPalette::plain();
         let step = RouteStep {
             index: 2,
@@ -820,9 +816,17 @@ mod tests {
             }),
         };
 
-        let s = build_tags_segment(&step, &p).expect("tags");
-        assert!(s.contains("OVERHEATED"));
-        assert!(s.contains("REFUEL"));
+        let widths = ColumnWidths {
+            fuel_val_width: 5,
+            heat_val_width: 5,
+            ..Default::default()
+        };
+
+        let f = build_fuel_segment(&step, &widths, &p).expect("fuel seg");
+        assert!(f.contains("REFUEL"));
+
+        let h = build_heat_segment(&step, &widths, &p).expect("heat seg");
+        assert!(h.contains("OVERHEATED"));
     }
 
     #[test]

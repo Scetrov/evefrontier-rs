@@ -156,3 +156,69 @@ fn attach_heat_reflex_route() {
         expected_total
     );
 }
+
+#[test]
+fn attach_heat_suppresses_cooldown_before_gate() {
+    let ship = evefrontier_lib::ShipAttributes {
+        name: "GateSuppressionShip".to_string(),
+        base_mass_kg: 1e6,
+        specific_heat: 1.0,
+        fuel_capacity: 1000.0,
+        cargo_capacity: 0.0,
+    };
+    let loadout = evefrontier_lib::ShipLoadout::new(&ship, 1000.0, 0.0).expect("loadout ok");
+    let config = HeatConfig {
+        calibration_constant: 1000.0,
+        dynamic_mass: false,
+    };
+
+    let mut summary = RouteSummary {
+        kind: RouteOutputKind::Route,
+        algorithm: RouteAlgorithm::Dijkstra,
+        hops: 2,
+        gates: 1,
+        jumps: 1,
+        total_distance: 50.0,
+        jump_distance: 40.0,
+        start: RouteEndpoint {
+            id: 1,
+            name: Some("Start".to_string()),
+        },
+        goal: RouteEndpoint {
+            id: 3,
+            name: Some("Goal".to_string()),
+        },
+        parameters: None,
+        steps: vec![
+            RouteStepBuilder::new().index(0).id(1).name("Start").build(),
+            RouteStepBuilder::new()
+                .index(1)
+                .id(2)
+                .name("Sys2")
+                .distance(40.0)
+                .method("jump")
+                .build(),
+            RouteStepBuilder::new()
+                .index(2)
+                .id(3)
+                .name("Goal")
+                .distance(10.0)
+                .method("gate")
+                .build(),
+        ],
+        fuel: None,
+        heat: None,
+        fmap_url: None,
+    };
+
+    summary
+        .attach_heat(&ship, &loadout, &config)
+        .expect("attach heat");
+
+    let s1 = summary.steps[1].heat.as_ref().expect("step 1 heat");
+    assert!(s1.hop_heat > 0.0);
+    assert!(
+        s1.wait_time_seconds.is_none(),
+        "expected no cooldown before a gate jump"
+    );
+}
