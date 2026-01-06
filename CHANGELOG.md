@@ -17,17 +17,21 @@ All notable changes to this project will be documented in this file.
   - Fixed panic when running dataset download under the CLI's Tokio runtime by running blocking
     dataset operations in a blocking region (`tokio::task::block_in_place`). This prevents dropping
     an internal reqwest runtime from inside an async context.
-  - Add: show an estimation warning box in route footers when fuel or heat values are present
-    to indicate values are approximate and may deviate by ±10%.
-  - UX: Removed redundant comma between warning tags (e.g., `OVERHEATED`, `REFUEL`) and their respective value segments in enhanced output.
+  - Add: show an estimation warning box in route footers when fuel or heat values are present to
+    indicate values are approximate and may deviate by ±10%.
+  - UX: Removed redundant comma between warning tags (e.g., `OVERHEATED`, `REFUEL`) and their
+    respective value segments in enhanced output.
 
 ### Changed
 
 - **CLI** (`evefrontier-cli`)
-  - Default route optimization changed from `Fuel` to `Distance`. The `Fuel` optimization (and ship injection) now strictly only occurs in "zero-config" runs (where no custom constraints like `--max-jump` are provided) to prevent misleading warnings when a ship is missing.
+  - Default route optimization changed from `Fuel` to `Distance`. The `Fuel` optimization (and ship
+    injection) now strictly only occurs in "zero-config" runs (where no custom constraints like
+    `--max-jump` are provided) to prevent misleading warnings when a ship is missing.
 - **Library** (`evefrontier-lib`)
   - Fuel projections no longer consume fuel on gate hops; gate steps report zero fuel cost
-  - Cooldown time estimates are now suppressed for steps immediately preceding a gate jump, as gates are heat-agnostic and do not require cooling to operate.
+  - Cooldown time estimates are now suppressed for steps immediately preceding a gate jump, as gates
+    are heat-agnostic and do not require cooling to operate.
   - Fix: avoid parsing checksum sidecar files (e.g., `*.sha256`) as ship CSVs. The downloader cache
     discovery now prefers `*_ship_data.csv` files and `ShipCatalog::from_path` resolves an adjacent
     `.csv` when given a `.sha256` sidecar.
@@ -41,17 +45,20 @@ All notable changes to this project will be documented in this file.
 
 - **Library** (`evefrontier-lib`)
   - Newton's Law of Cooling implementation for realistic cooldown time estimation.
-  - Non-cumulative thermal model: ships are assumed to cool to a jump-ready state (nominal 30.0K or ambient) between hops, avoiding artificial heat buildup across long routes.
+  - Non-cumulative thermal model: ships are assumed to cool to a jump-ready state (nominal 30.0K or
+    ambient) between hops, avoiding artificial heat buildup across long routes.
   - Added `calculate_cooling_time` and `compute_cooling_constant` to `ship.rs`.
 - **CLI** (`evefrontier-cli`)
   - Cooldown time indicator in enhanced route output (e.g., `(2m4s to cool)`).
   - Show per-hop heat and cooldowns based on realistic exponential decay.
-  - Wait times are only displayed for intermediate hops; the goal step displays the arrival heat but omits the cooldown duration redundant for a destination.
+  - Wait times are only displayed for intermediate hops; the goal step displays the arrival heat but
+    omits the cooldown duration redundant for a destination.
     - `ShipAttributes`, `ShipLoadout`, and `ShipCatalog` structs for ship management
     - Fuel cost calculator: `calculate_jump_fuel_cost()` with mass and distance-based formula
     - Add: `calculate_maximum_distance()` helper to compute maximum range from fuel load and quality
     - Docs: Add Rust doc comments for fuel APIs and clarify units/quality scaling
-    - Tests: Add precise unit tests for `calculate_jump_fuel_cost()` and `calculate_maximum_distance()`
+    - Tests: Add precise unit tests for `calculate_jump_fuel_cost()` and
+      `calculate_maximum_distance()`
     - Route fuel projection: `calculate_route_fuel()` with static and dynamic mass modes
     - CLI flags: `--ship`, `--fuel-quality`, `--cargo-mass`, `--dynamic-mass` for route command
     - CLI convenience flag: `--list-ships` to display available ships from catalog
@@ -60,44 +67,43 @@ All notable changes to this project will be documented in this file.
     - Enhanced output mode displays fuel consumption per hop and total fuel required
     - Lambda support: Extended RouteRequest/RouteSummary with optional fuel projection fields
 - **CLI** (`evefrontier-cli`)
-  - Add `--avoid-critical-state` flag to `route` to conservatively avoid single spatial hops
-    that would reach the canonical `CRITICAL` heat threshold; requires `--ship` and is
-    documented in `docs/USAGE.md` and `docs/HEAT_MECHANICS.md`.
+  - Add `--avoid-critical-state` flag to `route` to conservatively avoid single spatial hops that
+    would reach the canonical `CRITICAL` heat threshold; requires `--ship` and is documented in
+    `docs/USAGE.md` and `docs/HEAT_MECHANICS.md`.
     - Dynamic mass recalculation mode where fuel weight decreases after each jump
     - 8 integration tests for ship catalog parsing, fuel calculation, and route aggregation
     - 3 specification tests for future ship data downloader features
     - Documentation in `docs/USAGE.md` with fuel calculation examples and formula reference
   - **Heat mechanics** (Library, CLI & Lambda)
-      - Add `calculate_jump_heat()` and `HeatConfig` to `evefrontier-lib` for per-hop heat
-        calculation
-      - Add `HeatProjection` and `HeatSummary` types, included in CLI and Lambda outputs when a ship
-        is provided
-      - CLI: `route` command renders per-hop heat and route heat summary (enhanced and JSON formats)
-      - Lambda: `route` handler attaches heat projections when `ship` is included in the request
-      - Thresholds: warnings now use canonical absolute heat thresholds (Nominal=30.0 units,
-        Overheated=90.0 units, Critical=150.0 units); per-ship `max_heat_tolerance` is no longer
-        used or inferred from ship data
-      - Tests: unit tests for formula, integration tests for per-hop and summary projections,
-        CLI/Lambda integration tests
-      - Documentation: `docs/USAGE.md` updated with heat quickstart examples and `docs/adrs/0015`
-        augmented with implementation details
-        - CLI: the `--heat-calibration` flag is not exposed to users; calibration is fixed to
-          `1e-7` and not user-configurable. The previously-added `--cooling-mode` flag has been
-          removed as it introduced unnecessary complexity; the library defaults to a conservative
-          zone-based dissipation model.
-        - Display & API changes: per-hop heat is shown in the CLI (two decimals) and very small non‑zero
-          values are rendered as `"<0.01"` to avoid misleading `0.00` readings. The bracketed
-          cumulative per-step heat value was removed from the CLI display; residual/wait information is
-          still available in the JSON/Lambda response objects.
-        - Lambda & schema: `RouteRequest` no longer accepts `heat_calibration`; calibration is fixed
-          server-side to `1e-7` and cannot be overridden by clients. Fuel projection fields in Lambda
-          responses are expressed as integers (e.g. `hop_cost`, `cumulative`, `remaining`, `total`) to
-          maintain a stable, simple contract for API consumers. The JSON contract/specs have been
-          updated accordingly.
-        - Fuel rounding: fuel values are converted to integer units using **ceiling** (always round up).
-          Tests and the JSON schema were updated to reflect this policy.
-        - Tests: added in-game example tests (Reflex out/return and O1J-P35→UD6-P25) that validate
-          the calibration and heat calculations
+    - Add `calculate_jump_heat()` and `HeatConfig` to `evefrontier-lib` for per-hop heat calculation
+    - Add `HeatProjection` and `HeatSummary` types, included in CLI and Lambda outputs when a ship
+      is provided
+    - CLI: `route` command renders per-hop heat and route heat summary (enhanced and JSON formats)
+    - Lambda: `route` handler attaches heat projections when `ship` is included in the request
+    - Thresholds: warnings now use canonical absolute heat thresholds (Nominal=30.0 units,
+      Overheated=90.0 units, Critical=150.0 units); per-ship `max_heat_tolerance` is no longer used
+      or inferred from ship data
+    - Tests: unit tests for formula, integration tests for per-hop and summary projections,
+      CLI/Lambda integration tests
+    - Documentation: `docs/USAGE.md` updated with heat quickstart examples and `docs/adrs/0015`
+      augmented with implementation details
+      - CLI: the `--heat-calibration` flag is not exposed to users; calibration is fixed to `1e-7`
+        and not user-configurable. The previously-added `--cooling-mode` flag has been removed as it
+        introduced unnecessary complexity; the library defaults to a conservative zone-based
+        dissipation model.
+      - Display & API changes: per-hop heat is shown in the CLI (two decimals) and very small
+        non‑zero values are rendered as `"<0.01"` to avoid misleading `0.00` readings. The bracketed
+        cumulative per-step heat value was removed from the CLI display; residual/wait information
+        is still available in the JSON/Lambda response objects.
+      - Lambda & schema: `RouteRequest` no longer accepts `heat_calibration`; calibration is fixed
+        server-side to `1e-7` and cannot be overridden by clients. Fuel projection fields in Lambda
+        responses are expressed as integers (e.g. `hop_cost`, `cumulative`, `remaining`, `total`) to
+        maintain a stable, simple contract for API consumers. The JSON contract/specs have been
+        updated accordingly.
+      - Fuel rounding: fuel values are converted to integer units using **ceiling** (always round
+        up). Tests and the JSON schema were updated to reflect this policy.
+      - Tests: added in-game example tests (Reflex out/return and O1J-P35→UD6-P25) that validate the
+        calibration and heat calculations
 
   - **Lambda Bundling & Ship Data**
     - Add support for bundling `ship_data.csv` into Lambda artifacts (feature: `bundle-ship-data`)
@@ -204,14 +210,18 @@ All notable changes to this project will be documented in this file.
 - Fix temperature calculation bugs and formula accuracy
 - Fix JSON output format pollution from tracing logs
 - Fix race condition in dataset download tests
-- Updated `RouteRequest` to include `avoid_critical_state` as a boolean with a default of `true`, matching CLI behavior.
-  - Aligned `fuel_quality` and `cargo_mass` defaults in Lambda with CLI and library expectations to prevent "Reflex" ship data requirement when not explicitly requested.
+- Updated `RouteRequest` to include `avoid_critical_state` as a boolean with a default of `true`,
+  matching CLI behavior.
+  - Aligned `fuel_quality` and `cargo_mass` defaults in Lambda with CLI and library expectations to
+    prevent "Reflex" ship data requirement when not explicitly requested.
 - **CLI** (`evefrontier-cli`)
-  - Resolved crash when `ship_data.csv` was missing from local dataset by implementing a fallback mechanism to the "Reflex" ship.
+  - Resolved crash when `ship_data.csv` was missing from local dataset by implementing a fallback
+    mechanism to the "Reflex" ship.
   - Aligned fuel quality defaults with Lambda and core library expectations.
   - Fixed logic redundancy in documentation comments.
 - **Library** (`evefrontier-lib`)
-  - Expanded `ShipCatalog` to handle "Reflex" as a fallback ship when the dataset is missing `ship_data.csv`.
+  - Expanded `ShipCatalog` to handle "Reflex" as a fallback ship when the dataset is missing
+    `ship_data.csv`.
 
 ### Known Issues
 

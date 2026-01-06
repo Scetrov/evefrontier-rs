@@ -323,7 +323,7 @@ pub(crate) fn build_fuel_segment(
 
             if let Some(w) = &f.warning {
                 if w == "REFUEL" {
-                    res.push_str(&format!(" {} REFUEL {}", palette.tag_refuel, palette.reset));
+                    res.push_str(&format!(" {}{}{}", palette.tag_refuel, w, palette.reset));
                 }
             }
 
@@ -381,28 +381,23 @@ pub(crate) fn build_heat_segment(
                 None
             };
 
-            let mut res = if let Some(cd) = cooldown_part {
-                format!("{}{}", heat_part, cd)
-            } else {
-                heat_part
-            };
+            let mut res = heat_part;
 
             if let Some(w) = &h.warning {
                 let styled_w = match w.trim() {
                     "OVERHEATED" => {
-                        format!(
-                            " {} {} {}",
-                            palette.label_overheated,
-                            w.trim(),
-                            palette.reset
-                        )
+                        format!(" {}{}{}", palette.label_overheated, w.trim(), palette.reset)
                     }
                     "CRITICAL" => {
-                        format!(" {} {} {}", palette.label_critical, w.trim(), palette.reset)
+                        format!(" {}{}{}", palette.label_critical, w.trim(), palette.reset)
                     }
                     other => format!(" {} ", other),
                 };
                 res.push_str(&styled_w);
+            }
+
+            if let Some(cd) = cooldown_part {
+                res.push_str(&cd);
             }
 
             Some(res)
@@ -827,6 +822,42 @@ mod tests {
 
         let h = build_heat_segment(&step, &widths, &p).expect("heat seg");
         assert!(h.contains("OVERHEATED"));
+        // Tag should now come BEFORE the result of any padding or cooldown part
+        // (though in this test wait_time is None)
+    }
+
+    #[test]
+    fn build_heat_segment_alignment() {
+        let p = ColorPalette::plain();
+        let step = RouteStep {
+            index: 2,
+            id: 42,
+            name: None,
+            distance: None,
+            method: None,
+            min_external_temp: None,
+            planet_count: None,
+            moon_count: None,
+            fuel: None,
+            heat: Some(evefrontier_lib::ship::HeatProjection {
+                hop_heat: 100.0,
+                warning: Some("OVERHEATED".to_string()),
+                wait_time_seconds: Some(60.0),
+                residual_heat: None,
+                can_proceed: true,
+            }),
+        };
+
+        let widths = ColumnWidths {
+            heat_val_width: 6,     // "100.00"
+            cooldown_val_width: 4, // "1m0s"
+            ..Default::default()
+        };
+
+        let s = build_heat_segment(&step, &widths, &p).expect("heat seg");
+        let s_clean = strip_ansi_to_string(&s);
+        // Desired: "heat 100.00 OVERHEATED (1m0s to cool)" (with spaces)
+        assert!(s_clean.contains("OVERHEATED (1m0s to cool)"));
     }
 
     #[test]
