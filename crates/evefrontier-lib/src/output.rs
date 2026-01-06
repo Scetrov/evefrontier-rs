@@ -140,6 +140,8 @@ impl RouteSummary {
         let remaining_fuel = loadout.fuel_load;
 
         let mut warnings = Vec::new();
+        let mut total_wait_time_seconds = 0.0;
+        let mut last_residual = crate::ship::HEAT_NOMINAL;
 
         for idx in 1..self.steps.len() {
             let method = self.steps[idx].method.as_deref();
@@ -157,6 +159,7 @@ impl RouteSummary {
                 if let Some(step) = self.steps.get_mut(idx) {
                     step.heat = Some(projection);
                 }
+                last_residual = crate::ship::HEAT_NOMINAL;
 
                 continue;
             }
@@ -237,6 +240,7 @@ impl RouteSummary {
                     let wait = crate::ship::calculate_cooling_time(candidate, target, env_temp, k);
                     if wait > 0.0 {
                         wait_time = Some(wait);
+                        total_wait_time_seconds += wait;
                         // After waiting, we are at the target temperature (floor).
                         residual = target.max(env_temp);
                     }
@@ -277,9 +281,14 @@ impl RouteSummary {
             if let Some(step) = self.steps.get_mut(idx) {
                 step.heat = Some(projection);
             }
+            last_residual = residual;
         }
 
-        self.heat = Some(crate::ship::HeatSummary { warnings });
+        self.heat = Some(crate::ship::HeatSummary {
+            total_wait_time_seconds,
+            final_residual_heat: last_residual,
+            warnings,
+        });
 
         Ok(())
     }

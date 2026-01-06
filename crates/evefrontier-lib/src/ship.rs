@@ -472,7 +472,11 @@ pub struct HeatProjection {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct HeatSummary {
-    // No cumulative total is exposed; per-step residuals and warnings describe thermal risk.
+    /// Total time spent cooling between hops (seconds).
+    pub total_wait_time_seconds: f64,
+    /// Final residual heat at the destination after any cooling at the point of arrival.
+    pub final_residual_heat: f64,
+    /// Warnings collected across all steps of the route.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub warnings: Vec<String>,
 }

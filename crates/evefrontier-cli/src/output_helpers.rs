@@ -323,7 +323,7 @@ pub(crate) fn build_fuel_segment(
 
             if let Some(w) = &f.warning {
                 if w == "REFUEL" {
-                    res.push_str(&format!(" {}{}{}", palette.tag_refuel, w, palette.reset));
+                    res.push_str(&format!(" {} {} {}", palette.tag_refuel, w, palette.reset));
                 }
             }
 
@@ -355,7 +355,7 @@ pub(crate) fn build_heat_segment(
             } else {
                 "0.00".to_string()
             };
-            let heat_part = format!(
+            let mut res = format!(
                 "{}heat {:>width$}{}",
                 palette.red,
                 heat_str,
@@ -363,48 +363,48 @@ pub(crate) fn build_heat_segment(
                 width = widths.heat_val_width
             );
 
-            let cooldown_part = if widths.cooldown_val_width > 0 {
+            // Tag Column: Pad to 13 chars total (1 space before + 12-char badge)
+            if let Some(w) = &h.warning {
+                let label_style = if w.trim() == "CRITICAL" {
+                    palette.label_critical
+                } else {
+                    palette.label_overheated
+                };
+                let badge = format!(" {} ", w.trim());
+                let padded_badge = format!("{:^12}", badge);
+                res.push_str(&format!(
+                    " {}{}{}",
+                    label_style, padded_badge, palette.reset
+                ));
+            } else {
+                res.push_str(&" ".repeat(13));
+            }
+
+            // Cooldown Column
+            if widths.cooldown_val_width > 0 {
                 if let Some(wait) = h.wait_time_seconds {
                     if wait > 0.5 {
                         let cd_str = format_cooldown_duration(wait);
-                        Some(format!(
-                            " {}({} to cool){}",
-                            palette.gray, cd_str, palette.reset
-                        ))
+                        res.push_str(&format!(
+                            " {}({:>width$} to cool){}",
+                            palette.gray,
+                            cd_str,
+                            palette.reset,
+                            width = widths.cooldown_val_width
+                        ));
                     } else {
-                        Some(" ".repeat(11 + widths.cooldown_val_width))
+                        res.push_str(&" ".repeat(12 + widths.cooldown_val_width));
                     }
                 } else {
-                    Some(" ".repeat(11 + widths.cooldown_val_width))
+                    res.push_str(&" ".repeat(12 + widths.cooldown_val_width));
                 }
-            } else {
-                None
-            };
-
-            let mut res = heat_part;
-
-            if let Some(w) = &h.warning {
-                let styled_w = match w.trim() {
-                    "OVERHEATED" => {
-                        format!(" {}{}{}", palette.label_overheated, w.trim(), palette.reset)
-                    }
-                    "CRITICAL" => {
-                        format!(" {}{}{}", palette.label_critical, w.trim(), palette.reset)
-                    }
-                    other => format!(" {} ", other),
-                };
-                res.push_str(&styled_w);
-            }
-
-            if let Some(cd) = cooldown_part {
-                res.push_str(&cd);
             }
 
             Some(res)
         } else {
-            let mut padding = 6 + widths.heat_val_width;
+            let mut padding = 5 + widths.heat_val_width + 13;
             if widths.cooldown_val_width > 0 {
-                padding += 11 + widths.cooldown_val_width;
+                padding += 12 + widths.cooldown_val_width;
             }
             Some(" ".repeat(padding))
         }
@@ -451,61 +451,73 @@ pub fn build_enhanced_footer(
     let gates_str = format_with_separators(gate_distance as u64);
     let jumps_str = format_with_separators(summary.jump_distance as u64);
 
-    // Find max width for right-alignment
-    let max_width = total_str.len().max(gates_str.len()).max(jumps_str.len());
+    let mut num_width = total_str.len().max(gates_str.len()).max(jumps_str.len());
+
+    if let Some(fuel) = &summary.fuel {
+        num_width = num_width.max(format_with_separators(fuel.total.ceil() as u64).len());
+        if let Some(rem) = fuel.remaining {
+            num_width = num_width.max(format_with_separators(rem.ceil() as u64).len());
+        }
+    }
+
+    if let Some(heat) = &summary.heat {
+        num_width = num_width.max(format_cooldown_duration(heat.total_wait_time_seconds).len());
+    }
 
     let mut lines: Vec<String> = Vec::new();
     lines.push(format!(
         "{}───────────────────────────────────────{}",
         p.gray, p.reset
     ));
+
+    // Distances
     lines.push(format!(
-        "  {}Total Distance:{}  {}{:>width$}ly{}",
+        "  {}Total Distance:{}      {}{:>width$}ly{}",
         p.cyan,
         p.reset,
         p.white_bold,
         total_str,
         p.reset,
-        width = max_width
+        width = num_width
     ));
     lines.push(format!(
-        "  {}Via Gates:{}       {}{:>width$}ly{}",
+        "  {}Via Gates:{}           {}{:>width$}ly{}",
         p.green,
         p.reset,
         p.white_bold,
         gates_str,
         p.reset,
-        width = max_width
+        width = num_width
     ));
     lines.push(format!(
-        "  {}Via Jumps:{}       {}{:>width$}ly{}",
+        "  {}Via Jumps:{}           {}{:>width$}ly{}",
         p.orange,
         p.reset,
         p.white_bold,
         jumps_str,
         p.reset,
-        width = max_width
+        width = num_width
     ));
 
+    // Fuel Section
     if let Some(fuel) = &summary.fuel {
         let ship = fuel.ship_name.as_deref().unwrap_or("<unknown ship>");
         let total_str = format_with_separators(fuel.total.ceil() as u64);
         let quality_suffix = format!(" ({:.0}% Fuel)", fuel.quality);
 
-        let mut num_width = max_width;
-        num_width = num_width.max(total_str.len());
-        let remaining_str_opt = fuel
-            .remaining
-            .map(|r| format_with_separators(r.ceil() as u64));
-        if let Some(ref rem) = remaining_str_opt {
-            num_width = num_width.max(rem.len());
-        }
+        let label = format!("Fuel ({}):", ship);
+        let padding = if 21 > label.len() + 2 {
+            " ".repeat(21 - (label.len() + 2))
+        } else {
+            " ".to_string()
+        };
 
         lines.push(format!(
-            "  {}Fuel ({}):{}   {}{:>width$}{}{}",
+            "  {}{}:{}{}{}{:>width$}{}{}",
             p.cyan,
-            ship,
+            label,
             p.reset,
+            padding,
             p.white_bold,
             total_str,
             p.reset,
@@ -513,17 +525,43 @@ pub fn build_enhanced_footer(
             width = num_width
         ));
 
-        if let Some(remaining) = remaining_str_opt {
+        if let Some(rem) = fuel.remaining {
+            let rem_str = format_with_separators(rem.ceil() as u64);
             lines.push(format!(
-                "  {}Remaining:{}      {}{:>width$}{}",
+                "  {}Remaining:{}         {}{:>width$}{}",
                 p.green,
                 p.reset,
                 p.white_bold,
-                remaining,
+                rem_str,
                 p.reset,
                 width = num_width
             ));
         }
+    }
+
+    // Heat Section
+    if let Some(heat) = &summary.heat {
+        let wait_str = format_cooldown_duration(heat.total_wait_time_seconds);
+        lines.push(format!(
+            "  {}Total Wait:{}        {}{:>width$}{}",
+            p.cyan,
+            p.reset,
+            p.white_bold,
+            wait_str,
+            p.reset,
+            width = num_width
+        ));
+
+        let final_heat_str = format!("{:.2}", heat.final_residual_heat);
+        lines.push(format!(
+            "  {}Final Heat:{}        {}{:>width$}{}",
+            p.red,
+            p.reset,
+            p.white_bold,
+            final_heat_str,
+            p.reset,
+            width = num_width
+        ));
     }
 
     if let Some(fmap_url) = &summary.fmap_url {
@@ -856,8 +894,8 @@ mod tests {
 
         let s = build_heat_segment(&step, &widths, &p).expect("heat seg");
         let s_clean = strip_ansi_to_string(&s);
-        // Desired: "heat 100.00 OVERHEATED (1m0s to cool)" (with spaces)
-        assert!(s_clean.contains("OVERHEATED (1m0s to cool)"));
+        // Desired: "heat 100.00  OVERHEATED  (1m0s to cool)"
+        assert!(s_clean.contains(" OVERHEATED  (1m0s to cool)"));
     }
 
     #[test]
