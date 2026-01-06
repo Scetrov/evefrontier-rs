@@ -824,4 +824,14 @@ mod tests {
         assert!(s.contains("OVERHEATED"));
         assert!(s.contains("REFUEL"));
     }
+
+    #[test]
+    fn test_format_cooldown_duration() {
+        assert_eq!(format_cooldown_duration(0.0), "0s");
+        assert_eq!(format_cooldown_duration(-5.0), "0s");
+        assert_eq!(format_cooldown_duration(45.0), "45s");
+        assert_eq!(format_cooldown_duration(60.0), "1m0s");
+        assert_eq!(format_cooldown_duration(124.0), "2m4s");
+        assert_eq!(format_cooldown_duration(3600.0), "60m0s");
+    }
 }

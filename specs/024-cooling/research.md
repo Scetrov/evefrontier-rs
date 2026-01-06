@@ -31,8 +31,8 @@ $$t = -\frac{1}{k} \ln\left(\frac{T_{threshold} - T_{env}}{T_0 - T_{env}}\right)
 - **Derivation**: $k$ scales with cooling power and inversely with thermal mass.
 - In `ship.rs`, we have `BASE_COOLING_POWER` and `compute_zone_factor`.
 - We will define $k$ as:
-  $$k = \frac{BASE\_COOLING\_POWER \times zone\_factor}{total\_mass\_kg \times specific\_heat \times \text{SCALE}}$$
-  where `SCALE` is a factor to align the arbitrary "heat units" with realistic cooldown times. Based on current linear dissipation logic, a scale of `100.0` or `10.0` might be appropriate. I will calibrate this to ensure a 90K -> 30K drop takes a few minutes (e.g., ~2-5 minutes for a typical ship).
+  $$k = \frac{BASE\_COOLING\_POWER \times zone\_factor}{total\_mass\_kg \times specific\_heat}$$
+  In the final implementation, the conceptual `SCALE` factor discussed during research was absorbed into the calibrated value of `BASE_COOLING_POWER`. To retune cooldown behavior, adjust `BASE_COOLING_POWER` (and/or `compute_zone_factor`) rather than introducing an additional scale parameter.
 
 ## Implementation Details
 - **Formatting**: A utility function `format_cooldown(seconds: f64) -> String` to return `2m4s`.

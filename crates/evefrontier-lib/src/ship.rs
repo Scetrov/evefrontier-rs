@@ -22,6 +22,8 @@ pub const HEAT_CRITICAL: f64 = 150.0;
 /// Law of Cooling model. This value is calibrated to produce wait times in the minutes
 /// range for ships in the 10^7 kg mass bracket.
 pub const BASE_COOLING_POWER: f64 = 1e6;
+/// Epsilon used to prevent logarithm domain errors when cooling toward ambient temperature.
+pub const COOLING_EPSILON: f64 = 0.01;
 
 /// Compute a zone factor from an external temperature (Kelvin). Colder environments cool more
 /// effectively (factor closer to 1.0); hot environments cool poorly (factor near 0.0).
@@ -63,9 +65,11 @@ pub fn calculate_cooling_time(start_temp: f64, target_temp: f64, env_temp: f64, 
     if start_temp <= target_temp || k <= 0.0 {
         return 0.0;
     }
-    // Ambient temperature is the floor: we can't cool below it.
-    // Use a small epsilon to avoid negative or zero logs when target is exactly env.
-    let target = target_temp.max(env_temp + 0.01);
+    // Ambient temperature is the physical floor: we can't cool below it.
+    // If env_temp >= target_temp, clamp the effective target to just above env_temp so that the
+    // model reflects this constraint and avoids taking ln(0) or ln of a negative value when
+    // target_temp is at or below env_temp.
+    let target = target_temp.max(env_temp + COOLING_EPSILON);
     if start_temp <= target {
         return 0.0;
     }
@@ -748,5 +752,40 @@ mod tests {
             .expect("should parse capacity_m^3 header via normalization");
         let ship = catalog.get("Reflex").expect("ship exists");
         assert_eq!(ship.cargo_capacity, 100.0);
+    }
+
+    #[test]
+    fn test_compute_cooling_constant() {
+        // Base case: 1M kg ship, 1.0 specific heat, cold env (factor 1.0)
+        // k = (1e6 * 1.0) / (1e6 * 1.0) = 1.0
+        let k = compute_cooling_constant(1e6, 1.0, Some(30.0));
+        assert!((k - 1.0).abs() < f64::EPSILON);
+
+        // invalid inputs
+        assert_eq!(compute_cooling_constant(0.0, 1.0, None), 0.0);
+        assert_eq!(compute_cooling_constant(1e6, 0.0, None), 0.0);
+    }
+
+    #[test]
+    fn test_calculate_cooling_time() {
+        let k = 1.0;
+        let env = 30.0;
+
+        // start <= target: no wait
+        assert_eq!(calculate_cooling_time(50.0, 60.0, env, k), 0.0);
+
+        // start > target: should take time
+        // t = -ln((60 - 30) / (100 - 30)) = -ln(30/70) = ln(7/3) ≈ 0.847
+        let t = calculate_cooling_time(100.0, 60.0, env, k);
+        assert!((t - (70.0 / 30.0f64).ln()).abs() < 1e-6);
+
+        // target < env: clamped to env + COOLING_EPSILON
+        // target effectively becomes 30.01 (env + 0.01)
+        let t_clamped = calculate_cooling_time(100.0, 10.0, env, k);
+        let t_expected = -(1.0 / k) * ((COOLING_EPSILON) / (100.0 - 30.0)).ln();
+        assert!((t_clamped - t_expected).abs() < 1e-6);
+
+        // k <= 0
+        assert_eq!(calculate_cooling_time(100.0, 60.0, env, 0.0), 0.0);
     }
 }
