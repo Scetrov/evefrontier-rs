@@ -191,6 +191,14 @@ All notable changes to this project will be documented in this file.
 - Fix temperature calculation bugs and formula accuracy
 - Fix JSON output format pollution from tracing logs
 - Fix race condition in dataset download tests
+- Updated `RouteRequest` to include `avoid_critical_state` as a boolean with a default of `true`, matching CLI behavior.
+  - Aligned `fuel_quality` and `cargo_mass` defaults in Lambda with CLI and library expectations to prevent "Reflex" ship data requirement when not explicitly requested.
+- **CLI** (`evefrontier-cli`)
+  - Resolved crash when `ship_data.csv` was missing from local dataset by implementing a fallback mechanism to the "Reflex" ship.
+  - Aligned fuel quality defaults with Lambda and core library expectations.
+  - Fixed logic redundancy in documentation comments.
+- **Library** (`evefrontier-lib`)
+  - Expanded `ShipCatalog` to handle "Reflex" as a fallback ship when the dataset is missing `ship_data.csv`.
 
 ### Known Issues
 

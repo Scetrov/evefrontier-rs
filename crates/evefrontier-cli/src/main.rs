@@ -145,12 +145,12 @@ impl RouteCommandArgs {
             },
             spatial_index: None, // Will be set separately after loading
             max_spatial_neighbors: self.options.max_spatial_neighbours,
-            optimization: match self.options.optimize {
+            optimization: match self.options.optimize.unwrap_or(RouteOptimizeArg::Fuel) {
                 RouteOptimizeArg::Distance => evefrontier_lib::routing::RouteOptimization::Distance,
                 RouteOptimizeArg::Fuel => evefrontier_lib::routing::RouteOptimization::Fuel,
             },
             fuel_config: evefrontier_lib::ship::FuelConfig {
-                quality: self.options.fuel_quality,
+                quality: self.options.fuel_quality as f64,
                 dynamic_mass: self.options.dynamic_mass,
             },
         }
@@ -203,7 +203,7 @@ struct RouteOptionsArgs {
 
     /// Fuel quality rating (1-100, default 10).
     #[arg(long = "fuel-quality", default_value = "10")]
-    fuel_quality: f64,
+    fuel_quality: i64,
 
     /// Cargo mass in kilograms.
     #[arg(long = "cargo-mass", default_value = "0")]
@@ -232,8 +232,8 @@ struct RouteOptionsArgs {
     max_spatial_neighbours: usize,
 
     /// Optimization objective for planning: distance or fuel.
-    #[arg(long = "optimize", value_enum, default_value = "fuel")]
-    optimize: RouteOptimizeArg,
+    #[arg(long = "optimize", value_enum)]
+    optimize: Option<RouteOptimizeArg>,
 }
 
 #[derive(Args, Debug, Clone)]
@@ -821,11 +821,13 @@ fn handle_route_command(
     // Determine whether the user provided any route-specific options; if not, we're in
     // a zero-config invocation and may apply friendly defaults (like default ship).
     let user_provided_options = args.options.max_jump.is_some()
+        || args.options.algorithm != RouteAlgorithmArg::default()
+        || args.options.optimize.is_some()
         || !args.options.avoid.is_empty()
         || args.options.avoid_gates
         || args.options.max_temp.is_some()
         || args.options.ship.is_some()
-        || (args.options.fuel_quality - 10.0).abs() > f64::EPSILON
+        || args.options.fuel_quality != 10
         || args.options.cargo_mass != 0.0
         || args.options.fuel_load.is_some()
         || args.options.dynamic_mass

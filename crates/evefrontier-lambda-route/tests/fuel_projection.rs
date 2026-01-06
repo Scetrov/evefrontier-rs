@@ -35,14 +35,12 @@ async fn returns_fuel_projection_when_ship_provided() {
         avoid_gates: false,
         max_temperature: None,
         ship: Some("Reflex".to_string()),
-        fuel_quality: Some(10.0),
+        fuel_quality: None,
         cargo_mass: Some(1000.0),
-        fuel_load: Some(1750.0),
+        fuel_load: None,
         dynamic_mass: Some(false),
-        avoid_critical_state: None,
-        max_spatial_neighbors: Some(
-            evefrontier_lib::GraphBuildOptions::default().max_spatial_neighbors,
-        ),
+        avoid_critical_state: true,
+        max_spatial_neighbors: None,
         optimization: None,
     };
 
@@ -75,10 +73,8 @@ async fn omits_fuel_projection_without_ship() {
         cargo_mass: None,
         fuel_load: None,
         dynamic_mass: None,
-        avoid_critical_state: None,
-        max_spatial_neighbors: Some(
-            evefrontier_lib::GraphBuildOptions::default().max_spatial_neighbors,
-        ),
+        avoid_critical_state: true,
+        max_spatial_neighbors: None,
         optimization: None,
     };
 
@@ -107,14 +103,12 @@ async fn rejects_unknown_ship_name() {
         avoid_gates: false,
         max_temperature: None,
         ship: Some("UnknownShip".to_string()),
-        fuel_quality: Some(10.0),
+        fuel_quality: None,
         cargo_mass: None,
         fuel_load: None,
         dynamic_mass: None,
-        avoid_critical_state: None,
-        max_spatial_neighbors: Some(
-            evefrontier_lib::GraphBuildOptions::default().max_spatial_neighbors,
-        ),
+        avoid_critical_state: true,
+        max_spatial_neighbors: None,
         optimization: None,
     };
 
