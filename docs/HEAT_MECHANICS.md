@@ -50,12 +50,12 @@ decay where cooling slows down as the ship approaches the ambient temperature.
 
 **Implementation Details**:
 
-- **Cooling Constant ($k$)**:
-  $k = \frac{BASE\_COOLING\_POWER \times zone\_factor}{total\_mass\_kg \times specific\_heat}$
-- **Wait Time**: The time required to reach the jump-ready state ($30.0$ K) is calculated per hop.
-- **Start Temperature ($T_{start}$)**: Assumed to be $T_{ready} + \Delta T_{jump}$, where $T_{ready}$
-  is $\max(30.0K, T_{ambient\_origin})$.
-- **Ambient Floor**: Ships cannot cool below the system's ambient temperature ($T_{env}$).
+- **Cooling Constant (k)**:
+  `k = BASE_COOLING_POWER * zone_factor / (total_mass_kg * specific_heat)`
+- **Wait Time**: The time required to reach the jump-ready state (30.0 K) is calculated per hop.
+- **Start Temperature (T_start)**: Assumed to be T_ready + delta_T_jump, where T_ready
+  is max(30.0K, T_ambient_origin).
+- **Ambient Floor**: Ships cannot cool below the system's ambient temperature (T_env).
 
 ## Integration with the game Temperature Service (Historical Notes)
 

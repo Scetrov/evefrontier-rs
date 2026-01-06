@@ -60,9 +60,15 @@ pub fn compute_cooling_constant(
 /// Calculate the time (seconds) required to cool from start_temp to target_temp
 /// given a cooling constant k and environment temperature env_temp.
 ///
-/// Formula: t = -(1/k) * ln((T_target - T_env) / (T_start - T_env))
+/// Formula: t = -(1/k) * ln((T_target - T_env) / (start_temp - T_env))
 pub fn calculate_cooling_time(start_temp: f64, target_temp: f64, env_temp: f64, k: f64) -> f64 {
-    if start_temp <= target_temp || k <= 0.0 {
+    if !start_temp.is_finite()
+        || !target_temp.is_finite()
+        || !env_temp.is_finite()
+        || !k.is_finite()
+        || start_temp <= target_temp
+        || k <= 0.0
+    {
         return 0.0;
     }
     // Ambient temperature is the physical floor: we can't cool below it.

@@ -30,8 +30,8 @@ All notable changes to this project will be documented in this file.
     `--max-jump` are provided) to prevent misleading warnings when a ship is missing.
 - **Library** (`evefrontier-lib`)
   - Fuel projections no longer consume fuel on gate hops; gate steps report zero fuel cost
-  - Cooldown time estimates are now suppressed for steps immediately preceding a gate jump, as gates
-    are heat-agnostic and do not require cooling to operate.
+  - Cooldown time estimates are now suppressed for steps immediately preceding a gate jump and for
+    the final destination step, as these transitions do not require cooling before the next state.
   - Fix: avoid parsing checksum sidecar files (e.g., `*.sha256`) as ship CSVs. The downloader cache
     discovery now prefers `*_ship_data.csv` files and `ShipCatalog::from_path` resolves an adjacent
     `.csv` when given a `.sha256` sidecar.
@@ -51,29 +51,20 @@ All notable changes to this project will be documented in this file.
 - **CLI** (`evefrontier-cli`)
   - Cooldown time indicator in enhanced route output (e.g., `(2m4s to cool)`).
   - Show per-hop heat and cooldowns based on realistic exponential decay.
-  - Wait times are only displayed for intermediate hops; the goal step displays the arrival heat but
-    omits the cooldown duration redundant for a destination.
-    - `ShipAttributes`, `ShipLoadout`, and `ShipCatalog` structs for ship management
-    - Fuel cost calculator: `calculate_jump_fuel_cost()` with mass and distance-based formula
-    - Add: `calculate_maximum_distance()` helper to compute maximum range from fuel load and quality
-    - Docs: Add Rust doc comments for fuel APIs and clarify units/quality scaling
-    - Tests: Add precise unit tests for `calculate_jump_fuel_cost()` and
-      `calculate_maximum_distance()`
-    - Route fuel projection: `calculate_route_fuel()` with static and dynamic mass modes
-    - CLI flags: `--ship`, `--fuel-quality`, `--cargo-mass`, `--dynamic-mass` for route command
-    - CLI convenience flag: `--list-ships` to display available ships from catalog
-    - Ship data fixture (`docs/fixtures/ship_data.csv`) with Reflex and other ships
-    - Default values: Reflex ship with 10% fuel quality applied automatically
-    - Enhanced output mode displays fuel consumption per hop and total fuel required
-    - Lambda support: Extended RouteRequest/RouteSummary with optional fuel projection fields
-- **CLI** (`evefrontier-cli`)
+- **Ship & Fuel Support** (Library & CLI)
+  - `ShipAttributes`, `ShipLoadout`, and `ShipCatalog` structs for ship management.
+  - Fuel cost calculator: `calculate_jump_fuel_cost()` with mass and distance-based formula.
+  - Added `calculate_maximum_distance()` helper to compute maximum range from fuel load and quality.
+  - Route fuel projection: `calculate_route_fuel()` with static and dynamic mass modes.
+  - CLI flags: `--ship`, `--fuel-quality`, `--cargo-mass`, `--dynamic-mass` for route command.
+  - CLI convenience flag: `--list-ships` to display available ships from catalog.
+  - Ship data fixture (`docs/fixtures/ship_data.csv`) with Reflex and other ships.
+  - Default values: Reflex ship with 10% fuel quality applied automatically.
+  - Enhanced output mode displays fuel consumption per hop and total fuel required.
+  - Lambda support: Extended `RouteRequest`/`RouteSummary` with optional fuel projection fields.
   - Add `--avoid-critical-state` flag to `route` to conservatively avoid single spatial hops that
-    would reach the canonical `CRITICAL` heat threshold; requires `--ship` and is documented in
-    `docs/USAGE.md` and `docs/HEAT_MECHANICS.md`.
-    - Dynamic mass recalculation mode where fuel weight decreases after each jump
-    - 8 integration tests for ship catalog parsing, fuel calculation, and route aggregation
-    - 3 specification tests for future ship data downloader features
-    - Documentation in `docs/USAGE.md` with fuel calculation examples and formula reference
+    would reach the canonical `CRITICAL` heat threshold.
+  - Documentation: Updated `docs/USAGE.md` with fuel and heat calculation examples.
   - **Heat mechanics** (Library, CLI & Lambda)
     - Add `calculate_jump_heat()` and `HeatConfig` to `evefrontier-lib` for per-hop heat calculation
     - Add `HeatProjection` and `HeatSummary` types, included in CLI and Lambda outputs when a ship

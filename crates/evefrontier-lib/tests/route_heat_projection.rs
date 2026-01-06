@@ -219,6 +219,6 @@ fn attach_heat_suppresses_cooldown_before_gate() {
     assert!(s1.hop_heat > 0.0);
     assert!(
         s1.wait_time_seconds.is_none(),
-        "expected no cooldown before a gate jump"
+        "expected no cooldown when the next step is a gate"
     );
 }

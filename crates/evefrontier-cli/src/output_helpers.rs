@@ -127,7 +127,10 @@ pub(crate) fn format_cooldown_duration(seconds: f64) -> String {
     if seconds <= 0.0 {
         return "0s".to_string();
     }
-    let total_secs = seconds.round() as u64;
+    // Clamp to a reasonable upper bound to avoid overflow/panics when casting.
+    // Cooling times beyond 24 hours are unlikely to be meaningful for this CLI.
+    let clamped = seconds.clamp(0.0, 86_400.0);
+    let total_secs = clamped.round() as u64;
     let mins = total_secs / 60;
     let secs = total_secs % 60;
 
