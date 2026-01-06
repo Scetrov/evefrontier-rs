@@ -12,7 +12,7 @@ use crate::spatial::{NeighbourQuery, SpatialIndex};
 /// which means "unlimited" neighbours (no truncation) — this avoids accidentally hiding
 /// ship-capable long jumps behind a small fixed fan-out. The behaviour can be tuned via
 /// the CLI flag `--max-spatial-neighbours`.
-const DEFAULT_MAX_SPATIAL_NEIGHBORS: usize = 0;
+const DEFAULT_MAX_SPATIAL_NEIGHBORS: usize = 250;
 /// For very large datasets, requesting unlimited neighbours can be pathological (O(n^2)).
 /// To avoid hang/very long runs we cap the number of neighbours fetched from the index when
 /// no `max_jump` radius is provided and the dataset is large.

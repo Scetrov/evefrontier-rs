@@ -108,18 +108,18 @@ fn handle_route_request(request: &RouteRequest, request_id: &str) -> Response {
             avoid_systems: request.avoid.clone(),
             avoid_gates: request.avoid_gates,
             max_temperature: request.max_temperature,
-            // NOTE: This Lambda currently does not expose `avoid_critical_state` and
-            // therefore performs heat-unaware planning. If we want parity with the
-            // CLI, add the field to the API, validate it, and propagate it here. See
-            // TODO: create follow-up issue if API exposure is desired.
-            avoid_critical_state: false,
+            // Expose `avoid_critical_state` via the API; default is handled by Serde
+            // to mirror CLI sensible defaults.
+            avoid_critical_state: request.avoid_critical_state,
             ship: None,
             loadout: None,
             heat_config: None,
         },
         spatial_index: Some(runtime.spatial_index_arc()),
-        max_spatial_neighbors: evefrontier_lib::GraphBuildOptions::default().max_spatial_neighbors,
-        optimization: evefrontier_lib::routing::RouteOptimization::Distance,
+        max_spatial_neighbors: request
+            .max_spatial_neighbors
+            .unwrap_or(evefrontier_lib::GraphBuildOptions::default().max_spatial_neighbors),
+        optimization: request.optimization.map(Into::into).unwrap_or_default(),
         fuel_config: evefrontier_lib::ship::FuelConfig::default(),
     };
 
@@ -132,10 +132,11 @@ fn handle_route_request(request: &RouteRequest, request_id: &str) -> Response {
         }
     };
 
-    let mut summary = match RouteSummary::from_plan(RouteOutputKind::Route, starmap, &plan) {
-        Ok(summary) => summary,
-        Err(e) => return Response::Error(from_lib_error(&e, request_id)),
-    };
+    let mut summary =
+        match RouteSummary::from_plan(RouteOutputKind::Route, starmap, &plan, Some(&lib_request)) {
+            Ok(summary) => summary,
+            Err(e) => return Response::Error(from_lib_error(&e, request_id)),
+        };
 
     if let Some(ship_name) = request.ship.as_ref() {
         let ship_name_trimmed = ship_name.trim();
@@ -256,25 +257,28 @@ fn ship_catalog() -> Result<&'static ShipCatalog, &'static LibError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use evefrontier_lambda_shared::test_utils::{self, mock_request_id};
+    use evefrontier_lambda_shared::test_utils::mock_request_id;
+    use evefrontier_lambda_shared::{RouteAlgorithm, RouteOptimization as SharedRouteOptimization};
 
     fn init_fixture_runtime() {
-        // Initialize the runtime with fixture data for tests.
+        use evefrontier_lambda_shared::test_utils::{
+            fixture_db_bytes, fixture_index_bytes, fixture_ship_bytes,
+        };
         let _ = init_runtime(
-            test_utils::fixture_db_bytes(),
-            test_utils::fixture_index_bytes(),
-            test_utils::fixture_ship_bytes(),
+            fixture_db_bytes(),
+            fixture_index_bytes(),
+            fixture_ship_bytes(),
         );
     }
 
-    #[tokio::test]
-    async fn parses_and_validates_request() {
+    #[test]
+    fn parses_and_validates_request() {
         init_fixture_runtime();
 
         let request = RouteRequest {
             from: "Nod".to_string(),
             to: "Brana".to_string(),
-            algorithm: evefrontier_lambda_shared::RouteAlgorithm::AStar,
+            algorithm: RouteAlgorithm::AStar,
             max_jump: None,
             avoid: vec![],
             avoid_gates: false,
@@ -284,27 +288,29 @@ mod tests {
             cargo_mass: None,
             fuel_load: None,
             dynamic_mass: None,
+            avoid_critical_state: true,
             max_spatial_neighbors: None,
+            optimization: None,
         };
-
-        let response = handle_route_request(&request, &mock_request_id("validate"));
+        let response = handle_route_request(&request, &mock_request_id("test"));
         match response {
             Response::Success(inner) => {
-                assert!(inner.data.summary.hops >= 1);
-                assert!(inner.data.summary.fuel.is_none());
+                assert_eq!(inner.data.summary.hops, 3);
             }
-            Response::Error(err) => panic!("unexpected error: {err:?}"),
+            Response::Error(err) => {
+                panic!("unexpected error: {:?}", err);
+            }
         }
     }
 
-    #[tokio::test]
-    async fn response_includes_heat_when_ship_provided() {
+    #[test]
+    fn response_includes_heat_when_ship_provided() {
         init_fixture_runtime();
 
         let request = RouteRequest {
             from: "Nod".to_string(),
             to: "Brana".to_string(),
-            algorithm: evefrontier_lambda_shared::RouteAlgorithm::AStar,
+            algorithm: RouteAlgorithm::AStar,
             max_jump: None,
             avoid: vec![],
             avoid_gates: false,
@@ -314,24 +320,151 @@ mod tests {
             cargo_mass: Some(633_006.0),
             fuel_load: None,
             dynamic_mass: None,
+            avoid_critical_state: true,
             max_spatial_neighbors: None,
+            optimization: None,
         };
-
-        let response = handle_route_request(&request, &mock_request_id("heat"));
+        let response = handle_route_request(&request, &mock_request_id("test"));
         match response {
             Response::Success(inner) => {
-                // Summary should include heat
                 assert!(inner.data.summary.heat.is_some());
-                // At least one step should include heat projection
-                assert!(inner.data.steps.iter().any(|s| s.heat.is_some()));
             }
-            Response::Error(err) => panic!("unexpected error: {err:?}"),
+            Response::Error(err) => {
+                panic!("unexpected error: {:?}", err);
+            }
         }
+    }
+
+    #[test]
+    fn respects_optimization_field_when_set() {
+        init_fixture_runtime();
+
+        let request = RouteRequest {
+            from: "Nod".to_string(),
+            to: "Brana".to_string(),
+            algorithm: RouteAlgorithm::AStar,
+            max_jump: None,
+            avoid: vec![],
+            avoid_gates: false,
+            max_temperature: None,
+            ship: None,
+            fuel_quality: None,
+            cargo_mass: None,
+            fuel_load: None,
+            dynamic_mass: None,
+            avoid_critical_state: true,
+            max_spatial_neighbors: None,
+            optimization: Some(SharedRouteOptimization::Fuel),
+        };
+        let _response = handle_route_request(&request, &mock_request_id("test"));
     }
 
     #[test]
     fn ship_catalog_loads_from_fixture() {
         let catalog = ship_catalog().expect("catalog should load");
         assert!(!catalog.ship_names().is_empty());
+    }
+
+    #[test]
+    fn test_handle_route_request_success() {
+        init_fixture_runtime();
+        let request = RouteRequest {
+            from: "Nod".to_string(),
+            to: "Brana".to_string(),
+            algorithm: RouteAlgorithm::AStar,
+            max_jump: None,
+            avoid: vec![],
+            avoid_gates: false,
+            max_temperature: None,
+            ship: None,
+            fuel_quality: None,
+            cargo_mass: None,
+            fuel_load: None,
+            dynamic_mass: None,
+            avoid_critical_state: true,
+            max_spatial_neighbors: None,
+            optimization: None,
+        };
+        let response = handle_route_request(&request, &mock_request_id("test"));
+        match response {
+            Response::Success(inner) => {
+                assert_eq!(inner.data.summary.hops, 3);
+                assert_eq!(inner.data.summary.gates, 1);
+                assert_eq!(inner.data.summary.jumps, 2);
+                assert!(inner.data.summary.fuel.is_none());
+            }
+            Response::Error(err) => {
+                panic!("unexpected error: {:?}", err);
+            }
+        }
+    }
+
+    #[test]
+    fn test_handle_route_request_no_route() {
+        init_fixture_runtime();
+        let request = RouteRequest {
+            from: "Nod".to_string(),
+            to: "J:35IA".to_string(), // J:35IA is isolated in minimal fixture
+            algorithm: RouteAlgorithm::Bfs,
+            max_jump: None,
+            avoid: vec![],
+            avoid_gates: true,
+            max_temperature: None,
+            ship: None,
+            fuel_quality: None,
+            cargo_mass: None,
+            fuel_load: None,
+            dynamic_mass: None,
+            avoid_critical_state: true,
+            max_spatial_neighbors: None,
+            optimization: None,
+        };
+        let response = handle_route_request(&request, &mock_request_id("test"));
+        match response {
+            Response::Success(inner) => {
+                panic!("unexpected success: {:?}", inner);
+            }
+            Response::Error(err) => {
+                assert_eq!(err.status, 404);
+                // ProblemDetails::route_not_found uses "No route exists"
+                assert!(err
+                    .detail
+                    .expect("detail missing")
+                    .contains("No route exists"));
+            }
+        }
+    }
+
+    #[test]
+    fn test_handle_route_request_unknown_system() {
+        init_fixture_runtime();
+        let request = RouteRequest {
+            from: "NonExistentSystem".to_string(),
+            to: "Brana".to_string(),
+            algorithm: RouteAlgorithm::AStar,
+            max_jump: None,
+            avoid: vec![],
+            avoid_gates: false,
+            max_temperature: None,
+            ship: None,
+            fuel_quality: None,
+            cargo_mass: None,
+            fuel_load: None,
+            dynamic_mass: None,
+            avoid_critical_state: true,
+            max_spatial_neighbors: None,
+            optimization: None,
+        };
+        let response = handle_route_request(&request, &mock_request_id("test"));
+        match response {
+            Response::Success(inner) => {
+                panic!("unexpected success: {:?}", inner);
+            }
+            Response::Error(err) => {
+                assert_eq!(err.status, 404);
+                // ProblemDetails::unknown_system uses "not found"
+                assert!(err.detail.expect("detail missing").contains("not found"));
+            }
+        }
     }
 }

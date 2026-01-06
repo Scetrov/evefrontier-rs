@@ -64,6 +64,8 @@ jobs:
   validate-docs-examples:
     name: Validate documentation examples
     runs-on: ubuntu-latest
+    env:
+      EVEFRONTIER_SHIP_DATA: ${{ github.workspace }}/docs/fixtures/ship_data.csv
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

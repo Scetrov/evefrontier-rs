@@ -227,10 +227,10 @@ evefrontier-cli route --from "ER1-MM7" --to "ENQ-PB6" --max-temp 5000.0
 # Avoid spatial hops that would instantly reach CRITICAL temperature; requires --ship
 evefrontier-cli route --from "ER1-MM7" --to "ENQ-PB6" --avoid-critical-state --ship "Reflex"
 ```
-
 This flag is conservative: it omits spatial jumps whose instantaneous temperature (ambient + hop
-temperature delta) would reach or exceed the canonical `HEAT_CRITICAL` threshold. Use `--ship` to
-provide ship and loadout context for per-hop calculations.
+temperature delta) would reach or exceed the canonical `HEAT_CRITICAL` threshold. It is enabled by
+default when a ship is available; use `--no-avoid-critical-state` to opt out. Explicitly passing
+`--avoid-critical-state` without `--ship` will result in an error.
 
 See [`docs/USAGE.md`](docs/USAGE.md) for comprehensive documentation and additional examples.
 

@@ -31,12 +31,13 @@ pub enum RouteAlgorithm {
 }
 
 /// Optimization objective for route planning.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum RouteOptimization {
     /// Optimize for shortest distance (default behavior).
     Distance,
     /// Optimize for minimal fuel consumption (requires ship + loadout).
+    #[default]
     Fuel,
 }
 
@@ -52,7 +53,7 @@ impl fmt::Display for RouteAlgorithm {
 }
 
 /// Constraints applied during route planning.
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct RouteConstraints {
     pub max_jump: Option<f64>,
     pub avoid_systems: Vec<String>,
@@ -64,6 +65,22 @@ pub struct RouteConstraints {
     pub ship: Option<crate::ship::ShipAttributes>,
     pub loadout: Option<crate::ship::ShipLoadout>,
     pub heat_config: Option<crate::ship::HeatConfig>,
+}
+
+impl Default for RouteConstraints {
+    fn default() -> Self {
+        Self {
+            max_jump: None,
+            avoid_systems: Vec::new(),
+            avoid_gates: false,
+            max_temperature: None,
+            // Sensible default: avoid critical state unless the caller disables it
+            avoid_critical_state: true,
+            ship: None,
+            loadout: None,
+            heat_config: None,
+        }
+    }
 }
 
 impl RouteConstraints {
@@ -578,7 +595,8 @@ mod tests {
     #[test]
     fn default_route_constraints_have_none_optional_fields() {
         let c = RouteConstraints::default();
-        assert!(!c.avoid_critical_state);
+        // By default we avoid critical engine states to provide safer routes.
+        assert!(c.avoid_critical_state);
         assert!(c.ship.is_none());
         assert!(c.loadout.is_none());
         assert!(c.heat_config.is_none());

@@ -51,6 +51,8 @@ fn a_star_respects_max_jump_constraint() {
         constraints: RouteConstraints {
             max_jump: Some(300.0),
             avoid_gates: true,
+            // Tests expect heat-based blocking to be disabled unless explicitly set
+            avoid_critical_state: false,
             ..RouteConstraints::default()
         },
         spatial_index: None,
@@ -127,6 +129,8 @@ fn avoid_gates_switches_to_spatial_graph() {
         algorithm: RouteAlgorithm::Dijkstra,
         constraints: RouteConstraints {
             avoid_gates: true,
+            // Ensure heat-based blocking does not interfere with this test
+            avoid_critical_state: false,
             ..RouteConstraints::default()
         },
         spatial_index: None,
@@ -137,6 +141,24 @@ fn avoid_gates_switches_to_spatial_graph() {
 
     let plan = plan_route(&starmap, &request).expect("spatial route exists");
     assert_eq!(plan.algorithm, RouteAlgorithm::Dijkstra);
+}
+
+#[test]
+fn defaults_are_sensible() {
+    // Default optimization should be Fuel
+    assert_eq!(
+        evefrontier_lib::routing::RouteOptimization::default(),
+        evefrontier_lib::routing::RouteOptimization::Fuel
+    );
+
+    // Default constraints should avoid critical state
+    assert!(RouteConstraints::default().avoid_critical_state);
+
+    // Default graph build options should use 250 neighbours
+    assert_eq!(
+        evefrontier_lib::GraphBuildOptions::default().max_spatial_neighbors,
+        250usize
+    );
 }
 
 #[test]
@@ -220,7 +242,8 @@ fn ship_max_jump_limits_spatial_edges() {
         constraints: RouteConstraints {
             ship: Some(ship.clone()),
             loadout: Some(loadout),
-            // By default fuel does not block the route to allow for projection/refuelling
+            // By default in this test we do not block on heat unless explicitly enabled
+            avoid_critical_state: false,
             ..RouteConstraints::default()
         },
         spatial_index: None,

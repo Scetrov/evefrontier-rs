@@ -264,6 +264,7 @@ mod tests {
             fuel: None,
             heat: None,
             fmap_url: None,
+            parameters: None,
         }
     }
 

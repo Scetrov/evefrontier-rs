@@ -189,6 +189,10 @@ impl EnhancedRenderer {
             segments.push(s);
         }
 
+        // Remove placeholder segments that consist only of whitespace to avoid
+        // producing empty comma-separated fields (e.g., "min 0.32K,       ,").
+        segments.retain(|s| !s.trim().is_empty());
+
         let joined = segments.join(", ");
         Some(format!("       {}│{} {}", p.gray, p.reset, joined))
     }

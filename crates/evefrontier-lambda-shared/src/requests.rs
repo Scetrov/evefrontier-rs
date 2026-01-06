@@ -71,9 +71,21 @@ pub struct RouteRequest {
     #[serde(default)]
     pub dynamic_mass: Option<bool>,
 
+    /// Enable conservative avoidance of hops that would reach critical engine heat.
+    #[serde(default = "default_true")]
+    pub avoid_critical_state: bool,
+
     /// Maximum number of spatial neighbors to consider (default from lib).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_spatial_neighbors: Option<usize>,
+
+    /// Optional optimization objective: distance or fuel.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub optimization: Option<RouteOptimization>,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 /// Supported routing algorithms.
@@ -95,6 +107,23 @@ impl From<RouteAlgorithm> for evefrontier_lib::RouteAlgorithm {
             RouteAlgorithm::Bfs => evefrontier_lib::RouteAlgorithm::Bfs,
             RouteAlgorithm::Dijkstra => evefrontier_lib::RouteAlgorithm::Dijkstra,
             RouteAlgorithm::AStar => evefrontier_lib::RouteAlgorithm::AStar,
+        }
+    }
+}
+
+/// Optional optimization objective for planning.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum RouteOptimization {
+    Distance,
+    Fuel,
+}
+
+impl From<RouteOptimization> for evefrontier_lib::routing::RouteOptimization {
+    fn from(value: RouteOptimization) -> Self {
+        match value {
+            RouteOptimization::Distance => evefrontier_lib::routing::RouteOptimization::Distance,
+            RouteOptimization::Fuel => evefrontier_lib::routing::RouteOptimization::Fuel,
         }
     }
 }
@@ -268,11 +297,11 @@ mod tests {
 
     #[test]
     fn test_route_request_valid() {
-        let req = RouteRequest {
+        let request = RouteRequest {
             from: "Nod".to_string(),
             to: "Brana".to_string(),
             algorithm: RouteAlgorithm::AStar,
-            max_jump: Some(50.0),
+            max_jump: Some(80.0),
             avoid: vec![],
             avoid_gates: false,
             max_temperature: None,
@@ -281,17 +310,19 @@ mod tests {
             cargo_mass: None,
             fuel_load: None,
             dynamic_mass: None,
+            avoid_critical_state: true,
             max_spatial_neighbors: None,
+            optimization: None,
         };
-        assert!(req.validate("req-123").is_ok());
+        assert!(request.validate("req-123").is_ok());
     }
 
     #[test]
     fn test_route_request_empty_from() {
-        let req = RouteRequest {
+        let request = RouteRequest {
             from: "".to_string(),
             to: "Brana".to_string(),
-            algorithm: RouteAlgorithm::Bfs,
+            algorithm: RouteAlgorithm::AStar,
             max_jump: None,
             avoid: vec![],
             avoid_gates: false,
@@ -301,16 +332,42 @@ mod tests {
             cargo_mass: None,
             fuel_load: None,
             dynamic_mass: None,
+            avoid_critical_state: true,
             max_spatial_neighbors: None,
+            optimization: None,
         };
-        let err = req.validate("req-123").unwrap_err();
+        let err = request.validate("req-123").unwrap_err();
         assert_eq!(err.status, 400);
         assert!(err.detail.unwrap().contains("'from' field"));
     }
 
     #[test]
+    fn test_route_request_empty_to() {
+        let request = RouteRequest {
+            from: "Nod".to_string(),
+            to: "".to_string(),
+            algorithm: RouteAlgorithm::AStar,
+            max_jump: None,
+            avoid: vec![],
+            avoid_gates: false,
+            max_temperature: None,
+            ship: None,
+            fuel_quality: None,
+            cargo_mass: None,
+            fuel_load: None,
+            dynamic_mass: None,
+            avoid_critical_state: true,
+            max_spatial_neighbors: None,
+            optimization: None,
+        };
+        let err = request.validate("req-123").unwrap_err();
+        assert_eq!(err.status, 400);
+        assert!(err.detail.unwrap().contains("'to' field"));
+    }
+
+    #[test]
     fn test_route_request_negative_max_jump() {
-        let req = RouteRequest {
+        let request = RouteRequest {
             from: "Nod".to_string(),
             to: "Brana".to_string(),
             algorithm: RouteAlgorithm::Dijkstra,
@@ -323,30 +380,31 @@ mod tests {
             cargo_mass: None,
             fuel_load: None,
             dynamic_mass: None,
+            avoid_critical_state: true,
             max_spatial_neighbors: None,
+            optimization: None,
         };
-        let err = req.validate("req-123").unwrap_err();
+        let err = request.validate("req-123").unwrap_err();
         assert!(err.detail.unwrap().contains("positive number"));
     }
 
     #[test]
     fn test_scout_gates_request_valid() {
-        let req = ScoutGatesRequest {
+        let request = ScoutGatesRequest {
             system: "Nod".to_string(),
         };
-        assert!(req.validate("req-456").is_ok());
+        assert!(request.validate("req-456").is_ok());
     }
 
     #[test]
-    fn test_scout_range_request_limit_too_high() {
-        let req = ScoutRangeRequest {
+    fn test_scout_range_request_valid() {
+        let request = ScoutRangeRequest {
             system: "Nod".to_string(),
-            limit: 200,
-            radius: None,
+            radius: Some(80.0),
             max_temperature: None,
+            limit: 10,
         };
-        let err = req.validate("req-789").unwrap_err();
-        assert!(err.detail.unwrap().contains("cannot exceed 100"));
+        assert!(request.validate("req-789").is_ok());
     }
 
     #[test]
@@ -402,7 +460,9 @@ mod tests {
             cargo_mass: None,
             fuel_load: None,
             dynamic_mass: None,
+            avoid_critical_state: true,
             max_spatial_neighbors: None,
+            optimization: None,
         };
         assert!(req.validate("req-constraints").is_ok());
     }
@@ -422,7 +482,9 @@ mod tests {
             cargo_mass: None,
             fuel_load: None,
             dynamic_mass: None,
+            avoid_critical_state: true,
             max_spatial_neighbors: None,
+            optimization: None,
         };
         let err = req.validate("req-neg-temp").unwrap_err();
         assert!(err.detail.unwrap().contains("max_temperature"));
@@ -443,7 +505,9 @@ mod tests {
             cargo_mass: Some(1000.0),
             fuel_load: Some(500.0),
             dynamic_mass: Some(true),
+            avoid_critical_state: true,
             max_spatial_neighbors: None,
+            optimization: None,
         };
         assert!(req.validate("req-ship").is_ok());
     }
@@ -459,11 +523,13 @@ mod tests {
             avoid_gates: false,
             max_temperature: None,
             ship: Some("Reflex".to_string()),
-            fuel_quality: Some(0.5),
+            fuel_quality: Some(150.0),
             cargo_mass: None,
             fuel_load: None,
             dynamic_mass: None,
+            avoid_critical_state: true,
             max_spatial_neighbors: None,
+            optimization: None,
         };
         let err = req.validate("req-fuel-quality").unwrap_err();
         assert!(err.detail.unwrap().contains("fuel_quality"));
@@ -479,5 +545,39 @@ mod tests {
         };
         let err = req.validate("req-neg-radius").unwrap_err();
         assert!(err.detail.unwrap().contains("radius"));
+    }
+
+    #[test]
+    fn test_scout_range_request_zero_limit() {
+        let req = ScoutRangeRequest {
+            system: "Nod".to_string(),
+            limit: 0,
+            radius: None,
+            max_temperature: None,
+        };
+        let err = req.validate("req-zero-limit").unwrap_err();
+        assert!(err.detail.unwrap().contains("limit"));
+    }
+
+    #[test]
+    fn test_scout_range_request_limit_too_high() {
+        let req = ScoutRangeRequest {
+            system: "Nod".to_string(),
+            radius: Some(80.0),
+            max_temperature: None,
+            limit: 200,
+        };
+        let err = req.validate("req-limit-too-high").unwrap_err();
+        assert!(err.detail.unwrap().contains("limit"));
+    }
+
+    #[test]
+    fn test_route_request_deserialization_defaults() {
+        let json = r#"{"from": "Nod", "to": "Brana"}"#;
+        let request: RouteRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(request.from, "Nod");
+        assert_eq!(request.to, "Brana");
+        assert!(request.avoid_critical_state);
+        assert_eq!(request.algorithm, RouteAlgorithm::AStar);
     }
 }

@@ -58,6 +58,8 @@ fn json_output_includes_fuel_projection() {
         .arg("1750")
         .arg("--cargo-mass")
         .arg("0");
+    // Ensure heat-based avoidance does not block the expected test route
+    cmd.arg("--no-avoid-critical-state");
 
     let output = cmd.assert().success();
     let stdout = String::from_utf8(output.get_output().stdout.clone()).unwrap();
@@ -92,6 +94,8 @@ fn json_output_includes_heat_projection() {
         .arg("1750")
         .arg("--cargo-mass")
         .arg("0");
+    // Ensure heat-based avoidance does not block the expected test route
+    cmd.arg("--no-avoid-critical-state");
 
     let output = cmd.assert().success();
     let stdout = String::from_utf8(output.get_output().stdout.clone()).unwrap();
@@ -127,6 +131,8 @@ fn text_output_mentions_heat_when_ship_selected() {
         .arg("--no-color")
         .arg("--format")
         .arg("enhanced");
+    // Make route deterministic by opting out of conservative per-hop avoidance for this test
+    cmd.arg("--no-avoid-critical-state");
 
     // The footer heat summary was removed; ensure per-step heat is shown instead.
     cmd.assert()
@@ -152,6 +158,8 @@ fn text_output_mentions_fuel_when_ship_selected() {
         .arg("1750")
         .arg("--format")
         .arg("enhanced");
+    // Make route deterministic by opting out of conservative per-hop avoidance for this test
+    cmd.arg("--no-avoid-critical-state");
 
     // Enhanced format shows "Fuel (Reflex):" and "Remaining:" labels
     cmd.assert()
@@ -229,6 +237,9 @@ fn text_output_shows_refuel_when_insufficient_fuel() {
         .arg("--format")
         .arg("enhanced");
 
+    // Make route deterministic by opting out of conservative per-hop avoidance for this test
+    cmd.arg("--no-avoid-critical-state");
+
     let assert = cmd.assert().success();
     let output = assert.get_output();
     let stdout = String::from_utf8(output.stdout.clone()).unwrap();
@@ -260,6 +271,8 @@ fn text_output_shows_refuel_when_insufficient_fuel() {
         .arg("1")
         .arg("--cargo-mass")
         .arg("0");
+    // Ensure heat-based avoidance does not block this test route
+    json_cmd.arg("--no-avoid-critical-state");
 
     let json_out = json_cmd.assert().success().get_output().stdout.clone();
     let json_txt = String::from_utf8(json_out).unwrap();

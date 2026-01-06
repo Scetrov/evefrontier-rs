@@ -28,6 +28,7 @@ pub use problem::{
     from_lib_error, ProblemDetails, PROBLEM_INTERNAL_ERROR, PROBLEM_INVALID_REQUEST,
     PROBLEM_ROUTE_NOT_FOUND, PROBLEM_SERVICE_UNAVAILABLE, PROBLEM_UNKNOWN_SYSTEM,
 };
+pub use requests::RouteOptimization;
 pub use requests::{RouteAlgorithm, RouteRequest, ScoutGatesRequest, ScoutRangeRequest, Validate};
 pub use response::LambdaResponse;
 pub use runtime::{get_runtime, init_error_to_problem, init_runtime, InitError, LambdaRuntime};

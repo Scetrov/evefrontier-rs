@@ -45,6 +45,59 @@ pub(crate) fn compute_details_column_widths(steps: &[RouteStep]) -> ColumnWidths
     }
 }
 
+#[test]
+fn build_enhanced_footer_includes_params() {
+    use crate::terminal::ColorPalette;
+    use evefrontier_lib::output::RouteParametersSummary;
+    use evefrontier_lib::routing::{RouteAlgorithm, RouteOptimization};
+    use evefrontier_lib::{RouteEndpoint, RouteOutputKind};
+
+    let palette = ColorPalette::plain();
+    let summary = RouteSummary {
+        kind: RouteOutputKind::Route,
+        algorithm: RouteAlgorithm::AStar,
+        hops: 3,
+        gates: 1,
+        jumps: 2,
+        total_distance: 100.0,
+        jump_distance: 50.0,
+        start: RouteEndpoint {
+            id: 1,
+            name: Some("A".to_string()),
+        },
+        goal: RouteEndpoint {
+            id: 2,
+            name: Some("B".to_string()),
+        },
+        steps: Vec::new(),
+        fuel: None,
+        heat: None,
+        fmap_url: None,
+        parameters: Some(RouteParametersSummary {
+            algorithm: RouteAlgorithm::AStar,
+            optimization: RouteOptimization::Fuel,
+            fuel_quality: 10.0,
+            ship_name: Some("Reflex".to_string()),
+            avoid_critical_state: true,
+            max_spatial_neighbors: Some(250),
+            avoid_gates: false,
+            max_jump: None,
+        }),
+    };
+
+    let lines = build_enhanced_footer(&summary, "https://fmap/", &palette);
+    let params_line = lines.iter().find(|l| l.contains("Parameters:"));
+    assert!(
+        params_line.is_some(),
+        "expected a Parameters line in footer"
+    );
+    let pl = params_line.unwrap();
+    let pl_clean = strip_ansi_to_string(pl);
+    assert!(pl_clean.contains("Optimize") || pl_clean.contains("Optimize:"));
+    assert!(pl_clean.contains("Ship: Reflex"));
+    assert!(pl_clean.contains("Fuel quality: 10%"));
+}
+
 /// Format a small fuel suffix used in compact text renderers.
 pub(crate) fn format_fuel_suffix(step: &RouteStep) -> Option<String> {
     let fuel = step.fuel.as_ref()?;
@@ -437,6 +490,55 @@ pub fn build_enhanced_footer(
         lines.push(format!(
             "  {}fmap URL:{}        {}{}{}{}{}",
             p.cyan, p.reset, p.white_bold, base_url, fmap_url, FMAP_TYPE_WIDTH_PARAM, p.reset
+        ));
+    }
+
+    // Render an applied-parameters summary in a human-friendly form
+    if let Some(params) = &summary.parameters {
+        let algo = format!("{}", params.algorithm);
+        let optimization = match params.optimization {
+            evefrontier_lib::routing::RouteOptimization::Fuel => "Fuel",
+            evefrontier_lib::routing::RouteOptimization::Distance => "Distance",
+        };
+        let ship = params.ship_name.as_deref().unwrap_or("<none>");
+        let fuel_q = format!("{:.0}%", params.fuel_quality);
+        let avoid_crit_val = if params.avoid_critical_state {
+            "Yes"
+        } else {
+            "No"
+        };
+        let max_sp = params
+            .max_spatial_neighbors
+            .map(|n| n.to_string())
+            .unwrap_or_else(|| "auto".to_string());
+        let avoid_gates_val = if params.avoid_gates { "Yes" } else { "No" };
+
+        lines.push(String::new());
+        lines.push(format!(
+            "  {}Parameters:{}  {}Algorithm:{} {} • {}Optimize:{} {} • {}Ship:{} {} • {}Fuel quality:{} {} • {}Avoid critical state:{} {} • {}Max spatial neighbors:{} {} • {}Avoid gates:{} {}",
+            p.cyan,
+            p.reset,
+            p.magenta,
+            p.reset,
+            algo,
+            p.magenta,
+            p.reset,
+            optimization,
+            p.magenta,
+            p.reset,
+            ship,
+            p.magenta,
+            p.reset,
+            fuel_q,
+            p.magenta,
+            p.reset,
+            avoid_crit_val,
+            p.magenta,
+            p.reset,
+            max_sp,
+            p.magenta,
+            p.reset,
+            avoid_gates_val
         ));
     }
 

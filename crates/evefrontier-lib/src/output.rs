@@ -100,6 +100,24 @@ pub struct RouteSummary {
     /// fmap URL token for sharing/bookmarking the route.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fmap_url: Option<String>,
+    /// Optional summary of the effective routing parameters used to compute this plan.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parameters: Option<RouteParametersSummary>,
+}
+
+/// Summary of the request-level parameters that were applied by the planner.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct RouteParametersSummary {
+    pub algorithm: crate::routing::RouteAlgorithm,
+    pub optimization: crate::routing::RouteOptimization,
+    pub fuel_quality: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ship_name: Option<String>,
+    pub avoid_critical_state: bool,
+    pub max_spatial_neighbors: Option<usize>,
+    pub avoid_gates: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_jump: Option<f64>,
 }
 
 impl RouteSummary {
@@ -297,7 +315,12 @@ pub struct FuelSummary {
 
 impl RouteSummary {
     /// Convert a [`RoutePlan`] into a structured summary with resolved system names.
-    pub fn from_plan(kind: RouteOutputKind, starmap: &Starmap, plan: &RoutePlan) -> Result<Self> {
+    pub fn from_plan(
+        kind: RouteOutputKind,
+        starmap: &Starmap,
+        plan: &RoutePlan,
+        request: Option<&crate::routing::RouteRequest>,
+    ) -> Result<Self> {
         if plan.steps.is_empty() {
             return Err(Error::EmptyRoutePlan);
         }
@@ -383,6 +406,16 @@ impl RouteSummary {
             fuel: None,
             heat: None,
             fmap_url: None,
+            parameters: request.map(|r| RouteParametersSummary {
+                algorithm: r.algorithm,
+                optimization: r.optimization,
+                fuel_quality: r.fuel_config.quality,
+                ship_name: r.constraints.ship.as_ref().map(|s| s.name.clone()),
+                avoid_critical_state: r.constraints.avoid_critical_state,
+                max_spatial_neighbors: Some(r.max_spatial_neighbors),
+                avoid_gates: r.constraints.avoid_gates,
+                max_jump: r.constraints.max_jump,
+            }),
         })
     }
 

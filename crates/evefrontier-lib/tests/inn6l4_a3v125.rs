@@ -121,7 +121,11 @@ fn inn6l4_to_a3v125_distance_vs_fuel_optimization() {
         start: "INN-6L4".to_string(),
         goal: "A3V-125".to_string(),
         algorithm: RouteAlgorithm::AStar,
-        constraints: RouteConstraints::default(),
+        // Explicitly disable heat-based blocking for distance-optimized baseline
+        constraints: RouteConstraints {
+            avoid_critical_state: false,
+            ..RouteConstraints::default()
+        },
         spatial_index: None,
         max_spatial_neighbors: GraphBuildOptions::default().max_spatial_neighbors,
         optimization: evefrontier_lib::routing::RouteOptimization::Distance,

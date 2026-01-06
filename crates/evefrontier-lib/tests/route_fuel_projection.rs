@@ -32,8 +32,8 @@ fn attaches_fuel_projection_to_route_summary() {
         fuel_config: evefrontier_lib::ship::FuelConfig::default(),
     };
     let plan = plan_route(&starmap, &request).expect("route planned");
-    let mut summary =
-        RouteSummary::from_plan(RouteOutputKind::Route, &starmap, &plan).expect("summary builds");
+    let mut summary = RouteSummary::from_plan(RouteOutputKind::Route, &starmap, &plan, None)
+        .expect("summary builds");
 
     let catalog = ShipCatalog::from_path(&fixture_ship_path()).expect("ship fixture loads");
     let ship = catalog.get("Reflex").expect("reflex present");
@@ -81,8 +81,8 @@ fn gate_steps_do_not_consume_fuel() {
         fuel_config: evefrontier_lib::ship::FuelConfig::default(),
     };
     let plan = plan_route(&starmap, &request).expect("route planned");
-    let mut summary =
-        RouteSummary::from_plan(RouteOutputKind::Route, &starmap, &plan).expect("summary builds");
+    let mut summary = RouteSummary::from_plan(RouteOutputKind::Route, &starmap, &plan, None)
+        .expect("summary builds");
 
     let catalog = ShipCatalog::from_path(&fixture_ship_path()).expect("ship fixture loads");
     let ship = catalog.get("Reflex").expect("reflex present");

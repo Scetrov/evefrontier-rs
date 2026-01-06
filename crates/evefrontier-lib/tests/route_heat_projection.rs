@@ -54,6 +54,7 @@ fn make_reflex_route_summary() -> RouteSummary {
         fuel: None,
         heat: None,
         fmap_url: None,
+        parameters: None,
     }
 }
 
