@@ -19,6 +19,7 @@ All notable changes to this project will be documented in this file.
     an internal reqwest runtime from inside an async context.
   - Add: show an estimation warning box in route footers when fuel or heat values are present
     to indicate values are approximate and may deviate by ±10%.
+  - Default route optimization changed from `Fuel` to `Distance`. The `Fuel` optimization (and ship injection) now strictly only occurs in "zero-config" runs (where no custom constraints like `--max-jump` are provided) to prevent misleading warnings when a ship is missing.
 - **Library** (`evefrontier-lib`)
   - Fuel projections no longer consume fuel on gate hops; gate steps report zero fuel cost
   - Fix: avoid parsing checksum sidecar files (e.g., `*.sha256`) as ship CSVs. The downloader cache
@@ -32,8 +33,14 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- **MCP Server** (`evefrontier-mcp`)
-  - **Ship Data & Fuel Calculations** (Library & CLI)
+- **Library** (`evefrontier-lib`)
+  - Newton's Law of Cooling implementation for realistic cooldown time estimation.
+  - Non-cumulative thermal model: ships are assumed to cool to a jump-ready state (nominal 30.0K or ambient) between hops, avoiding artificial heat buildup across long routes.
+  - Added `calculate_cooling_time` and `compute_cooling_constant` to `ship.rs`.
+- **CLI** (`evefrontier-cli`)
+  - Cooldown time indicator in enhanced route output (e.g., `(2m4s to cool)`).
+  - Show per-hop heat and cooldowns based on realistic exponential decay.
+  - Wait times are only displayed for intermediate hops; the goal step displays the arrival heat but omits the cooldown duration redundant for a destination.
     - `ShipAttributes`, `ShipLoadout`, and `ShipCatalog` structs for ship management
     - Fuel cost calculator: `calculate_jump_fuel_cost()` with mass and distance-based formula
     - Add: `calculate_maximum_distance()` helper to compute maximum range from fuel load and quality

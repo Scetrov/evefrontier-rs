@@ -142,25 +142,15 @@ impl RouteSummary {
         let mut warnings = Vec::new();
 
         for idx in 1..self.steps.len() {
-            // previous residual heat (cooled) carried from previous step, if any
-            let prev_residual = if let Some(prev_step) = self.steps.get(idx - 1) {
-                prev_step
-                    .heat
-                    .as_ref()
-                    .and_then(|h| h.residual_heat)
-                    .unwrap_or(0.0)
-            } else {
-                0.0
-            };
-
             let method = self.steps[idx].method.as_deref();
 
             if method == Some("gate") {
+                // Gates do not generate heat; assume ship remains at its current state (nominal).
                 let projection = crate::ship::HeatProjection {
                     hop_heat: 0.0,
                     warning: None,
                     wait_time_seconds: None,
-                    residual_heat: Some(prev_residual),
+                    residual_heat: Some(crate::ship::HEAT_NOMINAL),
                     can_proceed: true,
                 };
 
@@ -213,46 +203,42 @@ impl RouteSummary {
                 });
             }
             let hop_heat = hop_energy / (mass * ship.specific_heat);
-            // Track generated total separately from residual (cooled) cumulative heat
-            // generated hop_heat tracked per-step; no running cumulative total stored
 
-            // Cooling model: compute dissipation per second using ship specific_heat and
-            // the local environment (min_external_temp). Apply wait time if needed to
-            // reduce the residual cumulative heat to the overheated threshold.
-            let prev_residual = if let Some(prev_step) = self.steps.get(idx - 1) {
-                prev_step
-                    .heat
-                    .as_ref()
-                    .and_then(|h| h.residual_heat)
-                    .unwrap_or(0.0)
-            } else {
-                0.0
-            };
-
-            let candidate = prev_residual + hop_heat;
-            // Use the zone dissipation model by default. The previous multi-mode
-            // implementation was removed in favor of a single, conservative model
-            // for dissipation which uses the local ambient temperature.
-            let dissipation_per_sec = crate::ship::compute_dissipation_per_sec(
-                mass,
-                ship.specific_heat,
-                self.steps[idx].min_external_temp,
-            );
+            // Cooling model: We assume the ship starts at the jump-ready state
+            // (HEAT_NOMINAL or origin system ambient temperature, whichever is higher).
+            // We do not track cumulative heat across the entire route as it is
+            // expected that pilots wait for the ship to cool between jumps.
+            let prev_ambient = self.steps[idx - 1].min_external_temp.unwrap_or(0.0);
+            let start_temp = crate::ship::HEAT_NOMINAL.max(prev_ambient);
+            let candidate = start_temp + hop_heat;
 
             let mut wait_time: Option<f64> = None;
             let mut residual = candidate;
             let mut can_proceed = true;
 
-            // Target conservatively: reduce to HEAT_OVERHEATED for a safe proceeding point
-            let target = crate::ship::HEAT_OVERHEATED;
-            if candidate >= target {
-                if dissipation_per_sec > 0.0 {
-                    let required = candidate - target;
-                    let wait = required / dissipation_per_sec;
-                    wait_time = Some(wait);
-                    // residual approximates target after waiting
-                    residual = (candidate - dissipation_per_sec * wait).max(0.0);
-                    can_proceed = residual < crate::ship::HEAT_CRITICAL;
+            // Target conservatively: reduce to HEAT_NOMINAL (nominal temperature)
+            // for a safe proceeding point, as requested for cooldown indicators.
+            // We only calculate a wait time if there is a subsequent hop in the route;
+            // the goal step does not require a cooldown as the mission is complete.
+            let is_goal = idx == self.steps.len() - 1;
+            let target = crate::ship::HEAT_NOMINAL;
+
+            if candidate > target && !is_goal {
+                let k = crate::ship::compute_cooling_constant(
+                    mass,
+                    ship.specific_heat,
+                    self.steps[idx].min_external_temp,
+                );
+
+                if k > 0.0 {
+                    let env_temp = self.steps[idx].min_external_temp.unwrap_or(0.0);
+                    let wait = crate::ship::calculate_cooling_time(candidate, target, env_temp, k);
+                    if wait > 0.0 {
+                        wait_time = Some(wait);
+                        // After waiting, we are at the target temperature (floor).
+                        residual = target.max(env_temp);
+                    }
+                    can_proceed = true;
                 } else {
                     // No cooling available here
                     wait_time = None;
@@ -263,10 +249,8 @@ impl RouteSummary {
 
             // Compute warnings based on canonical absolute thresholds (HEAT_OVERHEATED/CRITICAL).
             // Warnings are emitted when the *instantaneous* temperature experienced during the
-            // jump (system ambient temperature + the hop's temperature delta) exceeds thresholds.
-            // This avoids triggering warnings solely from accumulated residuals carried between hops.
-            let system_temp = self.steps[idx].min_external_temp.unwrap_or(0.0);
-            let instant_temp = system_temp + hop_heat;
+            // jump (start temperature + the hop's temperature delta) exceeds thresholds.
+            let instant_temp = candidate;
             let mut warn: Option<String> = None;
             if instant_temp >= crate::ship::HEAT_CRITICAL {
                 // Use concise label form for warnings displayed in the UI/API.

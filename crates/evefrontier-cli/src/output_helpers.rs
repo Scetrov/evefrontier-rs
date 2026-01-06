@@ -8,6 +8,7 @@ pub(crate) struct ColumnWidths {
     pub(crate) fuel_val_width: usize,
     pub(crate) rem_val_width: usize,
     pub(crate) heat_val_width: usize,
+    pub(crate) cooldown_val_width: usize,
 }
 
 /// Compute column widths used by the enhanced renderer for right alignment.
@@ -15,6 +16,7 @@ pub(crate) fn compute_details_column_widths(steps: &[RouteStep]) -> ColumnWidths
     let mut fuel_val_width = 0usize;
     let mut rem_val_width = 0usize;
     let mut heat_val_width = 0usize;
+    let mut cooldown_val_width = 0usize;
 
     for step in steps {
         if let Some(fuel) = step.fuel.as_ref() {
@@ -35,6 +37,13 @@ pub(crate) fn compute_details_column_widths(steps: &[RouteStep]) -> ColumnWidths
                 "0.00".to_string()
             };
             heat_val_width = heat_val_width.max(heat_str.len());
+
+            if let Some(wait) = h.wait_time_seconds {
+                if wait > 0.5 {
+                    let cd_str = format_cooldown_duration(wait);
+                    cooldown_val_width = cooldown_val_width.max(cd_str.len());
+                }
+            }
         }
     }
 
@@ -42,6 +51,7 @@ pub(crate) fn compute_details_column_widths(steps: &[RouteStep]) -> ColumnWidths
         fuel_val_width,
         rem_val_width,
         heat_val_width,
+        cooldown_val_width,
     }
 }
 
@@ -110,6 +120,22 @@ pub(crate) fn format_fuel_suffix(step: &RouteStep) -> Option<String> {
         fuel.hop_cost.ceil() as i64,
         remaining
     ))
+}
+
+/// Format a cooling duration into a concise string like "2m4s".
+pub(crate) fn format_cooldown_duration(seconds: f64) -> String {
+    if seconds <= 0.0 {
+        return "0s".to_string();
+    }
+    let total_secs = seconds.round() as u64;
+    let mins = total_secs / 60;
+    let secs = total_secs % 60;
+
+    if mins > 0 {
+        format!("{}m{}s", mins, secs)
+    } else {
+        format!("{}s", secs)
+    }
 }
 
 /// Build the estimation warning box as a string so tests can inspect it.
@@ -321,19 +347,43 @@ pub(crate) fn build_heat_segment(
             } else {
                 "0.00".to_string()
             };
-            Some(format!(
-                "{}heat +{:>width$}{}",
+            let heat_part = format!(
+                "{}heat {:>width$}{}",
                 palette.red,
                 heat_str,
                 palette.reset,
                 width = widths.heat_val_width
-            ))
+            );
+
+            let cooldown_part = if widths.cooldown_val_width > 0 {
+                if let Some(wait) = h.wait_time_seconds {
+                    if wait > 0.5 {
+                        let cd_str = format_cooldown_duration(wait);
+                        Some(format!(
+                            " {}({} to cool){}",
+                            palette.gray, cd_str, palette.reset
+                        ))
+                    } else {
+                        Some(" ".repeat(11 + widths.cooldown_val_width))
+                    }
+                } else {
+                    Some(" ".repeat(11 + widths.cooldown_val_width))
+                }
+            } else {
+                None
+            };
+
+            if let Some(cd) = cooldown_part {
+                Some(format!("{}{}", heat_part, cd))
+            } else {
+                Some(heat_part)
+            }
         } else {
-            Some(format!(
-                "      {:>width$}",
-                "",
-                width = widths.heat_val_width
-            ))
+            let mut padding = 6 + widths.heat_val_width;
+            if widths.cooldown_val_width > 0 {
+                padding += 11 + widths.cooldown_val_width;
+            }
+            Some(" ".repeat(padding))
         }
     } else {
         None

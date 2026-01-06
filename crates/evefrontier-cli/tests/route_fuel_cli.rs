@@ -137,7 +137,7 @@ fn text_output_mentions_heat_when_ship_selected() {
     // The footer heat summary was removed; ensure per-step heat is shown instead.
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains("heat +"));
+        .stdout(predicate::str::contains("heat "));
 }
 
 #[test]

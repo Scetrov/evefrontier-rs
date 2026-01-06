@@ -69,10 +69,14 @@ fn dynamic_mass_does_not_change_per_hop_avoidance_behavior() {
     let err_static = plan_route(&starmap, &req_static).err();
     let err_dynamic = plan_route(&starmap, &req_dynamic).err();
 
-    // Current behavior: enabling `dynamic_mass` should not change whether an avoidance
+    // In the non-cumulative model, blocking is determined per-hop (start_temp + delta_temp).
+    // Because delta_temp = (energy / (mass * specific_heat)) and energy scales linearly
+    // with mass, the mass terms cancel out and the resulting temperature change for a
+    // given jump distance is independent of the loadout mass.
+    //
+    // Consequently, enabling `dynamic_mass` should not change whether an avoidance
     // policy blocks a route. The important invariant is that both requests yield the
-    // same outcome (both allowed or both blocked). If we later choose to change this
-    // policy, update this test accordingly and add documentation in `HEAT_MECHANICS.md`.
+    // same outcome (both allowed or both blocked).
     assert_eq!(
         err_static.is_some(),
         err_dynamic.is_some(),

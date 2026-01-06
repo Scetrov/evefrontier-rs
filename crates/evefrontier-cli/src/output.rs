@@ -186,7 +186,7 @@ mod tests {
             .build_step_details_line(&step, &widths)
             .expect("line present");
 
-        assert!(line.contains("heat +<0.01"));
+        assert!(line.contains("heat <0.01"));
     }
 
     #[test]

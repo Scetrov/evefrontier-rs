@@ -18,10 +18,10 @@ pub const HEAT_NOMINAL: f64 = 30.0;
 pub const HEAT_OVERHEATED: f64 = 90.0;
 pub const HEAT_CRITICAL: f64 = 150.0;
 
-/// Base cooling power (arbitrary heat-units per second). Tunable constant used for prototype
-/// cooling model. This value is chosen to produce reasonable wait times in tests and can be
-/// adjusted after field validation.
-pub const BASE_COOLING_POWER: f64 = 1e8;
+/// Base cooling power (W/K units, effectively k scaled by mass). Tunable constant used for Newton's
+/// Law of Cooling model. This value is calibrated to produce wait times in the minutes
+/// range for ships in the 10^7 kg mass bracket.
+pub const BASE_COOLING_POWER: f64 = 1e6;
 
 /// Compute a zone factor from an external temperature (Kelvin). Colder environments cool more
 /// effectively (factor closer to 1.0); hot environments cool poorly (factor near 0.0).
@@ -37,10 +37,9 @@ pub fn compute_zone_factor(min_external_temp: Option<f64>) -> f64 {
     }
 }
 
-/// Compute dissipation (heat-units per second) for a ship given its mass and specific heat and
-/// an optional external temperature. The returned value represents how many "heat units"
-/// the ship will lose per second when waiting in this environment.
-pub fn compute_dissipation_per_sec(
+/// Compute the cooling constant k (1/s) for Newton's Law of Cooling.
+/// k = (BASE_COOLING_POWER * zone_factor) / thermal_mass
+pub fn compute_cooling_constant(
     total_mass_kg: f64,
     specific_heat: f64,
     min_external_temp: Option<f64>,
@@ -50,11 +49,39 @@ pub fn compute_dissipation_per_sec(
         || !specific_heat.is_finite()
         || specific_heat <= 0.0
     {
-        return 0.0; // invalid inputs -> no cooling
+        return 0.0;
     }
     let zone_factor = compute_zone_factor(min_external_temp);
-    // Cooling power scaled by ship thermal mass (mass * specific_heat)
     (BASE_COOLING_POWER * zone_factor) / (total_mass_kg * specific_heat)
+}
+
+/// Calculate the time (seconds) required to cool from start_temp to target_temp
+/// given a cooling constant k and environment temperature env_temp.
+///
+/// Formula: t = -(1/k) * ln((T_target - T_env) / (T_start - T_env))
+pub fn calculate_cooling_time(start_temp: f64, target_temp: f64, env_temp: f64, k: f64) -> f64 {
+    if start_temp <= target_temp || k <= 0.0 {
+        return 0.0;
+    }
+    // Ambient temperature is the floor: we can't cool below it.
+    // Use a small epsilon to avoid negative or zero logs when target is exactly env.
+    let target = target_temp.max(env_temp + 0.01);
+    if start_temp <= target {
+        return 0.0;
+    }
+
+    let ratio = (target - env_temp) / (start_temp - env_temp);
+    -(1.0 / k) * ratio.ln()
+}
+
+/// Compute dissipation (heat-units per second) for a ship given its mass and specific heat and
+/// an optional external temperature. Retained for backward compatibility or linear approximations.
+pub fn compute_dissipation_per_sec(
+    total_mass_kg: f64,
+    specific_heat: f64,
+    min_external_temp: Option<f64>,
+) -> f64 {
+    compute_cooling_constant(total_mass_kg, specific_heat, min_external_temp)
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

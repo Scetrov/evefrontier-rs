@@ -1,7 +1,7 @@
 use evefrontier_lib::output::{RouteEndpoint, RouteOutputKind, RouteSummary};
 mod common;
 use common::RouteStepBuilder;
-use evefrontier_lib::ship::HEAT_OVERHEATED;
+use evefrontier_lib::ship::HEAT_NOMINAL;
 use evefrontier_lib::HeatConfig;
 use evefrontier_lib::RouteAlgorithm;
 // ShipLoadout used via fully-qualified path to avoid unused-import lint in some test builds
@@ -108,22 +108,22 @@ fn attach_heat_reflex_route() {
         expected2
     );
 
-    // After hop 2, candidate residual is expected1 + expected2. Depending on the calibration
-    // the cooling model may recommend waiting; accept either behavior: if a wait is
-    // recommended residual should be reduced to HEAT_OVERHEATED, otherwise residual should be
-    // below HEAT_OVERHEATED.
+    // In the non-cumulative model, we assume the ship starts each jump at a ready
+    // state (nominal or ambient). The residual heat for the step reflects the
+    // temperature *after* an optional cooldown period. If a wait is recommended,
+    // residual heat should match the target (HEAT_NOMINAL).
     let residual2 = s2.residual_heat.expect("residual heat present");
     if s2.wait_time_seconds.is_some() {
         assert!(
-            (residual2 - HEAT_OVERHEATED).abs() < 1e-6,
+            (residual2 - HEAT_NOMINAL).abs() < 1e-6,
             "residual {} expected {}",
             residual2,
-            HEAT_OVERHEATED
+            HEAT_NOMINAL
         );
     } else {
         assert!(
-            residual2 < HEAT_OVERHEATED,
-            "residual {} should be below overheated",
+            residual2 < HEAT_NOMINAL,
+            "residual {} should be below nominal",
             residual2
         );
     }
