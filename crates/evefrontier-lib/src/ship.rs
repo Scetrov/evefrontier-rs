@@ -23,6 +23,14 @@ pub const HEAT_CRITICAL: f64 = 150.0;
 /// range for ships in the 10^7 kg mass bracket.
 pub const BASE_COOLING_POWER: f64 = 1e6;
 /// Epsilon used to prevent logarithm domain errors when cooling toward ambient temperature.
+///
+/// When the target temperature approaches or is at/below the environment temperature,
+/// the Newton's Law of Cooling formula can otherwise attempt to take `ln(0)` or a negative
+/// value, which is outside the valid domain of the logarithm and would result in NaNs.
+/// A tolerance of 0.01 K keeps us just inside the valid domain of `ln`, while being
+/// physically and gameplay-wise negligible for cooling times (sub‑percent impact on
+/// computed wait durations). This value was chosen as a pragmatic balance between
+/// numerical robustness and not materially inflating cooling waits.
 pub const COOLING_EPSILON: f64 = 0.01;
 
 /// Compute a zone factor from an external temperature (Kelvin). Colder environments cool more
@@ -777,7 +785,7 @@ mod tests {
     }
 
     #[test]
-    fn test_calculate_cooling_time() {
+    fn calculate_cooling_time_exponential_decay_formula() {
         let k = 1.0;
         let env = 30.0;
 
@@ -785,7 +793,7 @@ mod tests {
         assert_eq!(calculate_cooling_time(50.0, 60.0, env, k), 0.0);
 
         // start > target: should take time
-        // t = -ln((60 - 30) / (100 - 30)) = -ln(30/70) = ln(7/3) ≈ 0.847
+        // t = -ln((60 - 30) / (100 - 30)) = -ln(3/7) = ln(7/3) ≈ 0.847
         let t = calculate_cooling_time(100.0, 60.0, env, k);
         assert!((t - (70.0 / 30.0f64).ln()).abs() < 1e-6);
 

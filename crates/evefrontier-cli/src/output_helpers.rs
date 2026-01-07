@@ -2,6 +2,11 @@ use crate::output::FMAP_TYPE_WIDTH_PARAM;
 use crate::terminal::{colors, ColorPalette};
 use evefrontier_lib::{RouteStep, RouteSummary};
 
+const COOLDOWN_DISPLAY_THRESHOLD_SECONDS: f64 = 0.5;
+const TAG_COLUMN_WIDTH: usize = 13;
+const COOLDOWN_COLUMN_PADDING: usize = 12;
+const FOOTER_LABEL_WIDTH: usize = 20;
+
 /// Column widths for the details row alignment.
 #[derive(Debug, Default, PartialEq, Eq)]
 pub(crate) struct ColumnWidths {
@@ -39,7 +44,7 @@ pub(crate) fn compute_details_column_widths(steps: &[RouteStep]) -> ColumnWidths
             heat_val_width = heat_val_width.max(heat_str.len());
 
             if let Some(wait) = h.wait_time_seconds {
-                if wait > 0.5 {
+                if wait > COOLDOWN_DISPLAY_THRESHOLD_SECONDS {
                     let cd_str = format_cooldown_duration(wait);
                     cooldown_val_width = cooldown_val_width.max(cd_str.len());
                 }
@@ -380,13 +385,13 @@ pub(crate) fn build_heat_segment(
                     label_style, padded_badge, palette.reset
                 ));
             } else {
-                res.push_str(&" ".repeat(13));
+                res.push_str(&" ".repeat(TAG_COLUMN_WIDTH));
             }
 
             // Cooldown Column
             if widths.cooldown_val_width > 0 {
                 if let Some(wait) = h.wait_time_seconds {
-                    if wait > 0.5 {
+                    if wait > COOLDOWN_DISPLAY_THRESHOLD_SECONDS {
                         let cd_str = format_cooldown_duration(wait);
                         res.push_str(&format!(
                             " {}({:>width$} to cool){}",
@@ -396,18 +401,20 @@ pub(crate) fn build_heat_segment(
                             width = widths.cooldown_val_width
                         ));
                     } else {
-                        res.push_str(&" ".repeat(12 + widths.cooldown_val_width));
+                        res.push_str(
+                            &" ".repeat(COOLDOWN_COLUMN_PADDING + widths.cooldown_val_width),
+                        );
                     }
                 } else {
-                    res.push_str(&" ".repeat(12 + widths.cooldown_val_width));
+                    res.push_str(&" ".repeat(COOLDOWN_COLUMN_PADDING + widths.cooldown_val_width));
                 }
             }
 
             Some(res)
         } else {
-            let mut padding = 5 + widths.heat_val_width + 13;
+            let mut padding = 5 + widths.heat_val_width + TAG_COLUMN_WIDTH;
             if widths.cooldown_val_width > 0 {
-                padding += 12 + widths.cooldown_val_width;
+                padding += COOLDOWN_COLUMN_PADDING + widths.cooldown_val_width;
             }
             Some(" ".repeat(padding))
         }
@@ -473,7 +480,7 @@ pub fn build_enhanced_footer(
         p.gray, p.reset
     ));
 
-    let lw = 20; // label width
+    let lw = FOOTER_LABEL_WIDTH; // label width
 
     // Distances
     let l_total = "Total Distance:";

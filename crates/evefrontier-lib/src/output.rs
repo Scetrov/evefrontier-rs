@@ -221,11 +221,18 @@ impl RouteSummary {
 
             // Target conservatively: reduce to HEAT_NOMINAL (nominal temperature)
             // for a safe proceeding point, as requested for cooldown indicators.
-            // We only calculate a wait time if there is a subsequent hop in the route
-            // and that hop is NOT a gate; the goal step and gate hops don't require
-            // cooldowns before arrival as they don't involve star temperature constraints.
             let is_goal = idx == self.steps.len() - 1;
-            let next_is_gate = !is_goal && self.steps[idx + 1].method.as_deref() == Some("gate");
+
+            // We only calculate a wait time if there is a subsequent hop in the route
+            // and that hop is NOT a gate; the goal step (destination) and gate hops don't require
+            // cooldowns before arrival as they don't involve star temperature constraints
+            // (gate activation is instantaneous and heat-agnostic).
+            let next_is_gate = if is_goal {
+                false
+            } else {
+                self.steps[idx + 1].method.as_deref() == Some("gate")
+            };
+
             let target = crate::ship::HEAT_NOMINAL;
 
             if candidate > target && !is_goal && !next_is_gate {
