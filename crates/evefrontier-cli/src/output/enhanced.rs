@@ -169,7 +169,6 @@ impl EnhancedRenderer {
         let min_seg = crate::output_helpers::build_min_segment(step, p);
         let fuel_seg_opt = crate::output_helpers::build_fuel_segment(step, widths, p);
         let heat_seg_opt = crate::output_helpers::build_heat_segment(step, widths, p);
-        let tags_opt = crate::output_helpers::build_tags_segment(step, p);
 
         let has_fuel = step.fuel.is_some();
         let has_heat = step.heat.is_some();
@@ -183,9 +182,6 @@ impl EnhancedRenderer {
             segments.push(s);
         }
         if let Some(s) = heat_seg_opt {
-            segments.push(s);
-        }
-        if let Some(s) = tags_opt {
             segments.push(s);
         }
 

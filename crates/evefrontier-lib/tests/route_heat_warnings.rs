@@ -90,7 +90,7 @@ fn heat_warning_and_error_thresholds() {
             .collect::<Vec<_>>()
     );
 
-    // Case 2: critical threshold (default calibration produces critical cumulative heat)
+    // Case 2: critical threshold
     let mut summary2 = make_reflex_route_summary();
     let loadout2 = evefrontier_lib::ShipLoadout::new(&ship, ship.fuel_capacity, 633_006.0).unwrap();
     let config2 = evefrontier_lib::HeatConfig::default();
@@ -98,8 +98,10 @@ fn heat_warning_and_error_thresholds() {
         .attach_heat(&ship, &loadout2, &config2)
         .expect("attach heat");
     let total2 = summary2.heat.as_ref().expect("summary heat");
-    // With cooling enabled and default calibration the route may not reach severe thresholds.
-    // Accept either a severe warning (critical/overheated) or no warnings.
+    // In the non-cumulative model, warnings are per-hop. Aggressive calibration
+    // might still trigger them, but they are no longer additive. Accept either
+    // a severe warning (critical/overheated) or no warnings depending on the
+    // default calibration constant.
     assert!(
         total2.warnings.iter().any(|w| {
             let l = w.to_lowercase();

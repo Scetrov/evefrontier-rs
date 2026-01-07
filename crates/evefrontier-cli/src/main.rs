@@ -145,7 +145,7 @@ impl RouteCommandArgs {
             },
             spatial_index: None, // Will be set separately after loading
             max_spatial_neighbors: self.options.max_spatial_neighbours,
-            optimization: match self.options.optimize.unwrap_or(RouteOptimizeArg::Fuel) {
+            optimization: match self.options.optimize.unwrap_or_default() {
                 RouteOptimizeArg::Distance => evefrontier_lib::routing::RouteOptimization::Distance,
                 RouteOptimizeArg::Fuel => evefrontier_lib::routing::RouteOptimization::Fuel,
             },
@@ -273,9 +273,10 @@ enum RouteAlgorithmArg {
     AStar,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum, Default)]
 enum RouteOptimizeArg {
     /// Shortest distance (default)
+    #[default]
     Distance,
     /// Minimize fuel consumption (requires --ship)
     Fuel,
@@ -861,6 +862,12 @@ fn handle_route_command(
     };
 
     request.constraints.avoid_critical_state = avoid_critical;
+
+    // If it's a zero-config run, we want to default to Fuel optimization (with our default ship)
+    // to provide the most feature-rich initial experience for users.
+    if !user_provided_options && args.options.optimize.is_none() {
+        request.optimization = evefrontier_lib::routing::RouteOptimization::Fuel;
+    }
 
     // Load ship data and populate loadout if we have an effective ship name (and it's not "None").
     if let Some(ship_name) = effective_ship_name {

@@ -997,31 +997,7 @@ fn copy_file_atomic(source: &Path, destination: &Path) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::ffi::OsString;
     use tempfile::tempdir;
-
-    struct ScopedEnvVar {
-        key: String,
-        prev: Option<OsString>,
-    }
-
-    impl ScopedEnvVar {
-        fn new<K: AsRef<str>, V: AsRef<std::ffi::OsStr>>(key: K, val: V) -> Self {
-            let key_s = key.as_ref().to_string();
-            let prev = std::env::var_os(&key_s);
-            std::env::set_var(&key_s, val);
-            Self { key: key_s, prev }
-        }
-    }
-
-    impl Drop for ScopedEnvVar {
-        fn drop(&mut self) {
-            match &self.prev {
-                Some(v) => std::env::set_var(&self.key, v),
-                None => std::env::remove_var(&self.key),
-            }
-        }
-    }
 
     #[test]
     fn classify_detects_ship_data_by_name() {
@@ -1083,9 +1059,9 @@ mod tests {
         )
         .expect("write csv");
 
-        // Temporarily override cache dir via env var with scoped guard
-        let _guard = ScopedEnvVar::new(CACHE_DIR_ENV, cache.path());
-        let found = find_cached_ship_for_tag("e6c4").expect("search should succeed");
+        // Use the deterministic helper to avoid env var contention in tests
+        let found =
+            find_cached_ship_for_tag_in_dir("e6c4", cache.path()).expect("search should succeed");
         assert!(found.is_some(), "should find a ship file");
         let found = found.unwrap();
         assert_eq!(
@@ -1102,8 +1078,8 @@ mod tests {
         let sidecar = cache.path().join("e6c4-ship_data.csv.sha256");
         fs::write(&sidecar, "deadbeef").expect("write sidecar");
 
-        let _guard = ScopedEnvVar::new(CACHE_DIR_ENV, cache.path());
-        let found = find_cached_ship_for_tag("e6c4").expect("search should succeed");
+        let found =
+            find_cached_ship_for_tag_in_dir("e6c4", cache.path()).expect("search should succeed");
         assert!(found.is_none(), "should not return sidecar as ship data");
     }
 }

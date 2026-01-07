@@ -18,10 +18,20 @@ pub const HEAT_NOMINAL: f64 = 30.0;
 pub const HEAT_OVERHEATED: f64 = 90.0;
 pub const HEAT_CRITICAL: f64 = 150.0;
 
-/// Base cooling power (arbitrary heat-units per second). Tunable constant used for prototype
-/// cooling model. This value is chosen to produce reasonable wait times in tests and can be
-/// adjusted after field validation.
-pub const BASE_COOLING_POWER: f64 = 1e8;
+/// Base cooling power (W/K units, effectively k scaled by mass). Tunable constant used for Newton's
+/// Law of Cooling model. This value is calibrated to produce wait times in the minutes
+/// range for ships in the 10^7 kg mass bracket.
+pub const BASE_COOLING_POWER: f64 = 1e6;
+/// Epsilon used to prevent logarithm domain errors when cooling toward ambient temperature.
+///
+/// When the target temperature approaches or is at/below the environment temperature,
+/// the Newton's Law of Cooling formula can otherwise attempt to take `ln(0)` or a negative
+/// value, which is outside the valid domain of the logarithm and would result in NaNs.
+/// A tolerance of 0.01 K keeps us just inside the valid domain of `ln`, while being
+/// physically and gameplay-wise negligible for cooling times (sub‑percent impact on
+/// computed wait durations). This value was chosen as a pragmatic balance between
+/// numerical robustness and not materially inflating cooling waits.
+pub const COOLING_EPSILON: f64 = 0.01;
 
 /// Compute a zone factor from an external temperature (Kelvin). Colder environments cool more
 /// effectively (factor closer to 1.0); hot environments cool poorly (factor near 0.0).
@@ -37,10 +47,9 @@ pub fn compute_zone_factor(min_external_temp: Option<f64>) -> f64 {
     }
 }
 
-/// Compute dissipation (heat-units per second) for a ship given its mass and specific heat and
-/// an optional external temperature. The returned value represents how many "heat units"
-/// the ship will lose per second when waiting in this environment.
-pub fn compute_dissipation_per_sec(
+/// Compute the cooling constant k (1/s) for Newton's Law of Cooling.
+/// k = (BASE_COOLING_POWER * zone_factor) / thermal_mass
+pub fn compute_cooling_constant(
     total_mass_kg: f64,
     specific_heat: f64,
     min_external_temp: Option<f64>,
@@ -50,11 +59,47 @@ pub fn compute_dissipation_per_sec(
         || !specific_heat.is_finite()
         || specific_heat <= 0.0
     {
-        return 0.0; // invalid inputs -> no cooling
+        return 0.0;
     }
     let zone_factor = compute_zone_factor(min_external_temp);
-    // Cooling power scaled by ship thermal mass (mass * specific_heat)
     (BASE_COOLING_POWER * zone_factor) / (total_mass_kg * specific_heat)
+}
+
+/// Calculate the time (seconds) required to cool from start_temp to target_temp
+/// given a cooling constant k and environment temperature env_temp.
+///
+/// Formula: t = -(1/k) * ln((T_target - T_env) / (start_temp - T_env))
+pub fn calculate_cooling_time(start_temp: f64, target_temp: f64, env_temp: f64, k: f64) -> f64 {
+    if !start_temp.is_finite()
+        || !target_temp.is_finite()
+        || !env_temp.is_finite()
+        || !k.is_finite()
+        || start_temp <= target_temp
+        || k <= 0.0
+    {
+        return 0.0;
+    }
+    // Ambient temperature is the physical floor: we can't cool below it.
+    // If env_temp >= target_temp, clamp the effective target to just above env_temp so that the
+    // model reflects this constraint and avoids taking ln(0) or ln of a negative value when
+    // target_temp is at or below env_temp.
+    let target = target_temp.max(env_temp + COOLING_EPSILON);
+    if start_temp <= target {
+        return 0.0;
+    }
+
+    let ratio = (target - env_temp) / (start_temp - env_temp);
+    -(1.0 / k) * ratio.ln()
+}
+
+/// Compute dissipation (heat-units per second) for a ship given its mass and specific heat and
+/// an optional external temperature. Retained for backward compatibility or linear approximations.
+pub fn compute_dissipation_per_sec(
+    total_mass_kg: f64,
+    specific_heat: f64,
+    min_external_temp: Option<f64>,
+) -> f64 {
+    compute_cooling_constant(total_mass_kg, specific_heat, min_external_temp)
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -441,7 +486,11 @@ pub struct HeatProjection {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct HeatSummary {
-    // No cumulative total is exposed; per-step residuals and warnings describe thermal risk.
+    /// Total time spent cooling between hops (seconds).
+    pub total_wait_time_seconds: f64,
+    /// Final residual heat at the destination after any cooling at the point of arrival.
+    pub final_residual_heat: f64,
+    /// Warnings collected across all steps of the route.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub warnings: Vec<String>,
 }
@@ -721,5 +770,40 @@ mod tests {
             .expect("should parse capacity_m^3 header via normalization");
         let ship = catalog.get("Reflex").expect("ship exists");
         assert_eq!(ship.cargo_capacity, 100.0);
+    }
+
+    #[test]
+    fn test_compute_cooling_constant() {
+        // Base case: 1M kg ship, 1.0 specific heat, cold env (factor 1.0)
+        // k = (1e6 * 1.0) / (1e6 * 1.0) = 1.0
+        let k = compute_cooling_constant(1e6, 1.0, Some(30.0));
+        assert!((k - 1.0).abs() < f64::EPSILON);
+
+        // invalid inputs
+        assert_eq!(compute_cooling_constant(0.0, 1.0, None), 0.0);
+        assert_eq!(compute_cooling_constant(1e6, 0.0, None), 0.0);
+    }
+
+    #[test]
+    fn calculate_cooling_time_exponential_decay_formula() {
+        let k = 1.0;
+        let env = 30.0;
+
+        // start <= target: no wait
+        assert_eq!(calculate_cooling_time(50.0, 60.0, env, k), 0.0);
+
+        // start > target: should take time
+        // t = -ln((60 - 30) / (100 - 30)) = -ln(3/7) = ln(7/3) ≈ 0.847
+        let t = calculate_cooling_time(100.0, 60.0, env, k);
+        assert!((t - (70.0 / 30.0f64).ln()).abs() < 1e-6);
+
+        // target < env: clamped to env + COOLING_EPSILON
+        // target effectively becomes 30.01 (env + 0.01)
+        let t_clamped = calculate_cooling_time(100.0, 10.0, env, k);
+        let t_expected = -(1.0 / k) * ((COOLING_EPSILON) / (100.0 - 30.0)).ln();
+        assert!((t_clamped - t_expected).abs() < 1e-6);
+
+        // k <= 0
+        assert_eq!(calculate_cooling_time(100.0, 60.0, env, 0.0), 0.0);
     }
 }

@@ -37,10 +37,33 @@ TODO
 - Add a short table of example calculations.
 - Link this doc from `docs/USAGE.md` and `docs/ADR` once the formula is agreed and tests are added.
 
-## Integration with the game Temperature Service
+## Newton's Law of Cooling Implementation
 
-Finding: The game's `TemperatureSvc` (decompiled) exposes a compact set of primitives that are
-useful for implementing a realistic cooling/dissipation model:
+The system models ship cooling using Newton's Law of Cooling, providing a more realistic exponential
+decay where cooling slows down as the ship approaches the ambient temperature.
+
+**Key Equations**:
+
+- **Solution**: $T(t) = T_{env} + (T_0 - T_{env}) e^{-kt}$
+- **Cooldown Time**:
+  $t = -\frac{1}{k} \ln\left(\frac{T_{threshold} - T_{env}}{T_{start} - T_{env}}\right)$
+
+**Implementation Details**:
+
+- **Cooling Constant (k)**:
+  `k = BASE_COOLING_POWER * zone_factor / (total_mass_kg * specific_heat)`
+- **Wait Time**: The time required to reach the jump-ready state (30.0 K) is calculated per hop.
+- **Start Temperature (T_start)**: Assumed to be T_ready + delta_T_jump, where T_ready
+  is max(30.0K, T_ambient_origin).
+- **Ambient Floor**: Ships cannot cool below the system's ambient temperature (T_env).
+
+## Integration with the game Temperature Service (Historical Notes)
+
+_Note: The following sections describe research into the game's TemperatureSvc and suggested models
+that informed the current implementation._
+
+Finding: The game's TemperatureSvc (decompiled) exposes a compact set of primitives that are useful
+for implementing a realistic cooling/dissipation model:
 
 - Current and base temperatures via `current_temperature()` and `base_temperature()`
 - A `temperature_time_scale()` value used by the game to scale time-based temperature changes
@@ -159,12 +182,18 @@ evefrontier-cli route --from "Nod" --to "Brana" --avoid-critical-state --ship "R
   - Unit & integration tests added: `routing_critical.rs`, `route_dynamic_heat.rs`, and
     `crates/evefrontier-cli/tests/route_avoid_critical.rs` (covers both error and success cases).
 
-### Residual Heat and Cooldown
+### Residual Heat and Cooldown (Non-Cumulative Model)
 
-Residual heat modeling is not especially helpful in the context of this tool as it's normal practice
-to wait for the ship to cool down after jumps (Newton's Law of Cooling). Because of this, we do
-not believe it is valuable to include a cumulative heat model in this or any future implementation
-of the tool.
+The system uses a non-cumulative thermal model. We assume that pilots wait for their ships to return
+to a "jump-ready" state—either the nominal temperature (30.0 K) or the system's ambient temperature,
+whichever is higher—before initiating the next jump.
+
+Consequently, each hop's cooldown calculation starts from this baseline:
+$T_{start} = \max(30.0, T_{ambient\_origin}) + \Delta T_{jump}$.
+
+We do not track heat build-up across multiple hops, as residual heat dissipates quickly enough that
+carrying it into the next system's jump calculation would introduce unnecessary complexity without
+significantly improving the accuracy of the cooldown estimates provided by the tool.
 
 It may, however, be useful to include cooldown time estimates in the output to help pilots plan
 their routes; these will be indicative because they won't include time spent warping between the

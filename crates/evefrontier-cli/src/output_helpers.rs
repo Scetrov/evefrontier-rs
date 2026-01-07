@@ -2,12 +2,18 @@ use crate::output::FMAP_TYPE_WIDTH_PARAM;
 use crate::terminal::{colors, ColorPalette};
 use evefrontier_lib::{RouteStep, RouteSummary};
 
+const COOLDOWN_DISPLAY_THRESHOLD_SECONDS: f64 = 0.5;
+const TAG_COLUMN_WIDTH: usize = 13;
+const COOLDOWN_COLUMN_PADDING: usize = 12;
+const FOOTER_LABEL_WIDTH: usize = 20;
+
 /// Column widths for the details row alignment.
 #[derive(Debug, Default, PartialEq, Eq)]
 pub(crate) struct ColumnWidths {
     pub(crate) fuel_val_width: usize,
     pub(crate) rem_val_width: usize,
     pub(crate) heat_val_width: usize,
+    pub(crate) cooldown_val_width: usize,
 }
 
 /// Compute column widths used by the enhanced renderer for right alignment.
@@ -15,6 +21,7 @@ pub(crate) fn compute_details_column_widths(steps: &[RouteStep]) -> ColumnWidths
     let mut fuel_val_width = 0usize;
     let mut rem_val_width = 0usize;
     let mut heat_val_width = 0usize;
+    let mut cooldown_val_width = 0usize;
 
     for step in steps {
         if let Some(fuel) = step.fuel.as_ref() {
@@ -35,6 +42,13 @@ pub(crate) fn compute_details_column_widths(steps: &[RouteStep]) -> ColumnWidths
                 "0.00".to_string()
             };
             heat_val_width = heat_val_width.max(heat_str.len());
+
+            if let Some(wait) = h.wait_time_seconds {
+                if wait > COOLDOWN_DISPLAY_THRESHOLD_SECONDS {
+                    let cd_str = format_cooldown_duration(wait);
+                    cooldown_val_width = cooldown_val_width.max(cd_str.len());
+                }
+            }
         }
     }
 
@@ -42,6 +56,7 @@ pub(crate) fn compute_details_column_widths(steps: &[RouteStep]) -> ColumnWidths
         fuel_val_width,
         rem_val_width,
         heat_val_width,
+        cooldown_val_width,
     }
 }
 
@@ -110,6 +125,25 @@ pub(crate) fn format_fuel_suffix(step: &RouteStep) -> Option<String> {
         fuel.hop_cost.ceil() as i64,
         remaining
     ))
+}
+
+/// Format a cooling duration into a concise string like "2m4s".
+pub(crate) fn format_cooldown_duration(seconds: f64) -> String {
+    if seconds <= 0.0 {
+        return "0s".to_string();
+    }
+    // Clamp to a reasonable upper bound to avoid overflow/panics when casting.
+    // Cooling times beyond 24 hours are unlikely to be meaningful for this CLI.
+    let clamped = seconds.clamp(0.0, 86_400.0);
+    let total_secs = clamped.round() as u64;
+    let mins = total_secs / 60;
+    let secs = total_secs % 60;
+
+    if mins > 0 {
+        format!("{}m{}s", mins, secs)
+    } else {
+        format!("{}s", secs)
+    }
 }
 
 /// Build the estimation warning box as a string so tests can inspect it.
@@ -289,11 +323,19 @@ pub(crate) fn build_fuel_segment(
                 None
             };
 
-            if let Some(rem) = fuel_rem_seg {
-                Some(format!("{} {}", fuel_cost_seg, rem))
+            let mut res = if let Some(rem) = fuel_rem_seg {
+                format!("{} {}", fuel_cost_seg, rem)
             } else {
-                Some(fuel_cost_seg)
+                fuel_cost_seg
+            };
+
+            if let Some(w) = &f.warning {
+                if w == "REFUEL" {
+                    res.push_str(&format!(" {} {} {}", palette.tag_refuel, w, palette.reset));
+                }
             }
+
+            Some(res)
         } else {
             Some(format!(
                 "     {:>width$}",
@@ -321,54 +363,63 @@ pub(crate) fn build_heat_segment(
             } else {
                 "0.00".to_string()
             };
-            Some(format!(
-                "{}heat +{:>width$}{}",
+            let mut res = format!(
+                "{}heat {:>width$}{}",
                 palette.red,
                 heat_str,
                 palette.reset,
                 width = widths.heat_val_width
-            ))
-        } else {
-            Some(format!(
-                "      {:>width$}",
-                "",
-                width = widths.heat_val_width
-            ))
-        }
-    } else {
-        None
-    }
-}
+            );
 
-/// Build the tags segment for heat/fuel warnings if present.
-pub(crate) fn build_tags_segment(step: &RouteStep, palette: &ColorPalette) -> Option<String> {
-    let mut tags = Vec::new();
-    if let Some(h) = step.heat.as_ref() {
-        if let Some(w) = &h.warning {
-            let styled_w = match w.trim() {
-                "OVERHEATED" => format!(
-                    "{} {} {}",
-                    palette.label_overheated,
-                    w.trim(),
-                    palette.reset
-                ),
-                "CRITICAL" => format!("{} {} {}", palette.label_critical, w.trim(), palette.reset),
-                other => format!(" {} ", other),
-            };
-            tags.push(styled_w);
-        }
-    }
-    if let Some(f) = step.fuel.as_ref() {
-        if let Some(w) = &f.warning {
-            if w == "REFUEL" {
-                tags.push(format!("{} REFUEL {}", palette.tag_refuel, palette.reset));
+            // Tag Column: Pad to 13 chars total (1 space before + 12-char badge)
+            if let Some(w) = &h.warning {
+                let label_style = if w.trim() == "CRITICAL" {
+                    palette.label_critical
+                } else {
+                    palette.label_overheated
+                };
+                let badge = format!(" {} ", w.trim());
+                let padded_badge = format!("{:^12}", badge);
+                res.push_str(&format!(
+                    " {}{}{}",
+                    label_style, padded_badge, palette.reset
+                ));
+            } else {
+                res.push_str(&" ".repeat(TAG_COLUMN_WIDTH));
             }
+
+            // Cooldown Column
+            if widths.cooldown_val_width > 0 {
+                if let Some(wait) = h.wait_time_seconds {
+                    if wait > COOLDOWN_DISPLAY_THRESHOLD_SECONDS {
+                        let cd_str = format_cooldown_duration(wait);
+                        res.push_str(&format!(
+                            " {}({:>width$} to cool){}",
+                            palette.gray,
+                            cd_str,
+                            palette.reset,
+                            width = widths.cooldown_val_width
+                        ));
+                    } else {
+                        res.push_str(
+                            &" ".repeat(COOLDOWN_COLUMN_PADDING + widths.cooldown_val_width),
+                        );
+                    }
+                } else {
+                    res.push_str(&" ".repeat(COOLDOWN_COLUMN_PADDING + widths.cooldown_val_width));
+                }
+            }
+
+            Some(res)
+        } else {
+            let mut padding = 5 + widths.heat_val_width + TAG_COLUMN_WIDTH;
+            if widths.cooldown_val_width > 0 {
+                padding += COOLDOWN_COLUMN_PADDING + widths.cooldown_val_width;
+            }
+            Some(" ".repeat(padding))
         }
-    }
-    if tags.is_empty() {
-        None
     } else {
-        Some(tags.join("  "))
+        None
     }
 }
 
@@ -410,79 +461,136 @@ pub fn build_enhanced_footer(
     let gates_str = format_with_separators(gate_distance as u64);
     let jumps_str = format_with_separators(summary.jump_distance as u64);
 
-    // Find max width for right-alignment
-    let max_width = total_str.len().max(gates_str.len()).max(jumps_str.len());
+    let mut num_width = total_str.len().max(gates_str.len()).max(jumps_str.len());
+
+    if let Some(fuel) = &summary.fuel {
+        num_width = num_width.max(format_with_separators(fuel.total.ceil() as u64).len());
+        if let Some(rem) = fuel.remaining {
+            num_width = num_width.max(format_with_separators(rem.ceil() as u64).len());
+        }
+    }
+
+    if let Some(heat) = &summary.heat {
+        num_width = num_width.max(format_cooldown_duration(heat.total_wait_time_seconds).len());
+    }
 
     let mut lines: Vec<String> = Vec::new();
     lines.push(format!(
         "{}───────────────────────────────────────{}",
         p.gray, p.reset
     ));
+
+    let lw = FOOTER_LABEL_WIDTH; // label width
+
+    // Distances
+    let l_total = "Total Distance:";
     lines.push(format!(
-        "  {}Total Distance:{}  {}{:>width$}ly{}",
+        "  {}{:<lw$}{}  {}{:>width$} ly{}",
         p.cyan,
+        l_total,
         p.reset,
         p.white_bold,
         total_str,
         p.reset,
-        width = max_width
+        lw = lw,
+        width = num_width
     ));
+
+    let l_gates = "Via Gates:";
     lines.push(format!(
-        "  {}Via Gates:{}       {}{:>width$}ly{}",
+        "  {}{:<lw$}{}  {}{:>width$} ly{}",
         p.green,
+        l_gates,
         p.reset,
         p.white_bold,
         gates_str,
         p.reset,
-        width = max_width
+        lw = lw,
+        width = num_width
     ));
+
+    let l_jumps = "Via Jumps:";
     lines.push(format!(
-        "  {}Via Jumps:{}       {}{:>width$}ly{}",
+        "  {}{:<lw$}{}  {}{:>width$} ly{}",
         p.orange,
+        l_jumps,
         p.reset,
         p.white_bold,
         jumps_str,
         p.reset,
-        width = max_width
+        lw = lw,
+        width = num_width
     ));
 
+    // Fuel Section
     if let Some(fuel) = &summary.fuel {
         let ship = fuel.ship_name.as_deref().unwrap_or("<unknown ship>");
         let total_str = format_with_separators(fuel.total.ceil() as u64);
         let quality_suffix = format!(" ({:.0}% Fuel)", fuel.quality);
-
-        let mut num_width = max_width;
-        num_width = num_width.max(total_str.len());
-        let remaining_str_opt = fuel
-            .remaining
-            .map(|r| format_with_separators(r.ceil() as u64));
-        if let Some(ref rem) = remaining_str_opt {
-            num_width = num_width.max(rem.len());
-        }
+        let l_fuel = format!("Fuel ({}):", ship);
 
         lines.push(format!(
-            "  {}Fuel ({}):{}   {}{:>width$}{}{}",
+            "  {}{:<lw$}{}  {}{:>width$}{}{}",
             p.cyan,
-            ship,
+            l_fuel,
             p.reset,
             p.white_bold,
             total_str,
             p.reset,
             quality_suffix,
+            lw = lw,
             width = num_width
         ));
 
-        if let Some(remaining) = remaining_str_opt {
+        if let Some(rem) = fuel.remaining {
+            let rem_str = format_with_separators(rem.ceil() as u64);
+            let l_rem = "Remaining:";
             lines.push(format!(
-                "  {}Remaining:{}      {}{:>width$}{}",
+                "  {}{:<lw$}{}  {}{:>width$}{}{}",
                 p.green,
+                l_rem,
                 p.reset,
                 p.white_bold,
-                remaining,
+                rem_str,
                 p.reset,
+                "",
+                lw = lw,
                 width = num_width
             ));
         }
+    }
+
+    // Heat Section
+    if let Some(heat) = &summary.heat {
+        let wait_str = format_cooldown_duration(heat.total_wait_time_seconds);
+        let l_wait = "Total Wait:";
+        lines.push(format!(
+            "  {}{:<lw$}{}  {}{:>width$}{}{}",
+            p.cyan,
+            l_wait,
+            p.reset,
+            p.white_bold,
+            wait_str,
+            p.reset,
+            "",
+            lw = lw,
+            width = num_width
+        ));
+
+        let final_heat_str = format!("{:.2}", heat.final_residual_heat);
+        let l_heat = "Final Heat:";
+        lines.push(format!(
+            "  {}{:<lw$}{}  {}{:>width$}{}{}",
+            p.red,
+            l_heat,
+            p.reset,
+            p.white_bold,
+            final_heat_str,
+            p.reset,
+            "",
+            lw = lw,
+            width = num_width
+        ));
     }
 
     if let Some(fmap_url) = &summary.fmap_url {
@@ -744,7 +852,7 @@ mod tests {
     }
 
     #[test]
-    fn build_tags_segment_overheated_and_refuel() {
+    fn build_segments_include_warning_tags() {
         let p = ColorPalette::plain();
         let step = RouteStep {
             index: 2,
@@ -770,8 +878,62 @@ mod tests {
             }),
         };
 
-        let s = build_tags_segment(&step, &p).expect("tags");
-        assert!(s.contains("OVERHEATED"));
-        assert!(s.contains("REFUEL"));
+        let widths = ColumnWidths {
+            fuel_val_width: 5,
+            heat_val_width: 5,
+            ..Default::default()
+        };
+
+        let f = build_fuel_segment(&step, &widths, &p).expect("fuel seg");
+        assert!(f.contains("REFUEL"));
+
+        let h = build_heat_segment(&step, &widths, &p).expect("heat seg");
+        assert!(h.contains("OVERHEATED"));
+        // Tag should now come BEFORE the result of any padding or cooldown part
+        // (though in this test wait_time is None)
+    }
+
+    #[test]
+    fn build_heat_segment_alignment() {
+        let p = ColorPalette::plain();
+        let step = RouteStep {
+            index: 2,
+            id: 42,
+            name: None,
+            distance: None,
+            method: None,
+            min_external_temp: None,
+            planet_count: None,
+            moon_count: None,
+            fuel: None,
+            heat: Some(evefrontier_lib::ship::HeatProjection {
+                hop_heat: 100.0,
+                warning: Some("OVERHEATED".to_string()),
+                wait_time_seconds: Some(60.0),
+                residual_heat: None,
+                can_proceed: true,
+            }),
+        };
+
+        let widths = ColumnWidths {
+            heat_val_width: 6,     // "100.00"
+            cooldown_val_width: 4, // "1m0s"
+            ..Default::default()
+        };
+
+        let s = build_heat_segment(&step, &widths, &p).expect("heat seg");
+        let s_clean = strip_ansi_to_string(&s);
+        // Desired: "heat 100.00  OVERHEATED  (1m0s to cool)"
+        assert!(s_clean.contains(" OVERHEATED  (1m0s to cool)"));
+    }
+
+    #[test]
+    fn test_format_cooldown_duration() {
+        assert_eq!(format_cooldown_duration(0.0), "0s");
+        assert_eq!(format_cooldown_duration(-5.0), "0s");
+        assert_eq!(format_cooldown_duration(45.0), "45s");
+        assert_eq!(format_cooldown_duration(60.0), "1m0s");
+        assert_eq!(format_cooldown_duration(124.0), "2m4s");
+        assert_eq!(format_cooldown_duration(3600.0), "60m0s");
     }
 }
