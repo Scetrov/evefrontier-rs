@@ -44,7 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    
+
     strategy:
       matrix:
         target:
@@ -55,14 +55,14 @@ jobs:
             arch: amd64
           - target: aarch64-unknown-linux-musl
             arch: arm64
-    
+
     outputs:
       version: ${{ steps.version.outputs.version }}
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      
+
       - name: Determine version
         id: version
         run: |
@@ -75,36 +75,36 @@ jobs:
           VERSION="${VERSION#v}"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "Building version: ${VERSION}"
-      
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@f7ccc83f9ed1e5b9c81d8a67d7ad1a747e22a561 # master
         with:
           toolchain: 1.91.1
           targets: ${{ matrix.target }}
-      
+
       - name: Install cargo-zigbuild
         run: |
           cargo install cargo-zigbuild
-      
+
       - name: Install zig
         uses: goto-bus-stop/setup-zig@7ab2955eb728f5440978d5824358023be3a2802d # v2.2.1
         with:
           version: 0.13.0
-      
+
       - name: Build services
         run: |
           cargo zigbuild --release --target ${{ matrix.target }} \
             -p evefrontier-service-route \
             -p evefrontier-service-scout-gates \
             -p evefrontier-service-scout-range
-      
+
       - name: Create artifact directory
         run: |
           mkdir -p artifacts/${{ matrix.arch }}
           cp target/${{ matrix.target }}/release/evefrontier-service-route artifacts/${{ matrix.arch }}/
           cp target/${{ matrix.target }}/release/evefrontier-service-scout-gates artifacts/${{ matrix.arch }}/
           cp target/${{ matrix.target }}/release/evefrontier-service-scout-range artifacts/${{ matrix.arch }}/
-      
+
       - name: Upload artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -121,40 +121,40 @@ jobs:
       packages: write
       id-token: write
       security-events: write
-    
+
     strategy:
       matrix:
         service:
           - route
           - scout-gates
           - scout-range
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      
+
       - name: Download amd64 binaries
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: binaries-amd64
           path: artifacts/amd64
-      
+
       - name: Download arm64 binaries
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: binaries-arm64
           path: artifacts/arm64
-      
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
-      
+
       - name: Login to GitHub Container Registry
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@902fa8ec7d6ecbf8d84d538b9b233a880e428804 # v5.7.0
@@ -165,7 +165,7 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
             type=raw,value=latest,enable=${{ !contains(github.ref, '-') }}
-      
+
       - name: Create multi-arch Dockerfile
         run: |
           cat > Dockerfile.multiarch <<'EOF'
@@ -177,7 +177,7 @@ jobs:
           EXPOSE 8080
           ENTRYPOINT ["/service"]
           EOF
-      
+
       - name: Build and push multi-arch image
         id: build
         uses: docker/build-push-action@1dc73863535b631f98b2378be8619f83b136f4a0 # v6.17.0
@@ -190,7 +190,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             SERVICE=${{ matrix.service }}
-      
+
       - name: Log image digest
         run: echo "Image digest for ${{ matrix.service }}:${{ needs.build-binaries.outputs.version }} is ${{ steps.build.outputs.digest }}"
 
@@ -201,14 +201,14 @@ jobs:
     permissions:
       contents: read
       security-events: write
-    
+
     strategy:
       matrix:
         service:
           - route
           - scout-gates
           - scout-range
-    
+
     steps:
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@76071ef0d7ec797419534a183b498b4d6366cf37 # v0.31.0
@@ -230,7 +230,7 @@ jobs:
           #   - docs/SECURITY_AUDIT.md (container image scanning section)
           #   - docs/adrs/0007-devsecops-practices.md (DevSecOps practices ADR)
           ignore-unfixed: true
-      
+
       - name: Upload Trivy scan results
         uses: github/codeql-action/upload-sarif@v3
         if: always()
@@ -246,25 +246,25 @@ jobs:
       contents: read
       packages: write
       id-token: write
-    
+
     strategy:
       matrix:
         service:
           - route
           - scout-gates
           - scout-range
-    
+
     steps:
       - name: Install cosign
         uses: sigstore/cosign-installer@3454372f43399081ed03b604cb2d021dabca52bb # v3.8.2
-      
+
       - name: Login to GitHub Container Registry
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Sign container image
         env:
           COSIGN_EXPERIMENTAL: "true"
@@ -278,24 +278,24 @@ jobs:
     permissions:
       contents: read
       packages: write
-    
+
     strategy:
       matrix:
         service:
           - route
           - scout-gates
           - scout-range
-    
+
     steps:
       - name: Install syft
         uses: anchore/sbom-action/download-syft@e11c554f704a0b820cbf8c51673f6945e0731532 # v0.20.0
-      
+
       - name: Generate SBOM
         run: |
           syft ${{ env.IMAGE_PREFIX }}/evefrontier-service-${{ matrix.service }}:${{ needs.build-binaries.outputs.version }} \
             -o spdx-json=sbom-${{ matrix.service }}.spdx.json \
             -o cyclonedx-json=sbom-${{ matrix.service }}.cyclonedx.json
-      
+
       - name: Upload SBOM artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -311,51 +311,51 @@ jobs:
     runs-on: ubuntu-latest
     permissions: {}
     if: always()
-    
+
     steps:
       - name: Generate summary
         run: |
           VERSION="${{ needs.build-binaries.outputs.version }}"
-          
+
           cat >> "$GITHUB_STEP_SUMMARY" <<EOF
           # Docker Release Summary
-          
+
           **Version**: ${VERSION}
           **Registry**: ghcr.io
-          
+
           ## Images
-          
+
           | Service | Image | Status |
           |---------|-------|--------|
           | route | \`${{ env.IMAGE_PREFIX }}/evefrontier-service-route:${VERSION}\` | ${{ needs.build-images.result == 'success' && '✅' || '❌' }} |
           | scout-gates | \`${{ env.IMAGE_PREFIX }}/evefrontier-service-scout-gates:${VERSION}\` | ${{ needs.build-images.result == 'success' && '✅' || '❌' }} |
           | scout-range | \`${{ env.IMAGE_PREFIX }}/evefrontier-service-scout-range:${VERSION}\` | ${{ needs.build-images.result == 'success' && '✅' || '❌' }} |
-          
+
           ## Security
-          
+
           | Check | Status |
           |-------|--------|
           | Trivy Scan | ${{ needs.scan-images.result == 'success' && '✅ Passed' || '❌ Failed' }} |
           | Cosign Signing | ${{ needs.sign-images.result == 'success' && '✅ Signed' || '❌ Failed' }} |
           | SBOM Generation | ${{ needs.generate-sbom.result == 'success' && '✅ Generated' || '❌ Failed' }} |
-          
+
           ## Verification
-          
+
           To verify image signatures:
-          
+
           \`\`\`bash
           # Install cosign
           # https://docs.sigstore.dev/cosign/installation/
-          
+
           # Verify signature (ensures image was built by this repository's release workflow)
           cosign verify \\
             --certificate-identity="https://github.com/${{ github.repository }}/.github/workflows/docker-release.yml@refs/tags/${VERSION}" \\
             --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \\
             ${{ env.IMAGE_PREFIX }}/evefrontier-service-route:${VERSION}
           \`\`\`
-          
+
           ## Pull Commands
-          
+
           \`\`\`bash
           docker pull ${{ env.IMAGE_PREFIX }}/evefrontier-service-route:${VERSION}
           docker pull ${{ env.IMAGE_PREFIX }}/evefrontier-service-scout-gates:${VERSION}

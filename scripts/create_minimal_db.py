@@ -26,31 +26,31 @@ from pathlib import Path
 def main():
     script_dir = Path(__file__).parent
     extract_script = script_dir / 'extract_fixture_from_dataset.py'
-    
+
     if not extract_script.exists():
         print(f"Error: Extract script not found: {extract_script}", file=sys.stderr)
         sys.exit(1)
-    
+
     # Determine source database path
     if len(sys.argv) > 1:
         source_db = sys.argv[1]
     else:
         source_db = '/tmp/e6c3_source/static_data.db'
-    
+
     if not Path(source_db).exists():
         print(f"Error: Source database not found: {source_db}", file=sys.stderr)
         print("\nTo download the e6c3 dataset, run:", file=sys.stderr)
         print("  cargo run -p evefrontier-cli -- download --data-dir /tmp/e6c3_source", file=sys.stderr)
         sys.exit(1)
-    
+
     output_db = script_dir.parent / 'docs' / 'fixtures' / 'minimal' / 'static_data.db'
-    
+
     print(f"Extracting fixture from {source_db}...")
     result = subprocess.run(
         [sys.executable, str(extract_script), source_db, str(output_db)],
         check=False
     )
-    
+
     sys.exit(result.returncode)
 
 if __name__ == '__main__':
@@ -170,4 +170,3 @@ CREATE TABLE Jumps(
     conn.commit()
     conn.close()
     print('Created', db_path)
-

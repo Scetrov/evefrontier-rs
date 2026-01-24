@@ -33,7 +33,7 @@ version = "1"
 [package.metadata.rusty-hook.hooks]
 pre-commit = """
     set -e
-    
+
     # Check for required tooling
     if ! command -v pnpm &> /dev/null; then
         echo "❌ Error: pnpm is required for pre-commit hooks."
@@ -45,25 +45,25 @@ pre-commit = """
         echo "   See CONTRIBUTING.md for detailed setup instructions."
         exit 1
     fi
-    
+
     echo "🔍 Running pre-commit checks via Nx..."
-    
+
     # 1. Format check
     echo "  → Checking code formatting..."
     pnpm nx run-many -t lint --exclude evefrontier-rs
-    
+
     # 2. Clippy
     echo "  → Running clippy..."
     pnpm nx run-many -t clippy --exclude evefrontier-rs
-    
+
     # 3. Build
     echo "  → Building workspace..."
     pnpm nx run-many -t build --exclude evefrontier-rs
-    
+
     # 4. Tests
     echo "  → Running tests..."
     pnpm nx run-many -t test --exclude evefrontier-rs
-    
+
     # 5. Security audit (workspace-level)
     echo "  → Running security audit..."
     if ! command -v cargo-audit &> /dev/null; then
@@ -74,7 +74,7 @@ pre-commit = """
     fi
     # Default behavior: fail on security advisories, show warnings for yanked/unmaintained
     cargo audit
-    
+
     echo "✅ All pre-commit checks passed!"
 """
 

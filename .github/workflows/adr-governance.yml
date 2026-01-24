@@ -29,35 +29,35 @@ jobs:
         id: validate
         run: |
           set -e
-          
+
           echo "::group::ADR Governance Validation"
           echo "Checking ADRs changed in this PR..."
-          
+
           # Get list of changed ADR files
           CHANGED_ADRS=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- 'docs/adrs/*.md' | grep -v 'TEMPLATE.md' || true)
-          
+
           if [ -z "$CHANGED_ADRS" ]; then
             echo "✅ No ADR files changed in this PR"
             echo "::endgroup::"
             exit 0
           fi
-          
+
           echo "Changed ADR files:"
           echo "$CHANGED_ADRS"
           echo ""
-          
+
           VALIDATION_FAILED=0
           PATTERN_VIOLATIONS=""
           IMMUTABILITY_VIOLATIONS=""
-          
+
           # Check each changed ADR file
           while IFS= read -r adr_file; do
             if [ -z "$adr_file" ]; then
               continue
             fi
-            
+
             echo "Checking: $adr_file"
-            
+
             # 1. Validate filename pattern (using portable POSIX extended regex)
             # Pattern: docs/adrs/NNNN-slug-title.md where NNNN is 4 digits, slug is lowercase letters/numbers/hyphens
             if ! echo "$adr_file" | grep -Eq "^docs/adrs/[0-9][0-9][0-9][0-9]-[a-z0-9-]+\.md$"; then
@@ -67,14 +67,14 @@ jobs:
             else
               echo "  ✅ Filename pattern valid"
             fi
-            
+
             # 2. Check if ADR exists in base branch (immutability check)
             if git cat-file -e "origin/${{ github.base_ref }}:$adr_file" 2>/dev/null; then
               echo "  ⚠️  ADR exists in base branch - checking for edit permission..."
-              
+
               # Check if PR has the override label
               LABELS=$(gh pr view ${{ github.event.pull_request.number }} --json labels --jq '.labels[].name' || echo "")
-              
+
               if echo "$LABELS" | grep -q "allow-adr-edits"; then
                 echo "  ✅ Override label 'allow-adr-edits' present - edit allowed"
               else
@@ -85,15 +85,15 @@ jobs:
             else
               echo "  ✅ New ADR - no immutability check needed"
             fi
-            
+
             echo ""
           done <<< "$CHANGED_ADRS"
-          
+
           # Report results
           if [ $VALIDATION_FAILED -eq 1 ]; then
             echo "::endgroup::"
             echo "::error::ADR governance validation failed"
-            
+
             if [ -n "$PATTERN_VIOLATIONS" ]; then
               echo ""
               echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -120,7 +120,7 @@ jobs:
               echo "  https://github.com/${{ github.repository }}/blob/main/docs/adrs/0001-use-nygard-adr.md"
               echo ""
             fi
-            
+
             if [ -n "$IMMUTABILITY_VIOLATIONS" ]; then
               echo ""
               echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -153,12 +153,12 @@ jobs:
               echo "  https://github.com/${{ github.repository }}/blob/main/docs/adrs/0001-use-nygard-adr.md"
               echo ""
             fi
-            
+
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            
+
             exit 1
           fi
-          
+
           echo "✅ All ADR governance rules passed"
           echo "::endgroup::"
         env:

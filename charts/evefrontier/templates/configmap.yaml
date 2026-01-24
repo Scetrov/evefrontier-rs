@@ -9,7 +9,7 @@ data:
   DATA_PATH: {{ .Values.global.dataPath | quote }}
   LOG_LEVEL: {{ .Values.config.logLevel | quote }}
   SERVICE_PORT: "8080"
-  
+
   # Feature flags
   ENABLE_METRICS: {{ .Values.config.enableMetrics | quote }}
   ENABLE_TRACING: {{ .Values.config.enableTracing | quote }}

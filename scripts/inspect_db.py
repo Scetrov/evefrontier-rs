@@ -36,12 +36,12 @@ def main():
         sys.exit(2)
 
     db = sys.argv[1]
-    
+
     # Validate file exists before attempting to connect
     if not os.path.isfile(db):
         print(f'Error: Database file not found: {db}', file=sys.stderr)
         sys.exit(1)
-    
+
     try:
         conn = sqlite3.connect(db)
     except sqlite3.OperationalError as e:
