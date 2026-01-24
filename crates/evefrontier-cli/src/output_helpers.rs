@@ -893,9 +893,7 @@ pub(crate) fn format_scout_gates_enhanced(
     // Header line
     out.push_str(&format!(
         "{}Gate neighbors{} of {}{}{} ({} found):\n",
-        palette.cyan, palette.reset,
-        palette.white_bold, result.system, palette.reset,
-        result.count
+        palette.cyan, palette.reset, palette.white_bold, result.system, palette.reset, result.count
     ));
 
     // Empty state
@@ -941,9 +939,12 @@ pub(crate) fn format_scout_gates_enhanced(
         };
         out.push_str(&format!(
             "  {}[GATE]{} {} {}{}{}{}\n",
-            palette.tag_gate, palette.reset,
+            palette.tag_gate,
+            palette.reset,
             temp_circle,
-            palette.white_bold, neighbor.name, palette.reset,
+            palette.white_bold,
+            neighbor.name,
+            palette.reset,
             celestials_suffix
         ));
 
@@ -1097,9 +1098,7 @@ pub(crate) fn format_scout_range_enhanced(
     // Header line
     out.push_str(&format!(
         "{}Systems in range{} of {}{}{} ({} found):\n",
-        palette.cyan, palette.reset,
-        palette.white_bold, result.system, palette.reset,
-        result.count
+        palette.cyan, palette.reset, palette.white_bold, result.system, palette.reset, result.count
     ));
 
     // Query parameters line
@@ -1164,7 +1163,9 @@ pub(crate) fn format_scout_range_enhanced(
             "{:>3}. {} {}{}{} ({:.1} ly){}\n",
             i + 1,
             temp_circle,
-            palette.white_bold, system.name, palette.reset,
+            palette.white_bold,
+            system.name,
+            palette.reset,
             system.distance_ly,
             celestials_suffix
         ));

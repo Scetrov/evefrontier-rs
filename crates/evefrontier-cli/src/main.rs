@@ -1382,19 +1382,15 @@ fn handle_fmap_decode(args: &FmapDecodeArgs) -> Result<()> {
 
 fn handle_scout_command(context: &AppContext, args: &ScoutCommandArgs) -> Result<()> {
     match &args.subcommand {
-        ScoutSubcommand::Gates(gate_args) => {
-            commands::scout::handle_scout_gates(
-                gate_args,
-                context.output_format(),
-                context.target_path(),
-            )
-        }
-        ScoutSubcommand::Range(range_args) => {
-            commands::scout::handle_scout_range(
-                range_args,
-                context.output_format(),
-                context.target_path(),
-            )
-        }
+        ScoutSubcommand::Gates(gate_args) => commands::scout::handle_scout_gates(
+            gate_args,
+            context.output_format(),
+            context.target_path(),
+        ),
+        ScoutSubcommand::Range(range_args) => commands::scout::handle_scout_range(
+            range_args,
+            context.output_format(),
+            context.target_path(),
+        ),
     }
 }
