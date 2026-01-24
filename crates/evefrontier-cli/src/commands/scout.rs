@@ -421,7 +421,7 @@ pub fn handle_scout_range(
 
         // Create fuel config
         let fuel_config = FuelConfig {
-            quality: args.fuel_quality as f64,
+            quality: args.fuel_quality,
             dynamic_mass: true, // Always use dynamic mass for scout routes
         };
 
@@ -439,7 +439,9 @@ pub fn handle_scout_range(
             total_distance += hop_distance;
 
             // Calculate fuel cost using current mass (dynamic mass mode)
-            let current_mass = ship.base_mass_kg + remaining_fuel + args.cargo_mass;
+            let current_mass = ship.base_mass_kg
+                + (remaining_fuel * evefrontier_lib::FUEL_MASS_PER_UNIT_KG)
+                + args.cargo_mass;
             let hop_fuel =
                 evefrontier_lib::calculate_jump_fuel_cost(current_mass, hop_distance, &fuel_config)
                     .unwrap_or(0.0);
@@ -507,7 +509,7 @@ pub fn handle_scout_range(
             ship: Some(ShipInfo {
                 name: ship.name.clone(),
                 fuel_capacity: ship.fuel_capacity,
-                fuel_quality: args.fuel_quality as f64,
+                fuel_quality: args.fuel_quality,
             }),
             count: ordered_systems.len(),
             total_distance_ly: Some(total_distance),

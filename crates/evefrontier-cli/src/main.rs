@@ -22,6 +22,33 @@ use evefrontier_lib::{
     SpatialIndex, VerifyDiagnostics, VerifyOutput, Waypoint, WaypointType,
 };
 
+// === Value parser helpers for clap f64 validation ===
+
+/// Parse fuel quality, validating range 1.0-100.0
+fn parse_fuel_quality(s: &str) -> Result<f64, String> {
+    let val: f64 = s
+        .parse()
+        .map_err(|_| format!("'{}' is not a valid number", s))?;
+    if !(1.0..=100.0).contains(&val) {
+        return Err(format!(
+            "fuel quality must be between 1 and 100, got {}",
+            val
+        ));
+    }
+    Ok(val)
+}
+
+/// Parse non-negative f64 values (for cargo_mass, fuel_load)
+fn parse_non_negative(s: &str) -> Result<f64, String> {
+    let val: f64 = s
+        .parse()
+        .map_err(|_| format!("'{}' is not a valid number", s))?;
+    if val < 0.0 {
+        return Err(format!("value must be non-negative, got {}", val));
+    }
+    Ok(val)
+}
+
 #[derive(Parser, Debug)]
 #[command(
     author,
@@ -127,15 +154,15 @@ pub struct ScoutRangeArgs {
     pub ship: Option<String>,
 
     /// Fuel quality rating (1-100). Higher quality = more efficient jumps.
-    #[arg(long = "fuel-quality", default_value = "10")]
-    pub fuel_quality: i64,
+    #[arg(long = "fuel-quality", default_value = "10.0", value_parser = parse_fuel_quality)]
+    pub fuel_quality: f64,
 
     /// Cargo mass in kilograms (added to ship mass for fuel/heat calculations).
-    #[arg(long = "cargo-mass", default_value = "0")]
+    #[arg(long = "cargo-mass", default_value = "0", value_parser = parse_non_negative)]
     pub cargo_mass: f64,
 
     /// Starting fuel load in units (defaults to ship's fuel capacity).
-    #[arg(long = "fuel-load")]
+    #[arg(long = "fuel-load", value_parser = parse_non_negative)]
     pub fuel_load: Option<f64>,
 }
 
