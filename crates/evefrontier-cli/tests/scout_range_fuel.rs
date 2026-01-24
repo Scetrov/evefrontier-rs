@@ -301,7 +301,7 @@ fn test_scout_range_heat_cumulative() {
     // The start_temp is max(HEAT_NOMINAL=30.0, prev_system_ambient_temp).
     const HEAT_NOMINAL: f64 = 30.0;
 
-    if systems.len() >= 1 {
+    if !systems.is_empty() {
         let heat1 = systems[0]["cumulative_heat"]
             .as_f64()
             .expect("cumulative_heat is f64");

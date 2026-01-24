@@ -7,6 +7,350 @@ const TAG_COLUMN_WIDTH: usize = 13;
 const COOLDOWN_COLUMN_PADDING: usize = 12;
 const FOOTER_LABEL_WIDTH: usize = 20;
 
+// =============================================================================
+// RenderableStep Trait - Unified interface for route/scout step rendering
+// =============================================================================
+
+/// A trait for types that can be rendered as a step in a route or scout result.
+///
+/// This trait provides a common interface for accessing fuel, heat, and system
+/// metadata fields needed by the rendering functions. Both `RouteStep` and
+/// `RangeNeighbor` implement this trait, allowing the rendering code to be
+/// shared between route and scout output formatting.
+#[allow(dead_code)]
+pub(crate) trait RenderableStep {
+    /// System ID for this step.
+    fn system_id(&self) -> i64;
+
+    /// System name (if available).
+    fn system_name(&self) -> Option<&str>;
+
+    /// Minimum external temperature in Kelvin (if known).
+    fn min_external_temp(&self) -> Option<f64>;
+
+    /// Number of planets in the system.
+    fn planet_count(&self) -> Option<u32>;
+
+    /// Number of moons in the system.
+    fn moon_count(&self) -> Option<u32>;
+
+    /// Fuel cost for this hop (if fuel projection available).
+    fn hop_fuel(&self) -> Option<f64>;
+
+    /// Cumulative fuel consumed up to and including this hop.
+    fn cumulative_fuel(&self) -> Option<f64>;
+
+    /// Fuel remaining after this hop.
+    fn remaining_fuel(&self) -> Option<f64>;
+
+    /// Fuel warning message (e.g., "REFUEL").
+    fn fuel_warning(&self) -> Option<&str>;
+
+    /// Heat generated for this hop.
+    fn hop_heat(&self) -> Option<f64>;
+
+    /// Cumulative/instantaneous heat at this hop.
+    fn cumulative_heat(&self) -> Option<f64>;
+
+    /// Heat warning message (e.g., "OVERHEATED", "CRITICAL").
+    fn heat_warning(&self) -> Option<&str>;
+
+    /// Cooldown time in seconds if overheated.
+    fn cooldown_seconds(&self) -> Option<f64>;
+
+    /// Whether the ship can proceed (for heat model).
+    fn can_proceed(&self) -> bool {
+        true
+    }
+}
+
+/// Implement RenderableStep for RouteStep (from evefrontier-lib).
+impl RenderableStep for RouteStep {
+    fn system_id(&self) -> i64 {
+        self.id
+    }
+
+    fn system_name(&self) -> Option<&str> {
+        self.name.as_deref()
+    }
+
+    fn min_external_temp(&self) -> Option<f64> {
+        self.min_external_temp
+    }
+
+    fn planet_count(&self) -> Option<u32> {
+        self.planet_count
+    }
+
+    fn moon_count(&self) -> Option<u32> {
+        self.moon_count
+    }
+
+    fn hop_fuel(&self) -> Option<f64> {
+        self.fuel.as_ref().map(|f| f.hop_cost)
+    }
+
+    fn cumulative_fuel(&self) -> Option<f64> {
+        self.fuel.as_ref().map(|f| f.cumulative)
+    }
+
+    fn remaining_fuel(&self) -> Option<f64> {
+        self.fuel.as_ref().and_then(|f| f.remaining)
+    }
+
+    fn fuel_warning(&self) -> Option<&str> {
+        self.fuel.as_ref().and_then(|f| f.warning.as_deref())
+    }
+
+    fn hop_heat(&self) -> Option<f64> {
+        self.heat.as_ref().map(|h| h.hop_heat)
+    }
+
+    fn cumulative_heat(&self) -> Option<f64> {
+        self.heat.as_ref().and_then(|h| h.residual_heat)
+    }
+
+    fn heat_warning(&self) -> Option<&str> {
+        self.heat.as_ref().and_then(|h| h.warning.as_deref())
+    }
+
+    fn cooldown_seconds(&self) -> Option<f64> {
+        self.heat.as_ref().and_then(|h| h.wait_time_seconds)
+    }
+
+    fn can_proceed(&self) -> bool {
+        self.heat.as_ref().map(|h| h.can_proceed).unwrap_or(true)
+    }
+}
+
+/// Compute column widths for a slice of any RenderableStep type.
+pub(crate) fn compute_widths_for_steps<T: RenderableStep>(steps: &[T]) -> ColumnWidths {
+    let mut fuel_val_width = 0usize;
+    let mut rem_val_width = 0usize;
+    let mut heat_val_width = 0usize;
+    let mut cooldown_val_width = 0usize;
+
+    for step in steps {
+        if let Some(hop) = step.hop_fuel() {
+            let hop_str = format!("{}", hop.ceil() as i64);
+            fuel_val_width = fuel_val_width.max(hop_str.len());
+        }
+        if let Some(rem) = step.remaining_fuel() {
+            let rem_str = format!("{}", rem.ceil() as i64);
+            rem_val_width = rem_val_width.max(rem_str.len());
+        }
+        if let Some(heat) = step.hop_heat() {
+            let heat_str = if heat >= 0.005 {
+                format!("{:.2}", heat)
+            } else if heat > 0.0 {
+                "<0.01".to_string()
+            } else {
+                "0.00".to_string()
+            };
+            heat_val_width = heat_val_width.max(heat_str.len());
+        }
+        if let Some(wait) = step.cooldown_seconds() {
+            if wait > COOLDOWN_DISPLAY_THRESHOLD_SECONDS {
+                let cd_str = format_cooldown_duration(wait);
+                cooldown_val_width = cooldown_val_width.max(cd_str.len());
+            }
+        }
+    }
+
+    ColumnWidths {
+        fuel_val_width,
+        rem_val_width,
+        heat_val_width,
+        cooldown_val_width,
+    }
+}
+
+/// Build the fuel segment for any RenderableStep.
+pub(crate) fn build_fuel_segment_generic<T: RenderableStep>(
+    step: &T,
+    widths: &ColumnWidths,
+    palette: &ColorPalette,
+) -> Option<String> {
+    if widths.fuel_val_width > 0 {
+        if let Some(hop) = step.hop_fuel() {
+            let hop_int = hop.ceil() as i64;
+            let fuel_cost_seg = format!(
+                "{}fuel {:>width$}{}",
+                palette.orange,
+                hop_int,
+                palette.reset,
+                width = widths.fuel_val_width
+            );
+
+            let fuel_rem_seg = if widths.rem_val_width > 0 {
+                if let Some(rem) = step.remaining_fuel() {
+                    let rem_int = rem.ceil() as i64;
+                    Some(format!(
+                        "{}(rem {:>width$}){}",
+                        palette.magenta,
+                        rem_int,
+                        palette.reset,
+                        width = widths.rem_val_width
+                    ))
+                } else {
+                    Some(" ".repeat(6 + widths.rem_val_width))
+                }
+            } else {
+                None
+            };
+
+            let mut res = if let Some(rem) = fuel_rem_seg {
+                format!("{} {}", fuel_cost_seg, rem)
+            } else {
+                fuel_cost_seg
+            };
+
+            if let Some(w) = step.fuel_warning() {
+                if w == "REFUEL" {
+                    res.push(' ');
+                    res.push_str(&format_label(w, palette.tag_refuel, palette.reset));
+                }
+            }
+
+            Some(res)
+        } else {
+            Some(format!(
+                "     {:>width$}",
+                "",
+                width = widths.fuel_val_width
+            ))
+        }
+    } else {
+        None
+    }
+}
+
+/// Build the heat segment for any RenderableStep.
+pub(crate) fn build_heat_segment_generic<T: RenderableStep>(
+    step: &T,
+    widths: &ColumnWidths,
+    palette: &ColorPalette,
+) -> Option<String> {
+    if widths.heat_val_width > 0 {
+        if let Some(heat) = step.hop_heat() {
+            let heat_str = if heat >= 0.005 {
+                format!("{:.2}", heat)
+            } else if heat > 0.0 {
+                "<0.01".to_string()
+            } else {
+                "0.00".to_string()
+            };
+            let mut res = format!(
+                "{}heat {:>width$}{}",
+                palette.red,
+                heat_str,
+                palette.reset,
+                width = widths.heat_val_width
+            );
+
+            // Tag Column: Pad to 13 chars total (1 space before + 12-char badge)
+            if let Some(w) = step.heat_warning() {
+                let label_style = if w.trim() == "CRITICAL" {
+                    palette.label_critical
+                } else {
+                    palette.label_overheated
+                };
+                let badge = format!(" {} ", w.trim());
+                let padded_badge = format!("{:^12}", badge);
+                res.push_str(&format!(
+                    " {}{}{}",
+                    label_style, padded_badge, palette.reset
+                ));
+            } else {
+                res.push_str(&" ".repeat(TAG_COLUMN_WIDTH));
+            }
+
+            // Cooldown Column
+            if widths.cooldown_val_width > 0 {
+                if let Some(wait) = step.cooldown_seconds() {
+                    if wait > COOLDOWN_DISPLAY_THRESHOLD_SECONDS {
+                        let cd_str = format_cooldown_duration(wait);
+                        res.push_str(&format!(
+                            " {}({:>width$} to cool){}",
+                            palette.gray,
+                            cd_str,
+                            palette.reset,
+                            width = widths.cooldown_val_width
+                        ));
+                    } else {
+                        res.push_str(
+                            &" ".repeat(COOLDOWN_COLUMN_PADDING + widths.cooldown_val_width),
+                        );
+                    }
+                } else {
+                    res.push_str(&" ".repeat(COOLDOWN_COLUMN_PADDING + widths.cooldown_val_width));
+                }
+            }
+
+            Some(res)
+        } else {
+            let mut padding = 5 + widths.heat_val_width + TAG_COLUMN_WIDTH;
+            if widths.cooldown_val_width > 0 {
+                padding += COOLDOWN_COLUMN_PADDING + widths.cooldown_val_width;
+            }
+            Some(" ".repeat(padding))
+        }
+    } else {
+        None
+    }
+}
+
+/// Build MIN segment (temperature or black hole) for any RenderableStep.
+pub(crate) fn build_min_segment_generic<T: RenderableStep>(
+    step: &T,
+    palette: &ColorPalette,
+) -> String {
+    let is_black_hole = matches!(step.system_id(), 30000001..=30000003);
+    const MIN_SEG_VISIBLE_WIDTH: usize = 11;
+    if is_black_hole {
+        format!("{}▌Black Hole▐{}", palette.tag_black_hole, palette.reset)
+    } else if let Some(t) = step.min_external_temp() {
+        format!("{}min {:>6.2}K{}", palette.cyan, t, palette.reset)
+    } else {
+        " ".repeat(MIN_SEG_VISIBLE_WIDTH)
+    }
+}
+
+/// Build planets/moons tokens for any RenderableStep.
+pub(crate) fn build_planet_moon_tokens_generic<T: RenderableStep>(
+    step: &T,
+    palette: &ColorPalette,
+) -> Vec<String> {
+    let mut tokens: Vec<String> = Vec::new();
+    if let Some(planets) = step.planet_count() {
+        if planets > 0 {
+            let label = if planets == 1 { "Planet" } else { "Planets" };
+            tokens.push(format!(
+                "{}{} {}{}",
+                palette.green, planets, label, palette.reset
+            ));
+        }
+    }
+    if let Some(moons) = step.moon_count() {
+        if moons > 0 {
+            let label = if moons == 1 { "Moon" } else { "Moons" };
+            tokens.push(format!(
+                "{}{} {}{}",
+                palette.blue, moons, label, palette.reset
+            ));
+        }
+    }
+    tokens
+}
+
+/// Get temperature indicator circle for any RenderableStep.
+pub(crate) fn get_temp_circle_generic<T: RenderableStep>(
+    step: &T,
+    palette: &ColorPalette,
+) -> String {
+    get_temp_circle(step.min_external_temp().unwrap_or(0.0), palette)
+}
+
 /// Column widths for the details row alignment.
 #[derive(Debug, Default, PartialEq, Eq)]
 pub(crate) struct ColumnWidths {
@@ -290,175 +634,43 @@ pub(crate) fn get_temp_circle(temp: f64, palette: &ColorPalette) -> String {
 }
 
 /// Build the MIN segment for a step details line.
+///
+/// Delegates to `build_min_segment_generic` for consistent behavior across
+/// both route and scout rendering.
 pub(crate) fn build_min_segment(step: &RouteStep, palette: &ColorPalette) -> String {
-    let is_black_hole = matches!(step.id, 30000001..=30000003);
-    const MIN_SEG_VISIBLE_WIDTH: usize = 11;
-    if is_black_hole {
-        format!("{}▌Black Hole▐{}", palette.tag_black_hole, palette.reset)
-    } else if let Some(t) = step.min_external_temp {
-        format!("{}min {:>6.2}K{}", palette.cyan, t, palette.reset)
-    } else {
-        " ".repeat(MIN_SEG_VISIBLE_WIDTH)
-    }
+    build_min_segment_generic(step, palette)
 }
 
 /// Build the fuel cost and remaining segments combined (if any).
+///
+/// Delegates to `build_fuel_segment_generic` for consistent behavior across
+/// both route and scout rendering.
 pub(crate) fn build_fuel_segment(
     step: &RouteStep,
     widths: &ColumnWidths,
     palette: &ColorPalette,
 ) -> Option<String> {
-    if widths.fuel_val_width > 0 {
-        if let Some(f) = step.fuel.as_ref() {
-            let hop_int = f.hop_cost.ceil() as i64;
-            let fuel_cost_seg = format!(
-                "{}fuel {:>width$}{}",
-                palette.orange,
-                hop_int,
-                palette.reset,
-                width = widths.fuel_val_width
-            );
-
-            let fuel_rem_seg = if widths.rem_val_width > 0 {
-                if let Some(rem) = f.remaining {
-                    let rem_int = rem.ceil() as i64;
-                    Some(format!(
-                        "{}(rem {:>width$}){}",
-                        palette.magenta,
-                        rem_int,
-                        palette.reset,
-                        width = widths.rem_val_width
-                    ))
-                } else {
-                    Some(" ".repeat(6 + widths.rem_val_width))
-                }
-            } else {
-                None
-            };
-
-            let mut res = if let Some(rem) = fuel_rem_seg {
-                format!("{} {}", fuel_cost_seg, rem)
-            } else {
-                fuel_cost_seg
-            };
-
-            if let Some(w) = &f.warning {
-                if w == "REFUEL" {
-                    res.push(' ');
-                    res.push_str(&format_label(w, palette.tag_refuel, palette.reset));
-                }
-            }
-
-            Some(res)
-        } else {
-            Some(format!(
-                "     {:>width$}",
-                "",
-                width = widths.fuel_val_width
-            ))
-        }
-    } else {
-        None
-    }
+    build_fuel_segment_generic(step, widths, palette)
 }
 
 /// Build the heat cost segment (if any).
+///
+/// Delegates to `build_heat_segment_generic` for consistent behavior across
+/// both route and scout rendering.
 pub(crate) fn build_heat_segment(
     step: &RouteStep,
     widths: &ColumnWidths,
     palette: &ColorPalette,
 ) -> Option<String> {
-    if widths.heat_val_width > 0 {
-        if let Some(h) = step.heat.as_ref() {
-            let heat_str = if h.hop_heat >= 0.005 {
-                format!("{:.2}", h.hop_heat)
-            } else if h.hop_heat > 0.0 {
-                "<0.01".to_string()
-            } else {
-                "0.00".to_string()
-            };
-            let mut res = format!(
-                "{}heat {:>width$}{}",
-                palette.red,
-                heat_str,
-                palette.reset,
-                width = widths.heat_val_width
-            );
-
-            // Tag Column: Pad to 13 chars total (1 space before + 12-char badge)
-            if let Some(w) = &h.warning {
-                let label_style = if w.trim() == "CRITICAL" {
-                    palette.label_critical
-                } else {
-                    palette.label_overheated
-                };
-                let badge = format!(" {} ", w.trim());
-                let padded_badge = format!("{:^12}", badge);
-                res.push_str(&format!(
-                    " {}{}{}",
-                    label_style, padded_badge, palette.reset
-                ));
-            } else {
-                res.push_str(&" ".repeat(TAG_COLUMN_WIDTH));
-            }
-
-            // Cooldown Column
-            if widths.cooldown_val_width > 0 {
-                if let Some(wait) = h.wait_time_seconds {
-                    if wait > COOLDOWN_DISPLAY_THRESHOLD_SECONDS {
-                        let cd_str = format_cooldown_duration(wait);
-                        res.push_str(&format!(
-                            " {}({:>width$} to cool){}",
-                            palette.gray,
-                            cd_str,
-                            palette.reset,
-                            width = widths.cooldown_val_width
-                        ));
-                    } else {
-                        res.push_str(
-                            &" ".repeat(COOLDOWN_COLUMN_PADDING + widths.cooldown_val_width),
-                        );
-                    }
-                } else {
-                    res.push_str(&" ".repeat(COOLDOWN_COLUMN_PADDING + widths.cooldown_val_width));
-                }
-            }
-
-            Some(res)
-        } else {
-            let mut padding = 5 + widths.heat_val_width + TAG_COLUMN_WIDTH;
-            if widths.cooldown_val_width > 0 {
-                padding += COOLDOWN_COLUMN_PADDING + widths.cooldown_val_width;
-            }
-            Some(" ".repeat(padding))
-        }
-    } else {
-        None
-    }
+    build_heat_segment_generic(step, widths, palette)
 }
 
 /// Build a list of planet/moon tokens for header line (e.g., "2 Planets", "1 Moon").
+///
+/// Delegates to `build_planet_moon_tokens_generic` for consistent behavior across
+/// both route and scout rendering.
 pub(crate) fn build_planet_moon_tokens(step: &RouteStep, palette: &ColorPalette) -> Vec<String> {
-    let mut tokens: Vec<String> = Vec::new();
-    if let Some(planets) = step.planet_count {
-        if planets > 0 {
-            let label = if planets == 1 { "Planet" } else { "Planets" };
-            tokens.push(format!(
-                "{}{} {}{}",
-                palette.green, planets, label, palette.reset
-            ));
-        }
-    }
-    if let Some(moons) = step.moon_count {
-        if moons > 0 {
-            let label = if moons == 1 { "Moon" } else { "Moons" };
-            tokens.push(format!(
-                "{}{} {}{}",
-                palette.blue, moons, label, palette.reset
-            ));
-        }
-    }
-    tokens
+    build_planet_moon_tokens_generic(step, palette)
 }
 
 /// Build the enhanced footer as a list of lines so callers can print them.
@@ -756,6 +968,61 @@ pub(crate) struct RangeNeighbor {
     pub heat_warning: Option<String>,
 }
 
+/// Implement RenderableStep for RangeNeighbor (scout range results).
+impl RenderableStep for RangeNeighbor {
+    fn system_id(&self) -> i64 {
+        self.id
+    }
+
+    fn system_name(&self) -> Option<&str> {
+        Some(&self.name)
+    }
+
+    fn min_external_temp(&self) -> Option<f64> {
+        self.min_temp_k
+    }
+
+    fn planet_count(&self) -> Option<u32> {
+        self.planet_count
+    }
+
+    fn moon_count(&self) -> Option<u32> {
+        self.moon_count
+    }
+
+    fn hop_fuel(&self) -> Option<f64> {
+        self.hop_fuel
+    }
+
+    fn cumulative_fuel(&self) -> Option<f64> {
+        self.cumulative_fuel
+    }
+
+    fn remaining_fuel(&self) -> Option<f64> {
+        self.remaining_fuel
+    }
+
+    fn fuel_warning(&self) -> Option<&str> {
+        self.fuel_warning.as_deref()
+    }
+
+    fn hop_heat(&self) -> Option<f64> {
+        self.hop_heat
+    }
+
+    fn cumulative_heat(&self) -> Option<f64> {
+        self.cumulative_heat
+    }
+
+    fn heat_warning(&self) -> Option<&str> {
+        self.heat_warning.as_deref()
+    }
+
+    fn cooldown_seconds(&self) -> Option<f64> {
+        self.cooldown_seconds
+    }
+}
+
 /// Query parameters for range search (echoed in response).
 #[derive(Debug, Clone, Serialize)]
 pub(crate) struct RangeQueryParams {
@@ -803,6 +1070,9 @@ pub(crate) struct ScoutRangeResult {
     /// Final cumulative heat at end of route (when ship specified).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub final_heat: Option<f64>,
+    /// Total wait time in seconds for cooling when overheated (sum of cooldown_seconds).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub total_wait_time_seconds: Option<f64>,
     /// List of nearby systems ordered by distance (or visit order when ship specified).
     pub systems: Vec<RangeNeighbor>,
 }
@@ -1291,6 +1561,9 @@ pub(crate) fn format_scout_range_note(result: &ScoutRangeResult) -> String {
 }
 
 /// Format scout range result in enhanced format (matches route enhanced style).
+///
+/// Uses the unified `RenderableStep` trait and shared segment builders to
+/// produce output that matches the route command's enhanced format.
 #[allow(dead_code)]
 pub(crate) fn format_scout_range_enhanced(
     result: &ScoutRangeResult,
@@ -1307,7 +1580,7 @@ pub(crate) fn format_scout_range_enhanced(
     // Ship info line (if present)
     if let Some(ref ship) = result.ship {
         out.push_str(&format!(
-            "  {}Ship: {}{}{} (Fuel Capacity: {:.0}, Quality: {:.0})%{}\n",
+            "  {}Ship: {}{}{} (Fuel Capacity: {:.0}, Quality: {:.0}%){}\n",
             palette.gray,
             palette.white_bold,
             ship.name,
@@ -1345,156 +1618,238 @@ pub(crate) fn format_scout_range_enhanced(
 
     out.push('\n');
 
+    // Pre-compute column widths for consistent alignment (like route does)
+    let widths = compute_widths_for_steps(&result.systems);
+
     // Systems list matching route format
     for (i, system) in result.systems.iter().enumerate() {
-        let temp_circle = get_temp_circle(system.min_temp_k.unwrap_or(0.0), palette);
+        // Use generic helpers for consistent rendering
+        let temp_circle = get_temp_circle_generic(system, palette);
+        let celestial_tokens = build_planet_moon_tokens_generic(system, palette);
 
-        // Build warning icons for fuel/heat (using inverted label styles matching route format)
-        let mut warning_icons = String::new();
-        if let Some(ref fuel_warning) = system.fuel_warning {
-            warning_icons.push(' ');
-            warning_icons.push_str(&format_label(
-                fuel_warning,
-                palette.tag_refuel,
-                palette.reset,
-            ));
-        }
-        if let Some(ref heat_warning) = system.heat_warning {
-            let label_style = if heat_warning == "CRITICAL" {
-                palette.label_critical
-            } else {
-                palette.label_overheated
-            };
-            warning_icons.push(' ');
-            warning_icons.push_str(&format_label(heat_warning, label_style, palette.reset));
-            if let Some(cooldown) = system.cooldown_seconds {
-                warning_icons.push_str(&format!(
-                    " {}(wait {:.0}s){}",
-                    palette.gray, cooldown, palette.reset
-                ));
-            }
-        }
-
-        // Build planets/moons tokens like route does
-        let mut celestial_tokens: Vec<String> = Vec::new();
-        if let Some(planets) = system.planet_count {
-            if planets > 0 {
-                let label = if planets == 1 { "Planet" } else { "Planets" };
-                celestial_tokens.push(format!(
-                    "{}{} {}{}",
-                    palette.green, planets, label, palette.reset
-                ));
-            }
-        }
-        if let Some(moons) = system.moon_count {
-            if moons > 0 {
-                let label = if moons == 1 { "Moon" } else { "Moons" };
-                celestial_tokens.push(format!(
-                    "{}{} {}{}",
-                    palette.blue, moons, label, palette.reset
-                ));
-            }
-        }
-
-        // Header line: N. ● SystemName (X.X ly)   N Planets M Moons [warnings]
+        // Header line: N. ● SystemName (X.X ly)   N Planets M Moons
         let celestials_suffix = if !celestial_tokens.is_empty() {
             format!("   {} ", celestial_tokens.join(" "))
         } else {
             String::new()
         };
         out.push_str(&format!(
-            "{:>3}. {} {}{}{} ({:.1} ly){}{}\n",
+            "{:>3}. {} {}{}{} ({:.1} ly){}\n",
             i + 1,
             temp_circle,
             palette.white_bold,
             system.name,
             palette.reset,
             system.distance_ly,
-            celestials_suffix,
-            warning_icons
+            celestials_suffix
         ));
 
-        // Details line: │ min X.XXK or Black Hole (matching route format)
-        let is_black_hole = matches!(system.id, 30000001..=30000003);
-        let mut detail_parts = Vec::new();
+        // Details line using generic segment builders (matches route format exactly)
+        let min_seg = build_min_segment_generic(system, palette);
+        let fuel_seg_opt = build_fuel_segment_generic(system, &widths, palette);
+        let heat_seg_opt = build_heat_segment_generic(system, &widths, palette);
 
-        if is_black_hole {
-            detail_parts.push(format!(
-                "{}▌Black Hole▐{}",
-                palette.tag_black_hole, palette.reset
-            ));
-        } else if let Some(t) = system.min_temp_k {
-            detail_parts.push(format!("{}min {:>6.2}K{}", palette.cyan, t, palette.reset));
-        }
+        let is_black_hole = matches!(system.system_id(), 30000001..=30000003);
+        let has_fuel = system.hop_fuel().is_some();
+        let has_heat = system.hop_heat().is_some();
 
-        // Add fuel/heat info if ship is specified (no emojis - matching route format)
-        if result.ship.is_some() {
-            if let Some(hop_fuel) = system.hop_fuel {
-                detail_parts.push(format!(
-                    "{}fuel {:.0}{}",
-                    palette.orange,
-                    hop_fuel.ceil(),
-                    palette.reset
+        if is_black_hole || has_fuel || has_heat || system.min_external_temp().is_some() {
+            let mut segments = Vec::new();
+            segments.push(min_seg);
+            if let Some(s) = fuel_seg_opt {
+                segments.push(s);
+            }
+            if let Some(s) = heat_seg_opt {
+                segments.push(s);
+            }
+
+            // Remove placeholder segments that consist only of whitespace
+            segments.retain(|s| !s.trim().is_empty());
+
+            if !segments.is_empty() {
+                let joined = segments.join(", ");
+                out.push_str(&format!(
+                    "       {}│{} {}\n",
+                    palette.gray, palette.reset, joined
                 ));
             }
-            if let Some(hop_heat) = system.hop_heat {
-                detail_parts.push(format!(
-                    "{}heat {:.1}{}",
-                    palette.red, hop_heat, palette.reset
-                ));
-            }
-            if let Some(remaining) = system.remaining_fuel {
-                detail_parts.push(format!(
-                    "{}(rem {:.0}){}",
-                    palette.magenta,
-                    remaining.ceil(),
-                    palette.reset
-                ));
-            }
-        }
-
-        if !detail_parts.is_empty() {
-            out.push_str(&format!(
-                "       {}│{} {}\n",
-                palette.gray,
-                palette.reset,
-                detail_parts.join("  ")
-            ));
         }
     }
 
-    // Summary footer for ship routes
-    if let Some(ref ship) = result.ship {
+    // Summary footer for ship routes (using shared footer builder)
+    if result.ship.is_some() {
         out.push('\n');
-        out.push_str(&format!(
-            "{}───────────────────────────────────────{}\n",
-            palette.gray, palette.reset
-        ));
-
-        let mut summary_parts = Vec::new();
-        if let Some(total_dist) = result.total_distance_ly {
-            summary_parts.push(format!("Distance: {:.1} ly", total_dist));
+        let footer_lines = build_scout_range_footer(result, palette);
+        for line in footer_lines {
+            out.push_str(&line);
+            out.push('\n');
         }
-        if let Some(total_fuel) = result.total_fuel {
-            let remaining = ship.fuel_capacity - total_fuel;
-            summary_parts.push(format!(
-                "Fuel: {:.1} / {:.0} ({:.1} remaining)",
-                total_fuel, ship.fuel_capacity, remaining
-            ));
-        }
-        if let Some(final_heat) = result.final_heat {
-            summary_parts.push(format!("Final Heat: {:.1}", final_heat));
-        }
-
-        out.push_str(&format!(
-            "  {}{}{}\n",
-            palette.white_bold,
-            summary_parts.join("  │  "),
-            palette.reset
-        ));
     }
 
     out
+}
+
+/// Build the footer for scout range results (matches route footer style).
+pub(crate) fn build_scout_range_footer(
+    result: &ScoutRangeResult,
+    palette: &ColorPalette,
+) -> Vec<String> {
+    use crate::terminal::format_with_separators;
+
+    let p = palette;
+    let mut lines: Vec<String> = Vec::new();
+
+    let Some(ref ship) = result.ship else {
+        return lines;
+    };
+
+    lines.push(format!(
+        "{}───────────────────────────────────────{}",
+        p.gray, p.reset
+    ));
+
+    let lw = FOOTER_LABEL_WIDTH;
+
+    // Compute number width for alignment
+    let mut num_width = 0usize;
+    if let Some(dist) = result.total_distance_ly {
+        num_width = num_width.max(format_with_separators(dist as u64).len());
+    }
+    if let Some(fuel) = result.total_fuel {
+        num_width = num_width.max(format_with_separators(fuel.ceil() as u64).len());
+    }
+    if let Some(remaining) = result.total_fuel.map(|f| ship.fuel_capacity - f) {
+        num_width = num_width.max(format_with_separators(remaining.ceil() as u64).len());
+    }
+    if let Some(wait) = result.total_wait_time_seconds {
+        num_width = num_width.max(format_cooldown_duration(wait).len());
+    }
+
+    // Distance
+    if let Some(total_dist) = result.total_distance_ly {
+        let dist_str = format_with_separators(total_dist as u64);
+        let l_dist = "Total Distance:";
+        lines.push(format!(
+            "  {}{:<lw$}{}  {}{:>width$} ly{}",
+            p.cyan,
+            l_dist,
+            p.reset,
+            p.white_bold,
+            dist_str,
+            p.reset,
+            lw = lw,
+            width = num_width
+        ));
+    }
+
+    // Fuel
+    if let Some(total_fuel) = result.total_fuel {
+        let fuel_str = format_with_separators(total_fuel.ceil() as u64);
+        let quality_suffix = format!(" ({:.0}% Fuel)", ship.fuel_quality);
+        let l_fuel = format!("Fuel ({}):", ship.name);
+        lines.push(format!(
+            "  {}{:<lw$}{}  {}{:>width$}{}{}",
+            p.cyan,
+            l_fuel,
+            p.reset,
+            p.white_bold,
+            fuel_str,
+            p.reset,
+            quality_suffix,
+            lw = lw,
+            width = num_width
+        ));
+
+        // Remaining
+        let remaining = ship.fuel_capacity - total_fuel;
+        let rem_str = format_with_separators(remaining.ceil() as u64);
+        let l_rem = "Remaining:";
+        lines.push(format!(
+            "  {}{:<lw$}{}  {}{:>width$}{}",
+            p.green,
+            l_rem,
+            p.reset,
+            p.white_bold,
+            rem_str,
+            p.reset,
+            lw = lw,
+            width = num_width
+        ));
+    }
+
+    // Total Wait (heat cooldown time)
+    if let Some(wait) = result.total_wait_time_seconds {
+        let wait_str = format_cooldown_duration(wait);
+        let l_wait = "Total Wait:";
+        lines.push(format!(
+            "  {}{:<lw$}{}  {}{:>width$}{}",
+            p.cyan,
+            l_wait,
+            p.reset,
+            p.white_bold,
+            wait_str,
+            p.reset,
+            lw = lw,
+            width = num_width
+        ));
+    }
+
+    // Final heat
+    if let Some(final_heat) = result.final_heat {
+        let heat_str = format!("{:.2}", final_heat);
+        let l_heat = "Final Heat:";
+        lines.push(format!(
+            "  {}{:<lw$}{}  {}{:>width$}{}",
+            p.red,
+            l_heat,
+            p.reset,
+            p.white_bold,
+            heat_str,
+            p.reset,
+            lw = lw,
+            width = num_width.max(heat_str.len())
+        ));
+    }
+
+    // Parameters line (matches route footer style)
+    {
+        let limit_str = result.query.limit.to_string();
+        let radius_str = result
+            .query
+            .radius
+            .map(|r| format!("{:.1} ly", r))
+            .unwrap_or_else(|| "unlimited".to_string());
+        let max_temp_str = result
+            .query
+            .max_temperature
+            .map(|t| format!("{:.0}K", t))
+            .unwrap_or_else(|| "any".to_string());
+        let fuel_q = format!("{:.0}%", ship.fuel_quality);
+
+        lines.push(String::new());
+        lines.push(format!(
+            "  {}Parameters:{}  {}Ship:{} {} • {}Fuel quality:{} {} • {}Limit:{} {} • {}Radius:{} {} • {}Max temp:{} {}",
+            p.cyan,
+            p.reset,
+            p.magenta,
+            p.reset,
+            ship.name,
+            p.magenta,
+            p.reset,
+            fuel_q,
+            p.magenta,
+            p.reset,
+            limit_str,
+            p.magenta,
+            p.reset,
+            radius_str,
+            p.magenta,
+            p.reset,
+            max_temp_str
+        ));
+    }
+
+    lines
 }
 
 #[cfg(test)]

@@ -509,6 +509,12 @@ pub fn handle_scout_range(
             sys.cumulative_heat = Some(instant_temp); // Store instantaneous temp for this hop
         }
 
+        // Sum all cooldown times for total wait time
+        let total_wait_time_seconds: f64 = ordered_systems
+            .iter()
+            .filter_map(|s| s.cooldown_seconds)
+            .sum();
+
         ScoutRangeResult {
             system: args.system.clone(),
             system_id,
@@ -526,6 +532,11 @@ pub fn handle_scout_range(
             total_distance_ly: Some(total_distance),
             total_fuel: Some(cumulative_fuel),
             final_heat: Some(max_instant_temp), // Report max heat reached, not cumulative
+            total_wait_time_seconds: if total_wait_time_seconds > 0.0 {
+                Some(total_wait_time_seconds)
+            } else {
+                None
+            },
             systems: ordered_systems,
         }
     } else {
@@ -548,6 +559,7 @@ pub fn handle_scout_range(
             total_distance_ly: None,
             total_fuel: None,
             final_heat: None,
+            total_wait_time_seconds: None,
             systems,
         }
     };
