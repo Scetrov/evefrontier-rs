@@ -28,7 +28,7 @@ The following services have been deployed:
 Your services are accessible via ingress at:
 
   Host: {{ .Values.ingress.host }}
-  
+
   Endpoints:
 {{- if .Values.route.enabled }}
     - POST https://{{ .Values.ingress.host }}/api/v1/route

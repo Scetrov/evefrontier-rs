@@ -17,6 +17,8 @@ Partially auto-generated from feature plans; manual additions allowed between MA
 - N/A (stateless encoding/decoding) (017-fmap-url-support)
 - Rust 1.91.1 + reqwest (blocking client, already used), zip, csv, serde, (015-ship-data-downloader)
 - OS cache directory under `evefrontier_datasets/` (same as DB cache) (015-ship-data-downloader)
+- Rust 1.91.1 (per `.rust-toolchain`) + clap (CLI parsing), serde/serde_json (JSON output), tracing (logging), evefrontier-lib (core logic) (025-scout-cli-subcommand)
+- SQLite dataset (`static_data.db`) + spatial index (`.spatial.bin`) (025-scout-cli-subcommand)
 
 - Documentation (Markdown) with shell command examples + GPG, cosign, cargo-sbom, sha256sum (005-release-documentation)
 
@@ -36,9 +38,9 @@ tests/
 Documentation (Markdown) with shell command examples: Follow standard conventions
 
 ## Recent Changes
+- 025-scout-cli-subcommand: Added Rust 1.91.1 (per `.rust-toolchain`) + clap (CLI parsing), serde/serde_json (JSON output), tracing (logging), evefrontier-lib (core logic)
 - 015-ship-data-downloader: Added Rust 1.91.1 + reqwest (blocking client, already used), zip, csv, serde,
 - 017-fmap-url-support: Added Rust 1.91.1 (per `.rust-toolchain`) + flate2 (gzip), base64 (encoding) - both already transitive deps
-- 016-mcp-server-integration: Added Rust 1.91.1 (per `.rust-toolchain`) + `rmcp` (official MCP SDK), `tokio`, `serde`, `schemars` (JSON Schema)
 
 
 <!-- MANUAL ADDITIONS START -->

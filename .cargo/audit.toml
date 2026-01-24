@@ -1,0 +1,18 @@
+# Cargo audit configuration
+# See: https://github.com/rustsec/rustsec/blob/main/cargo-audit/audit.toml.example
+
+[advisories]
+# Advisories to ignore (known issues with no available fix)
+ignore = [
+    # cmov 0.3.1 - Non-constant-time code generation on ARM32 targets
+    # Transitive dependency via kiddo 5.2.3
+    # Waiting for kiddo to update to cmov >= 0.4.4
+    # Tracking: https://github.com/sdd/kiddo/issues
+    # Added: 2026-01-24
+    "RUSTSEC-2026-0003",
+]
+
+# Warn about yanked crates but don't fail
+[yanked]
+enabled = true
+update_index = true

@@ -14,7 +14,6 @@
     "pnpm": ">=10.0.0"
   },
   "packageManager": "pnpm@10.0.0",
-  
   "scripts": {
     "build": "nx run-many -t build --exclude evefrontier-rs",
     "test": "nx run-many -t test --exclude evefrontier-rs",
@@ -46,9 +45,10 @@
     "nx": "^20.2.2",
     "prettier": "^3.4.2"
   },
-  "pnpm": {
-    "overrides": {
-      "js-yaml": "4.1.1"
-    }
-  }
+  "overrides": {
+    "js-yaml": "4.1.1"
+  },
+  "workspaces": [
+    "."
+  ]
 }

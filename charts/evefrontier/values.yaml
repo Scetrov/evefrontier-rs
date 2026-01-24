@@ -12,17 +12,17 @@ global:
 route:
   enabled: true
   replicaCount: 1
-  
+
   image:
     repository: ghcr.io/scetrov/evefrontier-rs/evefrontier-service-route
     pullPolicy: IfNotPresent
     # Overrides the image tag (defaults to chart appVersion)
     tag: ""
-  
+
   service:
     type: ClusterIP
     port: 8080
-  
+
   resources:
     limits:
       cpu: 500m
@@ -30,16 +30,16 @@ route:
     requests:
       cpu: 100m
       memory: 128Mi
-  
+
   # Pod annotations
   podAnnotations: {}
-  
+
   # Node selector
   nodeSelector: {}
-  
+
   # Tolerations
   tolerations: []
-  
+
   # Affinity
   affinity: {}
 
@@ -47,16 +47,16 @@ route:
 scoutGates:
   enabled: true
   replicaCount: 1
-  
+
   image:
     repository: ghcr.io/scetrov/evefrontier-rs/evefrontier-service-scout-gates
     pullPolicy: IfNotPresent
     tag: ""
-  
+
   service:
     type: ClusterIP
     port: 8080
-  
+
   resources:
     limits:
       cpu: 500m
@@ -64,7 +64,7 @@ scoutGates:
     requests:
       cpu: 100m
       memory: 128Mi
-  
+
   podAnnotations: {}
   nodeSelector: {}
   tolerations: []
@@ -74,16 +74,16 @@ scoutGates:
 scoutRange:
   enabled: true
   replicaCount: 1
-  
+
   image:
     repository: ghcr.io/scetrov/evefrontier-rs/evefrontier-service-scout-range
     pullPolicy: IfNotPresent
     tag: ""
-  
+
   service:
     type: ClusterIP
     port: 8080
-  
+
   resources:
     limits:
       cpu: 500m
@@ -91,7 +91,7 @@ scoutRange:
     requests:
       cpu: 100m
       memory: 128Mi
-  
+
   podAnnotations: {}
   nodeSelector: {}
   tolerations: []
@@ -102,19 +102,19 @@ ingress:
   enabled: true
   # Ingress class: "traefik" for IngressRoute CRD, "nginx" etc. for standard Ingress
   className: traefik
-  
+
   # Annotations for the Ingress/IngressRoute
   annotations: {}
-  
+
   # Host for routing (empty string matches all hosts)
   host: ""
-  
+
   # TLS configuration
   tls:
     enabled: false
     # Secret name for TLS cert (auto-generated if not specified)
     secretName: ""
-  
+
   # Traefik-specific configuration (only used when className: traefik)
   traefik:
     # Traefik entrypoint (web, websecure)
@@ -123,20 +123,20 @@ ingress:
     middlewares: []
     # - evefrontier-ratelimit
     # - evefrontier-cors
-    
+
     # Rate limiting middleware configuration
     rateLimit:
       enabled: false
       average: 100
       burst: 50
       period: 1s
-    
+
     # CORS middleware configuration
     cors:
       enabled: false
       allowOrigins:
         - "*"
-    
+
     # Security headers middleware configuration
     headers:
       enabled: false
@@ -166,23 +166,23 @@ prometheus:
 # Persistent volume for the dataset
 persistence:
   enabled: true
-  
+
   # Use existing PVC (leave empty to create new one)
   existingClaim: ""
-  
+
   # Storage class (leave empty for default)
   storageClass: ""
-  
+
   # Access modes (array)
   accessModes:
     - ReadOnlyMany
-  
+
   # Size (only used if creating new PVC)
   size: 1Gi
-  
+
   # Path to mount the data
   mountPath: /data
-  
+
   # Annotations for the PVC
   annotations: {}
 
@@ -221,7 +221,7 @@ probes:
     periodSeconds: 10
     timeoutSeconds: 5
     failureThreshold: 3
-  
+
   readiness:
     enabled: true
     path: /health/ready
