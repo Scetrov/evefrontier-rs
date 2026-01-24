@@ -154,7 +154,7 @@ pub fn handle_scout_range(
     format: OutputFormat,
     data_dir: Option<&std::path::Path>,
 ) -> Result<()> {
-    // Validate limit range (clap doesn't support range validation directly for usize)
+    // Additional runtime validation for the limit range; clap should also enforce this via its value parser.
     if args.limit < 1 || args.limit > 100 {
         return Err(anyhow::anyhow!("limit must be between 1 and 100"));
     }

@@ -93,7 +93,7 @@ pub enum ScoutSubcommand {
 
 #[derive(Args, Debug, Clone)]
 pub struct ScoutGatesArgs {
-    /// System name to query (case-insensitive, fuzzy matched).
+    /// System name to query (case-sensitive; fuzzy suggestions on mismatch).
     pub system: String,
 
     /// Include CCP developer/staging systems (AD###, V-###) in results.
@@ -103,7 +103,7 @@ pub struct ScoutGatesArgs {
 
 #[derive(Args, Debug, Clone)]
 pub struct ScoutRangeArgs {
-    /// System name to query (case-insensitive, fuzzy matched).
+    /// System name to query (case-sensitive; fuzzy suggestions on mismatch).
     pub system: String,
 
     /// Maximum number of results to return (1-100).

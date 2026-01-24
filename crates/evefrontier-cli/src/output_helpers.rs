@@ -447,62 +447,6 @@ pub(crate) fn build_planet_moon_tokens(step: &RouteStep, palette: &ColorPalette)
     tokens
 }
 
-/// Build a status line for a system showing temperature, planets, and moons.
-///
-/// This is a shared helper used by both route and scout enhanced formatters.
-/// Returns a formatted string like "🟢 285 K | 3 Planets | 5 Moons" or None if no data.
-#[allow(dead_code)]
-pub(crate) fn build_system_status_line(
-    id: i64,
-    min_temp_k: Option<f64>,
-    planet_count: Option<u32>,
-    moon_count: Option<u32>,
-    palette: &ColorPalette,
-) -> Option<String> {
-    let is_black_hole = matches!(id, 30000001..=30000003);
-
-    let mut parts: Vec<String> = Vec::new();
-
-    // Black hole indicator takes precedence
-    if is_black_hole {
-        parts.push(format!(
-            "{}▌Black Hole▐{}",
-            palette.tag_black_hole, palette.reset
-        ));
-    } else if let Some(t) = min_temp_k {
-        let circle = get_temp_circle(t, palette);
-        parts.push(format!("{} {:.0} K", circle, t));
-    }
-
-    // Planet count
-    if let Some(planets) = planet_count {
-        if planets > 0 {
-            let label = if planets == 1 { "Planet" } else { "Planets" };
-            parts.push(format!(
-                "{}{} {}{}",
-                palette.green, planets, label, palette.reset
-            ));
-        }
-    }
-
-    // Moon count
-    if let Some(moons) = moon_count {
-        if moons > 0 {
-            let label = if moons == 1 { "Moon" } else { "Moons" };
-            parts.push(format!(
-                "{}{} {}{}",
-                palette.blue, moons, label, palette.reset
-            ));
-        }
-    }
-
-    if parts.is_empty() {
-        None
-    } else {
-        Some(parts.join(" | "))
-    }
-}
-
 /// Build the enhanced footer as a list of lines so callers can print them.
 pub fn build_enhanced_footer(
     summary: &RouteSummary,
@@ -713,16 +657,18 @@ pub fn build_enhanced_footer(
 // Scout command output formatters
 // =============================================================================
 
-// Note: These structs are duplicated from commands/scout.rs to avoid circular
-// dependencies between lib.rs (which includes output_helpers) and main.rs
-// (which includes commands). The scout command handlers will construct these
-// structs and pass them to the formatting functions.
+// Note: These structs are defined here as the shared, canonical representations
+// for scout-related output. The scout command handlers (e.g., in commands/scout.rs)
+// import and use these types, which helps avoid circular dependencies between
+// lib.rs (which includes output_helpers) and main.rs (which includes commands),
+// and allows the same types/formatting to be reused across lib/bin (and Lambda)
+// targets.
 
 use serde::Serialize;
 
 /// A gate-connected neighbor system.
 #[derive(Debug, Clone, Serialize)]
-pub struct GateNeighbor {
+pub(crate) struct GateNeighbor {
     /// System name.
     pub name: String,
     /// System ID.
@@ -740,7 +686,7 @@ pub struct GateNeighbor {
 
 /// Result of a gate neighbors query.
 #[derive(Debug, Clone, Serialize)]
-pub struct ScoutGatesResult {
+pub(crate) struct ScoutGatesResult {
     /// The queried system name.
     pub system: String,
     /// The queried system ID.
@@ -753,7 +699,7 @@ pub struct ScoutGatesResult {
 
 /// A system within spatial range.
 #[derive(Debug, Clone, Serialize)]
-pub struct RangeNeighbor {
+pub(crate) struct RangeNeighbor {
     /// System name.
     pub name: String,
     /// System ID.
@@ -773,7 +719,7 @@ pub struct RangeNeighbor {
 
 /// Query parameters for range search (echoed in response).
 #[derive(Debug, Clone, Serialize)]
-pub struct RangeQueryParams {
+pub(crate) struct RangeQueryParams {
     /// Maximum number of results requested.
     pub limit: usize,
     /// Maximum distance in light-years (if specified).
@@ -786,7 +732,7 @@ pub struct RangeQueryParams {
 
 /// Result of a range query.
 #[derive(Debug, Clone, Serialize)]
-pub struct ScoutRangeResult {
+pub(crate) struct ScoutRangeResult {
     /// The queried system name.
     pub system: String,
     /// The queried system ID.

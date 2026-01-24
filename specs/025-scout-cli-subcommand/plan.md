@@ -214,4 +214,3 @@ High-level task breakdown:
 4. Unknown systems show fuzzy suggestions
 5. All tests pass
 6. Documentation updated
-| [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient] |
