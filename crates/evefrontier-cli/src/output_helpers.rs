@@ -146,6 +146,19 @@ pub(crate) fn format_cooldown_duration(seconds: f64) -> String {
     }
 }
 
+/// Format a warning/status label with inverted colors and padded spacing.
+///
+/// Returns a string like ` REFUEL ` or ` CRITICAL ` with appropriate ANSI styling.
+/// The label has a space on each side for visual separation.
+///
+/// # Arguments
+/// * `text` - The label text (e.g., "REFUEL", "OVERHEATED", "CRITICAL")
+/// * `style` - The ANSI style to apply (e.g., `palette.tag_refuel`, `palette.label_critical`)
+/// * `reset` - The reset style (e.g., `palette.reset`)
+pub(crate) fn format_label(text: &str, style: &str, reset: &str) -> String {
+    format!("{} {} {}", style, text, reset)
+}
+
 /// Build the estimation warning box as a string so tests can inspect it.
 pub(crate) fn build_estimation_warning_box(
     prefix_visible: &str,
@@ -331,7 +344,8 @@ pub(crate) fn build_fuel_segment(
 
             if let Some(w) = &f.warning {
                 if w == "REFUEL" {
-                    res.push_str(&format!(" {} {} {}", palette.tag_refuel, w, palette.reset));
+                    res.push(' ');
+                    res.push_str(&format_label(w, palette.tag_refuel, palette.reset));
                 }
             }
 
@@ -1335,21 +1349,24 @@ pub(crate) fn format_scout_range_enhanced(
     for (i, system) in result.systems.iter().enumerate() {
         let temp_circle = get_temp_circle(system.min_temp_k.unwrap_or(0.0), palette);
 
-        // Build warning icons for fuel/heat (no emojis - matching route format)
+        // Build warning icons for fuel/heat (using inverted label styles matching route format)
         let mut warning_icons = String::new();
         if let Some(ref fuel_warning) = system.fuel_warning {
-            warning_icons.push_str(&format!(
-                " {}{} {}{}",
-                palette.tag_refuel, fuel_warning, palette.reset, ""
+            warning_icons.push(' ');
+            warning_icons.push_str(&format_label(
+                fuel_warning,
+                palette.tag_refuel,
+                palette.reset,
             ));
         }
         if let Some(ref heat_warning) = system.heat_warning {
-            let color = if heat_warning == "CRITICAL" {
-                palette.red
+            let label_style = if heat_warning == "CRITICAL" {
+                palette.label_critical
             } else {
-                palette.orange
+                palette.label_overheated
             };
-            warning_icons.push_str(&format!(" {}{}{}", color, heat_warning, palette.reset));
+            warning_icons.push(' ');
+            warning_icons.push_str(&format_label(heat_warning, label_style, palette.reset));
             if let Some(cooldown) = system.cooldown_seconds {
                 warning_icons.push_str(&format!(
                     " {}(wait {:.0}s){}",
