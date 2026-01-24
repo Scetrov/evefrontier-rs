@@ -77,6 +77,52 @@ pub struct McpCommandArgs {
     pub log_level: Option<String>,
 }
 
+#[derive(Args, Debug, Clone)]
+pub struct ScoutCommandArgs {
+    #[command(subcommand)]
+    pub subcommand: ScoutSubcommand,
+}
+
+#[derive(Subcommand, Debug, Clone)]
+pub enum ScoutSubcommand {
+    /// List gate-connected neighbors of a system.
+    Gates(ScoutGatesArgs),
+    /// Find systems within spatial range of a system.
+    Range(ScoutRangeArgs),
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct ScoutGatesArgs {
+    /// System name to query (case-insensitive, fuzzy matched).
+    pub system: String,
+
+    /// Include CCP developer/staging systems (AD###, V-###) in results.
+    #[arg(long, action = ArgAction::SetTrue)]
+    pub include_ccp_systems: bool,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct ScoutRangeArgs {
+    /// System name to query (case-insensitive, fuzzy matched).
+    pub system: String,
+
+    /// Maximum number of results to return (1-100).
+    #[arg(long, short = 'n', default_value = "10")]
+    pub limit: usize,
+
+    /// Maximum distance in light-years from the origin system.
+    #[arg(long, short = 'r')]
+    pub radius: Option<f64>,
+
+    /// Maximum star temperature in Kelvin (filters out hotter systems).
+    #[arg(long = "max-temp", short = 't')]
+    pub max_temp: Option<f64>,
+
+    /// Include CCP developer/staging systems (AD###, V-###) in results.
+    #[arg(long, action = ArgAction::SetTrue)]
+    pub include_ccp_systems: bool,
+}
+
 #[derive(Subcommand, Debug)]
 enum Command {
     /// Ensure the dataset is downloaded and report its location.
@@ -95,6 +141,8 @@ enum Command {
     FmapDecode(FmapDecodeArgs),
     /// Launch the Model Context Protocol (MCP) server via stdio transport.
     Mcp(McpCommandArgs),
+    /// Scout nearby systems (gates or spatial range).
+    Scout(ScoutCommandArgs),
 }
 
 #[derive(Args, Debug, Clone)]
@@ -502,6 +550,7 @@ async fn main() -> Result<()> {
         Command::Mcp(args) => {
             commands::mcp::run_mcp_server(&context.options, args.log_level.as_deref()).await
         }
+        Command::Scout(args) => handle_scout_command(&context, &args),
     };
 
     if result.is_ok() && context.should_show_footer() {
@@ -1329,4 +1378,23 @@ fn handle_fmap_decode(args: &FmapDecodeArgs) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn handle_scout_command(context: &AppContext, args: &ScoutCommandArgs) -> Result<()> {
+    match &args.subcommand {
+        ScoutSubcommand::Gates(gate_args) => {
+            commands::scout::handle_scout_gates(
+                gate_args,
+                context.output_format(),
+                context.target_path(),
+            )
+        }
+        ScoutSubcommand::Range(range_args) => {
+            commands::scout::handle_scout_range(
+                range_args,
+                context.output_format(),
+                context.target_path(),
+            )
+        }
+    }
 }

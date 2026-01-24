@@ -30,6 +30,8 @@ This repository contains multiple crates organized as a Cargo workspace:
   - `download` — Download and cache dataset releases
   - `route` — Compute routes between systems with advanced options
   - `index-build` — Precompute spatial index for faster queries
+  - `scout gates` — List star systems connected via jump gates
+  - `scout range` — Find nearby systems within spatial range
 
 ### AWS Lambda Crates
 
@@ -244,6 +246,24 @@ evefrontier-cli index-build
 ```
 
 The index enables efficient nearest-neighbor and radius queries with temperature filtering.
+
+### Scout Commands
+
+Discover systems near your location using the scout subcommands:
+
+```bash
+# List systems connected via jump gates
+evefrontier-cli scout gates "Nod"
+
+# Find nearby systems within spatial range
+evefrontier-cli scout range "Nod" --limit 10
+
+# Filter by radius and temperature
+evefrontier-cli scout range "Nod" --radius 50.0 --max-temp 300
+
+# JSON output for programmatic use
+evefrontier-cli scout gates "Nod" --format json
+```
 
 ## Library API Highlights
 

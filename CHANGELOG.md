@@ -43,6 +43,17 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **CLI** (`evefrontier-cli`)
+  - Added `scout gates` subcommand to list star systems connected via jump gates
+  - Added `scout range` subcommand to find nearby systems within spatial range with optional radius
+    and temperature filters
+  - Added `--include-ccp-systems` flag to scout commands. By default, CCP developer/staging systems
+    (matching patterns `AD###` and `V-###`) are filtered from results to provide cleaner output for
+    regular gameplay. Use this flag to include them.
+  - Scout subcommands now support all output formats: text, rich, json, basic, emoji, enhanced, note
+    (matching parity with route command)
+  - Scout enhanced format now includes status lines (min temp, planets, moons) for each system
+
 - **Library** (`evefrontier-lib`)
   - Newton's Law of Cooling implementation for realistic cooldown time estimation.
   - Non-cumulative thermal model: ships are assumed to cool to a jump-ready state (nominal 30.0K or

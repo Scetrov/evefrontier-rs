@@ -447,6 +447,62 @@ pub(crate) fn build_planet_moon_tokens(step: &RouteStep, palette: &ColorPalette)
     tokens
 }
 
+/// Build a status line for a system showing temperature, planets, and moons.
+///
+/// This is a shared helper used by both route and scout enhanced formatters.
+/// Returns a formatted string like "🟢 285 K | 3 Planets | 5 Moons" or None if no data.
+#[allow(dead_code)]
+pub(crate) fn build_system_status_line(
+    id: i64,
+    min_temp_k: Option<f64>,
+    planet_count: Option<u32>,
+    moon_count: Option<u32>,
+    palette: &ColorPalette,
+) -> Option<String> {
+    let is_black_hole = matches!(id, 30000001..=30000003);
+
+    let mut parts: Vec<String> = Vec::new();
+
+    // Black hole indicator takes precedence
+    if is_black_hole {
+        parts.push(format!(
+            "{}▌Black Hole▐{}",
+            palette.tag_black_hole, palette.reset
+        ));
+    } else if let Some(t) = min_temp_k {
+        let circle = get_temp_circle(t, palette);
+        parts.push(format!("{} {:.0} K", circle, t));
+    }
+
+    // Planet count
+    if let Some(planets) = planet_count {
+        if planets > 0 {
+            let label = if planets == 1 { "Planet" } else { "Planets" };
+            parts.push(format!(
+                "{}{} {}{}",
+                palette.green, planets, label, palette.reset
+            ));
+        }
+    }
+
+    // Moon count
+    if let Some(moons) = moon_count {
+        if moons > 0 {
+            let label = if moons == 1 { "Moon" } else { "Moons" };
+            parts.push(format!(
+                "{}{} {}{}",
+                palette.blue, moons, label, palette.reset
+            ));
+        }
+    }
+
+    if parts.is_empty() {
+        None
+    } else {
+        Some(parts.join(" | "))
+    }
+}
+
 /// Build the enhanced footer as a list of lines so callers can print them.
 pub fn build_enhanced_footer(
     summary: &RouteSummary,
@@ -651,6 +707,484 @@ pub fn build_enhanced_footer(
     }
 
     lines
+}
+
+// =============================================================================
+// Scout command output formatters
+// =============================================================================
+
+// Note: These structs are duplicated from commands/scout.rs to avoid circular
+// dependencies between lib.rs (which includes output_helpers) and main.rs
+// (which includes commands). The scout command handlers will construct these
+// structs and pass them to the formatting functions.
+
+use serde::Serialize;
+
+/// A gate-connected neighbor system.
+#[derive(Debug, Clone, Serialize)]
+pub struct GateNeighbor {
+    /// System name.
+    pub name: String,
+    /// System ID.
+    pub id: i64,
+    /// Minimum external temperature in Kelvin (if known).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub min_temp_k: Option<f64>,
+    /// Number of planets in the system.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub planet_count: Option<u32>,
+    /// Number of moons in the system.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub moon_count: Option<u32>,
+}
+
+/// Result of a gate neighbors query.
+#[derive(Debug, Clone, Serialize)]
+pub struct ScoutGatesResult {
+    /// The queried system name.
+    pub system: String,
+    /// The queried system ID.
+    pub system_id: i64,
+    /// Number of gate-connected neighbors.
+    pub count: usize,
+    /// List of neighboring systems.
+    pub neighbors: Vec<GateNeighbor>,
+}
+
+/// A system within spatial range.
+#[derive(Debug, Clone, Serialize)]
+pub struct RangeNeighbor {
+    /// System name.
+    pub name: String,
+    /// System ID.
+    pub id: i64,
+    /// Distance from origin in light-years.
+    pub distance_ly: f64,
+    /// Minimum external temperature in Kelvin (if known).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub min_temp_k: Option<f64>,
+    /// Number of planets in the system.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub planet_count: Option<u32>,
+    /// Number of moons in the system.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub moon_count: Option<u32>,
+}
+
+/// Query parameters for range search (echoed in response).
+#[derive(Debug, Clone, Serialize)]
+pub struct RangeQueryParams {
+    /// Maximum number of results requested.
+    pub limit: usize,
+    /// Maximum distance in light-years (if specified).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub radius: Option<f64>,
+    /// Maximum temperature filter in Kelvin (if specified).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_temperature: Option<f64>,
+}
+
+/// Result of a range query.
+#[derive(Debug, Clone, Serialize)]
+pub struct ScoutRangeResult {
+    /// The queried system name.
+    pub system: String,
+    /// The queried system ID.
+    pub system_id: i64,
+    /// Query parameters.
+    pub query: RangeQueryParams,
+    /// Number of systems found.
+    pub count: usize,
+    /// List of nearby systems ordered by distance.
+    pub systems: Vec<RangeNeighbor>,
+}
+
+// =============================================================================
+// Scout output formatting functions
+// Note: These functions are used by the binary crate (main.rs/commands/scout.rs)
+// but not by the library crate itself. The #[allow(dead_code)] suppresses
+// warnings from the library build while these are still exported for the binary.
+// =============================================================================
+
+/// Format scout gates result in basic (plain text) format.
+#[allow(dead_code)]
+pub(crate) fn format_scout_gates_basic(result: &ScoutGatesResult) -> String {
+    let mut out = String::new();
+    out.push_str(&format!(
+        "Gate neighbors of {} ({} found):\n",
+        result.system, result.count
+    ));
+    for neighbor in &result.neighbors {
+        out.push_str(&format!("  {}\n", neighbor.name));
+    }
+    out
+}
+
+/// Format scout gates result in text format (with temperatures).
+#[allow(dead_code)]
+pub(crate) fn format_scout_gates_text(result: &ScoutGatesResult, show_temps: bool) -> String {
+    let mut out = String::new();
+    out.push_str(&format!(
+        "Gate neighbors of {} ({} found):\n",
+        result.system, result.count
+    ));
+    for neighbor in &result.neighbors {
+        if show_temps {
+            if let Some(t) = neighbor.min_temp_k {
+                out.push_str(&format!(" - {} [min {:.2}K]\n", neighbor.name, t));
+            } else {
+                out.push_str(&format!(" - {}\n", neighbor.name));
+            }
+        } else {
+            out.push_str(&format!(" - {}\n", neighbor.name));
+        }
+    }
+    out
+}
+
+/// Format scout gates result in emoji format.
+#[allow(dead_code)]
+pub(crate) fn format_scout_gates_emoji(result: &ScoutGatesResult, show_temps: bool) -> String {
+    let mut out = String::new();
+    out.push_str(&format!(
+        "Gate neighbors of {} ({} found):\n",
+        result.system, result.count
+    ));
+    for neighbor in &result.neighbors {
+        let icon = "🚪";
+        if show_temps {
+            if let Some(t) = neighbor.min_temp_k {
+                out.push_str(&format!(" {} {} [min {:.2}K]\n", icon, neighbor.name, t));
+            } else {
+                out.push_str(&format!(" {} {}\n", icon, neighbor.name));
+            }
+        } else {
+            out.push_str(&format!(" {} {}\n", icon, neighbor.name));
+        }
+    }
+    out
+}
+
+/// Format scout gates result in note (in-game notepad) format.
+#[allow(dead_code)]
+pub(crate) fn format_scout_gates_note(result: &ScoutGatesResult) -> String {
+    let mut out = String::new();
+    out.push_str(&format!(
+        "Gate neighbors of {} ({} found):\n",
+        result.system, result.count
+    ));
+    for neighbor in &result.neighbors {
+        out.push_str(&format!(
+            "<a href=\"showinfo:5//{}\">{}</a>\n",
+            neighbor.id, neighbor.name
+        ));
+    }
+    out
+}
+
+/// Format scout gates result in enhanced format (matches route enhanced style).
+#[allow(dead_code)]
+pub(crate) fn format_scout_gates_enhanced(
+    result: &ScoutGatesResult,
+    palette: &ColorPalette,
+) -> String {
+    let mut out = String::new();
+
+    // Header line
+    out.push_str(&format!(
+        "{}Gate neighbors{} of {}{}{} ({} found):\n",
+        palette.cyan, palette.reset,
+        palette.white_bold, result.system, palette.reset,
+        result.count
+    ));
+
+    // Empty state
+    if result.neighbors.is_empty() {
+        out.push_str(&format!(
+            "  {}(no gate connections){}\n",
+            palette.gray, palette.reset
+        ));
+        return out;
+    }
+
+    // Neighbors list with gate tags matching route format
+    for neighbor in &result.neighbors {
+        // Temperature circle for the header line
+        let temp_circle = get_temp_circle(neighbor.min_temp_k.unwrap_or(0.0), palette);
+
+        // Build planets/moons tokens like route does
+        let mut celestial_tokens: Vec<String> = Vec::new();
+        if let Some(planets) = neighbor.planet_count {
+            if planets > 0 {
+                let label = if planets == 1 { "Planet" } else { "Planets" };
+                celestial_tokens.push(format!(
+                    "{}{} {}{}",
+                    palette.green, planets, label, palette.reset
+                ));
+            }
+        }
+        if let Some(moons) = neighbor.moon_count {
+            if moons > 0 {
+                let label = if moons == 1 { "Moon" } else { "Moons" };
+                celestial_tokens.push(format!(
+                    "{}{} {}{}",
+                    palette.blue, moons, label, palette.reset
+                ));
+            }
+        }
+
+        // Header line: [GATE] ● SystemName   N Planets M Moons
+        let celestials_suffix = if !celestial_tokens.is_empty() {
+            format!("   {} ", celestial_tokens.join(" "))
+        } else {
+            String::new()
+        };
+        out.push_str(&format!(
+            "  {}[GATE]{} {} {}{}{}{}\n",
+            palette.tag_gate, palette.reset,
+            temp_circle,
+            palette.white_bold, neighbor.name, palette.reset,
+            celestials_suffix
+        ));
+
+        // Details line: │ min X.XXK (matching route format)
+        if let Some(t) = neighbor.min_temp_k {
+            let is_black_hole = matches!(neighbor.id, 30000001..=30000003);
+            let temp_str = if is_black_hole {
+                format!("{}▌Black Hole▐{}", palette.tag_black_hole, palette.reset)
+            } else {
+                format!("{}min {:>6.2}K{}", palette.cyan, t, palette.reset)
+            };
+            out.push_str(&format!(
+                "       {}│{} {}\n",
+                palette.gray, palette.reset, temp_str
+            ));
+        }
+    }
+
+    out
+}
+
+/// Format scout range result in basic (plain text) format.
+#[allow(dead_code)]
+pub(crate) fn format_scout_range_basic(result: &ScoutRangeResult) -> String {
+    let mut out = String::new();
+    out.push_str(&format!(
+        "Systems within range of {} ({} found):\n",
+        result.system, result.count
+    ));
+    for (i, system) in result.systems.iter().enumerate() {
+        let temp_str = system
+            .min_temp_k
+            .map(|t| format!(" ({:.0} K)", t))
+            .unwrap_or_default();
+        out.push_str(&format!(
+            "  {}. {} ({:.1} ly){}\n",
+            i + 1,
+            system.name,
+            system.distance_ly,
+            temp_str
+        ));
+    }
+    out
+}
+
+/// Format scout range result in text format (with temperatures).
+#[allow(dead_code)]
+pub(crate) fn format_scout_range_text(result: &ScoutRangeResult, show_temps: bool) -> String {
+    let mut out = String::new();
+    out.push_str(&format!(
+        "Systems within range of {} ({} found):\n",
+        result.system, result.count
+    ));
+    for (i, system) in result.systems.iter().enumerate() {
+        if show_temps {
+            if let Some(t) = system.min_temp_k {
+                out.push_str(&format!(
+                    " {}. {} [min {:.2}K] ({:.1}ly)\n",
+                    i + 1,
+                    system.name,
+                    t,
+                    system.distance_ly
+                ));
+            } else {
+                out.push_str(&format!(
+                    " {}. {} ({:.1}ly)\n",
+                    i + 1,
+                    system.name,
+                    system.distance_ly
+                ));
+            }
+        } else {
+            out.push_str(&format!(
+                " {}. {} ({:.1}ly)\n",
+                i + 1,
+                system.name,
+                system.distance_ly
+            ));
+        }
+    }
+    out
+}
+
+/// Format scout range result in emoji format.
+#[allow(dead_code)]
+pub(crate) fn format_scout_range_emoji(result: &ScoutRangeResult, show_temps: bool) -> String {
+    let mut out = String::new();
+    out.push_str(&format!(
+        "Systems within range of {} ({} found):\n",
+        result.system, result.count
+    ));
+    for (i, system) in result.systems.iter().enumerate() {
+        let icon = "🌟";
+        if show_temps {
+            if let Some(t) = system.min_temp_k {
+                out.push_str(&format!(
+                    " {} {}. {} [min {:.2}K] ({:.1}ly)\n",
+                    icon,
+                    i + 1,
+                    system.name,
+                    t,
+                    system.distance_ly
+                ));
+            } else {
+                out.push_str(&format!(
+                    " {} {}. {} ({:.1}ly)\n",
+                    icon,
+                    i + 1,
+                    system.name,
+                    system.distance_ly
+                ));
+            }
+        } else {
+            out.push_str(&format!(
+                " {} {}. {} ({:.1}ly)\n",
+                icon,
+                i + 1,
+                system.name,
+                system.distance_ly
+            ));
+        }
+    }
+    out
+}
+
+/// Format scout range result in note (in-game notepad) format.
+#[allow(dead_code)]
+pub(crate) fn format_scout_range_note(result: &ScoutRangeResult) -> String {
+    let mut out = String::new();
+    out.push_str(&format!(
+        "Systems within range of {} ({} found):\n",
+        result.system, result.count
+    ));
+    for system in &result.systems {
+        out.push_str(&format!(
+            "<a href=\"showinfo:5//{}\">{}</a> ({:.1}ly)\n",
+            system.id, system.name, system.distance_ly
+        ));
+    }
+    out
+}
+
+/// Format scout range result in enhanced format (matches route enhanced style).
+#[allow(dead_code)]
+pub(crate) fn format_scout_range_enhanced(
+    result: &ScoutRangeResult,
+    palette: &ColorPalette,
+) -> String {
+    let mut out = String::new();
+
+    // Header line
+    out.push_str(&format!(
+        "{}Systems in range{} of {}{}{} ({} found):\n",
+        palette.cyan, palette.reset,
+        palette.white_bold, result.system, palette.reset,
+        result.count
+    ));
+
+    // Query parameters line
+    let mut params_parts = Vec::new();
+    if let Some(r) = result.query.radius {
+        params_parts.push(format!("radius {:.1} ly", r));
+    }
+    if let Some(t) = result.query.max_temperature {
+        params_parts.push(format!("max temp {:.0} K", t));
+    }
+    params_parts.push(format!("limit {}", result.query.limit));
+    out.push_str(&format!(
+        "  {}({}){}\n",
+        palette.gray,
+        params_parts.join(", "),
+        palette.reset
+    ));
+
+    // Empty state
+    if result.systems.is_empty() {
+        out.push_str(&format!(
+            "  {}(no systems found){}\n",
+            palette.gray, palette.reset
+        ));
+        return out;
+    }
+
+    out.push('\n');
+
+    // Systems list matching route format
+    for (i, system) in result.systems.iter().enumerate() {
+        let temp_circle = get_temp_circle(system.min_temp_k.unwrap_or(0.0), palette);
+
+        // Build planets/moons tokens like route does
+        let mut celestial_tokens: Vec<String> = Vec::new();
+        if let Some(planets) = system.planet_count {
+            if planets > 0 {
+                let label = if planets == 1 { "Planet" } else { "Planets" };
+                celestial_tokens.push(format!(
+                    "{}{} {}{}",
+                    palette.green, planets, label, palette.reset
+                ));
+            }
+        }
+        if let Some(moons) = system.moon_count {
+            if moons > 0 {
+                let label = if moons == 1 { "Moon" } else { "Moons" };
+                celestial_tokens.push(format!(
+                    "{}{} {}{}",
+                    palette.blue, moons, label, palette.reset
+                ));
+            }
+        }
+
+        // Header line: N. ● SystemName (X.X ly)   N Planets M Moons
+        let celestials_suffix = if !celestial_tokens.is_empty() {
+            format!("   {} ", celestial_tokens.join(" "))
+        } else {
+            String::new()
+        };
+        out.push_str(&format!(
+            "{:>3}. {} {}{}{} ({:.1} ly){}\n",
+            i + 1,
+            temp_circle,
+            palette.white_bold, system.name, palette.reset,
+            system.distance_ly,
+            celestials_suffix
+        ));
+
+        // Details line: │ min X.XXK (matching route format)
+        if let Some(t) = system.min_temp_k {
+            let is_black_hole = matches!(system.id, 30000001..=30000003);
+            let temp_str = if is_black_hole {
+                format!("{}▌Black Hole▐{}", palette.tag_black_hole, palette.reset)
+            } else {
+                format!("{}min {:>6.2}K{}", palette.cyan, t, palette.reset)
+            };
+            out.push_str(&format!(
+                "       {}│{} {}\n",
+                palette.gray, palette.reset, temp_str
+            ));
+        }
+    }
+
+    out
 }
 
 #[cfg(test)]

@@ -381,6 +381,128 @@ evefrontier-cli index-verify --json
 evefrontier-cli index-verify --quiet || echo "Index is stale!"
 ```
 
+### Scout Commands
+
+The `scout` subcommand provides local reconnaissance capabilities, allowing you to discover systems
+connected via jump gates or within spatial range of a given origin system.
+
+#### `scout gates`
+
+Lists all systems connected to the origin via jump gates:
+
+```bash
+# Basic usage
+evefrontier-cli scout gates "Nod"
+
+# Enhanced (box-drawing) output
+evefrontier-cli scout gates "Nod" --format enhanced
+
+# JSON output for programmatic use
+evefrontier-cli scout gates "Brana" --format json
+```
+
+**Example output (enhanced):**
+
+```
+Gate neighbors of Nod (3 found):
+  [GATE] D:2NAS
+  [GATE] H:2L2S
+  [GATE] J:35IA
+```
+
+**JSON output structure:**
+
+```json
+{
+  "system": "Nod",
+  "system_id": 30000191,
+  "count": 3,
+  "neighbors": [
+    { "name": "D:2NAS", "id": 30000192 },
+    { "name": "H:2L2S", "id": 30000194 },
+    { "name": "J:35IA", "id": 30000195 }
+  ]
+}
+```
+
+#### `scout range`
+
+Lists systems within a spatial radius of the origin. Requires a spatial index (auto-built with a
+warning if missing).
+
+```bash
+# Default: 10 nearest systems
+evefrontier-cli scout range "Nod"
+
+# Limit results
+evefrontier-cli scout range "Nod" --limit 5
+
+# Filter by radius (light-years)
+evefrontier-cli scout range "Nod" --radius 50.0
+
+# Filter by maximum temperature (Kelvin)
+evefrontier-cli scout range "Nod" --max-temp 300
+
+# Combined filters
+evefrontier-cli scout range "Nod" --limit 20 --radius 100.0 --max-temp 350
+
+# JSON output
+evefrontier-cli scout range "Nod" --limit 5 --format json
+```
+
+**Options:**
+
+- `--limit <N>` — maximum number of results (1-100, default: 10)
+- `--radius <LIGHT-YEARS>` — maximum spatial distance from origin
+- `--max-temp <KELVIN>` — filter systems by maximum star temperature
+- `--include-ccp-systems` — include CCP developer/staging systems (AD###, V-###) in results
+
+**Note on CCP Systems:**
+
+By default, both `scout gates` and `scout range` hide CCP developer and staging systems from results
+to provide cleaner output for regular gameplay. These systems match the patterns `AD###` (e.g.,
+`AD035`, `AD134`) and `V-###` (e.g., `V-001`). Use `--include-ccp-systems` to include them:
+
+```bash
+# Include CCP systems in gate results
+evefrontier-cli scout gates "Nod" --include-ccp-systems
+
+# Include CCP systems in range results
+evefrontier-cli scout range "Nod" --include-ccp-systems
+```
+
+**Example output (enhanced):**
+
+```
+Systems in range of Nod (5 found):
+  (radius 50.0 ly, max temp 300 K, limit 10)
+
+  1. ● Brana (12.4 ly, 285 K)
+  2. ● D:2NAS (23.1 ly, 290 K)
+  3. ● G:3OA0 (34.7 ly, 275 K)
+  4. ● H:2L2S (41.2 ly, 298 K)
+  5. ● J:35IA (48.9 ly, 280 K)
+```
+
+**JSON output structure:**
+
+```json
+{
+  "system": "Nod",
+  "system_id": 30000191,
+  "query": {
+    "limit": 5,
+    "radius": 50.0,
+    "max_temperature": 300.0
+  },
+  "count": 5,
+  "systems": [
+    { "name": "Brana", "id": 30000002, "distance_ly": 12.4, "min_temp_k": 285.0 },
+    { "name": "D:2NAS", "id": 30000003, "distance_ly": 23.1, "min_temp_k": 290.0 }
+  ]
+}
+```
+
 ### Regenerating the Spatial Index
 
 When the spatial index becomes stale (e.g., after downloading a new dataset version), you need to
