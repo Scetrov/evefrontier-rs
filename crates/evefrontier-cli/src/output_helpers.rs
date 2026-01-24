@@ -894,12 +894,13 @@ pub(crate) fn format_scout_gates_enhanced(
             celestials_suffix
         ));
 
-        // Details line: │ min X.XXK (matching route format)
-        if let Some(t) = neighbor.min_temp_k {
-            let is_black_hole = matches!(neighbor.id, 30000001..=30000003);
+        // Details line: │ min X.XXK or Black Hole (matching route format)
+        let is_black_hole = matches!(neighbor.id, 30000001..=30000003);
+        if neighbor.min_temp_k.is_some() || is_black_hole {
             let temp_str = if is_black_hole {
                 format!("{}▌Black Hole▐{}", palette.tag_black_hole, palette.reset)
             } else {
+                let t = neighbor.min_temp_k.unwrap_or(0.0);
                 format!("{}min {:>6.2}K{}", palette.cyan, t, palette.reset)
             };
             out.push_str(&format!(
@@ -1116,12 +1117,13 @@ pub(crate) fn format_scout_range_enhanced(
             celestials_suffix
         ));
 
-        // Details line: │ min X.XXK (matching route format)
-        if let Some(t) = system.min_temp_k {
-            let is_black_hole = matches!(system.id, 30000001..=30000003);
+        // Details line: │ min X.XXK or Black Hole (matching route format)
+        let is_black_hole = matches!(system.id, 30000001..=30000003);
+        if system.min_temp_k.is_some() || is_black_hole {
             let temp_str = if is_black_hole {
                 format!("{}▌Black Hole▐{}", palette.tag_black_hole, palette.reset)
             } else {
+                let t = system.min_temp_k.unwrap_or(0.0);
                 format!("{}min {:>6.2}K{}", palette.cyan, t, palette.reset)
             };
             out.push_str(&format!(
