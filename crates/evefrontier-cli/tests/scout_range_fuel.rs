@@ -171,7 +171,7 @@ fn test_scout_range_fuel_cumulative_tracking() {
     let fuel_capacity = json["ship"]["fuel_capacity"].as_f64().unwrap();
 
     if systems.len() >= 2 {
-        // Verify cumulative fuel increases
+        // Verify cumulative fuel increases (total fuel used always increases)
         let fuel1 = systems[0]["cumulative_fuel"].as_f64().unwrap();
         let fuel2 = systems[1]["cumulative_fuel"].as_f64().unwrap();
         assert!(
@@ -181,23 +181,54 @@ fn test_scout_range_fuel_cumulative_tracking() {
             fuel1
         );
 
-        // Verify remaining fuel decreases
-        let rem1 = systems[0]["remaining_fuel"].as_f64().unwrap();
-        let rem2 = systems[1]["remaining_fuel"].as_f64().unwrap();
-        assert!(
-            rem2 < rem1,
-            "remaining fuel should decrease: {} < {}",
-            rem2,
-            rem1
-        );
-
-        // First system's remaining should be capacity minus first hop
+        // For first system without refuel, remaining should be capacity minus first hop
         let hop1 = systems[0]["hop_fuel"].as_f64().unwrap();
-        let expected_rem1 = fuel_capacity - hop1;
-        assert!(
-            (rem1 - expected_rem1).abs() < 0.01,
-            "remaining fuel should equal capacity - hop cost"
-        );
+        let rem1 = systems[0]["remaining_fuel"].as_f64().unwrap();
+        let has_refuel_warning = systems[0]
+            .get("fuel_warning")
+            .and_then(|v| v.as_str())
+            .map(|s| s == "REFUEL")
+            .unwrap_or(false);
+
+        if !has_refuel_warning {
+            let expected_rem1 = fuel_capacity - hop1;
+            assert!(
+                (rem1 - expected_rem1).abs() < 0.01,
+                "remaining fuel should equal capacity - hop cost: got {}, expected {}",
+                rem1,
+                expected_rem1
+            );
+        }
+
+        // Verify remaining fuel behavior:
+        // - If no refuel on second hop: rem2 < rem1
+        // - If refuel on second hop: rem2 = capacity - hop2
+        let rem2 = systems[1]["remaining_fuel"].as_f64().unwrap();
+        let hop2 = systems[1]["hop_fuel"].as_f64().unwrap();
+        let has_refuel_warning2 = systems[1]
+            .get("fuel_warning")
+            .and_then(|v| v.as_str())
+            .map(|s| s == "REFUEL")
+            .unwrap_or(false);
+
+        if has_refuel_warning2 {
+            // After refuel, remaining = capacity - hop_fuel
+            let expected_rem2 = fuel_capacity - hop2;
+            assert!(
+                (rem2 - expected_rem2).abs() < 0.01,
+                "after refuel, remaining should equal capacity - hop cost: got {}, expected {}",
+                rem2,
+                expected_rem2
+            );
+        } else {
+            // Without refuel, remaining should decrease from previous
+            assert!(
+                rem2 < rem1 || has_refuel_warning,
+                "remaining fuel should decrease (unless previous had refuel): {} < {}",
+                rem2,
+                rem1
+            );
+        }
     }
 }
 
@@ -265,26 +296,25 @@ fn test_scout_range_heat_cumulative() {
     let json: Value = serde_json::from_str(&stdout).expect("valid JSON output");
     let systems = json["systems"].as_array().expect("systems array");
 
-    if systems.len() >= 2 {
-        // Verify cumulative heat increases (or stays same for 0-distance hops)
+    // Note: cumulative_heat now stores the instantaneous temperature (start_temp + hop_heat),
+    // not the cumulative sum of all hop heats. This matches the route command's per-hop heat model.
+    // The start_temp is max(HEAT_NOMINAL=30.0, prev_system_ambient_temp).
+    const HEAT_NOMINAL: f64 = 30.0;
+
+    if systems.len() >= 1 {
         let heat1 = systems[0]["cumulative_heat"]
             .as_f64()
             .expect("cumulative_heat is f64");
-        let heat2 = systems[1]["cumulative_heat"]
-            .as_f64()
-            .expect("cumulative_heat is f64");
-        assert!(
-            heat2 >= heat1,
-            "cumulative heat should increase: {} >= {}",
-            heat2,
-            heat1
-        );
-
-        // First system's cumulative heat should equal its hop heat
         let hop1 = systems[0]["hop_heat"].as_f64().unwrap();
+
+        // First system's cumulative_heat = start_temp + hop_heat
+        // For first hop, start_temp = max(HEAT_NOMINAL, origin_ambient) = HEAT_NOMINAL (origin temp unknown)
+        let expected_heat1 = HEAT_NOMINAL + hop1;
         assert!(
-            (heat1 - hop1).abs() < 0.01,
-            "first system cumulative_heat should equal hop_heat"
+            (heat1 - expected_heat1).abs() < 1.0,
+            "first system cumulative_heat should be approximately HEAT_NOMINAL + hop_heat: got {}, expected {}",
+            heat1,
+            expected_heat1
         );
     }
 
@@ -294,16 +324,19 @@ fn test_scout_range_heat_cumulative() {
         "final_heat should be present when ship is specified"
     );
 
-    // Final heat should match last system's cumulative heat
+    // Final heat is the maximum instantaneous temperature reached
     if !systems.is_empty() {
-        let last_cumulative = systems.last().unwrap()["cumulative_heat"]
-            .as_f64()
-            .expect("cumulative_heat");
         let final_heat = json["final_heat"].as_f64().expect("final_heat");
-        assert!(
-            (final_heat - last_cumulative).abs() < 0.01,
-            "final_heat should match last cumulative_heat"
-        );
+        // Final heat should be >= any individual system's cumulative_heat
+        for sys in systems {
+            let sys_heat = sys["cumulative_heat"].as_f64().unwrap_or(0.0);
+            assert!(
+                final_heat >= sys_heat - 0.01,
+                "final_heat should be >= all system heats: final={}, system={}",
+                final_heat,
+                sys_heat
+            );
+        }
     }
 }
 

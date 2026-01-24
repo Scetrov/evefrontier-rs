@@ -1335,29 +1335,21 @@ pub(crate) fn format_scout_range_enhanced(
     for (i, system) in result.systems.iter().enumerate() {
         let temp_circle = get_temp_circle(system.min_temp_k.unwrap_or(0.0), palette);
 
-        // Build warning icons for fuel/heat
+        // Build warning icons for fuel/heat (no emojis - matching route format)
         let mut warning_icons = String::new();
         if let Some(ref fuel_warning) = system.fuel_warning {
             warning_icons.push_str(&format!(
-                " {}⚠ {}{}",
-                palette.orange, fuel_warning, palette.reset
+                " {}{} {}{}",
+                palette.tag_refuel, fuel_warning, palette.reset, ""
             ));
         }
         if let Some(ref heat_warning) = system.heat_warning {
-            let icon = if heat_warning == "CRITICAL" {
-                "🔥"
-            } else {
-                "⚠"
-            };
             let color = if heat_warning == "CRITICAL" {
                 palette.red
             } else {
                 palette.orange
             };
-            warning_icons.push_str(&format!(
-                " {}{} {}{}",
-                color, icon, heat_warning, palette.reset
-            ));
+            warning_icons.push_str(&format!(" {}{}{}", color, heat_warning, palette.reset));
             if let Some(cooldown) = system.cooldown_seconds {
                 warning_icons.push_str(&format!(
                     " {}(wait {:.0}s){}",
@@ -1418,24 +1410,28 @@ pub(crate) fn format_scout_range_enhanced(
             detail_parts.push(format!("{}min {:>6.2}K{}", palette.cyan, t, palette.reset));
         }
 
-        // Add fuel/heat info if ship is specified
+        // Add fuel/heat info if ship is specified (no emojis - matching route format)
         if result.ship.is_some() {
             if let Some(hop_fuel) = system.hop_fuel {
                 detail_parts.push(format!(
-                    "{}⛽ {:.2}{}",
-                    palette.orange, hop_fuel, palette.reset
+                    "{}fuel {:.0}{}",
+                    palette.orange,
+                    hop_fuel.ceil(),
+                    palette.reset
                 ));
             }
             if let Some(hop_heat) = system.hop_heat {
                 detail_parts.push(format!(
-                    "{}🔥 {:.1}{}",
+                    "{}heat {:.1}{}",
                     palette.red, hop_heat, palette.reset
                 ));
             }
             if let Some(remaining) = system.remaining_fuel {
                 detail_parts.push(format!(
-                    "{}rem: {:.1}{}",
-                    palette.gray, remaining, palette.reset
+                    "{}(rem {:.0}){}",
+                    palette.magenta,
+                    remaining.ceil(),
+                    palette.reset
                 ));
             }
         }
