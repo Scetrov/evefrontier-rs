@@ -121,6 +121,22 @@ pub struct ScoutRangeArgs {
     /// Include CCP developer/staging systems (AD###, V-###) in results.
     #[arg(long, action = ArgAction::SetTrue)]
     pub include_ccp_systems: bool,
+
+    /// Ship name for fuel/heat projections (enables route planning mode).
+    #[arg(long, short = 's')]
+    pub ship: Option<String>,
+
+    /// Fuel quality rating (1-100). Higher quality = more efficient jumps.
+    #[arg(long = "fuel-quality", default_value = "10")]
+    pub fuel_quality: i64,
+
+    /// Cargo mass in kilograms (added to ship mass for fuel/heat calculations).
+    #[arg(long = "cargo-mass", default_value = "0")]
+    pub cargo_mass: f64,
+
+    /// Starting fuel load in units (defaults to ship's fuel capacity).
+    #[arg(long = "fuel-load")]
+    pub fuel_load: Option<f64>,
 }
 
 #[derive(Subcommand, Debug)]

@@ -19,6 +19,8 @@ Partially auto-generated from feature plans; manual additions allowed between MA
 - OS cache directory under `evefrontier_datasets/` (same as DB cache) (015-ship-data-downloader)
 - Rust 1.91.1 (per `.rust-toolchain`) + clap (CLI parsing), serde/serde_json (JSON output), tracing (logging), evefrontier-lib (core logic) (025-scout-cli-subcommand)
 - SQLite dataset (`static_data.db`) + spatial index (`.spatial.bin`) (025-scout-cli-subcommand)
+- Rust 1.91.1 (per `.rust-toolchain`) + clap (CLI args), evefrontier-lib (fuel/heat calculations, ship catalog) (026-scout-fuel-heat-projection)
+- SQLite dataset (read-only), ship_data.csv (ship catalog) (026-scout-fuel-heat-projection)
 
 - Documentation (Markdown) with shell command examples + GPG, cosign, cargo-sbom, sha256sum (005-release-documentation)
 
@@ -38,9 +40,9 @@ tests/
 Documentation (Markdown) with shell command examples: Follow standard conventions
 
 ## Recent Changes
+- 026-scout-fuel-heat-projection: Added Rust 1.91.1 (per `.rust-toolchain`) + clap (CLI args), evefrontier-lib (fuel/heat calculations, ship catalog)
 - 025-scout-cli-subcommand: Added Rust 1.91.1 (per `.rust-toolchain`) + clap (CLI parsing), serde/serde_json (JSON output), tracing (logging), evefrontier-lib (core logic)
 - 015-ship-data-downloader: Added Rust 1.91.1 + reqwest (blocking client, already used), zip, csv, serde,
-- 017-fmap-url-support: Added Rust 1.91.1 (per `.rust-toolchain`) + flate2 (gzip), base64 (encoding) - both already transitive deps
 
 
 <!-- MANUAL ADDITIONS START -->

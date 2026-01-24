@@ -704,7 +704,7 @@ pub(crate) struct RangeNeighbor {
     pub name: String,
     /// System ID.
     pub id: i64,
-    /// Distance from origin in light-years.
+    /// Distance from origin in light-years (or hop distance when ship specified).
     pub distance_ly: f64,
     /// Minimum external temperature in Kelvin (if known).
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -715,6 +715,31 @@ pub(crate) struct RangeNeighbor {
     /// Number of moons in the system.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub moon_count: Option<u32>,
+    // --- Fuel/Heat projection fields (populated when ship is specified) ---
+    /// Fuel units consumed for this hop (when ship specified).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hop_fuel: Option<f64>,
+    /// Cumulative fuel consumed up to and including this hop.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cumulative_fuel: Option<f64>,
+    /// Fuel remaining after this hop.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub remaining_fuel: Option<f64>,
+    /// Heat generated for this hop (when ship specified).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hop_heat: Option<f64>,
+    /// Cumulative heat accumulated up to and including this hop.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cumulative_heat: Option<f64>,
+    /// Cooldown time in seconds if overheated (when heat exceeds critical).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cooldown_seconds: Option<f64>,
+    /// Fuel warning message (e.g., "REFUEL" when insufficient fuel).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fuel_warning: Option<String>,
+    /// Heat warning message (e.g., "OVERHEATED" or "CRITICAL").
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub heat_warning: Option<String>,
 }
 
 /// Query parameters for range search (echoed in response).
@@ -730,6 +755,17 @@ pub(crate) struct RangeQueryParams {
     pub max_temperature: Option<f64>,
 }
 
+/// Ship information for fuel/heat projections (echoed in response).
+#[derive(Debug, Clone, Serialize)]
+pub(crate) struct ShipInfo {
+    /// Ship name.
+    pub name: String,
+    /// Ship's maximum fuel capacity.
+    pub fuel_capacity: f64,
+    /// Fuel quality used for calculations.
+    pub fuel_quality: f64,
+}
+
 /// Result of a range query.
 #[derive(Debug, Clone, Serialize)]
 pub(crate) struct ScoutRangeResult {
@@ -739,9 +775,21 @@ pub(crate) struct ScoutRangeResult {
     pub system_id: i64,
     /// Query parameters.
     pub query: RangeQueryParams,
+    /// Ship info (when ship specified for fuel/heat projections).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ship: Option<ShipInfo>,
     /// Number of systems found.
     pub count: usize,
-    /// List of nearby systems ordered by distance.
+    /// Total distance of the scouting route in light-years (when ship specified).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub total_distance_ly: Option<f64>,
+    /// Total fuel consumed across the route (when ship specified).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub total_fuel: Option<f64>,
+    /// Final cumulative heat at end of route (when ship specified).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub final_heat: Option<f64>,
+    /// List of nearby systems ordered by distance (or visit order when ship specified).
     pub systems: Vec<RangeNeighbor>,
 }
 
@@ -921,19 +969,84 @@ pub(crate) fn format_scout_range_basic(result: &ScoutRangeResult) -> String {
         "Systems within range of {} ({} found):\n",
         result.system, result.count
     ));
+
+    // Ship info if present
+    if let Some(ref ship) = result.ship {
+        out.push_str(&format!(
+            "Ship: {} (Fuel: {:.0})\n",
+            ship.name, ship.fuel_capacity
+        ));
+    }
+
     for (i, system) in result.systems.iter().enumerate() {
         let temp_str = system
             .min_temp_k
             .map(|t| format!(" ({:.0} K)", t))
             .unwrap_or_default();
-        out.push_str(&format!(
-            "  {}. {} ({:.1} ly){}\n",
-            i + 1,
-            system.name,
-            system.distance_ly,
-            temp_str
-        ));
+
+        // Build warning string
+        let mut warnings = Vec::new();
+        if let Some(ref fw) = system.fuel_warning {
+            warnings.push(format!("⚠ {}", fw));
+        }
+        if let Some(ref hw) = system.heat_warning {
+            if let Some(cd) = system.cooldown_seconds {
+                warnings.push(format!("🔥 {} (wait {:.0}s)", hw, cd));
+            } else {
+                warnings.push(format!("⚠ {}", hw));
+            }
+        }
+        let warning_str = if warnings.is_empty() {
+            String::new()
+        } else {
+            format!(" {}", warnings.join(" "))
+        };
+
+        // Add fuel/heat if ship is present
+        if result.ship.is_some() {
+            let fuel_str = system
+                .hop_fuel
+                .map(|f| format!(" fuel:{:.2}", f))
+                .unwrap_or_default();
+            let heat_str = system
+                .hop_heat
+                .map(|h| format!(" heat:{:.1}", h))
+                .unwrap_or_default();
+            out.push_str(&format!(
+                "  {}. {} ({:.1} ly){}{}{}{}\n",
+                i + 1,
+                system.name,
+                system.distance_ly,
+                temp_str,
+                fuel_str,
+                heat_str,
+                warning_str
+            ));
+        } else {
+            out.push_str(&format!(
+                "  {}. {} ({:.1} ly){}\n",
+                i + 1,
+                system.name,
+                system.distance_ly,
+                temp_str
+            ));
+        }
     }
+
+    // Summary if ship present
+    if let Some(ref ship) = result.ship {
+        if let (Some(dist), Some(fuel), Some(heat)) = (
+            result.total_distance_ly,
+            result.total_fuel,
+            result.final_heat,
+        ) {
+            out.push_str(&format!(
+                "Total: {:.1} ly, Fuel: {:.1}/{:.0}, Heat: {:.1}\n",
+                dist, fuel, ship.fuel_capacity, heat
+            ));
+        }
+    }
+
     out
 }
 
@@ -945,34 +1058,86 @@ pub(crate) fn format_scout_range_text(result: &ScoutRangeResult, show_temps: boo
         "Systems within range of {} ({} found):\n",
         result.system, result.count
     ));
+
+    // Ship info if present
+    if let Some(ref ship) = result.ship {
+        out.push_str(&format!(
+            "Ship: {} (Fuel: {:.0}, Quality: {:.0}%)\n",
+            ship.name, ship.fuel_capacity, ship.fuel_quality
+        ));
+    }
+
     for (i, system) in result.systems.iter().enumerate() {
-        if show_temps {
-            if let Some(t) = system.min_temp_k {
-                out.push_str(&format!(
-                    " {}. {} [min {:.2}K] ({:.1}ly)\n",
-                    i + 1,
-                    system.name,
-                    t,
-                    system.distance_ly
-                ));
-            } else {
-                out.push_str(&format!(
-                    " {}. {} ({:.1}ly)\n",
-                    i + 1,
-                    system.name,
-                    system.distance_ly
-                ));
-            }
+        // Build warning string
+        let warning_str = build_warning_string(system);
+
+        // Base line with temp
+        let temp_str = if show_temps {
+            system
+                .min_temp_k
+                .map(|t| format!(" [min {:.2}K]", t))
+                .unwrap_or_default()
         } else {
+            String::new()
+        };
+
+        // Add fuel/heat if ship is present
+        let fuel_heat_str = if result.ship.is_some() {
+            let fuel = system
+                .hop_fuel
+                .map(|f| format!(" ⛽{:.2}", f))
+                .unwrap_or_default();
+            let heat = system
+                .hop_heat
+                .map(|h| format!(" 🔥{:.1}", h))
+                .unwrap_or_default();
+            format!("{}{}", fuel, heat)
+        } else {
+            String::new()
+        };
+
+        out.push_str(&format!(
+            " {}. {}{} ({:.1}ly){}{}\n",
+            i + 1,
+            system.name,
+            temp_str,
+            system.distance_ly,
+            fuel_heat_str,
+            warning_str
+        ));
+    }
+
+    // Summary if ship present
+    if let Some(ref ship) = result.ship {
+        if let (Some(dist), Some(fuel), Some(heat)) = (
+            result.total_distance_ly,
+            result.total_fuel,
+            result.final_heat,
+        ) {
             out.push_str(&format!(
-                " {}. {} ({:.1}ly)\n",
-                i + 1,
-                system.name,
-                system.distance_ly
+                "Total: {:.1} ly | Fuel: {:.1}/{:.0} | Heat: {:.1}\n",
+                dist, fuel, ship.fuel_capacity, heat
             ));
         }
     }
+
     out
+}
+
+/// Helper to build warning string for a neighbor.
+fn build_warning_string(system: &RangeNeighbor) -> String {
+    let mut warnings = Vec::new();
+    if let Some(ref fw) = system.fuel_warning {
+        warnings.push(format!(" ⚠ {}", fw));
+    }
+    if let Some(ref hw) = system.heat_warning {
+        if let Some(cd) = system.cooldown_seconds {
+            warnings.push(format!(" 🔥 {} (wait {:.0}s)", hw, cd));
+        } else {
+            warnings.push(format!(" ⚠ {}", hw));
+        }
+    }
+    warnings.join("")
 }
 
 /// Format scout range result in emoji format.
@@ -980,40 +1145,72 @@ pub(crate) fn format_scout_range_text(result: &ScoutRangeResult, show_temps: boo
 pub(crate) fn format_scout_range_emoji(result: &ScoutRangeResult, show_temps: bool) -> String {
     let mut out = String::new();
     out.push_str(&format!(
-        "Systems within range of {} ({} found):\n",
+        "🔭 Systems within range of {} ({} found):\n",
         result.system, result.count
     ));
+
+    // Ship info if present
+    if let Some(ref ship) = result.ship {
+        out.push_str(&format!(
+            "🚀 Ship: {} (⛽ {:.0}, Quality: {:.0}%)\n",
+            ship.name, ship.fuel_capacity, ship.fuel_quality
+        ));
+    }
+
     for (i, system) in result.systems.iter().enumerate() {
         let icon = "🌟";
-        if show_temps {
-            if let Some(t) = system.min_temp_k {
-                out.push_str(&format!(
-                    " {} {}. {} [min {:.2}K] ({:.1}ly)\n",
-                    icon,
-                    i + 1,
-                    system.name,
-                    t,
-                    system.distance_ly
-                ));
-            } else {
-                out.push_str(&format!(
-                    " {} {}. {} ({:.1}ly)\n",
-                    icon,
-                    i + 1,
-                    system.name,
-                    system.distance_ly
-                ));
-            }
+        let warning_str = build_warning_string(system);
+
+        let temp_str = if show_temps {
+            system
+                .min_temp_k
+                .map(|t| format!(" 🌡️{:.0}K", t))
+                .unwrap_or_default()
         } else {
+            String::new()
+        };
+
+        // Add fuel/heat if ship is present
+        let fuel_heat_str = if result.ship.is_some() {
+            let fuel = system
+                .hop_fuel
+                .map(|f| format!(" ⛽{:.2}", f))
+                .unwrap_or_default();
+            let heat = system
+                .hop_heat
+                .map(|h| format!(" 🔥{:.1}", h))
+                .unwrap_or_default();
+            format!("{}{}", fuel, heat)
+        } else {
+            String::new()
+        };
+
+        out.push_str(&format!(
+            " {} {}. {}{} ({:.1}ly){}{}\n",
+            icon,
+            i + 1,
+            system.name,
+            temp_str,
+            system.distance_ly,
+            fuel_heat_str,
+            warning_str
+        ));
+    }
+
+    // Summary if ship present
+    if let Some(ref ship) = result.ship {
+        if let (Some(dist), Some(fuel), Some(heat)) = (
+            result.total_distance_ly,
+            result.total_fuel,
+            result.final_heat,
+        ) {
             out.push_str(&format!(
-                " {} {}. {} ({:.1}ly)\n",
-                icon,
-                i + 1,
-                system.name,
-                system.distance_ly
+                "📊 Total: {:.1} ly | ⛽ {:.1}/{:.0} | 🔥 {:.1}\n",
+                dist, fuel, ship.fuel_capacity, heat
             ));
         }
     }
+
     out
 }
 
@@ -1025,12 +1222,57 @@ pub(crate) fn format_scout_range_note(result: &ScoutRangeResult) -> String {
         "Systems within range of {} ({} found):\n",
         result.system, result.count
     ));
-    for system in &result.systems {
+
+    // Ship info if present
+    if let Some(ref ship) = result.ship {
         out.push_str(&format!(
-            "<a href=\"showinfo:5//{}\">{}</a> ({:.1}ly)\n",
-            system.id, system.name, system.distance_ly
+            "Ship: {} (Fuel: {:.0})\n\n",
+            ship.name, ship.fuel_capacity
         ));
     }
+
+    for system in &result.systems {
+        let fuel_str = system
+            .hop_fuel
+            .map(|f| format!(" fuel:{:.2}", f))
+            .unwrap_or_default();
+        let warning_str = if system.fuel_warning.is_some() || system.heat_warning.is_some() {
+            let mut w = Vec::new();
+            if let Some(ref fw) = system.fuel_warning {
+                w.push(fw.clone());
+            }
+            if let Some(ref hw) = system.heat_warning {
+                if let Some(cd) = system.cooldown_seconds {
+                    w.push(format!("{} (wait {:.0}s)", hw, cd));
+                } else {
+                    w.push(hw.clone());
+                }
+            }
+            format!(" [{}]", w.join(", "))
+        } else {
+            String::new()
+        };
+
+        out.push_str(&format!(
+            "<a href=\"showinfo:5//{}\">{}</a> ({:.1}ly){}{}\n",
+            system.id, system.name, system.distance_ly, fuel_str, warning_str
+        ));
+    }
+
+    // Summary if ship present
+    if let Some(ref ship) = result.ship {
+        if let (Some(dist), Some(fuel), Some(heat)) = (
+            result.total_distance_ly,
+            result.total_fuel,
+            result.final_heat,
+        ) {
+            out.push_str(&format!(
+                "\nTotal: {:.1} ly, Fuel: {:.1}/{:.0}, Heat: {:.1}\n",
+                dist, fuel, ship.fuel_capacity, heat
+            ));
+        }
+    }
+
     out
 }
 
@@ -1047,6 +1289,20 @@ pub(crate) fn format_scout_range_enhanced(
         "{}Systems in range{} of {}{}{} ({} found):\n",
         palette.cyan, palette.reset, palette.white_bold, result.system, palette.reset, result.count
     ));
+
+    // Ship info line (if present)
+    if let Some(ref ship) = result.ship {
+        out.push_str(&format!(
+            "  {}Ship: {}{}{} (Fuel Capacity: {:.0}, Quality: {:.0})%{}\n",
+            palette.gray,
+            palette.white_bold,
+            ship.name,
+            palette.reset,
+            ship.fuel_capacity,
+            ship.fuel_quality,
+            palette.reset
+        ));
+    }
 
     // Query parameters line
     let mut params_parts = Vec::new();
@@ -1079,6 +1335,37 @@ pub(crate) fn format_scout_range_enhanced(
     for (i, system) in result.systems.iter().enumerate() {
         let temp_circle = get_temp_circle(system.min_temp_k.unwrap_or(0.0), palette);
 
+        // Build warning icons for fuel/heat
+        let mut warning_icons = String::new();
+        if let Some(ref fuel_warning) = system.fuel_warning {
+            warning_icons.push_str(&format!(
+                " {}⚠ {}{}",
+                palette.orange, fuel_warning, palette.reset
+            ));
+        }
+        if let Some(ref heat_warning) = system.heat_warning {
+            let icon = if heat_warning == "CRITICAL" {
+                "🔥"
+            } else {
+                "⚠"
+            };
+            let color = if heat_warning == "CRITICAL" {
+                palette.red
+            } else {
+                palette.orange
+            };
+            warning_icons.push_str(&format!(
+                " {}{} {}{}",
+                color, icon, heat_warning, palette.reset
+            ));
+            if let Some(cooldown) = system.cooldown_seconds {
+                warning_icons.push_str(&format!(
+                    " {}(wait {:.0}s){}",
+                    palette.gray, cooldown, palette.reset
+                ));
+            }
+        }
+
         // Build planets/moons tokens like route does
         let mut celestial_tokens: Vec<String> = Vec::new();
         if let Some(planets) = system.planet_count {
@@ -1100,37 +1387,98 @@ pub(crate) fn format_scout_range_enhanced(
             }
         }
 
-        // Header line: N. ● SystemName (X.X ly)   N Planets M Moons
+        // Header line: N. ● SystemName (X.X ly)   N Planets M Moons [warnings]
         let celestials_suffix = if !celestial_tokens.is_empty() {
             format!("   {} ", celestial_tokens.join(" "))
         } else {
             String::new()
         };
         out.push_str(&format!(
-            "{:>3}. {} {}{}{} ({:.1} ly){}\n",
+            "{:>3}. {} {}{}{} ({:.1} ly){}{}\n",
             i + 1,
             temp_circle,
             palette.white_bold,
             system.name,
             palette.reset,
             system.distance_ly,
-            celestials_suffix
+            celestials_suffix,
+            warning_icons
         ));
 
         // Details line: │ min X.XXK or Black Hole (matching route format)
         let is_black_hole = matches!(system.id, 30000001..=30000003);
-        if system.min_temp_k.is_some() || is_black_hole {
-            let temp_str = if is_black_hole {
-                format!("{}▌Black Hole▐{}", palette.tag_black_hole, palette.reset)
-            } else {
-                let t = system.min_temp_k.unwrap_or(0.0);
-                format!("{}min {:>6.2}K{}", palette.cyan, t, palette.reset)
-            };
+        let mut detail_parts = Vec::new();
+
+        if is_black_hole {
+            detail_parts.push(format!(
+                "{}▌Black Hole▐{}",
+                palette.tag_black_hole, palette.reset
+            ));
+        } else if let Some(t) = system.min_temp_k {
+            detail_parts.push(format!("{}min {:>6.2}K{}", palette.cyan, t, palette.reset));
+        }
+
+        // Add fuel/heat info if ship is specified
+        if result.ship.is_some() {
+            if let Some(hop_fuel) = system.hop_fuel {
+                detail_parts.push(format!(
+                    "{}⛽ {:.2}{}",
+                    palette.orange, hop_fuel, palette.reset
+                ));
+            }
+            if let Some(hop_heat) = system.hop_heat {
+                detail_parts.push(format!(
+                    "{}🔥 {:.1}{}",
+                    palette.red, hop_heat, palette.reset
+                ));
+            }
+            if let Some(remaining) = system.remaining_fuel {
+                detail_parts.push(format!(
+                    "{}rem: {:.1}{}",
+                    palette.gray, remaining, palette.reset
+                ));
+            }
+        }
+
+        if !detail_parts.is_empty() {
             out.push_str(&format!(
                 "       {}│{} {}\n",
-                palette.gray, palette.reset, temp_str
+                palette.gray,
+                palette.reset,
+                detail_parts.join("  ")
             ));
         }
+    }
+
+    // Summary footer for ship routes
+    if let Some(ref ship) = result.ship {
+        out.push('\n');
+        out.push_str(&format!(
+            "{}───────────────────────────────────────{}\n",
+            palette.gray, palette.reset
+        ));
+
+        let mut summary_parts = Vec::new();
+        if let Some(total_dist) = result.total_distance_ly {
+            summary_parts.push(format!("Distance: {:.1} ly", total_dist));
+        }
+        if let Some(total_fuel) = result.total_fuel {
+            let remaining = ship.fuel_capacity - total_fuel;
+            summary_parts.push(format!(
+                "Fuel: {:.1} / {:.0} ({:.1} remaining)",
+                total_fuel, ship.fuel_capacity, remaining
+            ));
+        }
+        if let Some(final_heat) = result.final_heat {
+            summary_parts.push(format!("Final Heat: {:.1}", final_heat));
+        }
+
+        out.push_str(&format!(
+            "  {}{}{}\n",
+            palette.white_bold,
+            summary_parts.join("  │  "),
+            palette.reset
+        ));
     }
 
     out

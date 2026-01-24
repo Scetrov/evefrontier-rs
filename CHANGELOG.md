@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+### Added
+
+- **CLI** (`evefrontier-cli`)
+  - Added fuel and heat projection to `scout range` command when `--ship` is specified
+  - New options for `scout range`: `--ship`, `--fuel-quality`, `--cargo-mass`, `--fuel-load`
+  - Nearest-neighbor ordering for scout range results when ship is specified (minimizes hop distances)
+  - Fuel warnings (⚠ REFUEL) when fuel insufficient for hop
+  - Heat warnings (⚠ OVERHEATED, 🔥 CRITICAL with cooldown time) based on cumulative heat thresholds
+
+- **Library** (`evefrontier-lib`)
+  - Exported `HEAT_OVERHEATED`, `HEAT_CRITICAL`, `compute_cooling_constant`, and `calculate_cooling_time`
+    from the public API for use by CLI and other consumers
+
 ### Fixed
 
 - **CLI** (`evefrontier-cli`)
