@@ -260,7 +260,10 @@ pub(crate) fn build_heat_segment_generic<T: RenderableStep>(
                 } else {
                     palette.label_overheated
                 };
-                res.push_str(&format!(" {}{}{}", label_style, w.trim(), palette.reset));
+                res.push_str(&format!(
+                    " {}",
+                    format_label(w.trim(), label_style, palette.reset)
+                ));
             }
 
             Some(res)
@@ -2101,8 +2104,9 @@ mod tests {
 
         let s = build_heat_segment(&step, &widths, &p).expect("heat seg");
         let s_clean = strip_ansi_to_string(&s);
-        // Desired: "heat 100.00 (1m0s to cool) OVERHEATED"
-        assert!(s_clean.contains("(1m0s to cool) OVERHEATED"));
+        // Desired: "heat 100.00 (1m0s to cool)  OVERHEATED "
+        // format_label adds surrounding spaces for consistent badge styling
+        assert!(s_clean.contains("(1m0s to cool)  OVERHEATED "));
     }
 
     #[test]
