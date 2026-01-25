@@ -3,7 +3,6 @@ use crate::terminal::{colors, ColorPalette};
 use evefrontier_lib::{RouteStep, RouteSummary};
 
 const COOLDOWN_DISPLAY_THRESHOLD_SECONDS: f64 = 0.5;
-const TAG_COLUMN_WIDTH: usize = 13;
 const FOOTER_LABEL_WIDTH: usize = 20;
 
 // =============================================================================
@@ -241,24 +240,7 @@ pub(crate) fn build_heat_segment_generic<T: RenderableStep>(
             };
             let mut res = format!("{}heat {}{}", palette.red, heat_str, palette.reset);
 
-            // Tag Column: Pad to 13 chars total (1 space before + 12-char badge)
-            if let Some(w) = step.heat_warning() {
-                let label_style = if w.trim() == "CRITICAL" {
-                    palette.label_critical
-                } else {
-                    palette.label_overheated
-                };
-                let badge = format!(" {} ", w.trim());
-                let padded_badge = format!("{:^12}", badge);
-                res.push_str(&format!(
-                    " {}{}{}",
-                    label_style, padded_badge, palette.reset
-                ));
-            } else {
-                res.push_str(&" ".repeat(TAG_COLUMN_WIDTH));
-            }
-
-            // Cooldown Column (last column - no alignment padding needed)
+            // Cooldown Column - show before warning label for better readability
             if widths.cooldown_val_width > 0 {
                 if let Some(wait) = step.cooldown_seconds() {
                     if wait > COOLDOWN_DISPLAY_THRESHOLD_SECONDS {
@@ -268,9 +250,17 @@ pub(crate) fn build_heat_segment_generic<T: RenderableStep>(
                             palette.gray, cd_str, palette.reset
                         ));
                     }
-                    // No padding needed when cooldown not displayed - it's the last column
                 }
-                // No padding needed when no cooldown value - it's the last column
+            }
+
+            // Warning label (OVERHEATED, CRITICAL) - show at end
+            if let Some(w) = step.heat_warning() {
+                let label_style = if w.trim() == "CRITICAL" {
+                    palette.label_critical
+                } else {
+                    palette.label_overheated
+                };
+                res.push_str(&format!(" {}{}{}", label_style, w.trim(), palette.reset));
             }
 
             Some(res)
@@ -2111,8 +2101,8 @@ mod tests {
 
         let s = build_heat_segment(&step, &widths, &p).expect("heat seg");
         let s_clean = strip_ansi_to_string(&s);
-        // Desired: "heat 100.00  OVERHEATED  (1m0s to cool)"
-        assert!(s_clean.contains(" OVERHEATED  (1m0s to cool)"));
+        // Desired: "heat 100.00 (1m0s to cool) OVERHEATED"
+        assert!(s_clean.contains("(1m0s to cool) OVERHEATED"));
     }
 
     #[test]
