@@ -233,6 +233,31 @@ pub struct FuelProjection {
     pub warning: Option<String>,
 }
 
+/// Parameters for heat projection calculation.
+///
+/// Groups related parameters to avoid exceeding clippy's `too_many_arguments` threshold.
+#[derive(Debug, Clone, Copy)]
+pub struct HeatProjectionParams {
+    /// Total operational mass (hull + fuel + cargo) in kilograms
+    pub mass: f64,
+    /// Ship's specific heat capacity in J/(kg·K)
+    pub specific_heat: f64,
+    /// Hop distance in light-years (>= 0; 0 means gate/zero-heat)
+    pub distance_ly: f64,
+    /// Hull mass used by heat energy calibration formula
+    pub hull_mass_kg: f64,
+    /// Calibration constant for heat energy formula
+    pub calibration_constant: f64,
+    /// Ambient temperature at origin system (K), if known
+    pub prev_ambient: Option<f64>,
+    /// Ambient temperature at destination system (K), if known
+    pub current_min_external_temp: Option<f64>,
+    /// True if this hop arrives at final destination (no cooldown required)
+    pub is_goal: bool,
+    /// True if next hop is a gate (cooldown not required before gate)
+    pub next_is_gate: bool,
+}
+
 /// Project fuel consumption for a single hop, including refuel detection and warning generation.
 ///
 /// This helper encapsulates the common logic for tracking fuel consumption across route hops:
@@ -581,16 +606,8 @@ pub struct ShipCatalog {
 /// attach_heat logic and is exposed to keep calculations DRY across callers
 /// (route, scout, and Lambdas).
 ///
-/// Inputs:
-/// - `mass`: total operational mass (hull + fuel + cargo), kg
-/// - `specific_heat`: ship's specific heat capacity, J/(kg·K)
-/// - `distance_ly`: hop distance in light-years (>= 0; 0 means gate/zero-heat)
-/// - `hull_mass_kg`: hull mass used by the heat energy calibration formula
-/// - `calibration_constant`: calibration constant for heat energy formula
-/// - `prev_ambient`: ambient temperature at the origin system, if known
-/// - `current_min_external_temp`: ambient temperature for the destination system, if known
-/// - `is_goal`: true if this hop arrives at the final destination (no cooldown required)
-/// - `next_is_gate`: true if the next hop is a gate (cooldown not required before gate)
+/// # Arguments
+/// * `params` - Heat projection parameters bundled in `HeatProjectionParams`
 ///
 /// Returns `HeatProjection` with:
 /// - `hop_heat`: temperature delta (K) for this hop
@@ -598,39 +615,32 @@ pub struct ShipCatalog {
 /// - `wait_time_seconds`: optional cooldown to reach nominal temperature before next jump
 /// - `residual_heat`: temperature at arrival after any optional cooldown
 /// - `can_proceed`: whether ship can proceed under the cooling model
-pub fn project_heat_for_jump(
-    mass: f64,
-    specific_heat: f64,
-    distance_ly: f64,
-    hull_mass_kg: f64,
-    calibration_constant: f64,
-    prev_ambient: Option<f64>,
-    current_min_external_temp: Option<f64>,
-    is_goal: bool,
-    next_is_gate: bool,
-) -> Result<HeatProjection> {
+pub fn project_heat_for_jump(params: HeatProjectionParams) -> Result<HeatProjection> {
     // Validate inputs
-    if !mass.is_finite() || mass <= 0.0 {
+    if !params.mass.is_finite() || params.mass <= 0.0 {
         return Err(Error::ShipDataValidation {
-            message: format!("computed mass must be finite and positive, got {}", mass),
+            message: format!(
+                "computed mass must be finite and positive, got {}",
+                params.mass
+            ),
         });
     }
-    if !specific_heat.is_finite() || specific_heat <= 0.0 {
+    if !params.specific_heat.is_finite() || params.specific_heat <= 0.0 {
         return Err(Error::ShipDataValidation {
-            message: format!("invalid specific_heat: {}", specific_heat),
+            message: format!("invalid specific_heat: {}", params.specific_heat),
         });
     }
-    if !distance_ly.is_finite() || distance_ly < 0.0 {
+    if !params.distance_ly.is_finite() || params.distance_ly < 0.0 {
         return Err(Error::ShipDataValidation {
             message: format!(
                 "distance must be finite and non-negative, got {}",
-                distance_ly
+                params.distance_ly
             ),
         });
     }
 
     // Zero-distance hops (gates) generate no heat
-    if distance_ly == 0.0 {
+    if params.distance_ly == 0.0 {
         return Ok(HeatProjection {
             hop_heat: 0.0,
             warning: None,
@@ -641,11 +651,16 @@ pub fn project_heat_for_jump(
     }
 
     // Calculate energy then convert to delta-T: ΔT = energy / (m · c)
-    let hop_energy = calculate_jump_heat(mass, distance_ly, hull_mass_kg, calibration_constant)?;
-    let hop_heat = hop_energy / (mass * specific_heat);
+    let hop_energy = calculate_jump_heat(
+        params.mass,
+        params.distance_ly,
+        params.hull_mass_kg,
+        params.calibration_constant,
+    )?;
+    let hop_heat = hop_energy / (params.mass * params.specific_heat);
 
     // Starting temperature is nominal or the origin ambient, whichever is higher
-    let start_temp = HEAT_NOMINAL.max(prev_ambient.unwrap_or(0.0));
+    let start_temp = HEAT_NOMINAL.max(params.prev_ambient.unwrap_or(0.0));
     let candidate = start_temp + hop_heat;
 
     // Determine warnings from instantaneous temperature
@@ -663,10 +678,14 @@ pub fn project_heat_for_jump(
     let mut can_proceed = true;
 
     let target = HEAT_NOMINAL;
-    if candidate > target && !is_goal && !next_is_gate {
-        let k = compute_cooling_constant(mass, specific_heat, current_min_external_temp);
+    if candidate > target && !params.is_goal && !params.next_is_gate {
+        let k = compute_cooling_constant(
+            params.mass,
+            params.specific_heat,
+            params.current_min_external_temp,
+        );
         if k > 0.0 {
-            let env_temp = current_min_external_temp.unwrap_or(0.0);
+            let env_temp = params.current_min_external_temp.unwrap_or(0.0);
             let wait = calculate_cooling_time(candidate, target, env_temp, k);
             if wait > 0.0 {
                 wait_time = Some(wait);

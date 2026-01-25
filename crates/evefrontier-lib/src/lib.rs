@@ -118,8 +118,9 @@ pub use path::{
 pub use routing::{plan_route, RouteAlgorithm, RouteConstraints, RoutePlan, RouteRequest};
 pub use ship::{
     calculate_cooling_time, calculate_jump_fuel_cost, calculate_route_fuel,
-    compute_cooling_constant, project_fuel_for_hop, FuelConfig, FuelProjection, ShipAttributes,
-    ShipCatalog, ShipLoadout, FUEL_MASS_PER_UNIT_KG, HEAT_CRITICAL, HEAT_NOMINAL, HEAT_OVERHEATED,
+    compute_cooling_constant, project_fuel_for_hop, FuelConfig, FuelProjection,
+    HeatProjectionParams, ShipAttributes, ShipCatalog, ShipLoadout, FUEL_MASS_PER_UNIT_KG,
+    HEAT_CRITICAL, HEAT_NOMINAL, HEAT_OVERHEATED,
 };
 pub use ship::{calculate_jump_heat, HeatConfig};
 pub use spatial::{

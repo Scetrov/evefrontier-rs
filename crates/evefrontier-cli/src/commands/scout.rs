@@ -476,15 +476,17 @@ pub fn handle_scout_range(
             let is_goal = hop_index + 1 == total_hops;
             let next_is_gate = false; // scout range visits are jumps, not gates
             let proj = evefrontier_lib::ship::project_heat_for_jump(
-                current_mass,
-                ship.specific_heat,
-                hop_distance,
-                ship.base_mass_kg,
-                heat_cfg.calibration_constant,
-                prev_ambient,
-                sys.min_temp_k,
-                is_goal,
-                next_is_gate,
+                evefrontier_lib::ship::HeatProjectionParams {
+                    mass: current_mass,
+                    specific_heat: ship.specific_heat,
+                    distance_ly: hop_distance,
+                    hull_mass_kg: ship.base_mass_kg,
+                    calibration_constant: heat_cfg.calibration_constant,
+                    prev_ambient,
+                    current_min_external_temp: sys.min_temp_k,
+                    is_goal,
+                    next_is_gate,
+                },
             )
             .map_err(|e| anyhow::anyhow!("heat projection failed: {}", e))?;
 

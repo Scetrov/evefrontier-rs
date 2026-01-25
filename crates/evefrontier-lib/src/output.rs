@@ -200,17 +200,18 @@ impl RouteSummary {
             } else {
                 self.steps[idx + 1].method.as_deref() == Some("gate")
             };
-            let projection = crate::ship::project_heat_for_jump(
-                mass,
-                ship.specific_heat,
-                distance,
-                ship.base_mass_kg,
-                config.calibration_constant,
-                prev_ambient_opt,
-                self.steps[idx].min_external_temp,
-                is_goal,
-                next_is_gate,
-            )?;
+            let projection =
+                crate::ship::project_heat_for_jump(crate::ship::HeatProjectionParams {
+                    mass,
+                    specific_heat: ship.specific_heat,
+                    distance_ly: distance,
+                    hull_mass_kg: ship.base_mass_kg,
+                    calibration_constant: config.calibration_constant,
+                    prev_ambient: prev_ambient_opt,
+                    current_min_external_temp: self.steps[idx].min_external_temp,
+                    is_goal,
+                    next_is_gate,
+                })?;
             if let Some(ref w) = projection.warning {
                 warnings.push(w.clone());
             }
