@@ -10,6 +10,7 @@ use evefrontier_lib::{
     NeighbourQuery, ShipCatalog, ShipLoadout,
 };
 
+use crate::output::OutputFormat;
 use crate::output_helpers::{
     format_scout_gates_basic, format_scout_gates_emoji, format_scout_gates_enhanced,
     format_scout_gates_note, format_scout_gates_text, format_scout_range_basic,
@@ -18,7 +19,7 @@ use crate::output_helpers::{
     ScoutRangeResult, ShipInfo,
 };
 use crate::terminal::ColorPalette;
-use crate::{OutputFormat, ScoutGatesArgs, ScoutRangeArgs};
+use crate::{ScoutGatesArgs, ScoutRangeArgs};
 
 // =============================================================================
 // CCP System Filter

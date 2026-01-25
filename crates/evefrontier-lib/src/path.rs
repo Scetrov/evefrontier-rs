@@ -5,6 +5,166 @@ use crate::db::{Starmap, SystemId};
 use crate::graph::{Edge, EdgeKind, Graph};
 use crate::ship::{calculate_jump_heat, HeatConfig, ShipAttributes, ShipLoadout, HEAT_CRITICAL};
 
+// =============================================================================
+// Edge Predicates - composable functions for edge filtering
+// =============================================================================
+
+/// Check if an edge meets the maximum jump distance constraint.
+/// Only applies to spatial edges; gates are always allowed.
+fn edge_meets_distance_limit(edge: &Edge, max_jump: Option<f64>) -> bool {
+    if edge.kind != EdgeKind::Spatial {
+        return true;
+    }
+    max_jump.is_none_or(|limit| edge.distance <= limit)
+}
+
+/// Check if an edge is allowed based on gate avoidance policy.
+fn edge_meets_gate_policy(edge: &Edge, avoid_gates: bool) -> bool {
+    !(avoid_gates && edge.kind == EdgeKind::Gate)
+}
+
+// =============================================================================
+// System Predicates - composable functions for system filtering
+// =============================================================================
+
+/// Check if a system is not in the avoided systems set.
+fn system_meets_avoidance(target: SystemId, avoided: &HashSet<SystemId>) -> bool {
+    !avoided.contains(&target)
+}
+
+/// Check if a system meets the temperature constraint.
+/// Only applies to spatial jumps; non-spatial always passes.
+fn system_meets_temperature(
+    edge: &Edge,
+    starmap: Option<&Starmap>,
+    target: SystemId,
+    max_temperature: Option<f64>,
+) -> bool {
+    if edge.kind != EdgeKind::Spatial {
+        return true;
+    }
+    let Some(limit) = max_temperature else {
+        return true;
+    };
+    let temp = starmap
+        .and_then(|m| m.systems.get(&target))
+        .and_then(|s| s.metadata.star_temperature);
+    temp.is_none_or(|t| t <= limit)
+}
+
+// =============================================================================
+// Heat Safety Predicates
+// =============================================================================
+
+/// Parameters for heat safety evaluation.
+pub(crate) struct HeatSafetyContext<'a> {
+    pub ship: &'a ShipAttributes,
+    pub loadout: &'a ShipLoadout,
+    pub heat_config: HeatConfig,
+    pub starmap: Option<&'a Starmap>,
+}
+
+/// Evaluate whether a spatial hop is safe from a heat perspective.
+/// Returns `true` if the hop won't result in critical engine state.
+fn hop_meets_heat_safety(edge: &Edge, target: SystemId, ctx: &HeatSafetyContext<'_>) -> bool {
+    // Get ambient temperature at destination (min_external_temp, not star surface)
+    let ambient_temp = ctx
+        .starmap
+        .and_then(|m| m.systems.get(&target))
+        .and_then(|s| s.metadata.min_external_temp)
+        .unwrap_or(0.0);
+
+    let mass = ctx.loadout.total_mass_kg(ctx.ship);
+    let hop_energy = calculate_jump_heat(
+        mass,
+        edge.distance,
+        ctx.ship.base_mass_kg,
+        ctx.heat_config.calibration_constant,
+    );
+
+    match hop_energy {
+        Ok(energy) => {
+            let hop_heat = energy / (mass * ctx.ship.specific_heat);
+            let total_heat = ambient_temp + hop_heat;
+
+            if total_heat >= HEAT_CRITICAL {
+                let to_name = ctx
+                    .starmap
+                    .and_then(|m| m.systems.get(&target))
+                    .map(|s| s.name.as_str())
+                    .unwrap_or("unknown");
+
+                tracing::debug!(
+                    "blocking edge to {} due to critical heat: ambient={:.1}K, hop_heat={:.1}K, total={:.1}K (limit={:.1}K)",
+                    to_name,
+                    ambient_temp,
+                    hop_heat,
+                    total_heat,
+                    HEAT_CRITICAL
+                );
+                return false;
+            }
+            true
+        }
+        Err(e) => {
+            // Conservative fail-safe: reject on calculation error
+            let to_name = ctx
+                .starmap
+                .and_then(|m| m.systems.get(&target))
+                .map(|s| s.name.as_str())
+                .unwrap_or("unknown");
+            tracing::warn!(
+                "heat calculation failed for {}: {e:#?}; rejecting edge as conservative fail-safe",
+                to_name
+            );
+            false
+        }
+    }
+}
+
+/// Wrapper to handle the optional heat safety check with proper error handling.
+fn check_heat_safety(
+    edge: &Edge,
+    target: SystemId,
+    constraints: &PathConstraints,
+    starmap: Option<&Starmap>,
+) -> bool {
+    // Only applies to spatial edges
+    if edge.kind != EdgeKind::Spatial {
+        return true;
+    }
+
+    if !constraints.avoid_critical_state {
+        return true;
+    }
+
+    // Validate required configuration
+    let (Some(ship), Some(loadout)) = (&constraints.ship, &constraints.loadout) else {
+        tracing::error!("avoid_critical_state requested but missing ship/loadout; rejecting edge");
+        return false;
+    };
+
+    let Some(heat_config) = constraints.heat_config else {
+        tracing::error!(
+            "heat_config must be set when avoid_critical_state is true; rejecting edge"
+        );
+        return false;
+    };
+
+    let ctx = HeatSafetyContext {
+        ship,
+        loadout,
+        heat_config,
+        starmap,
+    };
+
+    hop_meets_heat_safety(edge, target, &ctx)
+}
+
+// =============================================================================
+// PathConstraints
+// =============================================================================
+
 /// Constraints applied during pathfinding.
 #[derive(Debug, Default, Clone)]
 pub struct PathConstraints {
@@ -27,120 +187,40 @@ pub struct PathConstraints {
 }
 
 impl PathConstraints {
+    /// Check if an edge to a target system is allowed under these constraints.
+    ///
+    /// This method composes multiple predicate checks:
+    /// 1. Edge distance limit (for spatial jumps)
+    /// 2. Gate avoidance policy
+    /// 3. System avoidance list
+    /// 4. Temperature constraints
+    /// 5. Heat safety (avoid critical engine state)
     pub(crate) fn allows(&self, starmap: Option<&Starmap>, edge: &Edge, target: SystemId) -> bool {
-        // The `max_jump` constraint limits the distance of spatial jumps (ship jumps).
-        // Gate traversals should not be constrained by ship jump range, so only apply
-        // this limit to spatial edges.
-        if edge.kind == EdgeKind::Spatial
-            && self.max_jump.is_some_and(|limit| edge.distance > limit)
-        {
+        // Check edge predicates
+        if !edge_meets_distance_limit(edge, self.max_jump) {
             return false;
         }
 
-        if self.avoid_gates && edge.kind == EdgeKind::Gate {
+        if !edge_meets_gate_policy(edge, self.avoid_gates) {
             return false;
         }
 
-        if self.avoided_systems.contains(&target) {
+        // Check system predicates
+        if !system_meets_avoidance(target, &self.avoided_systems) {
             return false;
         }
 
-        // Temperature and heat constraints only apply to spatial jumps
-        if edge.kind != EdgeKind::Spatial {
-            return true;
+        if !system_meets_temperature(edge, starmap, target, self.max_temperature) {
+            return false;
         }
 
-        if let Some(limit) = self.max_temperature {
-            let temp = starmap
-                .and_then(|m| m.systems.get(&target))
-                .and_then(|s| s.metadata.star_temperature);
-            if temp.is_some_and(|t| t > limit) {
-                return false;
-            }
-        }
-
-        // If configured, avoid hops that would result in critical engine state.
-        // Check: ambient_temp + hop_heat >= HEAT_CRITICAL (150K)
-        // Note: ambient_temp is min_external_temp (0.1K-99.9K range), not star surface temperature
-        if self.avoid_critical_state {
-            if let (Some(ship), Some(loadout)) = (&self.ship, &self.loadout) {
-                // Get the minimum external temperature at the destination system
-                // This is the temperature at the coldest habitable zone (furthest planet/moon)
-                let ambient_temp = starmap
-                    .and_then(|m| m.systems.get(&target))
-                    .and_then(|s| s.metadata.min_external_temp)
-                    .unwrap_or(0.0);
-
-                let mass = loadout.total_mass_kg(ship);
-                // Require an explicit heat_config when avoid_critical_state is requested; if
-                // missing, treat as a configuration error and conservatively reject the edge.
-                let heat_config = if let Some(cfg) = self.heat_config {
-                    cfg
-                } else {
-                    tracing::error!(
-                        "heat_config must be set when avoid_critical_state is true; rejecting edge"
-                    );
-                    return false;
-                };
-
-                let hop_energy = calculate_jump_heat(
-                    mass,
-                    edge.distance,
-                    ship.base_mass_kg,
-                    heat_config.calibration_constant,
-                );
-
-                match hop_energy {
-                    Ok(energy) => {
-                        let hop_heat = energy / (mass * ship.specific_heat);
-                        let total_heat = ambient_temp + hop_heat;
-                        if total_heat >= HEAT_CRITICAL {
-                            let to_name = starmap
-                                .and_then(|m| m.systems.get(&target))
-                                .map(|s| s.name.as_str())
-                                .unwrap_or("unknown");
-
-                            tracing::debug!(
-                                "blocking edge to {} due to critical heat: ambient={:.1}K, hop_heat={:.1}K, total={:.1}K (limit={:.1}K)",
-                                to_name,
-                                ambient_temp,
-                                hop_heat,
-                                total_heat,
-                                HEAT_CRITICAL
-                            );
-                            return false;
-                        }
-                    }
-                    Err(e) => {
-                        // Conservative fail-safe: if heat calculation errors, reject the edge and
-                        // log the error so callers can surface problems instead of allowing
-                        // potentially unsafe routes.
-                        let to_name = starmap
-                            .and_then(|m| m.systems.get(&target))
-                            .map(|s| s.name.as_str())
-                            .unwrap_or("unknown");
-                        tracing::warn!(
-                            "heat calculation failed for {}: {e:#?}; rejecting edge as conservative fail-safe",
-                            to_name
-                        );
-                        return false;
-                    }
-                }
-            } else {
-                // Missing ship/loadout is a configuration error when `avoid_critical_state` is
-                // requested. Conservatively reject the edge and log an error so callers can
-                // detect misconfiguration rather than silently weakening a safety check.
-                tracing::error!(
-                    "avoid_critical_state requested but missing ship/loadout; rejecting edge"
-                );
-                return false;
-            }
+        // Check heat safety
+        if !check_heat_safety(edge, target, self, starmap) {
+            return false;
         }
 
         true
     }
-
-    // test moved into the #[cfg(test)] module below
 }
 
 /// Find a route between `start` and `goal` using breadth-first search without
@@ -503,6 +583,119 @@ impl PartialOrd for AStarEntry {
 mod tests {
     use super::*;
     use crate::db::{Starmap, System, SystemMetadata};
+    use crate::graph::{Edge, EdgeKind};
+
+    // =========================================================================
+    // Predicate Unit Tests
+    // =========================================================================
+
+    #[test]
+    fn edge_meets_distance_limit_no_constraint() {
+        let edge = Edge {
+            target: 1,
+            kind: EdgeKind::Spatial,
+            distance: 100.0,
+        };
+        assert!(edge_meets_distance_limit(&edge, None));
+    }
+
+    #[test]
+    fn edge_meets_distance_limit_within_limit() {
+        let edge = Edge {
+            target: 1,
+            kind: EdgeKind::Spatial,
+            distance: 50.0,
+        };
+        assert!(edge_meets_distance_limit(&edge, Some(60.0)));
+    }
+
+    #[test]
+    fn edge_meets_distance_limit_exceeds_limit() {
+        let edge = Edge {
+            target: 1,
+            kind: EdgeKind::Spatial,
+            distance: 100.0,
+        };
+        assert!(!edge_meets_distance_limit(&edge, Some(60.0)));
+    }
+
+    #[test]
+    fn edge_meets_distance_limit_gate_ignores_limit() {
+        let edge = Edge {
+            target: 1,
+            kind: EdgeKind::Gate,
+            distance: 1000.0, // far exceeds any jump limit
+        };
+        assert!(edge_meets_distance_limit(&edge, Some(10.0)));
+    }
+
+    #[test]
+    fn edge_meets_gate_policy_allows_gates() {
+        let gate = Edge {
+            target: 1,
+            kind: EdgeKind::Gate,
+            distance: 0.0,
+        };
+        assert!(edge_meets_gate_policy(&gate, false));
+    }
+
+    #[test]
+    fn edge_meets_gate_policy_blocks_gates() {
+        let gate = Edge {
+            target: 1,
+            kind: EdgeKind::Gate,
+            distance: 0.0,
+        };
+        assert!(!edge_meets_gate_policy(&gate, true));
+    }
+
+    #[test]
+    fn edge_meets_gate_policy_allows_spatial_when_avoiding_gates() {
+        let spatial = Edge {
+            target: 1,
+            kind: EdgeKind::Spatial,
+            distance: 10.0,
+        };
+        assert!(edge_meets_gate_policy(&spatial, true));
+    }
+
+    #[test]
+    fn system_meets_avoidance_not_avoided() {
+        let avoided = HashSet::new();
+        assert!(system_meets_avoidance(1, &avoided));
+    }
+
+    #[test]
+    fn system_meets_avoidance_is_avoided() {
+        let mut avoided = HashSet::new();
+        avoided.insert(1);
+        assert!(!system_meets_avoidance(1, &avoided));
+    }
+
+    #[test]
+    fn system_meets_temperature_no_constraint() {
+        let edge = Edge {
+            target: 1,
+            kind: EdgeKind::Spatial,
+            distance: 10.0,
+        };
+        assert!(system_meets_temperature(&edge, None, 1, None));
+    }
+
+    #[test]
+    fn system_meets_temperature_gate_ignores_limit() {
+        let edge = Edge {
+            target: 1,
+            kind: EdgeKind::Gate,
+            distance: 0.0,
+        };
+        // Gate edges should always pass temperature check
+        assert!(system_meets_temperature(&edge, None, 1, Some(100.0)));
+    }
+
+    // =========================================================================
+    // PathConstraints Tests
+    // =========================================================================
 
     #[test]
     fn default_constraints_are_non_blocking() {

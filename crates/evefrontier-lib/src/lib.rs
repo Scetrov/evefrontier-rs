@@ -115,7 +115,10 @@ pub use output::{
 pub use path::{
     find_route, find_route_a_star, find_route_bfs, find_route_dijkstra, PathConstraints,
 };
-pub use routing::{plan_route, RouteAlgorithm, RouteConstraints, RoutePlan, RouteRequest};
+pub use routing::{
+    plan_route, select_planner, AStarPlanner, BfsPlanner, DijkstraPlanner, RouteAlgorithm,
+    RouteConstraints, RouteOptimization, RoutePlan, RoutePlanner, RouteRequest,
+};
 pub use ship::{
     calculate_cooling_time, calculate_jump_fuel_cost, calculate_route_fuel,
     compute_cooling_constant, project_fuel_for_hop, FuelConfig, FuelProjection,

@@ -10,6 +10,10 @@ Code.
 
 - [EVE Frontier Architecture](#eve-frontier-architecture)
   - [Table of Contents](#table-of-contents)
+  - [Design Patterns](#design-patterns)
+    - [Strategy Pattern (Routing Algorithms)](#strategy-pattern-routing-algorithms)
+    - [Predicate Functions (Edge Filtering)](#predicate-functions-edge-filtering)
+    - [Module Organization (Single Responsibility)](#module-organization-single-responsibility)
   - [Component Overview](#component-overview)
     - [Component Descriptions](#component-descriptions)
   - [Module Dependencies](#module-dependencies)
@@ -22,6 +26,59 @@ Code.
     - [CLI Route Command](#cli-route-command)
     - [Lambda Cold-Start](#lambda-cold-start)
   - [See Also](#see-also)
+
+---
+
+## Design Patterns
+
+The codebase employs several design patterns to maintain SOLID principles and clean architecture:
+
+### Strategy Pattern (Routing Algorithms)
+
+The `routing/planner.rs` module implements the Strategy pattern for algorithm selection:
+
+```rust
+pub trait RoutePlanner: Send + Sync {
+    fn algorithm(&self) -> RouteAlgorithm;
+    fn find_path(&self, graph: &Graph, starmap: Option<&Starmap>,
+                 start: SystemId, goal: SystemId,
+                 constraints: &SearchConstraints) -> Option<Vec<SystemId>>;
+    fn requires_spatial_index(&self) -> bool { false }
+}
+```
+
+Three implementations (`BfsPlanner`, `DijkstraPlanner`, `AStarPlanner`) encapsulate algorithm-specific
+logic. The `select_planner()` factory function returns the appropriate planner based on the request.
+
+**Benefits:**
+- **Open/Closed Principle**: New algorithms can be added without modifying `plan_route()`
+- **Single Responsibility**: Each planner handles only its algorithm
+- **Testability**: Planners can be unit tested in isolation
+
+### Predicate Functions (Edge Filtering)
+
+The `path.rs` module uses composable predicate functions for edge filtering:
+
+```rust
+fn edge_meets_distance_limit(edge: &Edge, max_jump: Option<f64>) -> bool;
+fn edge_meets_gate_policy(edge: &Edge, avoid_gates: bool) -> bool;
+fn system_meets_avoidance(target: SystemId, avoided: &HashSet<SystemId>) -> bool;
+fn system_meets_temperature(edge: &Edge, starmap: Option<&Starmap>,
+                            target: SystemId, max_temperature: Option<f64>) -> bool;
+fn hop_meets_heat_safety(edge: &Edge, target: SystemId, ctx: &HeatSafetyContext) -> bool;
+```
+
+**Benefits:**
+- **Composability**: Predicates combine cleanly in `PathConstraints::allows()`
+- **Testability**: Each predicate can be unit tested independently
+- **Extensibility**: New constraints can be added as new predicates
+
+### Module Organization (Single Responsibility)
+
+Large modules are split into focused submodules:
+
+- **`ship/`**: `attributes.rs`, `fuel.rs`, `heat.rs`, `catalog.rs`, `constants.rs`
+- **`routing/`**: `mod.rs` (orchestration), `planner.rs` (algorithms)
 
 ---
 
@@ -91,8 +148,20 @@ graph TD
 
         spatial[spatial.rs<br/>KD-tree index]
         graph[graph.rs<br/>Graph builders]
-        path[path.rs<br/>Pathfinding]
-        routing[routing.rs<br/>Route planning]
+        path[path.rs<br/>Pathfinding + Predicates]
+
+        subgraph routing["routing/"]
+            routing_mod[mod.rs<br/>Route orchestration]
+            planner[planner.rs<br/>Strategy pattern]
+        end
+
+        subgraph ship["ship/"]
+            ship_mod[mod.rs<br/>Re-exports]
+            attributes[attributes.rs<br/>ShipAttributes]
+            fuel[fuel.rs<br/>Fuel calculations]
+            heat[heat.rs<br/>Heat calculations]
+            catalog[catalog.rs<br/>Ship catalog]
+        end
 
         output[output.rs<br/>Formatting]
         temperature[temperature.rs<br/>Temp calculations]
@@ -102,36 +171,49 @@ graph TD
     dataset --> db
     db --> graph
     graph --> path
-    path --> routing
+    path --> routing_mod
+    planner --> path
 
     spatial --> graph
-    spatial --> routing
+    spatial --> routing_mod
 
     temperature --> graph
-    temperature --> routing
+    temperature --> routing_mod
 
     error --> github
     error --> dataset
     error --> db
-    error --> routing
+    error --> routing_mod
 
-    routing --> output
+    routing_mod --> output
+    routing_mod --> planner
+
+    ship_mod --> fuel
+    ship_mod --> heat
+    ship_mod --> attributes
+    ship_mod --> catalog
+    fuel --> path
+    heat --> path
 ```
 
 ### Module Responsibilities
 
-| Module           | Responsibility                         | Key Exports                                                     |
-| ---------------- | -------------------------------------- | --------------------------------------------------------------- |
-| `error.rs`       | Centralized error handling             | `Error`, `Result`                                               |
-| `github.rs`      | Download datasets from GitHub releases | `download_dataset_with_tag`, `DatasetRelease`                   |
-| `dataset.rs`     | Resolve and ensure dataset paths       | `ensure_dataset`, `ensure_e6c3_dataset`, `DatasetPaths`         |
-| `db.rs`          | Load SQLite into Starmap               | `load_starmap`, `load_starmap_from_connection`, `Starmap`       |
-| `graph.rs`       | Build adjacency graphs                 | `build_gate_graph`, `build_spatial_graph`, `build_hybrid_graph` |
-| `path.rs`        | Pathfinding algorithms                 | `find_route_bfs`, `find_route_dijkstra`, `find_route_a_star`    |
-| `routing.rs`     | High-level route planning              | `plan_route`, `RouteRequest`, `RoutePlan`                       |
-| `spatial.rs`     | KD-tree spatial index                  | `SpatialIndex`, `SpatialIndex::build`, `try_load_spatial_index` |
-| `output.rs`      | Output formatting                      | `RouteSummary`, `RouteStep`, `RouteOutputKind`                  |
-| `temperature.rs` | Temperature constraint helpers         | Temperature filtering predicates                                |
+| Module               | Responsibility                               | Key Exports                                                     |
+| -------------------- | -------------------------------------------- | --------------------------------------------------------------- |
+| `error.rs`           | Centralized error handling                   | `Error`, `Result`                                               |
+| `github.rs`          | Download datasets from GitHub releases       | `download_dataset_with_tag`, `DatasetRelease`                   |
+| `dataset.rs`         | Resolve and ensure dataset paths             | `ensure_dataset`, `ensure_e6c3_dataset`, `DatasetPaths`         |
+| `db.rs`              | Load SQLite into Starmap                     | `load_starmap`, `load_starmap_from_connection`, `Starmap`       |
+| `graph.rs`           | Build adjacency graphs                       | `build_gate_graph`, `build_spatial_graph`, `build_hybrid_graph` |
+| `path.rs`            | Pathfinding algorithms + edge predicates     | `find_route_bfs`, `find_route_dijkstra`, `PathConstraints`      |
+| `routing/mod.rs`     | High-level route orchestration               | `plan_route`, `RouteRequest`, `RoutePlan`                       |
+| `routing/planner.rs` | Strategy pattern for algorithm selection     | `RoutePlanner` trait, `BfsPlanner`, `DijkstraPlanner`, `AStarPlanner` |
+| `ship/mod.rs`        | Ship attributes and calculations             | `ShipAttributes`, `ShipLoadout`, `ShipCatalog`                  |
+| `ship/fuel.rs`       | Fuel consumption calculations                | `calculate_jump_fuel_cost`, `calculate_route_fuel`              |
+| `ship/heat.rs`       | Heat generation calculations                 | `calculate_jump_heat`, `HeatConfig`                             |
+| `spatial.rs`         | KD-tree spatial index                        | `SpatialIndex`, `SpatialIndex::build`, `try_load_spatial_index` |
+| `output.rs`          | Output formatting                            | `RouteSummary`, `RouteStep`, `RouteOutputKind`                  |
+| `temperature.rs`     | Temperature constraint helpers               | Temperature filtering predicates                                |
 
 ---
 
@@ -186,28 +268,32 @@ flowchart TD
 
 ### Route Planning Flow
 
-How a route request transforms into a computed path.
+How a route request transforms into a computed path using the Strategy pattern.
 
 ```mermaid
 flowchart TD
-    START([plan_route called]) --> VALIDATE[Validate RouteRequest]
+    START([plan_route called]) --> VALIDATE[Resolve system names<br/>& validate constraints]
 
-    VALIDATE --> RESOLVE_START[Resolve start<br/>system name → ID]
-    RESOLVE_START --> RESOLVE_GOAL[Resolve goal<br/>system name → ID]
+    VALIDATE --> SELECT_GRAPH{Select graph type}
 
-    RESOLVE_GOAL --> SELECT{Select graph type}
+    SELECT_GRAPH -->|BFS| GATE[build_gate_graph]
+    SELECT_GRAPH -->|Dijkstra| HYBRID[build_hybrid_graph]
+    SELECT_GRAPH -->|A*| SPATIAL[build_spatial_graph<br/>or hybrid]
 
-    SELECT -->|BFS| GATE[build_gate_graph]
-    SELECT -->|Dijkstra| HYBRID[build_hybrid_graph]
-    SELECT -->|A*| SPATIAL[build_spatial_graph<br/>or hybrid]
+    GATE --> SELECT_PLANNER[select_planner<br/>Strategy pattern]
+    HYBRID --> SELECT_PLANNER
+    SPATIAL --> SELECT_PLANNER
 
-    GATE --> BFS_ALGO[find_route_bfs]
-    HYBRID --> DIJ_ALGO[find_route_dijkstra]
-    SPATIAL --> ASTAR_ALGO[find_route_a_star]
+    SELECT_PLANNER --> BFS_P{BfsPlanner}
+    SELECT_PLANNER --> DIJ_P{DijkstraPlanner}
+    SELECT_PLANNER --> ASTAR_P{AStarPlanner}
 
-    BFS_ALGO --> PLAN[Construct RoutePlan]
-    DIJ_ALGO --> PLAN
-    ASTAR_ALGO --> PLAN
+    BFS_P --> FIND[planner.find_path]
+    DIJ_P --> FIND
+    ASTAR_P --> FIND
+
+    FIND --> VALIDATE_EDGES[Validate route edges<br/>for heat safety]
+    VALIDATE_EDGES --> PLAN[Construct RoutePlan]
 
     PLAN --> RETURN([Return RoutePlan])
 ```
@@ -302,4 +388,4 @@ sequenceDiagram
 
 ---
 
-_Last updated: 2025-12-29_
+_Last updated: 2025-01-12_
