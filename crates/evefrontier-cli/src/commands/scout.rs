@@ -290,6 +290,30 @@ pub fn handle_scout_range(
         }
     }
 
+    // Determine whether the user provided any scout-specific options; if not, we're in
+    // a zero-config invocation and may apply friendly defaults (like default ship).
+    let user_provided_options = args.radius.is_some()
+        || args.max_temp.is_some()
+        || args.ship.is_some()
+        || args.fuel_quality != 10.0
+        || args.cargo_mass != 0.0
+        || args.fuel_load.is_some()
+        || args.limit != 10; // Default limit
+
+    // Determine the effective ship name (support 'None' to explicitly disable ship-based planning).
+    // Only inject a default ship when the user did not provide other options (zero-config case).
+    let effective_ship_name: Option<String> = match args.ship.as_deref() {
+        Some(s) if s.eq_ignore_ascii_case("none") => None,
+        Some(s) => Some(s.to_string()),
+        None => {
+            if user_provided_options {
+                None
+            } else {
+                Some("Reflex".to_string())
+            }
+        }
+    };
+
     // Load dataset
     let paths = tokio::task::block_in_place(|| ensure_dataset(data_dir, DatasetRelease::latest()))
         .context("failed to locate or download the EVE Frontier dataset")?;
@@ -387,156 +411,218 @@ pub fn handle_scout_range(
         .take(args.limit)
         .collect();
 
-    // Build result based on whether ship is specified
-    let result = if let Some(ref ship_name) = args.ship {
-        // Load ship catalog
-        let ship_catalog = load_ship_catalog(&paths).context("failed to load ship catalog")?;
-        let ship = ship_catalog.get(ship_name).ok_or_else(|| {
-            // Try to provide fuzzy suggestions
-            let available = ship_catalog.ship_names();
-            let suggestions: Vec<_> = available
-                .iter()
-                .filter(|n| n.to_lowercase().contains(&ship_name.to_lowercase()))
-                .take(5)
-                .cloned()
-                .collect();
-            if suggestions.is_empty() {
-                anyhow::anyhow!(
-                    "Unknown ship '{}'. Available ships: {}",
-                    ship_name,
-                    available.join(", ")
-                )
-            } else {
-                anyhow::anyhow!(
-                    "Unknown ship '{}'. Did you mean one of: {}?",
-                    ship_name,
-                    suggestions.join(", ")
-                )
+    // Build result based on whether ship is specified (explicit or default)
+    let result = if let Some(ref ship_name) = effective_ship_name {
+        // Load ship catalog - handle errors differently for explicit vs implicit ship
+        let ship_catalog_result = load_ship_catalog(&paths);
+
+        let ship_and_catalog = match ship_catalog_result {
+            Ok(catalog) => {
+                match catalog.get(ship_name) {
+                    Some(ship) => Some((ship.clone(), catalog)),
+                    None => {
+                        // Ship not found in catalog
+                        let available = catalog.ship_names();
+                        let suggestions: Vec<_> = available
+                            .iter()
+                            .filter(|n| n.to_lowercase().contains(&ship_name.to_lowercase()))
+                            .take(5)
+                            .cloned()
+                            .collect();
+                        let err = if suggestions.is_empty() {
+                            anyhow::anyhow!(
+                                "Unknown ship '{}'. Available ships: {}",
+                                ship_name,
+                                available.join(", ")
+                            )
+                        } else {
+                            anyhow::anyhow!(
+                                "Unknown ship '{}'. Did you mean one of: {}?",
+                                ship_name,
+                                suggestions.join(", ")
+                            )
+                        };
+
+                        if args.ship.is_some() {
+                            // User explicitly requested this ship - error
+                            return Err(err);
+                        } else {
+                            // Implicit default ship not found - warn and continue without
+                            eprintln!(
+                                "Warning: Default ship '{}' not found. {}. Proceeding without ship projections.",
+                                ship_name,
+                                err
+                            );
+                            None
+                        }
+                    }
+                }
             }
-        })?;
-
-        // Create ship loadout (validates fuel_load and cargo_mass)
-        let fuel_load = args.fuel_load.unwrap_or(ship.fuel_capacity);
-        let _loadout = ShipLoadout::new(ship, fuel_load, args.cargo_mass)
-            .map_err(|e| anyhow::anyhow!("Invalid loadout: {}", e))?;
-
-        // Create fuel config
-        let fuel_config = FuelConfig {
-            quality: args.fuel_quality,
-            dynamic_mass: true, // Always use dynamic mass for scout routes
+            Err(e) => {
+                if args.ship.is_some() {
+                    // User explicitly requested a ship - this is an error
+                    return Err(e).context("failed to load ship catalog");
+                } else {
+                    // Implicit default ship couldn't be loaded - warn and continue without
+                    eprintln!(
+                        "Warning: failed to load ship data: {}. Proceeding without ship projections.",
+                        e
+                    );
+                    None
+                }
+            }
         };
 
-        // Apply nearest-neighbor ordering
-        let mut ordered_systems = nearest_neighbor_order(position, systems_with_positions);
-        let total_hops = ordered_systems.len();
+        if let Some((ship, _catalog)) = ship_and_catalog {
+            // Create ship loadout (validates fuel_load and cargo_mass)
+            let fuel_load = args.fuel_load.unwrap_or(ship.fuel_capacity);
+            let _loadout = ShipLoadout::new(&ship, fuel_load, args.cargo_mass)
+                .map_err(|e| anyhow::anyhow!("Invalid loadout: {}", e))?;
 
-        // Pre-collect ambient temperatures for lookback during iteration
-        let ambient_temps: Vec<Option<f64>> =
-            ordered_systems.iter().map(|s| s.min_temp_k).collect();
-        let origin_ambient = system.metadata.min_external_temp;
-
-        // Calculate fuel and heat projections for each hop
-        let mut cumulative_fuel = 0.0;
-        let mut remaining_fuel = fuel_load;
-        let mut total_distance = 0.0;
-        let mut last_residual_heat = evefrontier_lib::HEAT_NOMINAL;
-        let heat_cfg = HeatConfig::default();
-
-        for (hop_index, sys) in ordered_systems.iter_mut().enumerate() {
-            let hop_distance = sys.distance_ly;
-            total_distance += hop_distance;
-
-            // Calculate fuel cost using current mass (dynamic mass mode)
-            let current_mass = ship.base_mass_kg
-                + (remaining_fuel * evefrontier_lib::FUEL_MASS_PER_UNIT_KG)
-                + args.cargo_mass;
-            let hop_fuel =
-                evefrontier_lib::calculate_jump_fuel_cost(current_mass, hop_distance, &fuel_config)
-                    .unwrap_or(0.0);
-
-            // Track cumulative fuel before projection (cumulative always increases by hop_fuel)
-            cumulative_fuel += hop_fuel;
-
-            // Use shared helper to detect refuel and update remaining fuel
-            let (projection, new_remaining) = evefrontier_lib::project_fuel_for_hop(
-                hop_fuel,
-                cumulative_fuel,
-                remaining_fuel,
-                fuel_load,
-            );
-
-            remaining_fuel = new_remaining;
-            sys.fuel_warning = projection.warning.clone();
-
-            // Calculate heat using shared helper to keep DRY and match route semantics
-            let prev_ambient = if hop_index > 0 {
-                ambient_temps.get(hop_index - 1).copied().flatten()
-            } else {
-                origin_ambient
+            // Create fuel config
+            let fuel_config = FuelConfig {
+                quality: args.fuel_quality,
+                dynamic_mass: true, // Always use dynamic mass for scout routes
             };
-            let is_goal = hop_index + 1 == total_hops;
-            let next_is_gate = false; // scout range visits are jumps, not gates
-            let proj = evefrontier_lib::ship::project_heat_for_jump(
-                evefrontier_lib::ship::HeatProjectionParams {
-                    mass: current_mass,
-                    specific_heat: ship.specific_heat,
-                    distance_ly: hop_distance,
-                    hull_mass_kg: ship.base_mass_kg,
-                    calibration_constant: heat_cfg.calibration_constant,
-                    prev_ambient,
-                    current_min_external_temp: sys.min_temp_k,
-                    is_goal,
-                    next_is_gate,
+
+            // Apply nearest-neighbor ordering
+            let mut ordered_systems = nearest_neighbor_order(position, systems_with_positions);
+            let total_hops = ordered_systems.len();
+
+            // Pre-collect ambient temperatures for lookback during iteration
+            let ambient_temps: Vec<Option<f64>> =
+                ordered_systems.iter().map(|s| s.min_temp_k).collect();
+            let origin_ambient = system.metadata.min_external_temp;
+
+            // Calculate fuel and heat projections for each hop
+            let mut cumulative_fuel = 0.0;
+            let mut remaining_fuel = fuel_load;
+            let mut total_distance = 0.0;
+            let mut last_residual_heat = evefrontier_lib::HEAT_NOMINAL;
+            let heat_cfg = HeatConfig::default();
+
+            for (hop_index, sys) in ordered_systems.iter_mut().enumerate() {
+                let hop_distance = sys.distance_ly;
+                total_distance += hop_distance;
+
+                // Calculate fuel cost using current mass (dynamic mass mode)
+                let current_mass = ship.base_mass_kg
+                    + (remaining_fuel * evefrontier_lib::FUEL_MASS_PER_UNIT_KG)
+                    + args.cargo_mass;
+                let hop_fuel = evefrontier_lib::calculate_jump_fuel_cost(
+                    current_mass,
+                    hop_distance,
+                    &fuel_config,
+                )
+                .unwrap_or(0.0);
+
+                // Track cumulative fuel before projection (cumulative always increases by hop_fuel)
+                cumulative_fuel += hop_fuel;
+
+                // Use shared helper to detect refuel and update remaining fuel
+                let (projection, new_remaining) = evefrontier_lib::project_fuel_for_hop(
+                    hop_fuel,
+                    cumulative_fuel,
+                    remaining_fuel,
+                    fuel_load,
+                );
+
+                remaining_fuel = new_remaining;
+                sys.fuel_warning = projection.warning.clone();
+
+                // Calculate heat using shared helper to keep DRY and match route semantics
+                let prev_ambient = if hop_index > 0 {
+                    ambient_temps.get(hop_index - 1).copied().flatten()
+                } else {
+                    origin_ambient
+                };
+                let is_goal = hop_index + 1 == total_hops;
+                let next_is_gate = false; // scout range visits are jumps, not gates
+                let proj = evefrontier_lib::ship::project_heat_for_jump(
+                    evefrontier_lib::ship::HeatProjectionParams {
+                        mass: current_mass,
+                        specific_heat: ship.specific_heat,
+                        distance_ly: hop_distance,
+                        hull_mass_kg: ship.base_mass_kg,
+                        calibration_constant: heat_cfg.calibration_constant,
+                        prev_ambient,
+                        current_min_external_temp: sys.min_temp_k,
+                        is_goal,
+                        next_is_gate,
+                    },
+                )
+                .map_err(|e| anyhow::anyhow!("heat projection failed: {}", e))?;
+
+                if let Some(w) = proj.warning.clone() {
+                    sys.heat_warning = Some(w);
+                }
+                if let Some(wait) = proj.wait_time_seconds {
+                    sys.cooldown_seconds = Some(wait);
+                }
+
+                sys.hop_fuel = Some(hop_fuel);
+                sys.cumulative_fuel = Some(cumulative_fuel);
+                sys.remaining_fuel = Some(remaining_fuel);
+                sys.hop_heat = Some(proj.hop_heat);
+                sys.cumulative_heat = proj.residual_heat; // align with route: store residual
+                if let Some(r) = proj.residual_heat {
+                    last_residual_heat = r;
+                }
+            }
+
+            // Sum all cooldown times for total wait time
+            let total_wait_time_seconds: f64 = ordered_systems
+                .iter()
+                .filter_map(|s| s.cooldown_seconds)
+                .sum();
+
+            ScoutRangeResult {
+                system: args.system.clone(),
+                system_id,
+                query: RangeQueryParams {
+                    limit: args.limit,
+                    radius: args.radius,
+                    max_temperature: args.max_temp,
                 },
-            )
-            .map_err(|e| anyhow::anyhow!("heat projection failed: {}", e))?;
-
-            if let Some(w) = proj.warning.clone() {
-                sys.heat_warning = Some(w);
+                ship: Some(ShipInfo {
+                    name: ship.name.clone(),
+                    fuel_capacity: ship.fuel_capacity,
+                    fuel_quality: args.fuel_quality,
+                }),
+                count: ordered_systems.len(),
+                total_distance_ly: Some(total_distance),
+                total_fuel: Some(cumulative_fuel),
+                final_heat: Some(last_residual_heat), // Match route: final residual at destination
+                total_wait_time_seconds: if total_wait_time_seconds > 0.0 {
+                    Some(total_wait_time_seconds)
+                } else {
+                    None
+                },
+                systems: ordered_systems,
             }
-            if let Some(wait) = proj.wait_time_seconds {
-                sys.cooldown_seconds = Some(wait);
+        } else {
+            // Ship loading failed for implicit default - fall back to no-ship behavior
+            let systems: Vec<RangeNeighbor> = systems_with_positions
+                .into_iter()
+                .map(|swp| swp.neighbor)
+                .collect();
+
+            ScoutRangeResult {
+                system: args.system.clone(),
+                system_id,
+                query: RangeQueryParams {
+                    limit: args.limit,
+                    radius: args.radius,
+                    max_temperature: args.max_temp,
+                },
+                ship: None,
+                count: systems.len(),
+                total_distance_ly: None,
+                total_fuel: None,
+                final_heat: None,
+                total_wait_time_seconds: None,
+                systems,
             }
-
-            sys.hop_fuel = Some(hop_fuel);
-            sys.cumulative_fuel = Some(cumulative_fuel);
-            sys.remaining_fuel = Some(remaining_fuel);
-            sys.hop_heat = Some(proj.hop_heat);
-            sys.cumulative_heat = proj.residual_heat; // align with route: store residual
-            if let Some(r) = proj.residual_heat {
-                last_residual_heat = r;
-            }
-        }
-
-        // Sum all cooldown times for total wait time
-        let total_wait_time_seconds: f64 = ordered_systems
-            .iter()
-            .filter_map(|s| s.cooldown_seconds)
-            .sum();
-
-        ScoutRangeResult {
-            system: args.system.clone(),
-            system_id,
-            query: RangeQueryParams {
-                limit: args.limit,
-                radius: args.radius,
-                max_temperature: args.max_temp,
-            },
-            ship: Some(ShipInfo {
-                name: ship.name.clone(),
-                fuel_capacity: ship.fuel_capacity,
-                fuel_quality: args.fuel_quality,
-            }),
-            count: ordered_systems.len(),
-            total_distance_ly: Some(total_distance),
-            total_fuel: Some(cumulative_fuel),
-            final_heat: Some(last_residual_heat), // Match route: final residual at destination
-            total_wait_time_seconds: if total_wait_time_seconds > 0.0 {
-                Some(total_wait_time_seconds)
-            } else {
-                None
-            },
-            systems: ordered_systems,
         }
     } else {
         // No ship - original behavior (sorted by distance from origin)
