@@ -49,8 +49,16 @@ impl FuelConfig {
         Ok(())
     }
 
-    /// Get quality as a factor (0.01 to 1.0).
-    pub(crate) fn quality_factor(&self) -> Result<f64> {
+    /// Converts the quality percentage (1-100) to a multiplier factor (0.01-1.0).
+    ///
+    /// This method validates the fuel configuration before performing the conversion,
+    /// ensuring the quality value is within the valid range. It is kept private as
+    /// external callers should use the public fuel calculation functions which handle
+    /// validation and factor conversion internally.
+    ///
+    /// # Errors
+    /// Returns an error if validation fails (e.g., quality outside 1-100 range).
+    fn quality_factor(&self) -> Result<f64> {
         self.validate()?;
         Ok(self.quality / 100.0)
     }

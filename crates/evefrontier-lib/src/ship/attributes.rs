@@ -24,7 +24,10 @@ pub struct ShipAttributes {
 
 impl ShipAttributes {
     /// Validate ship attributes for correctness.
-    pub fn validate(&self) -> Result<()> {
+    ///
+    /// This method is internal to the crate and used by the catalog loader
+    /// to ensure ship data integrity when parsing from CSV.
+    pub(crate) fn validate(&self) -> Result<()> {
         if self.name.trim().is_empty() {
             return Err(Error::ShipDataValidation {
                 message: "ship name must not be empty".to_string(),
