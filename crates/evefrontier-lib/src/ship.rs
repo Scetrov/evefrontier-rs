@@ -233,6 +233,106 @@ pub struct FuelProjection {
     pub warning: Option<String>,
 }
 
+/// Parameters for heat projection calculation.
+///
+/// Groups related parameters to avoid exceeding clippy's `too_many_arguments` threshold.
+#[derive(Debug, Clone, Copy)]
+pub struct HeatProjectionParams {
+    /// Total operational mass (hull + fuel + cargo) in kilograms
+    pub mass: f64,
+    /// Ship's specific heat capacity in J/(kg·K)
+    pub specific_heat: f64,
+    /// Hop distance in light-years (>= 0; 0 means gate/zero-heat)
+    pub distance_ly: f64,
+    /// Hull mass used by heat energy calibration formula
+    pub hull_mass_kg: f64,
+    /// Calibration constant for heat energy formula
+    pub calibration_constant: f64,
+    /// Ambient temperature at origin system (K), if known
+    pub prev_ambient: Option<f64>,
+    /// Ambient temperature at destination system (K), if known
+    pub current_min_external_temp: Option<f64>,
+    /// True if this hop arrives at final destination (no cooldown required)
+    pub is_goal: bool,
+    /// True if next hop is a gate (cooldown not required before gate)
+    pub next_is_gate: bool,
+}
+
+/// Project fuel consumption for a single hop, including refuel detection and warning generation.
+///
+/// This helper encapsulates the common logic for tracking fuel consumption across route hops:
+/// - Compares hop fuel cost against remaining fuel to detect insufficient fuel scenarios
+/// - Generates REFUEL warning when necessary and resets remaining fuel to capacity
+/// - Otherwise subtracts hop cost from remaining fuel (clamped to zero)
+/// - Returns both the FuelProjection and the updated remaining fuel value
+///
+/// This function implements the same semantics as the route command: when refueling occurs,
+/// `remaining` shows the fuel available at arrival (after refuel, before consuming fuel for
+/// the current hop). This matches the convention used in output.rs and scout.rs.
+///
+/// # Arguments
+/// * `hop_cost` - Fuel units required for this hop (from calculate_jump_fuel_cost)
+/// * `cumulative_fuel` - Total fuel consumed so far across all previous hops
+/// * `remaining_fuel` - Fuel available before this hop
+/// * `fuel_capacity` - Ship's fuel tank capacity (used for refuel reset)
+///
+/// # Returns
+/// A tuple of (FuelProjection, new_remaining_fuel) where:
+/// - FuelProjection contains hop_cost, cumulative, remaining, and optional warning
+/// - new_remaining_fuel is the updated fuel level after this hop (capacity if refueled, or remaining - hop_cost)
+///
+/// # Examples
+/// ```
+/// use evefrontier_lib::ship::project_fuel_for_hop;
+///
+/// // Normal hop: sufficient fuel
+/// let (projection, remaining) = project_fuel_for_hop(50.0, 100.0, 200.0, 1000.0);
+/// assert_eq!(projection.hop_cost, 50.0);
+/// assert_eq!(projection.cumulative, 100.0);
+/// assert_eq!(projection.remaining, Some(150.0));
+/// assert_eq!(projection.warning, None);
+/// assert_eq!(remaining, 150.0);
+///
+/// // Refuel scenario: insufficient fuel
+/// let (projection, remaining) = project_fuel_for_hop(250.0, 100.0, 200.0, 1000.0);
+/// assert_eq!(projection.hop_cost, 250.0);
+/// assert_eq!(projection.cumulative, 100.0);
+/// assert_eq!(projection.remaining, Some(1000.0));  // Reset to capacity
+/// assert_eq!(projection.warning, Some("REFUEL".to_string()));
+/// assert_eq!(remaining, 1000.0);
+/// ```
+pub fn project_fuel_for_hop(
+    hop_cost: f64,
+    cumulative_fuel: f64,
+    remaining_fuel: f64,
+    fuel_capacity: f64,
+) -> (FuelProjection, f64) {
+    if hop_cost > remaining_fuel {
+        // Insufficient fuel: REFUEL warning and reset to capacity
+        (
+            FuelProjection {
+                hop_cost,
+                cumulative: cumulative_fuel,
+                remaining: Some(fuel_capacity),
+                warning: Some("REFUEL".to_string()),
+            },
+            fuel_capacity,
+        )
+    } else {
+        // Sufficient fuel: consume fuel for this hop
+        let new_remaining = (remaining_fuel - hop_cost).max(0.0);
+        (
+            FuelProjection {
+                hop_cost,
+                cumulative: cumulative_fuel,
+                remaining: Some(new_remaining),
+                warning: None,
+            },
+            new_remaining,
+        )
+    }
+}
+
 /// Calculate fuel units required for a single jump.
 ///
 /// Formula: hop_cost = (total_mass_kg / 100_000) × (fuel_quality / 100) × distance_ly
@@ -499,6 +599,115 @@ pub struct HeatSummary {
 pub struct ShipCatalog {
     ships: HashMap<String, ShipAttributes>,
     source: Option<PathBuf>,
+}
+
+/// Project the per-hop heat (delta-T), warnings, and optional cooldown based on
+/// ship properties and environmental conditions. This mirrors the route
+/// attach_heat logic and is exposed to keep calculations DRY across callers
+/// (route, scout, and Lambdas).
+///
+/// # Arguments
+/// * `params` - Heat projection parameters bundled in `HeatProjectionParams`
+///
+/// Returns `HeatProjection` with:
+/// - `hop_heat`: temperature delta (K) for this hop
+/// - `warning`: OVERHEATED/CRITICAL if instantaneous temperature exceeds thresholds
+/// - `wait_time_seconds`: optional cooldown to reach nominal temperature before next jump
+/// - `residual_heat`: temperature at arrival after any optional cooldown
+/// - `can_proceed`: whether ship can proceed under the cooling model
+pub fn project_heat_for_jump(params: HeatProjectionParams) -> Result<HeatProjection> {
+    // Validate inputs
+    if !params.mass.is_finite() || params.mass <= 0.0 {
+        return Err(Error::ShipDataValidation {
+            message: format!(
+                "computed mass must be finite and positive, got {}",
+                params.mass
+            ),
+        });
+    }
+    if !params.specific_heat.is_finite() || params.specific_heat <= 0.0 {
+        return Err(Error::ShipDataValidation {
+            message: format!("invalid specific_heat: {}", params.specific_heat),
+        });
+    }
+    if !params.distance_ly.is_finite() || params.distance_ly < 0.0 {
+        return Err(Error::ShipDataValidation {
+            message: format!(
+                "distance must be finite and non-negative, got {}",
+                params.distance_ly
+            ),
+        });
+    }
+
+    // Zero-distance hops (gates) generate no heat
+    if params.distance_ly == 0.0 {
+        return Ok(HeatProjection {
+            hop_heat: 0.0,
+            warning: None,
+            wait_time_seconds: None,
+            residual_heat: Some(HEAT_NOMINAL),
+            can_proceed: true,
+        });
+    }
+
+    // Calculate energy then convert to delta-T: ΔT = energy / (m · c)
+    let hop_energy = calculate_jump_heat(
+        params.mass,
+        params.distance_ly,
+        params.hull_mass_kg,
+        params.calibration_constant,
+    )?;
+    let hop_heat = hop_energy / (params.mass * params.specific_heat);
+
+    // Starting temperature is nominal or the origin ambient, whichever is higher
+    let start_temp = HEAT_NOMINAL.max(params.prev_ambient.unwrap_or(0.0));
+    let candidate = start_temp + hop_heat;
+
+    // Determine warnings from instantaneous temperature
+    let mut warn: Option<String> = None;
+    if candidate >= HEAT_CRITICAL {
+        warn = Some("CRITICAL".to_string());
+    } else if candidate >= HEAT_OVERHEATED {
+        warn = Some("OVERHEATED".to_string());
+    }
+
+    // Cooldown policy: if above nominal and there is a subsequent jump
+    // (not goal and not gate), cool back toward nominal before proceeding.
+    let mut wait_time: Option<f64> = None;
+    let mut residual = candidate;
+    let mut can_proceed = true;
+
+    let target = HEAT_NOMINAL;
+    if candidate > target && !params.is_goal && !params.next_is_gate {
+        let k = compute_cooling_constant(
+            params.mass,
+            params.specific_heat,
+            params.current_min_external_temp,
+        );
+        if k > 0.0 {
+            let env_temp = params.current_min_external_temp.unwrap_or(0.0);
+            let wait = calculate_cooling_time(candidate, target, env_temp, k);
+            if wait > 0.0 {
+                wait_time = Some(wait);
+                // After waiting, residual is at the floor (nominal or ambient)
+                residual = target.max(env_temp);
+            }
+            can_proceed = true;
+        } else {
+            // No cooling available (invalid k); cannot safely proceed
+            wait_time = None;
+            can_proceed = false;
+            residual = candidate;
+        }
+    }
+
+    Ok(HeatProjection {
+        hop_heat,
+        warning: warn,
+        wait_time_seconds: wait_time,
+        residual_heat: Some(residual),
+        can_proceed,
+    })
 }
 
 impl ShipCatalog {

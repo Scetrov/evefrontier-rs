@@ -450,6 +450,55 @@ evefrontier-cli scout range "Nod" --limit 20 --radius 100.0 --max-temp 350
 evefrontier-cli scout range "Nod" --limit 5 --format json
 ```
 
+##### Fuel and Heat Projection
+
+When you specify a ship with `--ship`, the scout range command calculates fuel consumption and heat
+generation for visiting each nearby system. Systems are ordered using a nearest-neighbor heuristic
+to minimize hop distances.
+
+```bash
+# Basic fuel projection
+evefrontier-cli scout range "Nod" --limit 5 --ship Reflex
+
+# With custom fuel quality (default: 10)
+evefrontier-cli scout range "Nod" --limit 5 --ship Reflex --fuel-quality 8
+
+# With cargo mass and partial fuel load
+evefrontier-cli scout range "Nod" --limit 5 --ship Reflex --cargo-mass 50000 --fuel-load 800
+
+# JSON output with fuel projections
+evefrontier-cli scout range "Nod" --limit 5 --ship Reflex --format json
+```
+
+**Fuel/Heat Options:**
+
+- `--ship <NAME>` — ship name from catalog (enables fuel/heat projection)
+- `--fuel-quality <1-100>` — fuel quality percentage (default: 10)
+- `--cargo-mass <KG>` — additional cargo mass in kg (default: 0)
+- `--fuel-load <UNITS>` — fuel units loaded (default: ship's capacity)
+
+**Warnings:**
+
+- `⚠ REFUEL` — fuel insufficient for hop (remaining fuel < hop cost)
+- `⚠ OVERHEATED` — cumulative heat ≥ 90
+- `🔥 CRITICAL (wait Xs)` — cumulative heat ≥ 150 with cooldown time
+
+**Example output with ship:**
+
+```
+Systems in range of Nod (5 found):
+  Ship: Reflex (Fuel Capacity: 1000, Quality: 10%)
+  (limit 5)
+
+  1. ● Brana (18.5 ly)   3 Planets 2 Moons
+       │ min 285.00K, fuel 13 (rem 988)
+  2. ● H:2L2S (24.3 ly)   1 Planet 4 Moons
+       │ min 312.00K, fuel 16 (rem 972), heat 58.10 ⚠ OVERHEATED
+...
+───────────────────────────────────────
+  Distance: 142.3 ly  │  Fuel: 85.4 / 1000 (914.6 remaining)  │  Final Heat: 285.4
+```
+
 **Options:**
 
 - `--limit <N>` — maximum number of results (1-100, default: 10)

@@ -46,8 +46,9 @@
     "prettier": "^3.4.2"
   },
   "overrides": {
-    "js-yaml": "4.1.1"
+    "js-yaml": "^4.1.1"
   },
+  "pnpm": {},
   "workspaces": [
     "."
   ]

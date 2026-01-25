@@ -192,103 +192,37 @@ impl RouteSummary {
                 });
             }
 
-            // Calculate heat energy and convert to a temperature change using the ship's
-            // specific heat: delta_T = energy / (mass * specific_heat)
-            let hop_energy = crate::ship::calculate_jump_heat(
-                mass,
-                distance,
-                ship.base_mass_kg,
-                config.calibration_constant,
-            )?;
-            if !ship.specific_heat.is_finite() || ship.specific_heat <= 0.0 {
-                return Err(crate::error::Error::ShipDataValidation {
-                    message: format!("invalid specific_heat for ship: {}", ship.specific_heat),
-                });
-            }
-            let hop_heat = hop_energy / (mass * ship.specific_heat);
-
-            // Cooling model: We assume the ship starts at the jump-ready state
-            // (HEAT_NOMINAL or origin system ambient temperature, whichever is higher).
-            // We do not track cumulative heat across the entire route as it is
-            // expected that pilots wait for the ship to cool between jumps.
-            let prev_ambient = self.steps[idx - 1].min_external_temp.unwrap_or(0.0);
-            let start_temp = crate::ship::HEAT_NOMINAL.max(prev_ambient);
-            let candidate = start_temp + hop_heat;
-
-            let mut wait_time: Option<f64> = None;
-            let mut residual = candidate;
-            let mut can_proceed = true;
-
-            // Target conservatively: reduce to HEAT_NOMINAL (nominal temperature)
-            // for a safe proceeding point, as requested for cooldown indicators.
+            // Use shared helper for DRY heat projection
+            let prev_ambient_opt = self.steps[idx - 1].min_external_temp;
             let is_goal = idx == self.steps.len() - 1;
-
-            // We only calculate a wait time if there is a subsequent hop in the route
-            // and that hop is NOT a gate; the goal step (destination) and gate hops don't require
-            // cooldowns before arrival as they don't involve star temperature constraints
-            // (gate activation is instantaneous and heat-agnostic).
             let next_is_gate = if is_goal {
                 false
             } else {
                 self.steps[idx + 1].method.as_deref() == Some("gate")
             };
-
-            let target = crate::ship::HEAT_NOMINAL;
-
-            if candidate > target && !is_goal && !next_is_gate {
-                let k = crate::ship::compute_cooling_constant(
+            let projection =
+                crate::ship::project_heat_for_jump(crate::ship::HeatProjectionParams {
                     mass,
-                    ship.specific_heat,
-                    self.steps[idx].min_external_temp,
-                );
-
-                if k > 0.0 {
-                    let env_temp = self.steps[idx].min_external_temp.unwrap_or(0.0);
-                    let wait = crate::ship::calculate_cooling_time(candidate, target, env_temp, k);
-                    if wait > 0.0 {
-                        wait_time = Some(wait);
-                        total_wait_time_seconds += wait;
-                        // After waiting, we are at the target temperature (floor).
-                        residual = target.max(env_temp);
-                    }
-                    can_proceed = true;
-                } else {
-                    // No cooling available here
-                    wait_time = None;
-                    can_proceed = false;
-                    residual = candidate;
-                }
-            }
-
-            // Compute warnings based on canonical absolute thresholds (HEAT_OVERHEATED/CRITICAL).
-            // Warnings are emitted when the *instantaneous* temperature experienced during the
-            // jump (start temperature + the hop's temperature delta) exceeds thresholds.
-            let instant_temp = candidate;
-            let mut warn: Option<String> = None;
-            if instant_temp >= crate::ship::HEAT_CRITICAL {
-                // Use concise label form for warnings displayed in the UI/API.
-                warn = Some("CRITICAL".to_string());
-            } else if instant_temp >= crate::ship::HEAT_OVERHEATED {
-                warn = Some("OVERHEATED".to_string());
-            }
-
-            if let Some(ref w) = warn {
+                    specific_heat: ship.specific_heat,
+                    distance_ly: distance,
+                    hull_mass_kg: ship.base_mass_kg,
+                    calibration_constant: config.calibration_constant,
+                    prev_ambient: prev_ambient_opt,
+                    current_min_external_temp: self.steps[idx].min_external_temp,
+                    is_goal,
+                    next_is_gate,
+                })?;
+            if let Some(ref w) = projection.warning {
                 warnings.push(w.clone());
             }
-
-            let projection = crate::ship::HeatProjection {
-                hop_heat,
-                // For per-step display show residual heat after optional waiting
-                warning: warn,
-                wait_time_seconds: wait_time,
-                residual_heat: Some(residual),
-                can_proceed,
-            };
+            if let Some(wait) = projection.wait_time_seconds {
+                total_wait_time_seconds += wait;
+            }
 
             if let Some(step) = self.steps.get_mut(idx) {
-                step.heat = Some(projection);
+                step.heat = Some(projection.clone());
             }
-            last_residual = residual;
+            last_residual = projection.residual_heat.unwrap_or(last_residual);
         }
 
         self.heat = Some(crate::ship::HeatSummary {
@@ -502,51 +436,18 @@ impl RouteSummary {
             let hop_cost = calculate_jump_fuel_cost(mass, distance, fuel_config)?;
             cumulative += hop_cost;
 
-            // Detect insufficient fuel for the hop and mark refuel when necessary.
-            let projection = if fuel_config.dynamic_mass {
-                if hop_cost > remaining_fuel {
-                    // Not enough fuel for this hop: simulate a refuel here by resetting
-                    // remaining to the original load and mark a REFUEL warning.
-                    refueled = true;
-                    remaining_fuel = loadout.fuel_load;
-                    FuelProjection {
-                        hop_cost,
-                        cumulative,
-                        remaining: Some(remaining_fuel),
-                        warning: Some("REFUEL".to_string()),
-                    }
-                } else {
-                    remaining_fuel = (remaining_fuel - hop_cost).max(0.0);
-                    FuelProjection {
-                        hop_cost,
-                        cumulative,
-                        remaining: Some(remaining_fuel),
-                        warning: None,
-                    }
-                }
-            } else {
-                // Use the running `remaining_fuel` for static mode as well so that a
-                // refuel only occurs when the tank is actually insufficient and a
-                // single refuel resets the remaining for subsequent hops.
-                if hop_cost > remaining_fuel {
-                    refueled = true;
-                    remaining_fuel = loadout.fuel_load;
-                    FuelProjection {
-                        hop_cost,
-                        cumulative,
-                        remaining: Some(remaining_fuel),
-                        warning: Some("REFUEL".to_string()),
-                    }
-                } else {
-                    remaining_fuel = (remaining_fuel - hop_cost).max(0.0);
-                    FuelProjection {
-                        hop_cost,
-                        cumulative,
-                        remaining: Some(remaining_fuel),
-                        warning: None,
-                    }
-                }
-            };
+            // Use shared helper to detect refuel and build projection
+            let (projection, new_remaining) = crate::ship::project_fuel_for_hop(
+                hop_cost,
+                cumulative,
+                remaining_fuel,
+                loadout.fuel_load,
+            );
+
+            if projection.warning.is_some() {
+                refueled = true;
+            }
+            remaining_fuel = new_remaining;
 
             if let Some(step) = self.steps.get_mut(idx) {
                 step.fuel = Some(projection);
