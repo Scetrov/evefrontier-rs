@@ -233,6 +233,81 @@ pub struct FuelProjection {
     pub warning: Option<String>,
 }
 
+/// Project fuel consumption for a single hop, including refuel detection and warning generation.
+///
+/// This helper encapsulates the common logic for tracking fuel consumption across route hops:
+/// - Compares hop fuel cost against remaining fuel to detect insufficient fuel scenarios
+/// - Generates REFUEL warning when necessary and resets remaining fuel to capacity
+/// - Otherwise subtracts hop cost from remaining fuel (clamped to zero)
+/// - Returns both the FuelProjection and the updated remaining fuel value
+///
+/// This function implements the same semantics as the route command: when refueling occurs,
+/// `remaining` shows the fuel available at arrival (after refuel, before consuming fuel for
+/// the current hop). This matches the convention used in output.rs and scout.rs.
+///
+/// # Arguments
+/// * `hop_cost` - Fuel units required for this hop (from calculate_jump_fuel_cost)
+/// * `cumulative_fuel` - Total fuel consumed so far across all previous hops
+/// * `remaining_fuel` - Fuel available before this hop
+/// * `fuel_capacity` - Ship's fuel tank capacity (used for refuel reset)
+///
+/// # Returns
+/// A tuple of (FuelProjection, new_remaining_fuel) where:
+/// - FuelProjection contains hop_cost, cumulative, remaining, and optional warning
+/// - new_remaining_fuel is the updated fuel level after this hop (capacity if refueled, or remaining - hop_cost)
+///
+/// # Examples
+/// ```
+/// use evefrontier_lib::ship::project_fuel_for_hop;
+///
+/// // Normal hop: sufficient fuel
+/// let (projection, remaining) = project_fuel_for_hop(50.0, 100.0, 200.0, 1000.0);
+/// assert_eq!(projection.hop_cost, 50.0);
+/// assert_eq!(projection.cumulative, 100.0);
+/// assert_eq!(projection.remaining, Some(150.0));
+/// assert_eq!(projection.warning, None);
+/// assert_eq!(remaining, 150.0);
+///
+/// // Refuel scenario: insufficient fuel
+/// let (projection, remaining) = project_fuel_for_hop(250.0, 100.0, 200.0, 1000.0);
+/// assert_eq!(projection.hop_cost, 250.0);
+/// assert_eq!(projection.cumulative, 100.0);
+/// assert_eq!(projection.remaining, Some(1000.0));  // Reset to capacity
+/// assert_eq!(projection.warning, Some("REFUEL".to_string()));
+/// assert_eq!(remaining, 1000.0);
+/// ```
+pub fn project_fuel_for_hop(
+    hop_cost: f64,
+    cumulative_fuel: f64,
+    remaining_fuel: f64,
+    fuel_capacity: f64,
+) -> (FuelProjection, f64) {
+    if hop_cost > remaining_fuel {
+        // Insufficient fuel: REFUEL warning and reset to capacity
+        (
+            FuelProjection {
+                hop_cost,
+                cumulative: cumulative_fuel,
+                remaining: Some(fuel_capacity),
+                warning: Some("REFUEL".to_string()),
+            },
+            fuel_capacity,
+        )
+    } else {
+        // Sufficient fuel: consume fuel for this hop
+        let new_remaining = (remaining_fuel - hop_cost).max(0.0);
+        (
+            FuelProjection {
+                hop_cost,
+                cumulative: cumulative_fuel,
+                remaining: Some(new_remaining),
+                warning: None,
+            },
+            new_remaining,
+        )
+    }
+}
+
 /// Calculate fuel units required for a single jump.
 ///
 /// Formula: hop_cost = (total_mass_kg / 100_000) × (fuel_quality / 100) × distance_ly

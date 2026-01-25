@@ -435,51 +435,18 @@ impl RouteSummary {
             let hop_cost = calculate_jump_fuel_cost(mass, distance, fuel_config)?;
             cumulative += hop_cost;
 
-            // Detect insufficient fuel for the hop and mark refuel when necessary.
-            let projection = if fuel_config.dynamic_mass {
-                if hop_cost > remaining_fuel {
-                    // Not enough fuel for this hop: simulate a refuel here by resetting
-                    // remaining to the original load and mark a REFUEL warning.
-                    refueled = true;
-                    remaining_fuel = loadout.fuel_load;
-                    FuelProjection {
-                        hop_cost,
-                        cumulative,
-                        remaining: Some(remaining_fuel),
-                        warning: Some("REFUEL".to_string()),
-                    }
-                } else {
-                    remaining_fuel = (remaining_fuel - hop_cost).max(0.0);
-                    FuelProjection {
-                        hop_cost,
-                        cumulative,
-                        remaining: Some(remaining_fuel),
-                        warning: None,
-                    }
-                }
-            } else {
-                // Use the running `remaining_fuel` for static mode as well so that a
-                // refuel only occurs when the tank is actually insufficient and a
-                // single refuel resets the remaining for subsequent hops.
-                if hop_cost > remaining_fuel {
-                    refueled = true;
-                    remaining_fuel = loadout.fuel_load;
-                    FuelProjection {
-                        hop_cost,
-                        cumulative,
-                        remaining: Some(remaining_fuel),
-                        warning: Some("REFUEL".to_string()),
-                    }
-                } else {
-                    remaining_fuel = (remaining_fuel - hop_cost).max(0.0);
-                    FuelProjection {
-                        hop_cost,
-                        cumulative,
-                        remaining: Some(remaining_fuel),
-                        warning: None,
-                    }
-                }
-            };
+            // Use shared helper to detect refuel and build projection
+            let (projection, new_remaining) = crate::ship::project_fuel_for_hop(
+                hop_cost,
+                cumulative,
+                remaining_fuel,
+                loadout.fuel_load,
+            );
+
+            if projection.warning.is_some() {
+                refueled = true;
+            }
+            remaining_fuel = new_remaining;
 
             if let Some(step) = self.steps.get_mut(idx) {
                 step.fuel = Some(projection);

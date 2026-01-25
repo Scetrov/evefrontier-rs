@@ -453,26 +453,19 @@ pub fn handle_scout_range(
                 evefrontier_lib::calculate_jump_fuel_cost(current_mass, hop_distance, &fuel_config)
                     .unwrap_or(0.0);
 
-            // Check for fuel warning BEFORE updating remaining_fuel
-            if hop_fuel > remaining_fuel {
-                sys.fuel_warning = Some("REFUEL".to_string());
-                // Reset fuel to capacity after refueling; remaining_fuel now reflects
-                // fuel available at arrival (after refuel, before consuming fuel
-                // for this hop), matching the route command's convention.
-                remaining_fuel = fuel_load;
-            } else {
-                // No refuel: consume fuel for this hop from the existing remainder.
-                remaining_fuel -= hop_fuel;
-                if remaining_fuel < 0.0 {
-                    // Defensive clamp; in theory remaining_fuel should not go negative
-                    // because we only enter this branch when hop_fuel <= remaining_fuel.
-                    remaining_fuel = 0.0;
-                }
-            }
-
-            // Track total fuel consumed across all hops. This always increases by
-            // hop_fuel regardless of refuel events.
+            // Track cumulative fuel before projection (cumulative always increases by hop_fuel)
             cumulative_fuel += hop_fuel;
+
+            // Use shared helper to detect refuel and update remaining fuel
+            let (projection, new_remaining) = evefrontier_lib::project_fuel_for_hop(
+                hop_fuel,
+                cumulative_fuel,
+                remaining_fuel,
+                fuel_load,
+            );
+
+            remaining_fuel = new_remaining;
+            sys.fuel_warning = projection.warning.clone();
 
             // Calculate heat using shared helper to keep DRY and match route semantics
             let prev_ambient = if hop_index > 0 {
