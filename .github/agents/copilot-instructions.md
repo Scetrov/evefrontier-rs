@@ -42,7 +42,7 @@ Documentation (Markdown) with shell command examples: Follow standard convention
 ## Recent Changes
 - 026-scout-fuel-heat-projection: Added Rust 1.91.1 (per `.rust-toolchain`) + clap (CLI args), evefrontier-lib (fuel/heat calculations, ship catalog)
 - 025-scout-cli-subcommand: Added Rust 1.91.1 (per `.rust-toolchain`) + clap (CLI parsing), serde/serde_json (JSON output), tracing (logging), evefrontier-lib (core logic)
-- 015-ship-data-downloader: Added Rust 1.91.1 + reqwest (blocking client, already used), zip, csv, serde,
+- 015-ship-data-downloader: Added Rust 1.91.1 + reqwest (blocking client, already used), zip, csv, serde
 
 
 <!-- MANUAL ADDITIONS START -->

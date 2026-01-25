@@ -226,8 +226,8 @@ fn test_scout_range_fuel_cumulative_tracking() {
         } else {
             // Without refuel, remaining should decrease from previous
             assert!(
-                rem2 < rem1 || has_refuel_warning,
-                "remaining fuel should decrease (unless previous had refuel): {} < {}",
+                rem2 < rem1,
+                "remaining fuel should decrease: {} < {}",
                 rem2,
                 rem1
             );
