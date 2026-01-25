@@ -22,6 +22,9 @@ use evefrontier_lib::{
     SpatialIndex, VerifyDiagnostics, VerifyOutput, Waypoint, WaypointType,
 };
 
+// Re-export OutputFormat from output module for backwards compatibility
+pub use output::OutputFormat;
+
 // === Value parser helpers for clap f64 validation ===
 
 /// Parse fuel quality, validating range 1.0-100.0
@@ -387,86 +390,7 @@ impl From<RouteAlgorithmArg> for RouteAlgorithm {
 }
 
 // Views removed; CLI always uses RouteOutputKind::Route.
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum, Default)]
-enum OutputFormat {
-    Text,
-    Rich,
-    Json,
-    /// Minimal path-only output with +/|/- prefixes.
-    Basic,
-    /// Emoji-enhanced readable output per EXAMPLES.md.
-    Emoji,
-    /// Enhanced format with system details (temp, planets, moons).
-    #[default]
-    Enhanced,
-    #[value(alias = "notepad")]
-    Note,
-}
-
-impl OutputFormat {
-    fn supports_banner(self) -> bool {
-        matches!(
-            self,
-            OutputFormat::Text | OutputFormat::Rich | OutputFormat::Emoji | OutputFormat::Enhanced
-        )
-    }
-
-    fn supports_footer(self) -> bool {
-        matches!(
-            self,
-            OutputFormat::Text
-                | OutputFormat::Rich
-                | OutputFormat::Emoji
-                | OutputFormat::Basic
-                | OutputFormat::Enhanced
-        )
-    }
-
-    fn render_download(self, output: &DownloadOutput) -> Result<()> {
-        // Download output is always plain text regardless of selected format.
-        println!(
-            "Dataset available at {} (requested release: {})",
-            output.dataset_path, output.release
-        );
-        if let Some(ref ship) = output.ship_data_path {
-            println!("Ship data available at {}", ship);
-        }
-        Ok(())
-    }
-
-    fn render_route_result(
-        self,
-        summary: &RouteSummary,
-        show_temps: bool,
-        base_url: &str,
-    ) -> Result<()> {
-        match self {
-            OutputFormat::Text => {
-                output::render_text(summary, show_temps, base_url);
-            }
-            OutputFormat::Rich => {
-                output::render_rich(summary, show_temps, base_url);
-            }
-            OutputFormat::Json => {
-                output::render_json(summary)?;
-            }
-            OutputFormat::Basic => {
-                output::render_basic(summary, show_temps, base_url);
-            }
-            OutputFormat::Emoji => {
-                output::render_emoji(summary, show_temps, base_url);
-            }
-            OutputFormat::Note => {
-                output::render_note(summary, base_url);
-            }
-            OutputFormat::Enhanced => {
-                output::render_enhanced(summary, base_url);
-            }
-        }
-        Ok(())
-    }
-}
+// OutputFormat is now defined in output.rs and re-exported from crate root.
 
 #[derive(Debug, Clone, Serialize)]
 struct DownloadOutput {
@@ -620,7 +544,11 @@ fn handle_download(context: &AppContext) -> Result<()> {
     };
 
     let output = DownloadOutput::new(&paths.database, &release, ship_path_buf.as_deref());
-    context.output_format().render_download(&output)
+    context.output_format().render_download(
+        &output.dataset_path,
+        &output.release,
+        output.ship_data_path.as_deref(),
+    )
 }
 
 fn handle_index_build(context: &AppContext, args: &IndexBuildArgs) -> Result<()> {

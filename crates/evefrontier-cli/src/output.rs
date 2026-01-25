@@ -3,6 +3,10 @@
 //! This module provides formatters for rendering route summaries
 //! in various output formats (text, rich, enhanced, etc.).
 
+use anyhow::Result;
+use clap::ValueEnum;
+use serde::Serialize;
+
 use crate::terminal::{supports_color, ColorPalette};
 use evefrontier_lib::RouteSummary;
 
@@ -10,6 +14,105 @@ mod enhanced;
 pub use enhanced::EnhancedRenderer;
 mod text;
 pub use text::{render_basic, render_emoji, render_json, render_note, render_rich, render_text};
+
+/// CLI output format selection.
+///
+/// Controls how route results and other command outputs are rendered.
+#[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum, Default, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum OutputFormat {
+    /// Plain text output.
+    Text,
+    /// Rich text with colors and symbols.
+    Rich,
+    /// JSON output for programmatic consumption.
+    Json,
+    /// Minimal path-only output with +/|/- prefixes.
+    Basic,
+    /// Emoji-enhanced readable output per EXAMPLES.md.
+    Emoji,
+    /// Enhanced format with system details (temp, planets, moons).
+    #[default]
+    Enhanced,
+    /// In-game note format.
+    #[value(alias = "notepad")]
+    Note,
+}
+
+impl OutputFormat {
+    /// Check if this format supports the CLI banner.
+    pub fn supports_banner(self) -> bool {
+        matches!(
+            self,
+            OutputFormat::Text | OutputFormat::Rich | OutputFormat::Emoji | OutputFormat::Enhanced
+        )
+    }
+
+    /// Check if this format supports the CLI footer.
+    pub fn supports_footer(self) -> bool {
+        matches!(
+            self,
+            OutputFormat::Text
+                | OutputFormat::Rich
+                | OutputFormat::Emoji
+                | OutputFormat::Basic
+                | OutputFormat::Enhanced
+        )
+    }
+
+    /// Render download output.
+    ///
+    /// Takes the dataset path, release description, and optional ship data path.
+    pub fn render_download(
+        self,
+        dataset_path: &str,
+        release: &impl std::fmt::Display,
+        ship_data_path: Option<&str>,
+    ) -> Result<()> {
+        // Download output is always plain text regardless of selected format.
+        println!(
+            "Dataset available at {} (requested release: {})",
+            dataset_path, release
+        );
+        if let Some(ship) = ship_data_path {
+            println!("Ship data available at {}", ship);
+        }
+        Ok(())
+    }
+
+    /// Render route result in the selected format.
+    pub fn render_route_result(
+        self,
+        summary: &RouteSummary,
+        show_temps: bool,
+        base_url: &str,
+    ) -> Result<()> {
+        match self {
+            OutputFormat::Text => {
+                render_text(summary, show_temps, base_url);
+            }
+            OutputFormat::Rich => {
+                render_rich(summary, show_temps, base_url);
+            }
+            OutputFormat::Json => {
+                render_json(summary)?;
+            }
+            OutputFormat::Basic => {
+                render_basic(summary, show_temps, base_url);
+            }
+            OutputFormat::Emoji => {
+                render_emoji(summary, show_temps, base_url);
+            }
+            OutputFormat::Note => {
+                render_note(summary, base_url);
+            }
+            OutputFormat::Enhanced => {
+                render_enhanced(summary, base_url);
+            }
+        }
+        Ok(())
+    }
+}
 
 /// Render using the enhanced renderer (keeps compatibility with previous API)
 pub fn render_enhanced(summary: &RouteSummary, base_url: &str) {
