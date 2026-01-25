@@ -448,7 +448,11 @@ pub fn handle_scout_range(
                             return Err(err);
                         } else {
                             // Implicit default ship not found - warn and continue without
-                            eprintln!("Warning: {}. Proceeding without ship projections.", err);
+                            eprintln!(
+                                "Warning: Default ship '{}' not found. {}. Proceeding without ship projections.",
+                                ship_name,
+                                err
+                            );
                             None
                         }
                     }
