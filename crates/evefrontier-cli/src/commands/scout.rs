@@ -6,7 +6,7 @@
 
 use anyhow::{Context, Result};
 use evefrontier_lib::{
-    ensure_dataset, load_starmap, try_load_spatial_index, DatasetRelease, FuelConfig,
+    ensure_dataset, load_starmap, try_load_spatial_index, DatasetRelease, FuelConfig, HeatConfig,
     NeighbourQuery, ShipCatalog, ShipLoadout,
 };
 
@@ -427,16 +427,19 @@ pub fn handle_scout_range(
 
         // Apply nearest-neighbor ordering
         let mut ordered_systems = nearest_neighbor_order(position, systems_with_positions);
+        let total_hops = ordered_systems.len();
 
         // Pre-collect ambient temperatures for lookback during iteration
         let ambient_temps: Vec<Option<f64>> =
             ordered_systems.iter().map(|s| s.min_temp_k).collect();
+        let origin_ambient = system.metadata.min_external_temp;
 
         // Calculate fuel and heat projections for each hop
         let mut cumulative_fuel = 0.0;
         let mut remaining_fuel = fuel_load;
         let mut total_distance = 0.0;
-        let mut max_instant_temp = 0.0_f64;
+        let mut last_residual_heat = evefrontier_lib::HEAT_NOMINAL;
+        let heat_cfg = HeatConfig::default();
 
         for (hop_index, sys) in ordered_systems.iter_mut().enumerate() {
             let hop_distance = sys.distance_ly;
@@ -471,50 +474,42 @@ pub fn handle_scout_range(
             // hop_fuel regardless of refuel events.
             cumulative_fuel += hop_fuel;
 
-            // Calculate heat using per-hop model (matching route behavior)
-            // Each hop starts from the previous system's ambient temperature or HEAT_NOMINAL
-            let hop_heat = evefrontier_lib::calculate_jump_heat(
-                current_mass,
-                hop_distance,
-                ship.base_mass_kg,
-                1.0, // calibration constant
-            )
-            .unwrap_or(0.0);
-
-            // Use per-hop heat model: start_temp + hop_heat
-            // Assume ship starts at nominal or ambient temperature (cooling between hops)
+            // Calculate heat using shared helper to keep DRY and match route semantics
             let prev_ambient = if hop_index > 0 {
                 ambient_temps.get(hop_index - 1).copied().flatten()
             } else {
-                None
+                origin_ambient
             };
-            let start_temp = evefrontier_lib::HEAT_NOMINAL.max(prev_ambient.unwrap_or(0.0));
-            let instant_temp = start_temp + hop_heat;
-            max_instant_temp = max_instant_temp.max(instant_temp);
+            let is_goal = hop_index + 1 == total_hops;
+            let next_is_gate = false; // scout range visits are jumps, not gates
+            let proj = evefrontier_lib::ship::project_heat_for_jump(
+                current_mass,
+                ship.specific_heat,
+                hop_distance,
+                ship.base_mass_kg,
+                heat_cfg.calibration_constant,
+                prev_ambient,
+                sys.min_temp_k,
+                is_goal,
+                next_is_gate,
+            )
+            .map_err(|e| anyhow::anyhow!("heat projection failed: {}", e))?;
 
-            // Check for heat warnings based on instantaneous temperature thresholds
-            if instant_temp >= evefrontier_lib::HEAT_CRITICAL {
-                // CRITICAL: Calculate cooldown time to get back to nominal
-                let target_temp = evefrontier_lib::HEAT_NOMINAL;
-                let env_temp = sys.min_temp_k.unwrap_or(30.0);
-                let k = evefrontier_lib::compute_cooling_constant(
-                    current_mass,
-                    ship.specific_heat,
-                    sys.min_temp_k,
-                );
-                let cooldown =
-                    evefrontier_lib::calculate_cooling_time(instant_temp, target_temp, env_temp, k);
-                sys.heat_warning = Some("CRITICAL".to_string());
-                sys.cooldown_seconds = Some(cooldown);
-            } else if instant_temp >= evefrontier_lib::HEAT_OVERHEATED {
-                sys.heat_warning = Some("OVERHEATED".to_string());
+            if let Some(w) = proj.warning.clone() {
+                sys.heat_warning = Some(w);
+            }
+            if let Some(wait) = proj.wait_time_seconds {
+                sys.cooldown_seconds = Some(wait);
             }
 
             sys.hop_fuel = Some(hop_fuel);
             sys.cumulative_fuel = Some(cumulative_fuel);
             sys.remaining_fuel = Some(remaining_fuel);
-            sys.hop_heat = Some(hop_heat);
-            sys.cumulative_heat = Some(instant_temp); // Store instantaneous temp for this hop
+            sys.hop_heat = Some(proj.hop_heat);
+            sys.cumulative_heat = proj.residual_heat; // align with route: store residual
+            if let Some(r) = proj.residual_heat {
+                last_residual_heat = r;
+            }
         }
 
         // Sum all cooldown times for total wait time
@@ -539,7 +534,7 @@ pub fn handle_scout_range(
             count: ordered_systems.len(),
             total_distance_ly: Some(total_distance),
             total_fuel: Some(cumulative_fuel),
-            final_heat: Some(max_instant_temp), // Report max heat reached, not cumulative
+            final_heat: Some(last_residual_heat), // Match route: final residual at destination
             total_wait_time_seconds: if total_wait_time_seconds > 0.0 {
                 Some(total_wait_time_seconds)
             } else {

@@ -299,25 +299,23 @@ fn test_scout_range_heat_cumulative() {
     let json: Value = serde_json::from_str(&stdout).expect("valid JSON output");
     let systems = json["systems"].as_array().expect("systems array");
 
-    // Note: cumulative_heat now stores the instantaneous temperature (start_temp + hop_heat),
-    // not the cumulative sum of all hop heats. This matches the route command's per-hop heat model.
-    // The start_temp is max(HEAT_NOMINAL=30.0, prev_system_ambient_temp).
+    // Note: cumulative_heat now stores the residual temperature at arrival
+    // (after any cooldown to nominal/ambient), matching the route command's model.
+    // The start_temp is max(HEAT_NOMINAL=30.0, prev_system_ambient_temp), and residual is
+    // max(HEAT_NOMINAL, destination ambient) when cooling is applied.
     const HEAT_NOMINAL: f64 = 30.0;
 
     if !systems.is_empty() {
         let heat1 = systems[0]["cumulative_heat"]
             .as_f64()
             .expect("cumulative_heat is f64");
-        let hop1 = systems[0]["hop_heat"].as_f64().unwrap();
-
-        // First system's cumulative_heat = start_temp + hop_heat
-        // For first hop, start_temp = max(HEAT_NOMINAL, origin_ambient) = HEAT_NOMINAL (origin temp unknown)
-        let expected_heat1 = HEAT_NOMINAL + hop1;
+        let dest_ambient = systems[0]["min_temp_k"].as_f64().unwrap_or(0.0);
+        let expected_residual = HEAT_NOMINAL.max(dest_ambient);
         assert!(
-            (heat1 - expected_heat1).abs() < 1.0,
-            "first system cumulative_heat should be approximately HEAT_NOMINAL + hop_heat: got {}, expected {}",
+            (heat1 - expected_residual).abs() < 1.0,
+            "first system residual (cumulative_heat) should be approximately max(NOMINAL, dest ambient): got {}, expected {}",
             heat1,
-            expected_heat1
+            expected_residual
         );
     }
 
@@ -327,19 +325,20 @@ fn test_scout_range_heat_cumulative() {
         "final_heat should be present when ship is specified"
     );
 
-    // Final heat is the maximum instantaneous temperature reached
+    // Final heat equals the destination residual heat
     if !systems.is_empty() {
         let final_heat = json["final_heat"].as_f64().expect("final_heat");
-        // Final heat should be >= any individual system's cumulative_heat
-        for sys in systems {
-            let sys_heat = sys["cumulative_heat"].as_f64().unwrap_or(0.0);
-            assert!(
-                final_heat >= sys_heat - 0.01,
-                "final_heat should be >= all system heats: final={}, system={}",
-                final_heat,
-                sys_heat
-            );
-        }
+        let last_heat = systems
+            .last()
+            .and_then(|s| s.get("cumulative_heat"))
+            .and_then(|v| v.as_f64())
+            .unwrap_or(0.0);
+        assert!(
+            (final_heat - last_heat).abs() < 1.0,
+            "final_heat should approximately equal last system residual: final={}, last={}",
+            final_heat,
+            last_heat
+        );
     }
 }
 
@@ -480,39 +479,24 @@ fn test_scout_range_critical_cooldown() {
     let json: Value = serde_json::from_str(&stdout).expect("valid JSON output");
     let systems = json["systems"].as_array().expect("systems array");
 
-    // Check if any system has heat >= 150 (HEAT_CRITICAL threshold)
-    // and has both heat_warning and cooldown_seconds
-    for sys in systems {
-        let cumulative_heat = sys["cumulative_heat"].as_f64().unwrap_or(0.0);
-        if cumulative_heat >= 150.0 {
-            // Should have CRITICAL warning
-            let warning = sys.get("heat_warning");
-            assert!(
-                warning.is_some() && !warning.unwrap().is_null(),
-                "system with cumulative_heat {} should have heat_warning",
-                cumulative_heat
-            );
-
-            // Warning should indicate CRITICAL
-            let warning_str = warning.unwrap().as_str().unwrap_or("");
-            assert!(
-                warning_str.contains("CRITICAL") || warning_str.contains("🔥"),
-                "heat_warning should indicate CRITICAL for heat {}: got '{}'",
-                cumulative_heat,
-                warning_str
-            );
-
-            // Should have cooldown_seconds
-            assert!(
-                sys.get("cooldown_seconds").is_some() && !sys["cooldown_seconds"].is_null(),
-                "system with CRITICAL heat should have cooldown_seconds"
-            );
-
-            let cooldown = sys["cooldown_seconds"].as_f64().unwrap();
-            assert!(
-                cooldown > 0.0,
-                "cooldown_seconds should be positive for CRITICAL heat"
-            );
+    // For any step with CRITICAL warning (instantaneous), expect cooldown_seconds
+    // except possibly the final destination which does not require pre-arrival cooling.
+    for (idx, sys) in systems.iter().enumerate() {
+        if let Some(w) = sys.get("heat_warning").and_then(|v| v.as_str()) {
+            if w.contains("CRITICAL") {
+                let is_last = idx + 1 == systems.len();
+                if !is_last {
+                    assert!(
+                        sys.get("cooldown_seconds").is_some() && !sys["cooldown_seconds"].is_null(),
+                        "non-final system with CRITICAL warning should have cooldown_seconds"
+                    );
+                    let cooldown = sys["cooldown_seconds"].as_f64().unwrap();
+                    assert!(
+                        cooldown > 0.0,
+                        "cooldown_seconds should be positive for CRITICAL heat"
+                    );
+                }
+            }
         }
     }
 }
