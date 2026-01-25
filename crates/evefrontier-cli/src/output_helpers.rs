@@ -4,7 +4,6 @@ use evefrontier_lib::{RouteStep, RouteSummary};
 
 const COOLDOWN_DISPLAY_THRESHOLD_SECONDS: f64 = 0.5;
 const TAG_COLUMN_WIDTH: usize = 13;
-const COOLDOWN_COLUMN_PADDING: usize = 12;
 const FOOTER_LABEL_WIDTH: usize = 20;
 
 // =============================================================================
@@ -240,13 +239,7 @@ pub(crate) fn build_heat_segment_generic<T: RenderableStep>(
             } else {
                 "0.00".to_string()
             };
-            let mut res = format!(
-                "{}heat {:>width$}{}",
-                palette.red,
-                heat_str,
-                palette.reset,
-                width = widths.heat_val_width
-            );
+            let mut res = format!("{}heat {}{}", palette.red, heat_str, palette.reset);
 
             // Tag Column: Pad to 13 chars total (1 space before + 12-char badge)
             if let Some(w) = step.heat_warning() {
@@ -265,35 +258,25 @@ pub(crate) fn build_heat_segment_generic<T: RenderableStep>(
                 res.push_str(&" ".repeat(TAG_COLUMN_WIDTH));
             }
 
-            // Cooldown Column
+            // Cooldown Column (last column - no alignment padding needed)
             if widths.cooldown_val_width > 0 {
                 if let Some(wait) = step.cooldown_seconds() {
                     if wait > COOLDOWN_DISPLAY_THRESHOLD_SECONDS {
                         let cd_str = format_cooldown_duration(wait);
                         res.push_str(&format!(
-                            " {}({:>width$} to cool){}",
-                            palette.gray,
-                            cd_str,
-                            palette.reset,
-                            width = widths.cooldown_val_width
+                            " {}({} to cool){}",
+                            palette.gray, cd_str, palette.reset
                         ));
-                    } else {
-                        res.push_str(
-                            &" ".repeat(COOLDOWN_COLUMN_PADDING + widths.cooldown_val_width),
-                        );
                     }
-                } else {
-                    res.push_str(&" ".repeat(COOLDOWN_COLUMN_PADDING + widths.cooldown_val_width));
+                    // No padding needed when cooldown not displayed - it's the last column
                 }
+                // No padding needed when no cooldown value - it's the last column
             }
 
             Some(res)
         } else {
-            let mut padding = 5 + widths.heat_val_width + TAG_COLUMN_WIDTH;
-            if widths.cooldown_val_width > 0 {
-                padding += COOLDOWN_COLUMN_PADDING + widths.cooldown_val_width;
-            }
-            Some(" ".repeat(padding))
+            // No heat value - since heat is the last column, no padding needed
+            None
         }
     } else {
         None
