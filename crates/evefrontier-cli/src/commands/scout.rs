@@ -453,15 +453,23 @@ pub fn handle_scout_range(
             // Check for fuel warning BEFORE updating remaining_fuel
             if hop_fuel > remaining_fuel {
                 sys.fuel_warning = Some("REFUEL".to_string());
-                // Reset fuel to capacity after refueling
+                // Reset fuel to capacity after refueling; remaining_fuel now reflects
+                // fuel available at arrival (after refuel, before consuming fuel
+                // for this hop), matching the route command's convention.
                 remaining_fuel = fuel_load;
+            } else {
+                // No refuel: consume fuel for this hop from the existing remainder.
+                remaining_fuel -= hop_fuel;
+                if remaining_fuel < 0.0 {
+                    // Defensive clamp; in theory remaining_fuel should not go negative
+                    // because we only enter this branch when hop_fuel <= remaining_fuel.
+                    remaining_fuel = 0.0;
+                }
             }
 
+            // Track total fuel consumed across all hops. This always increases by
+            // hop_fuel regardless of refuel events.
             cumulative_fuel += hop_fuel;
-            remaining_fuel -= hop_fuel;
-            if remaining_fuel < 0.0 {
-                remaining_fuel = 0.0;
-            }
 
             // Calculate heat using per-hop model (matching route behavior)
             // Each hop starts from the previous system's ambient temperature or HEAT_NOMINAL

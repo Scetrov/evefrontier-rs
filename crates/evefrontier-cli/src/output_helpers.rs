@@ -1718,7 +1718,8 @@ pub(crate) fn build_scout_range_footer(
     if let Some(fuel) = result.total_fuel {
         num_width = num_width.max(format_with_separators(fuel.ceil() as u64).len());
     }
-    if let Some(remaining) = result.total_fuel.map(|f| ship.fuel_capacity - f) {
+    // Use the final system's remaining_fuel for width calculation (handles refueling correctly)
+    if let Some(remaining) = result.systems.last().and_then(|s| s.remaining_fuel) {
         num_width = num_width.max(format_with_separators(remaining.ceil() as u64).len());
     }
     if let Some(wait) = result.total_wait_time_seconds {
@@ -1760,8 +1761,13 @@ pub(crate) fn build_scout_range_footer(
             width = num_width
         ));
 
-        // Remaining
-        let remaining = ship.fuel_capacity - total_fuel;
+        // Remaining: use the final system's remaining_fuel field, not capacity - total_fuel.
+        // This correctly handles refueling scenarios where total_fuel > capacity.
+        let remaining = result
+            .systems
+            .last()
+            .and_then(|s| s.remaining_fuel)
+            .unwrap_or(0.0);
         let rem_str = format_with_separators(remaining.ceil() as u64);
         let l_rem = "Remaining:";
         lines.push(format!(

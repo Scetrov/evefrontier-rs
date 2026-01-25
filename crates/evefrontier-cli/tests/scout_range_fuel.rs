@@ -202,9 +202,11 @@ fn test_scout_range_fuel_cumulative_tracking() {
 
         // Verify remaining fuel behavior:
         // - If no refuel on second hop: rem2 < rem1
-        // - If refuel on second hop: rem2 = capacity - hop2
+        // - If refuel on second hop: rem2 = capacity (matching route command's convention:
+        //   remaining reflects fuel available at arrival after refuel, before consuming
+        //   fuel for the current hop)
         let rem2 = systems[1]["remaining_fuel"].as_f64().unwrap();
-        let hop2 = systems[1]["hop_fuel"].as_f64().unwrap();
+        let _hop2 = systems[1]["hop_fuel"].as_f64().unwrap();
         let has_refuel_warning2 = systems[1]
             .get("fuel_warning")
             .and_then(|v| v.as_str())
@@ -212,11 +214,12 @@ fn test_scout_range_fuel_cumulative_tracking() {
             .unwrap_or(false);
 
         if has_refuel_warning2 {
-            // After refuel, remaining = capacity - hop_fuel
-            let expected_rem2 = fuel_capacity - hop2;
+            // After refuel, remaining = capacity (fuel available at arrival after refuel)
+            // This matches the route command's behavior in output.rs:507-525
+            let expected_rem2 = fuel_capacity;
             assert!(
                 (rem2 - expected_rem2).abs() < 0.01,
-                "after refuel, remaining should equal capacity - hop cost: got {}, expected {}",
+                "after refuel, remaining should equal capacity: got {}, expected {}",
                 rem2,
                 expected_rem2
             );

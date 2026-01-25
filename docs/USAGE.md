@@ -491,9 +491,9 @@ Systems in range of Nod (5 found):
   (limit 5)
 
   1. ● Brana (18.5 ly)   3 Planets 2 Moons
-       │ min 285.00K  ⛽ 12.45  🔥 45.2  rem: 987.5
-  2. ● H:2L2S (24.3 ly)   1 Planet 4 Moons  ⚠ OVERHEATED
-       │ min 312.00K  ⛽ 15.82  🔥 58.1  rem: 971.7
+       │ min 285.00K, fuel 13 (rem 988)
+  2. ● H:2L2S (24.3 ly)   1 Planet 4 Moons
+       │ min 312.00K, fuel 16 (rem 972), heat 58.10 ⚠ OVERHEATED
 ...
 ───────────────────────────────────────
   Distance: 142.3 ly  │  Fuel: 85.4 / 1000 (914.6 remaining)  │  Final Heat: 285.4
