@@ -26,6 +26,7 @@ fn summary_rejects_empty_plans() {
         steps: Vec::new(),
         gates: 0,
         jumps: 0,
+        diagnostics: vec![],
     };
 
     let err = RouteSummary::from_plan(RouteOutputKind::Route, &starmap, &plan, None)
@@ -49,6 +50,7 @@ fn summary_from_plan_populates_names() {
         steps: vec![start, goal],
         gates: 1,
         jumps: 0,
+        diagnostics: vec![],
     };
 
     let summary = RouteSummary::from_plan(RouteOutputKind::Route, &starmap, &plan, None)
@@ -75,6 +77,7 @@ fn render_modes_include_expected_tokens() {
         steps: vec![start, goal],
         gates: 0, // In A* hybrid this may be spatial; tests only assert tokens
         jumps: 1,
+        diagnostics: vec![],
     };
 
     let summary = RouteSummary::from_plan(RouteOutputKind::Route, &starmap, &plan, None)

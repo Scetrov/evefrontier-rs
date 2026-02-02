@@ -12,7 +12,7 @@ infrastructure and adds the `metrics` crate with Prometheus exposition.
 
 ## Technical Context
 
-**Language/Version**: Rust 1.91.1 (per `.rust-toolchain`)  
+**Language/Version**: Rust 1.93.0 (per `.rust-toolchain`)  
 **Primary Dependencies**: axum 0.8, tracing, tracing-subscriber (json feature), metrics,
 metrics-exporter-prometheus  
 **Storage**: N/A (metrics are in-memory with Prometheus scraping)  

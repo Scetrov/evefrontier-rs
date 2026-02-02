@@ -1,7 +1,7 @@
 # Quickstart — Ship Data & Fuel Calculations
 
 ## Prerequisites
-- Rust 1.91.1 (from `.rust-toolchain`)
+- Rust 1.93.0 (from `.rust-toolchain`)
 - Dataset cache writeable (default OS cache dir)
 - Fixture DB available at `docs/fixtures/minimal_static_data.db`
 

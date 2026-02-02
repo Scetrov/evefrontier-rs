@@ -140,14 +140,12 @@ fn check_heat_safety(
 
     // Validate required configuration
     let (Some(ship), Some(loadout)) = (&constraints.ship, &constraints.loadout) else {
-        tracing::error!("avoid_critical_state requested but missing ship/loadout; rejecting edge");
+        // Silently reject edge; route failure will be reported at the end with helpful suggestions
         return false;
     };
 
     let Some(heat_config) = constraints.heat_config else {
-        tracing::error!(
-            "heat_config must be set when avoid_critical_state is true; rejecting edge"
-        );
+        // Silently reject edge; route failure will be reported at the end with helpful suggestions
         return false;
     };
 
@@ -166,7 +164,7 @@ fn check_heat_safety(
 // =============================================================================
 
 /// Constraints applied during pathfinding.
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct PathConstraints {
     /// Maximum distance allowed for any single edge.
     pub max_jump: Option<f64>,
@@ -177,6 +175,7 @@ pub struct PathConstraints {
     /// Maximum allowed stellar surface temperature in Kelvin (only enforced for spatial jumps).
     pub max_temperature: Option<f64>,
     /// Avoid hops that would cause the engine to become critical (requires ship/loadout).
+    /// Defaults to true - heat-aware routing is enabled by default.
     pub avoid_critical_state: bool,
     /// Optional ship attributes used to evaluate heat for a hop.
     pub ship: Option<ShipAttributes>,
@@ -184,6 +183,21 @@ pub struct PathConstraints {
     pub loadout: Option<ShipLoadout>,
     /// Optional heat configuration (calibration constant etc.); required when `avoid_critical_state` is `true`.
     pub heat_config: Option<HeatConfig>,
+}
+
+impl Default for PathConstraints {
+    fn default() -> Self {
+        Self {
+            max_jump: None,
+            avoid_gates: false,
+            avoided_systems: HashSet::new(),
+            max_temperature: None,
+            avoid_critical_state: true, // Heat-aware routing enabled by default
+            ship: None,
+            loadout: None,
+            heat_config: None,
+        }
+    }
 }
 
 impl PathConstraints {
@@ -700,7 +714,8 @@ mod tests {
     #[test]
     fn default_constraints_are_non_blocking() {
         let c = PathConstraints::default();
-        assert!(!c.avoid_critical_state);
+        // After bug fix: avoid_critical_state now defaults to true
+        assert!(c.avoid_critical_state);
         assert!(c.ship.is_none());
         assert!(c.loadout.is_none());
     }
@@ -844,9 +859,11 @@ mod tests {
 
         let graph = crate::graph::build_hybrid_graph(&starmap);
 
-        let route_distance =
-            find_route_dijkstra(&graph, Some(&starmap), a.id, c.id, &Default::default())
-                .expect("route found");
+        let mut constraints = PathConstraints::default();
+        constraints.avoid_critical_state = false; // Disable heat checks for this test
+
+        let route_distance = find_route_dijkstra(&graph, Some(&starmap), a.id, c.id, &constraints)
+            .expect("route found");
         assert_eq!(route_distance, vec![a.id, c.id]);
 
         let ship = ShipAttributes {
@@ -865,7 +882,7 @@ mod tests {
             Some(&starmap),
             a.id,
             c.id,
-            &Default::default(),
+            &constraints,
             mass,
             &fuel_cfg,
         )

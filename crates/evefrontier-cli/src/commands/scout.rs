@@ -12,11 +12,11 @@ use evefrontier_lib::{
 
 use crate::output::OutputFormat;
 use crate::output_helpers::{
-    format_scout_gates_basic, format_scout_gates_emoji, format_scout_gates_enhanced,
-    format_scout_gates_note, format_scout_gates_text, format_scout_range_basic,
-    format_scout_range_emoji, format_scout_range_enhanced, format_scout_range_note,
-    format_scout_range_text, GateNeighbor, RangeNeighbor, RangeQueryParams, ScoutGatesResult,
-    ScoutRangeResult, ShipInfo,
+    build_message_box, format_scout_gates_basic, format_scout_gates_emoji,
+    format_scout_gates_enhanced, format_scout_gates_note, format_scout_gates_text,
+    format_scout_range_basic, format_scout_range_emoji, format_scout_range_enhanced,
+    format_scout_range_note, format_scout_range_text, GateNeighbor, MessageBoxLevel, RangeNeighbor,
+    RangeQueryParams, ScoutGatesResult, ScoutRangeResult, ShipInfo,
 };
 use crate::terminal::ColorPalette;
 use crate::{ScoutGatesArgs, ScoutRangeArgs};
@@ -290,28 +290,13 @@ pub fn handle_scout_range(
         }
     }
 
-    // Determine whether the user provided any scout-specific options; if not, we're in
-    // a zero-config invocation and may apply friendly defaults (like default ship).
-    let user_provided_options = args.radius.is_some()
-        || args.max_temp.is_some()
-        || args.ship.is_some()
-        || args.fuel_quality != 10.0
-        || args.cargo_mass != 0.0
-        || args.fuel_load.is_some()
-        || args.limit != 10; // Default limit
-
     // Determine the effective ship name (support 'None' to explicitly disable ship-based planning).
-    // Only inject a default ship when the user did not provide other options (zero-config case).
+    // HARD REQUIREMENT: Default to "Reflex" unless user explicitly specifies --ship <name> or --ship none.
+    // Query constraints (--radius, --max-temp, --limit) do NOT affect ship defaulting.
     let effective_ship_name: Option<String> = match args.ship.as_deref() {
         Some(s) if s.eq_ignore_ascii_case("none") => None,
         Some(s) => Some(s.to_string()),
-        None => {
-            if user_provided_options {
-                None
-            } else {
-                Some("Reflex".to_string())
-            }
-        }
+        None => Some("Reflex".to_string()),
     };
 
     // Load dataset
@@ -325,7 +310,16 @@ pub fn handle_scout_range(
     let spatial_index = match try_load_spatial_index(&paths.database) {
         Some(index) => index,
         None => {
-            eprintln!("warning: Spatial index not found. Building on-demand...");
+            let palette = ColorPalette::detect();
+            let supports_unicode = crate::terminal::supports_unicode();
+            let warning = build_message_box(
+                MessageBoxLevel::Warn,
+                "Spatial index not found. Building on-demand...",
+                &palette,
+                supports_unicode,
+                None,
+            );
+            eprint!("{}", warning);
             evefrontier_lib::SpatialIndex::build(&starmap)
         }
     };
@@ -657,16 +651,45 @@ pub fn handle_scout_range(
         OutputFormat::Enhanced => {
             let palette = ColorPalette::detect();
             print!("{}", format_scout_range_enhanced(&result, &palette));
+            // Add info box when ship data is present (matches route behavior)
+            if result.ship.is_some() {
+                println!();
+                crate::output_helpers::print_estimation_warning_box_with_palette(&palette);
+            }
         }
         OutputFormat::Text => {
             print!("{}", format_scout_range_text(&result, true));
+            // Add info box when ship data is present
+            if result.ship.is_some() {
+                println!();
+                crate::output_helpers::print_estimation_warning_box_gray_reset(
+                    crate::terminal::colors::GRAY,
+                    crate::terminal::colors::RESET,
+                );
+            }
         }
         OutputFormat::Rich => {
             // Rich uses text format with temperatures shown
             print!("{}", format_scout_range_text(&result, true));
+            // Add info box when ship data is present
+            if result.ship.is_some() {
+                println!();
+                crate::output_helpers::print_estimation_warning_box_gray_reset(
+                    crate::terminal::colors::GRAY,
+                    crate::terminal::colors::RESET,
+                );
+            }
         }
         OutputFormat::Emoji => {
             print!("{}", format_scout_range_emoji(&result, true));
+            // Add info box when ship data is present
+            if result.ship.is_some() {
+                println!();
+                crate::output_helpers::print_estimation_warning_box_gray_reset(
+                    crate::terminal::colors::GRAY,
+                    crate::terminal::colors::RESET,
+                );
+            }
         }
         OutputFormat::Note => {
             print!("{}", format_scout_range_note(&result));

@@ -7,7 +7,7 @@
 Implement a cooling time indicator in the route output. The calculation uses Newton's Law of Cooling ($T(t) = T_{env} + (T_0 - T_{env}) e^{-kt}$) to estimate the time required for a ship to cool from its post-jump temperature to the nominal temperature ($30K$) or the system-specific jump threshold. The indicator will be formatted as `XmYs` (e.g., `2m4s`).
 
 ## Technical Context
-**Language/Version**: Rust 1.91.1
+**Language/Version**: Rust 1.93.0
 **Primary Dependencies**: `evefrontier-lib`, `clap`, `serde`
 **Storage**: N/A (runtime calculation)
 **Testing**: `cargo test`, unit tests in `crates/evefrontier-lib/src/ship.rs` and `crates/evefrontier-lib/src/output.rs`.

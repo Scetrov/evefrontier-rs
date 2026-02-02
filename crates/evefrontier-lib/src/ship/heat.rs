@@ -290,8 +290,9 @@ pub fn project_heat_for_jump(params: HeatProjectionParams) -> Result<HeatProject
     )?;
     let hop_heat = hop_energy / (params.mass * params.specific_heat);
 
-    // Starting temperature is nominal or the origin ambient, whichever is higher
-    let start_temp = HEAT_NOMINAL.max(params.prev_ambient.unwrap_or(0.0));
+    // Starting temperature is the origin ambient temperature (can be as low as 0.1K per game mechanics)
+    // Use max(0.0, ...) only to prevent negative values from invalid data
+    let start_temp = params.prev_ambient.unwrap_or(0.0).max(0.0);
     let candidate = start_temp + hop_heat;
 
     // Determine warnings from instantaneous temperature
@@ -320,8 +321,8 @@ pub fn project_heat_for_jump(params: HeatProjectionParams) -> Result<HeatProject
             let wait = calculate_cooling_time(candidate, target, env_temp, k);
             if wait > 0.0 {
                 wait_time = Some(wait);
-                // After waiting, residual is at the floor (nominal or ambient)
-                residual = target.max(env_temp);
+                // After waiting, residual respects the ambient floor (target or ambient + epsilon)
+                residual = target.max(env_temp + COOLING_EPSILON);
             }
             can_proceed = true;
         } else {

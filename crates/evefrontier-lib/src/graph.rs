@@ -278,7 +278,7 @@ impl Default for GraphBuildOptions {
 ///
 /// If no index is provided, builds one automatically (with a warning for large datasets).
 pub fn build_spatial_graph_indexed(starmap: &Starmap, options: &GraphBuildOptions) -> Graph {
-    let index = get_or_build_index(starmap, options);
+    let (index, _diagnostics) = get_or_build_index(starmap, options);
     let adjacency = build_spatial_adjacency_indexed(starmap, &index, options);
 
     Graph {
@@ -291,7 +291,7 @@ pub fn build_spatial_graph_indexed(starmap: &Starmap, options: &GraphBuildOption
 ///
 /// If no index is provided, builds one automatically (with a warning for large datasets).
 pub fn build_hybrid_graph_indexed(starmap: &Starmap, options: &GraphBuildOptions) -> Graph {
-    let index = get_or_build_index(starmap, options);
+    let (index, _diagnostics) = get_or_build_index(starmap, options);
     let gate = build_gate_adjacency(starmap);
     let spatial = build_spatial_adjacency_indexed(starmap, &index, options);
     let adjacency = merge_adjacency(starmap, gate, spatial);
@@ -302,20 +302,18 @@ pub fn build_hybrid_graph_indexed(starmap: &Starmap, options: &GraphBuildOptions
     }
 }
 
-fn get_or_build_index(starmap: &Starmap, options: &GraphBuildOptions) -> Arc<SpatialIndex> {
+fn get_or_build_index(
+    starmap: &Starmap,
+    options: &GraphBuildOptions,
+) -> (Arc<SpatialIndex>, Option<usize>) {
     if let Some(ref index) = options.spatial_index {
-        return Arc::clone(index);
+        return (Arc::clone(index), None);
     }
 
+    // Build spatial index in-memory (may be slow for large datasets)
     let system_count = starmap.systems.len();
-    if system_count > 100 {
-        warn!(
-            systems = system_count,
-            "spatial index not provided, building in-memory (this may be slow for large datasets)"
-        );
-    }
-
-    Arc::new(SpatialIndex::build(starmap))
+    let index = Arc::new(SpatialIndex::build(starmap));
+    (index, Some(system_count))
 }
 
 fn build_spatial_adjacency_indexed(
@@ -577,7 +575,10 @@ mod tests {
 
         // Run Dijkstra from A to C; with gate edges weighted by physical distance
         // the expected chosen route should be the direct spatial edge A->C.
-        let route = find_route_dijkstra(&graph, Some(&starmap), a.id, c.id, &Default::default())
+        let mut constraints = crate::path::PathConstraints::default();
+        constraints.avoid_critical_state = false; // Disable heat checks for this test
+
+        let route = find_route_dijkstra(&graph, Some(&starmap), a.id, c.id, &constraints)
             .expect("route found");
 
         assert_eq!(route, vec![a.id, c.id]);

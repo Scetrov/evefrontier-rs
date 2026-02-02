@@ -58,7 +58,7 @@ This research documents the patterns, rationale, and current implementation to i
 
 **Rationale**: 
 - `production` excludes test files so changing tests doesn't invalidate cached binaries
-- `sharedGlobals` ensures Rust 1.91.1 or Node 20 upgrades invalidate all caches (safe, prevents stale binaries)
+- `sharedGlobals` ensures Rust 1.93.0 or Node 20 upgrades invalidate all caches (safe, prevents stale binaries)
 - Separate inputs allow fine-grained cache control per target type
 
 **Consequence**: Cache keys are deterministic and reproducible; changing tests doesn't rebuild binaries unnecessarily.

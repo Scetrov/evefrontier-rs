@@ -139,7 +139,7 @@ refactorings are easier to review and less risky than large rewrites.
 
 ### Toolchain & Reproducibility
 
-- Rust version MUST match `.rust-toolchain` (currently 1.91.1)
+- Rust version MUST match `.rust-toolchain` (currently 1.93.0)
 - All crates MUST build cleanly with `cargo build --workspace` and `cargo build --release`
 - All crates MUST pass `cargo fmt --all -- --check` (automatic formatting)
 - All crates MUST pass `cargo clippy --workspace --all-targets -D warnings` (strict lints enforced

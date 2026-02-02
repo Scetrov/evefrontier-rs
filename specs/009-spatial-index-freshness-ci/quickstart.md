@@ -47,7 +47,7 @@ spatial-index-freshness:
     - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: '1.91.1'
+        toolchain: '1.93.0'
     - name: Verify spatial index freshness
       run: cargo run -p evefrontier-cli --release -- index-verify --data-dir data/
 ```

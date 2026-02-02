@@ -185,14 +185,16 @@ evefrontier-cli route --from "Nod" --to "Brana" --avoid-gates --avoid-critical-s
 ### Fuel projection (optional)
 
 When planning routes, you can optionally calculate fuel consumption by specifying a ship and fuel
-quality. The CLI will display fuel cost for each hop and total fuel required for the route.
+quality. **When --ship is omitted, routes use the Reflex (default ship) for heat and fuel
+calculations.** Heat-aware routing (--avoid-critical-state) is enabled by default using Reflex
+stats unless explicitly disabled with --no-avoid-critical-state.
 
 ```bash
 # Use default ship (Reflex) and fuel quality (10%) - no flags needed
 evefrontier-cli route --from "Nod" --to "Brana"
 
 # Specify a different ship
-evefrontier-cli route --from "Nod" --to "Brana" --ship "Reflex"
+evefrontier-cli route --from "Nod" --to "Brana" --ship "Vanguard"
 
 # Adjust fuel quality (1-100, default 10)
 evefrontier-cli route --from "Nod" --to "Brana" --fuel-quality 15

@@ -9,7 +9,7 @@ Add `scout gates` and `scout range` CLI subcommands to expose existing Lambda/se
 
 ## Technical Context
 
-**Language/Version**: Rust 1.91.1 (per `.rust-toolchain`)  
+**Language/Version**: Rust 1.93.0 (per `.rust-toolchain`)  
 **Primary Dependencies**: clap (CLI parsing), serde/serde_json (JSON output), tracing (logging), evefrontier-lib (core logic)  
 **Storage**: SQLite dataset (`static_data.db`) + spatial index (`.spatial.bin`)  
 **Testing**: `cargo test` with integration tests using fixture dataset  

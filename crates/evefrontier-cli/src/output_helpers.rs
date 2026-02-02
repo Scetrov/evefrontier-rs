@@ -479,7 +479,259 @@ pub(crate) fn format_label(text: &str, style: &str, reset: &str) -> String {
     format!("{} {} {}", style, text, reset)
 }
 
+/// Message box severity level.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(dead_code)]
+pub enum MessageBoxLevel {
+    Info,
+    Warn,
+    Error,
+}
+
+impl MessageBoxLevel {
+    /// Get the icon for this level.
+    fn icon(&self) -> &'static str {
+        match self {
+            Self::Info => "🛈",
+            Self::Warn => "⚠",
+            Self::Error => "✖",
+        }
+    }
+
+    /// Get the label text for this level.
+    fn label(&self) -> &'static str {
+        match self {
+            Self::Info => "INFO",
+            Self::Warn => "WARN",
+            Self::Error => "ERROR",
+        }
+    }
+
+    /// Get the color code for this level using the provided palette.
+    fn color<'a>(&self, palette: &'a ColorPalette) -> &'a str {
+        match self {
+            Self::Info => palette.blue,
+            Self::Warn => palette.orange,
+            Self::Error => palette.red,
+        }
+    }
+}
+
+/// Get terminal width, defaulting to 80 if detection fails.
+#[allow(dead_code)]
+fn get_terminal_width() -> usize {
+    // Try to read COLUMNS environment variable, otherwise default to 80
+    std::env::var("COLUMNS")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(80)
+}
+
+/// Wrap text to fit within a specified width, breaking on word boundaries.
+///
+/// Returns a vector of lines, each fitting within `max_width` characters.
+#[allow(dead_code)]
+fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
+    let mut lines = Vec::new();
+    let mut current_line = String::new();
+    let mut current_width = 0;
+
+    for word in text.split_whitespace() {
+        let word_len = word.chars().count();
+
+        // If adding this word would exceed width, start a new line
+        if current_width + word_len + (if current_width > 0 { 1 } else { 0 }) > max_width {
+            if !current_line.is_empty() {
+                lines.push(current_line.clone());
+                current_line.clear();
+                current_width = 0;
+            }
+
+            // If a single word is longer than max_width, split it
+            if word_len > max_width {
+                let chars: Vec<char> = word.chars().collect();
+                for chunk in chars.chunks(max_width) {
+                    lines.push(chunk.iter().collect());
+                }
+                continue;
+            }
+        }
+
+        if current_width > 0 {
+            current_line.push(' ');
+            current_width += 1;
+        }
+        current_line.push_str(word);
+        current_width += word_len;
+    }
+
+    if !current_line.is_empty() {
+        lines.push(current_line);
+    }
+
+    if lines.is_empty() {
+        lines.push(String::new());
+    }
+
+    lines
+}
+
+/// Build a message box with the specified level, message, and optional terminal width.
+///
+/// This is the recommended way to create message boxes for INFO, WARN, and ERROR levels.
+/// The function automatically handles:
+/// - Text wrapping to fit terminal width
+/// - ANSI color code handling for proper alignment
+/// - Unicode vs ASCII box drawing based on terminal support
+///
+/// # Arguments
+/// * `level` - The severity level (Info, Warn, Error)
+/// * `message` - The message content to display
+/// * `palette` - Color palette for styling
+/// * `supports_unicode` - Whether to use Unicode box-drawing characters
+/// * `terminal_width` - Optional terminal width (auto-detected if None)
+///
+/// # Returns
+/// A formatted string containing the message box with wrapping applied.
+///
+/// # Examples
+/// ```ignore
+/// use evefrontier_cli::output_helpers::{build_message_box, MessageBoxLevel};
+/// use evefrontier_cli::terminal::ColorPalette;
+///
+/// let palette = ColorPalette::colored();
+///
+/// // Info message
+/// let info_box = build_message_box(
+///     MessageBoxLevel::Info,
+///     "All fuel and heat values are estimations",
+///     &palette,
+///     true,
+///     Some(80),
+/// );
+/// println!("{}", info_box);
+///
+/// // Warning message with wrapping
+/// let warn_box = build_message_box(
+///     MessageBoxLevel::Warn,
+///     "This route requires refueling. Make sure you have sufficient fuel capacity.",
+///     &palette,
+///     true,
+///     None, // Auto-detect terminal width
+/// );
+/// println!("{}", warn_box);
+///
+/// // Error message
+/// let error_box = build_message_box(
+///     MessageBoxLevel::Error,
+///     "Failed to compute route: No path found",
+///     &palette,
+///     true,
+///     Some(80),
+/// );
+/// println!("{}", error_box);
+/// ```
+#[allow(dead_code)]
+pub fn build_message_box(
+    level: MessageBoxLevel,
+    message: &str,
+    palette: &ColorPalette,
+    supports_unicode: bool,
+    terminal_width: Option<usize>,
+) -> String {
+    let width = terminal_width.unwrap_or_else(get_terminal_width);
+
+    // Build the prefix with color
+    let icon = level.icon();
+    let label = level.label();
+    let color = level.color(palette);
+
+    let prefix_visible = if crate::terminal::supports_color() {
+        format!("{}{} {}{}", color, icon, label, palette.reset)
+    } else {
+        format!("{} {}", icon, label)
+    };
+
+    let prefix_width = strip_ansi_to_string(&prefix_visible).chars().count();
+
+    // Calculate available width for message content
+    // Box structure: "│ PREFIX: message content │"
+    // Borders: 2 chars (│ + │)
+    // Padding: 4 chars (space after │, space before/after prefix, space before │)
+    // Separator: 2 chars (": ")
+    let overhead = 2 + 4 + 2; // borders + padding + separator
+    let available_width = width.saturating_sub(overhead + prefix_width).max(20);
+
+    // Wrap the message text
+    let wrapped_lines = wrap_text(message, available_width);
+
+    // Calculate the actual content width (widest line)
+    let content_width = wrapped_lines
+        .iter()
+        .map(|line| line.chars().count())
+        .max()
+        .unwrap_or(0);
+
+    // Inner width includes prefix, separator, and content
+    let inner_width = prefix_width + 2 + content_width + 4; // +4 for padding
+
+    let (top_left, horizontal, top_right, vertical, bottom_left, bottom_right) = if supports_unicode
+    {
+        ("┌", "─", "┐", "│", "└", "┘")
+    } else {
+        ("+", "-", "+", "|", "+", "+")
+    };
+
+    let mut out = String::new();
+
+    // Top border
+    out.push_str(top_left);
+    out.push_str(&horizontal.repeat(inner_width));
+    out.push_str(top_right);
+    out.push('\n');
+
+    // Content lines
+    for (i, line) in wrapped_lines.iter().enumerate() {
+        out.push_str(vertical);
+        out.push(' ');
+
+        if i == 0 {
+            // First line includes the prefix
+            out.push_str(&prefix_visible);
+            out.push_str(": ");
+        } else {
+            // Subsequent lines are indented to align with first line content
+            out.push_str(&" ".repeat(prefix_width + 2));
+        }
+
+        out.push_str(line);
+
+        // Pad to inner width
+        let line_visible_width = if i == 0 {
+            prefix_width + 2 + line.chars().count()
+        } else {
+            prefix_width + 2 + line.chars().count()
+        };
+        let padding = inner_width.saturating_sub(line_visible_width + 2);
+        out.push_str(&" ".repeat(padding));
+
+        out.push(' ');
+        out.push_str(vertical);
+        out.push('\n');
+    }
+
+    // Bottom border
+    out.push_str(bottom_left);
+    out.push_str(&horizontal.repeat(inner_width));
+    out.push_str(bottom_right);
+    out.push('\n');
+
+    out
+}
+
 /// Build the estimation warning box as a string so tests can inspect it.
+///
+/// **Deprecated**: Use `build_message_box` with `MessageBoxLevel::Info` instead.
 pub(crate) fn build_estimation_warning_box(
     prefix_visible: &str,
     msg: &str,
@@ -773,21 +1025,6 @@ pub fn build_enhanced_footer(
             p.reset,
             p.white_bold,
             wait_str,
-            p.reset,
-            "",
-            lw = lw,
-            width = num_width
-        ));
-
-        let final_heat_str = format!("{:.2}", heat.final_residual_heat);
-        let l_heat = "Final Heat:";
-        lines.push(format!(
-            "  {}{:<lw$}{}  {}{:>width$}{}{}",
-            p.red,
-            l_heat,
-            p.reset,
-            p.white_bold,
-            final_heat_str,
             p.reset,
             "",
             lw = lw,
@@ -1776,23 +2013,6 @@ pub(crate) fn build_scout_range_footer(
         ));
     }
 
-    // Final heat
-    if let Some(final_heat) = result.final_heat {
-        let heat_str = format!("{:.2}", final_heat);
-        let l_heat = "Final Heat:";
-        lines.push(format!(
-            "  {}{:<lw$}{}  {}{:>width$}{}",
-            p.red,
-            l_heat,
-            p.reset,
-            p.white_bold,
-            heat_str,
-            p.reset,
-            lw = lw,
-            width = num_width.max(heat_str.len())
-        ));
-    }
-
     // Parameters line (matches route footer style)
     {
         let limit_str = result.query.limit.to_string();
@@ -2117,5 +2337,171 @@ mod tests {
         assert_eq!(format_cooldown_duration(60.0), "1m0s");
         assert_eq!(format_cooldown_duration(124.0), "2m4s");
         assert_eq!(format_cooldown_duration(3600.0), "60m0s");
+    }
+
+    // Message box tests
+    #[test]
+    fn test_wrap_text_short() {
+        let text = "Short message";
+        let wrapped = wrap_text(text, 50);
+        assert_eq!(wrapped.len(), 1);
+        assert_eq!(wrapped[0], "Short message");
+    }
+
+    #[test]
+    fn test_wrap_text_long() {
+        let text = "This is a longer message that should be wrapped across multiple lines when the width is constrained";
+        let wrapped = wrap_text(text, 30);
+        assert!(wrapped.len() > 1);
+        for line in &wrapped {
+            assert!(line.chars().count() <= 30);
+        }
+        // Check that words aren't split unnecessarily
+        assert!(!wrapped[0].ends_with('-'));
+    }
+
+    #[test]
+    fn test_wrap_text_exact_width() {
+        let text = "exactly thirty characters here";
+        let wrapped = wrap_text(text, 30);
+        assert_eq!(wrapped.len(), 1);
+        assert_eq!(wrapped[0].chars().count(), 30);
+    }
+
+    #[test]
+    fn test_wrap_text_single_long_word() {
+        let text = "supercalifragilisticexpialidocious";
+        let wrapped = wrap_text(text, 10);
+        // Should split the word
+        assert!(wrapped.len() >= 3);
+        for line in &wrapped {
+            assert!(line.chars().count() <= 10);
+        }
+    }
+
+    #[test]
+    fn test_wrap_text_empty() {
+        let wrapped = wrap_text("", 50);
+        assert_eq!(wrapped.len(), 1);
+        assert_eq!(wrapped[0], "");
+    }
+
+    #[test]
+    fn test_message_box_info_unicode() {
+        let palette = ColorPalette::plain();
+        let msg = "This is an info message";
+        let box_str = build_message_box(MessageBoxLevel::Info, msg, &palette, true, Some(80));
+
+        // Check for Unicode box characters
+        assert!(box_str.contains('┌'));
+        assert!(box_str.contains('─'));
+        assert!(box_str.contains('┐'));
+        assert!(box_str.contains('│'));
+        assert!(box_str.contains('└'));
+        assert!(box_str.contains('┘'));
+
+        // Check for content
+        assert!(box_str.contains("INFO"));
+        assert!(box_str.contains(msg));
+    }
+
+    #[test]
+    fn test_message_box_warn_ascii() {
+        let palette = ColorPalette::plain();
+        let msg = "Warning message";
+        let box_str = build_message_box(MessageBoxLevel::Warn, msg, &palette, false, Some(80));
+
+        // Check for ASCII box characters
+        assert!(box_str.contains('+'));
+        assert!(box_str.contains('-'));
+        assert!(box_str.contains('|'));
+
+        // Check for content
+        assert!(box_str.contains("WARN"));
+        assert!(box_str.contains(msg));
+    }
+
+    #[test]
+    fn test_message_box_error() {
+        let palette = ColorPalette::plain();
+        let msg = "Error occurred";
+        let box_str = build_message_box(MessageBoxLevel::Error, msg, &palette, true, Some(80));
+
+        assert!(box_str.contains("ERROR"));
+        assert!(box_str.contains(msg));
+    }
+
+    #[test]
+    fn test_message_box_wrapping() {
+        let palette = ColorPalette::plain();
+        let msg = "This is a very long message that should definitely wrap to multiple lines when rendered in a narrow terminal width";
+        let box_str = build_message_box(MessageBoxLevel::Info, msg, &palette, true, Some(60));
+
+        let lines: Vec<&str> = box_str.lines().collect();
+        // Should have more than 3 lines (top, bottom, and at least 2 content lines)
+        assert!(lines.len() > 3);
+
+        // All content lines should start with │
+        for line in &lines[1..lines.len() - 1] {
+            assert!(line.starts_with('│'));
+            assert!(line.ends_with('│'));
+        }
+    }
+
+    #[test]
+    fn test_message_box_narrow_terminal() {
+        let palette = ColorPalette::plain();
+        let msg = "Message";
+        let box_str = build_message_box(MessageBoxLevel::Info, msg, &palette, true, Some(40));
+
+        // Should still render properly even with narrow width
+        assert!(box_str.contains("INFO"));
+        assert!(box_str.contains(msg));
+
+        let lines: Vec<&str> = box_str.lines().collect();
+        assert!(lines.len() >= 3); // top, content, bottom
+    }
+
+    #[test]
+    fn test_message_box_level_icons() {
+        assert_eq!(MessageBoxLevel::Info.icon(), "🛈");
+        assert_eq!(MessageBoxLevel::Warn.icon(), "⚠");
+        assert_eq!(MessageBoxLevel::Error.icon(), "✖");
+    }
+
+    #[test]
+    fn test_message_box_level_labels() {
+        assert_eq!(MessageBoxLevel::Info.label(), "INFO");
+        assert_eq!(MessageBoxLevel::Warn.label(), "WARN");
+        assert_eq!(MessageBoxLevel::Error.label(), "ERROR");
+    }
+
+    #[test]
+    fn test_message_box_with_color() {
+        let palette = ColorPalette::colored();
+        let msg = "Colored message";
+        let box_str = build_message_box(MessageBoxLevel::Warn, msg, &palette, true, Some(80));
+
+        // Should contain ANSI color codes
+        assert!(box_str.contains('\x1b'));
+        assert!(box_str.contains("WARN"));
+        assert!(box_str.contains(msg));
+    }
+
+    #[test]
+    fn test_get_terminal_width_default() {
+        // When COLUMNS is not set, should default to 80
+        std::env::remove_var("COLUMNS");
+        let width = get_terminal_width();
+        assert_eq!(width, 80);
+    }
+
+    #[test]
+    fn test_get_terminal_width_from_env() {
+        // When COLUMNS is set, should use that value
+        std::env::set_var("COLUMNS", "120");
+        let width = get_terminal_width();
+        assert_eq!(width, 120);
+        std::env::remove_var("COLUMNS");
     }
 }

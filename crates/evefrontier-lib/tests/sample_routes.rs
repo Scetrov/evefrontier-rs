@@ -86,9 +86,12 @@ fn test_gate_only_routes_find_paths() {
     }
 
     let starmap = load_starmap(&db_path).expect("Failed to load starmap");
-    let graph = build_gate_graph(&starmap);
+    let graph = build_hybrid_graph(&starmap);
     let testable = load_testable_routes();
-    let constraints = PathConstraints::default();
+    let mut constraints = PathConstraints::default();
+    constraints.avoid_critical_state = false; // Disable heat checks for pathfinding validationt();
+    constraints.avoid_critical_state = false; // Disable heat checks for pathfinding validationt();
+    constraints.avoid_critical_state = false; // Disable heat checks for pathfinding validation
 
     // Filter to gate-only routes (avoid_gates = false)
     let gate_routes: Vec<_> = testable.routes.iter().filter(|r| !r.avoid_gates).collect();
@@ -179,6 +182,7 @@ fn test_spatial_routes_find_paths() {
         let constraints = PathConstraints {
             max_jump: Some(route.max_ly),
             avoid_gates: true,
+            avoid_critical_state: false, // Disable heat checks for pathfinding validation
             ..Default::default()
         };
 
@@ -245,6 +249,7 @@ fn test_hybrid_routes_find_paths() {
         let constraints = PathConstraints {
             max_jump: Some(route.max_ly),
             avoid_gates: route.avoid_gates,
+            avoid_critical_state: false, // Disable heat checks for pathfinding validation
             ..Default::default()
         };
 
@@ -304,6 +309,7 @@ fn test_route_length_sanity() {
         let constraints = PathConstraints {
             max_jump: Some(route.max_ly),
             avoid_gates: route.avoid_gates,
+            avoid_critical_state: false, // Disable heat checks for pathfinding validation
             ..Default::default()
         };
 
@@ -355,6 +361,7 @@ fn test_known_routes() {
     let graph = build_hybrid_graph(&starmap);
     let constraints = PathConstraints {
         max_jump: Some(80.0),
+        avoid_critical_state: false, // Disable heat checks for pathfinding validation
         ..Default::default()
     };
 

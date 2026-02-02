@@ -47,7 +47,8 @@ pub struct RouteRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_temperature: Option<f64>,
 
-    /// Optional ship name for fuel projection.
+    /// Optional ship name for fuel and heat calculations.
+    /// Defaults to 'Reflex' when omitted and avoid_critical_state is true.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ship: Option<String>,
 

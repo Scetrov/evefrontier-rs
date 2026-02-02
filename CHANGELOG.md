@@ -41,6 +41,8 @@ All notable changes to this project will be documented in this file.
   - Default route optimization changed from `Fuel` to `Distance`. The `Fuel` optimization (and ship
     injection) now strictly only occurs in "zero-config" runs (where no custom constraints like
     `--max-jump` are provided) to prevent misleading warnings when a ship is missing.
+  - **Infrastructure**: Bumped pinned Rust toolchain to **1.93.0** and updated CI workflows, Docker
+    base images, and documentation to match the new MSRV.
 - **Library** (`evefrontier-lib`)
   - Fuel projections no longer consume fuel on gate hops; gate steps report zero fuel cost
   - Cooldown time estimates are now suppressed for steps immediately preceding a gate jump and for
