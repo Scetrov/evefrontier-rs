@@ -89,8 +89,6 @@ fn test_gate_only_routes_find_paths() {
     let graph = build_hybrid_graph(&starmap);
     let testable = load_testable_routes();
     let mut constraints = PathConstraints::default();
-    constraints.avoid_critical_state = false; // Disable heat checks for pathfinding validationt();
-    constraints.avoid_critical_state = false; // Disable heat checks for pathfinding validationt();
     constraints.avoid_critical_state = false; // Disable heat checks for pathfinding validation
 
     // Filter to gate-only routes (avoid_gates = false)

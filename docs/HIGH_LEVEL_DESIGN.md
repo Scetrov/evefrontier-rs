@@ -27,7 +27,7 @@ Initially we aim to provide the following core functionalities:
 We aim to provide optionality in the following areas to further understanding of problem solving
 approaches in EVE Frontier:
 
-- **Algorithims**: Support multiple routing algorithms to cater to different user needs and
+- **Algorithms**: Support multiple routing algorithms to cater to different user needs and
   scenarios (Dijkstra, A\*, etc.).
 - **Spatial Indexing Data Structures**: Utilize various spatial indexing techniques (Octrees,
   KD-trees, Voxel Grids, etc.) to optimize route calculations.
