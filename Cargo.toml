@@ -95,7 +95,7 @@ rusqlite = { version = "0.37.0", features = ["bundled", "serialize"] }
 clap = { version = "4.5.53", features = ["derive"] }
 tracing = "0.1.43"
 tracing-subscriber = { version = "0.3.20", features = ["fmt", "env-filter"] }
-reqwest = { version = "0.12.24", default-features = false, features = ["blocking", "json", "rustls-tls"] }
+reqwest = { version = "0.12.28", default-features = false, features = ["blocking", "json", "rustls-tls"] }
 tempfile = "3.23.0"
 zip = { version = "6.0.0", default-features = false, features = ["deflate"] }
 assert_cmd = "2.1.1"
