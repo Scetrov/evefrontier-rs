@@ -27,45 +27,21 @@
       "cache": true,
       "parallel": false
     },
-    "lint": {
-      "inputs": ["default"],
-      "cache": true,
-      "parallel": false
-    },
-    "clippy": {
-      "inputs": ["default", "^production"],
-      "cache": true,
-      "parallel": false
-    },
+    "lint": { "inputs": ["default"], "cache": true, "parallel": false },
+    "clippy": { "inputs": ["default", "^production"], "cache": true, "parallel": false },
     "complexity": {
       "inputs": ["default", "^production", "{workspaceRoot}/clippy.toml"],
       "cache": true,
       "parallel": false
     },
-    "audit": {
-      "cache": false
-    },
-    "outdated": {
-      "cache": false
-    }
-  },
-  "tasksRunnerOptions": {
-    "default": {
-      "runner": "nx/tasks-runners/default",
-      "options": {
-        "cacheableOperations": ["build", "test", "lint", "clippy", "complexity"]
-      }
-    }
+    "audit": { "cache": false },
+    "outdated": { "cache": false }
   },
   "plugins": [],
   "generators": {},
   "release": {
-    "version": {
-      "conventionalCommits": true
-    },
-    "changelog": {
-      "workspaceChangelog": false,
-      "projectChangelogs": true
-    }
-  }
+    "version": { "conventionalCommits": true },
+    "changelog": { "workspaceChangelog": false, "projectChangelogs": true }
+  },
+  "nxCloudId": "6982782356ddb434b5932321"
 }

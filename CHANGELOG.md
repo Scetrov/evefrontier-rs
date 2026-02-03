@@ -19,6 +19,16 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+### Changed
+
+- **Maintenance**
+  - Consolidated 15 dependency updates across Cargo, NPM, and GitHub Actions ecosystems
+  - Updated Rust dependencies: `axum-test`, `reqwest`, `schemars`, `tracing`, `uuid`, `bytes`
+  - Updated Node/Nx dependencies: `nx`, `prettier`, `lint-staged`, `cross-env`
+  - Updated GitHub Actions: `download-artifact`, `metadata-action`, `codeql-action`, `setup-zig`, `action-setup`
+
+### Fixed
+
 - **CLI** (`evefrontier-cli`)
   - GOAL step in `--format enhanced` now displays status line (min temp, planets, moons) like all
     other steps
