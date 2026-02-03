@@ -706,16 +706,23 @@ impl SpatialIndex {
             return Vec::new();
         }
 
+        // Clamp requested neighbours to the number of available nodes to avoid
+        // unbounded allocations based on user input.
+        let max_k = query.k.min(self.nodes.len());
+        if max_k == 0 {
+            return Vec::new();
+        }
+
         let query_point = [point[0] as f32, point[1] as f32, point[2] as f32];
 
         // Over-fetch to account for filtering
-        let fetch_count = query.k.saturating_mul(2).max(query.k + 10);
+        let fetch_count = max_k.saturating_mul(2).max(max_k + 10);
 
         let candidates = self
             .tree
             .nearest_n::<SquaredEuclidean>(&query_point, fetch_count);
 
-        let mut results = Vec::with_capacity(query.k);
+        let mut results = Vec::with_capacity(max_k);
 
         for neighbor in candidates {
             let node = &self.nodes[neighbor.item];
