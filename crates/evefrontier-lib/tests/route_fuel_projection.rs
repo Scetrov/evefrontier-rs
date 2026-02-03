@@ -20,7 +20,7 @@ fn fixture_ship_path() -> PathBuf {
 
 #[test]
 fn attaches_fuel_projection_to_route_summary() {
-    let starmap = load_starmap(&fixture_db_path()).expect("starmap loads");
+    let starmap = load_starmap(&fixture_db_path(), None).expect("starmap loads");
     let request = RouteRequest {
         start: "Nod".to_string(),
         goal: "Brana".to_string(),
@@ -69,7 +69,7 @@ fn attaches_fuel_projection_to_route_summary() {
 
 #[test]
 fn gate_steps_do_not_consume_fuel() {
-    let starmap = load_starmap(&fixture_db_path()).expect("starmap loads");
+    let starmap = load_starmap(&fixture_db_path(), None).expect("starmap loads");
     let request = RouteRequest {
         start: "Nod".to_string(),
         goal: "Brana".to_string(),

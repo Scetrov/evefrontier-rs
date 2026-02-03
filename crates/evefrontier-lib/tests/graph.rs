@@ -130,7 +130,7 @@ fn hybrid_graph_combines_edges() {
 
 #[test]
 fn spatial_graph_has_edges_with_positions_in_fixture() {
-    let starmap = load_starmap(&fixture_path()).expect("load fixture");
+    let starmap = load_starmap(&fixture_path(), None).expect("load fixture");
     let graph = build_spatial_graph(&starmap);
 
     let start = starmap.system_id_by_name("Nod").unwrap();

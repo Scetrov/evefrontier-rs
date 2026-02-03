@@ -177,7 +177,7 @@ pub fn handle_scout_gates(
     let paths = tokio::task::block_in_place(|| ensure_dataset(data_dir, DatasetRelease::latest()))
         .context("failed to locate or download the EVE Frontier dataset")?;
 
-    let starmap = load_starmap(&paths.database)
+    let starmap = load_starmap(&paths.database, None)
         .with_context(|| format!("failed to load dataset from {}", paths.database.display()))?;
 
     // Resolve system by name
@@ -303,7 +303,7 @@ pub fn handle_scout_range(
     let paths = tokio::task::block_in_place(|| ensure_dataset(data_dir, DatasetRelease::latest()))
         .context("failed to locate or download the EVE Frontier dataset")?;
 
-    let starmap = load_starmap(&paths.database)
+    let starmap = load_starmap(&paths.database, Some(args.sys_temp_curve.into()))
         .with_context(|| format!("failed to load dataset from {}", paths.database.display()))?;
 
     // Load spatial index (auto-build if missing with warning)

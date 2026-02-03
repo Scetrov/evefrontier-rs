@@ -8,7 +8,7 @@ fn fixture_path() -> PathBuf {
 
 #[test]
 fn dynamic_mass_does_not_change_per_hop_avoidance_behavior() {
-    let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+    let starmap = load_starmap(&fixture_path(), None).expect("fixture loads");
 
     // Load ship fixture
     let ship_path =

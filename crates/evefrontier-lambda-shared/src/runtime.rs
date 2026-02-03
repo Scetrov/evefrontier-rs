@@ -242,7 +242,7 @@ fn load_starmap_from_bytes(db_bytes: &'static [u8]) -> Result<Starmap, InitError
             message: format!("Failed to deserialize database: {}", e),
         })?;
 
-    let starmap = load_starmap_from_connection(&conn).map_err(|e| InitError {
+    let starmap = load_starmap_from_connection(&conn, None).map_err(|e| InitError {
         message: format!("Failed to load starmap: {}", e),
     })?;
 

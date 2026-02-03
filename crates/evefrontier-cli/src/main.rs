@@ -59,7 +59,11 @@ fn parse_non_negative(s: &str) -> Result<f64, String> {
     author,
     version,
     about = "EVE Frontier dataset utilities",
-    long_about = None,
+    long_about = "EVE Frontier dataset utilities\n\n\
+Heat calculation models based on community research by:\n  \
+• Ergod (awar.dev) - Inverse-tangent heat-signature model (0.15% MAE)\n  \
+• Anteris - Initial temperature data gathering and validation\n\n\
+For details, see: https://thoughtfolio.xyz/No+more+Traps%2C+Inverse-Tangent+Heat-Signature+Model",
     propagate_version = true,
     arg_required_else_help = true
 )]
@@ -169,6 +173,11 @@ pub struct ScoutRangeArgs {
     /// Starting fuel load in units (defaults to ship's fuel capacity).
     #[arg(long = "fuel-load", value_parser = parse_non_negative)]
     pub fuel_load: Option<f64>,
+
+    /// Temperature calculation model: 'flux' (default, flux-based inverse-tangent)
+    /// or 'logistic' (empirical sigmoid). Both models validated at ~1.2K MAE.
+    #[arg(long = "sys-temp-curve", value_enum, default_value_t = TemperatureCurveArg::default())]
+    pub sys_temp_curve: TemperatureCurveArg,
 }
 
 #[derive(Subcommand, Debug)]
@@ -253,6 +262,30 @@ impl RouteCommandArgs {
     }
 }
 
+#[derive(ValueEnum, Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum TemperatureCurveArg {
+    /// Flux-based inverse-tangent model (default). Uses radiative flux (L/d²) with
+    /// inverse-square law. Physically interpretable and validated (~1.2K MAE).
+    #[default]
+    Flux,
+    /// Logistic curve model. Empirically fitted sigmoid function.
+    /// Validated alternative (~1.2K MAE).
+    Logistic,
+}
+
+impl From<TemperatureCurveArg> for evefrontier_lib::temperature::TemperatureMethod {
+    fn from(arg: TemperatureCurveArg) -> Self {
+        match arg {
+            TemperatureCurveArg::Flux => {
+                evefrontier_lib::temperature::TemperatureMethod::InverseTangent
+            }
+            TemperatureCurveArg::Logistic => {
+                evefrontier_lib::temperature::TemperatureMethod::LogisticCurve
+            }
+        }
+    }
+}
+
 #[derive(Args, Debug, Clone)]
 struct RouteEndpoints {
     /// Starting system name.
@@ -317,6 +350,11 @@ struct RouteOptionsArgs {
     /// rejects jumps reaching critical temperature (≥150K).
     #[arg(long = "avoid-critical-state", action = ArgAction::SetTrue)]
     avoid_critical_state: bool,
+
+    /// Temperature calculation model: 'flux' (default, flux-based inverse-tangent)
+    /// or 'logistic' (empirical sigmoid). Both models validated at ~1.2K MAE.
+    #[arg(long = "sys-temp-curve", value_enum, default_value_t = TemperatureCurveArg::default())]
+    sys_temp_curve: TemperatureCurveArg,
 
     /// Disable temperature constraints for gate-only networks or intentional high-risk planning.
     #[arg(long = "no-avoid-critical-state", action = ArgAction::SetTrue)]
@@ -571,7 +609,7 @@ fn handle_index_build(context: &AppContext, args: &IndexBuildArgs) -> Result<()>
     }
 
     println!("Loading starmap from {}...", paths.database.display());
-    let starmap = load_starmap(&paths.database)
+    let starmap = load_starmap(&paths.database, None)
         .with_context(|| format!("failed to load dataset from {}", paths.database.display()))?;
 
     // Compute dataset checksum for freshness verification (v2 format)
@@ -814,7 +852,7 @@ fn handle_route_command(
     })
     .context("failed to locate or download the EVE Frontier dataset")?;
 
-    let starmap = load_starmap(&paths.database)
+    let starmap = load_starmap(&paths.database, Some(args.options.sys_temp_curve.into()))
         .with_context(|| format!("failed to load dataset from {}", paths.database.display()))?;
 
     // Only load the spatial index when the selected algorithm can make use of it.
@@ -1252,7 +1290,7 @@ fn handle_fmap_encode(context: &AppContext, args: &FmapEncodeArgs) -> Result<()>
         if needs_db_lookup {
             let paths = ensure_dataset(context.target_path(), context.dataset_release())
                 .context("failed to locate or download the EVE Frontier dataset")?;
-            Some(load_starmap(&paths.database).with_context(|| {
+            Some(load_starmap(&paths.database, None).with_context(|| {
                 format!("failed to load dataset from {}", paths.database.display())
             })?)
         } else {

@@ -4,7 +4,7 @@ use evefrontier_lib::{load_starmap, plan_route, RouteAlgorithm, RouteConstraints
 
 #[test]
 fn a_star_blocked_by_avoid_critical_state() {
-    let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+    let starmap = load_starmap(&fixture_path(), None).expect("fixture loads");
 
     // Load ship catalog and pick a ship known from fixtures
     let ship_path =
@@ -72,7 +72,7 @@ fn a_star_blocked_by_avoid_critical_state() {
 
 #[test]
 fn a_star_allows_when_not_avoiding_critical_state() {
-    let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+    let starmap = load_starmap(&fixture_path(), None).expect("fixture loads");
 
     let ship_path =
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/fixtures/ship_data.csv");

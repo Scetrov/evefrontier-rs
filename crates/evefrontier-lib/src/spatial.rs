@@ -46,7 +46,7 @@
 //! use evefrontier_lib::{load_starmap, SpatialIndex, NeighbourQuery};
 //!
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! let starmap = load_starmap(std::path::Path::new("static_data.db"))?;
+//! let starmap = load_starmap(std::path::Path::new("static_data.db"), None)?;
 //! let index = SpatialIndex::build(&starmap);
 //!
 //! // Query 10 nearest systems to a position, excluding those above 50K
@@ -585,7 +585,7 @@ impl SpatialIndex {
     ///
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let db_path = Path::new("static_data.db");
-    /// let starmap = load_starmap(db_path)?;
+    /// let starmap = load_starmap(db_path, None)?;
     ///
     /// let checksum = compute_dataset_checksum(db_path)?;
     /// let metadata = DatasetMetadata {

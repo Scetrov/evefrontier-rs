@@ -18,7 +18,7 @@ fn fixture_path() -> PathBuf {
 
 #[test]
 fn build_index_from_fixture() {
-    let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+    let starmap = load_starmap(&fixture_path(), None).expect("fixture loads");
     let index = SpatialIndex::build(&starmap);
 
     // Fixture has 8 systems, all should have positions
@@ -39,7 +39,7 @@ fn build_index_from_fixture() {
 
 #[test]
 fn serialize_deserialize_round_trip() {
-    let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+    let starmap = load_starmap(&fixture_path(), None).expect("fixture loads");
     let original = SpatialIndex::build(&starmap);
 
     let temp_dir = tempfile::tempdir().expect("temp dir");
@@ -68,7 +68,7 @@ fn serialize_deserialize_round_trip() {
 
 #[test]
 fn nearest_query_returns_ordered_results() {
-    let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+    let starmap = load_starmap(&fixture_path(), None).expect("fixture loads");
     let index = SpatialIndex::build(&starmap);
 
     // Get Nod's position
@@ -101,7 +101,7 @@ fn nearest_query_returns_ordered_results() {
 
 #[test]
 fn radius_query_respects_distance() {
-    let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+    let starmap = load_starmap(&fixture_path(), None).expect("fixture loads");
     let index = SpatialIndex::build(&starmap);
 
     // Query from origin with small radius
@@ -119,7 +119,7 @@ fn radius_query_respects_distance() {
 
 #[test]
 fn temperature_filter_excludes_hot_systems() {
-    let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+    let starmap = load_starmap(&fixture_path(), None).expect("fixture loads");
     let index = SpatialIndex::build(&starmap);
 
     // Get Nod which has ~18K temperature (hot)
@@ -166,7 +166,7 @@ fn temperature_filter_excludes_hot_systems() {
 
 #[test]
 fn none_temperature_passes_filter() {
-    let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+    let starmap = load_starmap(&fixture_path(), None).expect("fixture loads");
     let index = SpatialIndex::build(&starmap);
 
     // Find a system without temperature data (if any)
@@ -212,7 +212,7 @@ fn none_temperature_passes_filter() {
 
 #[test]
 fn corrupted_checksum_fails_to_load() {
-    let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+    let starmap = load_starmap(&fixture_path(), None).expect("fixture loads");
     let index = SpatialIndex::build(&starmap);
 
     let temp_dir = tempfile::tempdir().expect("temp dir");
@@ -244,7 +244,7 @@ fn corrupted_checksum_fails_to_load() {
 
 #[test]
 fn position_lookup_works() {
-    let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+    let starmap = load_starmap(&fixture_path(), None).expect("fixture loads");
     let index = SpatialIndex::build(&starmap);
 
     let nod_id = starmap

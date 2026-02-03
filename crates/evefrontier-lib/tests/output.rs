@@ -12,7 +12,7 @@ fn fixture_path() -> PathBuf {
 }
 
 fn load_fixture_starmap() -> evefrontier_lib::Starmap {
-    load_starmap(&fixture_path()).expect("starmap loads from fixture")
+    load_starmap(&fixture_path(), None).expect("starmap loads from fixture")
 }
 
 #[test]

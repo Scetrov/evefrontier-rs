@@ -1,7 +1,32 @@
 //! Heat calculation, cooling, and projection types.
 //!
-//! This module handles heat generation from ship jumps, cooling calculations
-//! using Newton's Law of Cooling, and per-hop heat projections.
+//! This module provides centralized heat calculations for all EVE Frontier routing and scouting
+//! operations. All heat-related computations must use these shared functions to ensure consistency
+//! across:
+//! - Route planning (`route` command and Lambda)
+//! - Scout operations (`scout gates` and `scout range` commands)
+//! - Output formatters (CLI and Lambda responses)
+//!
+//! ## Architecture
+//!
+//! **DO NOT** implement heat calculations directly in CLI or GUI code. All temperature and cooling
+//! calculations must route through this module to maintain consistency and accuracy.
+//!
+//! **Core Functions:**
+//! - `calculate_jump_heat()` - Computes heat energy from jump parameters
+//! - `project_heat_for_jump()` - Full heat projection including warnings and cooling times
+//! - `calculate_cooling_time()` - Newton's Law of Cooling implementation
+//!
+//! ## Temperature Model Attribution
+//!
+//! Heat calculations are based on community research:
+//! - **Inverse-Tangent Heat-Signature Model** by Ergod (awar.dev)
+//!   - Achieves 0.15% mean average error for ambient temperature calculation
+//!   - Reference: <https://thoughtfolio.xyz/No+more+Traps%2C+Inverse-Tangent+Heat-Signature+Model>
+//! - **Initial Data Gathering** by Anteris (anteris90)
+//!   - Provided foundational temperature measurements across EVE Frontier systems
+//!
+//! For implementation details, see `docs/HEAT_MECHANICS.md`.
 
 use serde::{Deserialize, Serialize};
 
