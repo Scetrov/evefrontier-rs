@@ -127,7 +127,6 @@ This research was conducted by [awar.dev](https://awar.dev/) with data contribut
 - [Diabolacal](https://github.com/Diabolacal) — game database validation
 
 This work is shared publicly as part of the awar.dev Research Disclosure Protocol.
-
 **Canonical Thresholds (from CCP's TemperatureThreshold class):**
 
 ```python

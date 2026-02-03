@@ -351,11 +351,6 @@ struct RouteOptionsArgs {
     #[arg(long = "avoid-critical-state", action = ArgAction::SetTrue)]
     avoid_critical_state: bool,
 
-    /// Temperature calculation model: 'flux' (default, flux-based inverse-tangent)
-    /// or 'logistic' (empirical sigmoid). Both models validated at ~1.2K MAE.
-    #[arg(long = "sys-temp-curve", value_enum, default_value_t = TemperatureCurveArg::default())]
-    sys_temp_curve: TemperatureCurveArg,
-
     /// Disable temperature constraints for gate-only networks or intentional high-risk planning.
     #[arg(long = "no-avoid-critical-state", action = ArgAction::SetTrue)]
     no_avoid_critical_state: bool,
