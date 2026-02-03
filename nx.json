@@ -49,14 +49,6 @@
       "cache": false
     }
   },
-  "tasksRunnerOptions": {
-    "default": {
-      "runner": "nx/tasks-runners/default",
-      "options": {
-        "cacheableOperations": ["build", "test", "lint", "clippy", "complexity"]
-      }
-    }
-  },
   "plugins": [],
   "generators": {},
   "release": {
@@ -67,5 +59,6 @@
       "workspaceChangelog": false,
       "projectChangelogs": true
     }
-  }
+  },
+  "nxCloudId": "698277e97dd68754a58aaf5b"
 }

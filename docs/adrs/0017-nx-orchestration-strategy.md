@@ -12,7 +12,7 @@
 
 The evefrontier-rs workspace contains **6 Rust crates** (library, CLI, 3 Lambda functions, 1 shared service), **9 microservice crates**, Python utility scripts, and Node-based tooling. This polyrepo structure requires coordinated building, testing, linting, and release workflows across multiple languages and dependency graphs.
 
-**Current Situation**: The workspace already uses Nx 19+ for orchestration with:
+**Current Situation**: The workspace already uses Nx 22+ for orchestration with:
 - Workspace-wide task defaults (build, test, lint, clippy, audit, outdated, complexity)
 - Named inputs strategy (default, production, sharedGlobals) for cache control
 - Custom project.json configurations per crate
@@ -35,7 +35,7 @@ We adopt **Nx as the polyrepo build orchestrator** with the following formalized
 
 ### 1. Task Orchestration via Workspace Defaults
 
-All projects inherit task defaults from `nx.json::targetDefaults`:
+In Nx 22+, we have moved away from `tasksRunnerOptions` and centralized all task configuration, including caching, into `targetDefaults`. All projects inherit these defaults:
 
 ```json
 {
