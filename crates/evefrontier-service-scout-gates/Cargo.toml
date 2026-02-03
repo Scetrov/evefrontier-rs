@@ -22,7 +22,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 
 [dev-dependencies]
-axum-test = "17.0"
+axum-test = "18.4"
 
 [[bin]]
 name = "evefrontier-service-scout-gates"
