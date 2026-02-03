@@ -37,12 +37,6 @@
     "audit": { "cache": false },
     "outdated": { "cache": false }
   },
-  "tasksRunnerOptions": {
-    "default": {
-      "runner": "nx/tasks-runners/default",
-      "options": { "cacheableOperations": ["build", "test", "lint", "clippy", "complexity"] }
-    }
-  },
   "plugins": [],
   "generators": {},
   "release": {
