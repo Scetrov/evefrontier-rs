@@ -709,9 +709,6 @@ impl SpatialIndex {
         // Clamp requested neighbours to the number of available nodes to avoid
         // unbounded allocations based on user input.
         let max_k = query.k.min(self.nodes.len());
-        if max_k == 0 {
-            return Vec::new();
-        }
 
         let query_point = [point[0] as f32, point[1] as f32, point[2] as f32];
 
