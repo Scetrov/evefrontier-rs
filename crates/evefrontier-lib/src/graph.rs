@@ -575,8 +575,10 @@ mod tests {
 
         // Run Dijkstra from A to C; with gate edges weighted by physical distance
         // the expected chosen route should be the direct spatial edge A->C.
-        let mut constraints = crate::path::PathConstraints::default();
-        constraints.avoid_critical_state = false; // Disable heat checks for this test
+        let constraints = crate::path::PathConstraints {
+            avoid_critical_state: false, // Disable heat checks for this test
+            ..Default::default()
+        };
 
         let route = find_route_dijkstra(&graph, Some(&starmap), a.id, c.id, &constraints)
             .expect("route found");

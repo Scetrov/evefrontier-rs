@@ -707,11 +707,7 @@ pub fn build_message_box(
         out.push_str(line);
 
         // Pad to inner width
-        let line_visible_width = if i == 0 {
-            prefix_width + 2 + line.chars().count()
-        } else {
-            prefix_width + 2 + line.chars().count()
-        };
+        let line_visible_width = prefix_width + 2 + line.chars().count();
         let padding = inner_width.saturating_sub(line_visible_width + 2);
         out.push_str(&" ".repeat(padding));
 

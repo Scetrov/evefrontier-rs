@@ -139,7 +139,7 @@ fn handle_route_request(request: &RouteRequest, request_id: &str) -> Response {
         };
 
     // Default to Reflex when ship not specified and heat-aware routing enabled (matches CLI behavior)
-    let effective_ship_name = request.ship.as_ref().map(|s| s.as_str()).or_else(|| {
+    let effective_ship_name = request.ship.as_deref().or({
         if request.avoid_critical_state {
             Some("Reflex")
         } else {

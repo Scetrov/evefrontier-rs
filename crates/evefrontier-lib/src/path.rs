@@ -859,8 +859,10 @@ mod tests {
 
         let graph = crate::graph::build_hybrid_graph(&starmap);
 
-        let mut constraints = PathConstraints::default();
-        constraints.avoid_critical_state = false; // Disable heat checks for this test
+        let constraints = PathConstraints {
+            avoid_critical_state: false, // Disable heat checks for this test
+            ..Default::default()
+        };
 
         let route_distance = find_route_dijkstra(&graph, Some(&starmap), a.id, c.id, &constraints)
             .expect("route found");

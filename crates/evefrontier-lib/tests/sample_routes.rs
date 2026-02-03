@@ -6,7 +6,7 @@
 
 use evefrontier_lib::{
     find_route_a_star, find_route_bfs, find_route_dijkstra,
-    graph::{build_gate_graph, build_hybrid_graph, build_spatial_graph},
+    graph::{build_hybrid_graph, build_spatial_graph},
     load_starmap, PathConstraints, Starmap,
 };
 use serde::Deserialize;
@@ -88,8 +88,10 @@ fn test_gate_only_routes_find_paths() {
     let starmap = load_starmap(&db_path).expect("Failed to load starmap");
     let graph = build_hybrid_graph(&starmap);
     let testable = load_testable_routes();
-    let mut constraints = PathConstraints::default();
-    constraints.avoid_critical_state = false; // Disable heat checks for pathfinding validation
+    let constraints = PathConstraints {
+        avoid_critical_state: false, // Disable heat checks for pathfinding validation
+        ..Default::default()
+    };
 
     // Filter to gate-only routes (avoid_gates = false)
     let gate_routes: Vec<_> = testable.routes.iter().filter(|r| !r.avoid_gates).collect();
