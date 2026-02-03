@@ -11,7 +11,7 @@ compression, and base64url encoding, plus CLI integration via `--format fmap` an
 
 ## Technical Context
 
-**Language/Version**: Rust 1.91.1 (per `.rust-toolchain`)  
+**Language/Version**: Rust 1.93.0 (per `.rust-toolchain`)  
 **Primary Dependencies**: flate2 (gzip), base64 (encoding) - both already transitive deps  
 **Storage**: N/A (stateless encoding/decoding)  
 **Testing**: cargo test with fixtures in `docs/fixtures/`  

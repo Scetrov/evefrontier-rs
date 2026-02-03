@@ -52,7 +52,7 @@ jobs:
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@a54c7afa936fefeb4456b2dd8068152669aa8203 # stable
         with:
-          toolchain: 1.91.1
+          toolchain: "1.93.0"
           targets: ${{ matrix.target }}
 
       - name: Cache cargo directories
@@ -222,7 +222,7 @@ jobs:
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@a54c7afa936fefeb4456b2dd8068152669aa8203 # stable
         with:
-          toolchain: 1.91.1
+          toolchain: "1.93.0"
 
       - name: Install cargo-sbom
         run: cargo install cargo-sbom@0.9.1 --locked

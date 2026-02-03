@@ -19,7 +19,7 @@ and manages server lifecycle including graceful shutdown.
 
 ## Technical Context
 
-**Language/Version**: Rust 1.91.1 (per `.rust-toolchain`)  
+**Language/Version**: Rust 1.93.0 (per `.rust-toolchain`)  
 **Primary Dependencies**:
 
 - `clap` 4.x (CLI argument parsing)

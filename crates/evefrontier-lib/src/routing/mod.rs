@@ -165,8 +165,20 @@ impl RouteRequest {
     }
 }
 
-/// Planned route returned by the library.
-#[derive(Debug, Clone, Serialize)]
+/// Diagnostic messages generated during route planning.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RouteDiagnostic {
+    /// Spatial index was built in-memory (slow for large datasets).
+    SpatialIndexBuiltInMemory { system_count: usize },
+    /// Spatial index construction completed.
+    SpatialIndexBuilt {
+        node_count: usize,
+        systems_with_temp: usize,
+    },
+}
+
+/// Planned route with optional diagnostic messages.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RoutePlan {
     pub algorithm: RouteAlgorithm,
     pub start: SystemId,
@@ -174,6 +186,7 @@ pub struct RoutePlan {
     pub steps: Vec<SystemId>,
     pub gates: usize,
     pub jumps: usize,
+    pub diagnostics: Vec<RouteDiagnostic>,
 }
 
 impl RoutePlan {
@@ -265,30 +278,45 @@ fn compute_effective_constraints(
 }
 
 /// Select the appropriate graph for the given algorithm and constraints.
+/// Returns the graph and any diagnostic messages generated during construction.
 fn select_graph(
     starmap: &Starmap,
     algorithm: RouteAlgorithm,
     constraints: &SearchConstraints,
     spatial_index: Option<Arc<SpatialIndex>>,
     max_spatial_neighbors: usize,
-) -> Graph {
+) -> (Graph, Vec<RouteDiagnostic>) {
+    let mut diagnostics = Vec::new();
+
     let options = GraphBuildOptions {
-        spatial_index,
+        spatial_index: spatial_index.clone(),
         max_jump: constraints.max_jump,
         max_temperature: constraints.max_temperature,
         max_spatial_neighbors,
     };
 
-    if constraints.avoid_gates {
-        return build_spatial_graph_indexed(starmap, &options);
-    }
-
-    match algorithm {
-        RouteAlgorithm::Bfs => build_gate_graph(starmap),
-        RouteAlgorithm::Dijkstra | RouteAlgorithm::AStar => {
-            build_hybrid_graph_indexed(starmap, &options)
+    // If spatial index not provided and we're building spatial/hybrid graph, emit diagnostic
+    if spatial_index.is_none()
+        && (constraints.avoid_gates || !matches!(algorithm, RouteAlgorithm::Bfs))
+    {
+        let system_count = starmap.systems.len();
+        if system_count > 100 {
+            diagnostics.push(RouteDiagnostic::SpatialIndexBuiltInMemory { system_count });
         }
     }
+
+    let graph = if constraints.avoid_gates {
+        build_spatial_graph_indexed(starmap, &options)
+    } else {
+        match algorithm {
+            RouteAlgorithm::Bfs => build_gate_graph(starmap),
+            RouteAlgorithm::Dijkstra | RouteAlgorithm::AStar => {
+                build_hybrid_graph_indexed(starmap, &options)
+            }
+        }
+    };
+
+    (graph, diagnostics)
 }
 
 /// Build a filtered adjacency list that respects search constraints.
@@ -482,7 +510,7 @@ pub fn plan_route(starmap: &Starmap, request: &RouteRequest) -> Result<RoutePlan
         compute_effective_constraints(starmap, request, start_id, &base_constraints);
 
     // Step 5: Build graph and select planner
-    let graph = select_graph(
+    let (graph, diagnostics) = select_graph(
         starmap,
         request.algorithm,
         &effective_constraints,
@@ -524,6 +552,7 @@ pub fn plan_route(starmap: &Starmap, request: &RouteRequest) -> Result<RoutePlan
             steps: alt_route,
             gates,
             jumps,
+            diagnostics,
         });
     }
 
@@ -537,6 +566,7 @@ pub fn plan_route(starmap: &Starmap, request: &RouteRequest) -> Result<RoutePlan
         steps: route,
         gates,
         jumps,
+        diagnostics,
     })
 }
 
@@ -562,6 +592,7 @@ mod tests {
             steps: vec![1, 2, 3],
             gates: 2,
             jumps: 0,
+            diagnostics: vec![],
         };
         assert_eq!(plan.hop_count(), 2);
     }
@@ -575,6 +606,7 @@ mod tests {
             steps: vec![1],
             gates: 0,
             jumps: 0,
+            diagnostics: vec![],
         };
         assert_eq!(plan.hop_count(), 0);
     }

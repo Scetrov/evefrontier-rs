@@ -386,7 +386,7 @@ cargo build --release -p evefrontier-cli
 
 For reproducible builds, ensure:
 
-- Rust version matches `.rust-toolchain` (currently 1.91.1)
+- Rust version matches `.rust-toolchain` (currently 1.93.0)
 - Build from a clean checkout
 - Use `--locked` to respect Cargo.lock
 

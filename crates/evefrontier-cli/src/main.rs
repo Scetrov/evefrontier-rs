@@ -18,9 +18,11 @@ use evefrontier_lib::{
     compute_dataset_checksum, decode_fmap_token, encode_fmap_token, ensure_dataset, load_starmap,
     plan_route, read_release_tag, spatial_index_path, try_load_spatial_index, verify_freshness,
     DatasetMetadata, DatasetRelease, Error as RouteError, FreshnessResult, RouteAlgorithm,
-    RouteConstraints, RouteOutputKind, RouteRequest, RouteSummary, ShipCatalog, ShipLoadout,
-    SpatialIndex, VerifyDiagnostics, VerifyOutput, Waypoint, WaypointType,
+    RouteConstraints, RouteDiagnostic, RouteOutputKind, RouteRequest, RouteSummary, ShipCatalog,
+    ShipLoadout, SpatialIndex, VerifyDiagnostics, VerifyOutput, Waypoint, WaypointType,
 };
+
+use output_helpers::{build_message_box, MessageBoxLevel};
 
 // Re-export OutputFormat from output module for backwards compatibility
 pub use output::OutputFormat;
@@ -311,12 +313,12 @@ struct RouteOptionsArgs {
     #[arg(long = "dynamic-mass", action = ArgAction::SetTrue)]
     dynamic_mass: bool,
 
-    /// Avoid hops that would cause engine to reach critical heat state (requires --ship)
-    /// This behavior is enabled by default; use `--no-avoid-critical-state` to opt out.
+    /// Heat-aware routing enabled by default (uses Reflex if --ship not specified);
+    /// rejects jumps reaching critical temperature (≥150K).
     #[arg(long = "avoid-critical-state", action = ArgAction::SetTrue)]
     avoid_critical_state: bool,
 
-    /// Disable the default avoidance of critical engine state (opt-out flag).
+    /// Disable temperature constraints for gate-only networks or intentional high-risk planning.
     #[arg(long = "no-avoid-critical-state", action = ArgAction::SetTrue)]
     no_avoid_critical_state: bool,
 
@@ -870,16 +872,9 @@ fn handle_route_command(
         }
     };
 
-    // Determine whether we should avoid critical engine state for this request.
-    // Priority: explicit opt-out (--no-avoid-critical-state) > explicit opt-in (--avoid-critical-state) > implicit when a ship is available
-    let avoid_critical = if args.options.no_avoid_critical_state {
-        false
-    } else if args.options.avoid_critical_state {
-        true
-    } else {
-        // If a ship is available (explicit or default), enable avoid_critical_state behavior implicitly
-        effective_ship_name.is_some()
-    };
+    // Heat-aware routing is enabled by default (uses Reflex as default ship).
+    // Only disabled if user explicitly passes --no-avoid-critical-state.
+    let avoid_critical = !args.options.no_avoid_critical_state;
 
     request.constraints.avoid_critical_state = avoid_critical;
 
@@ -1014,6 +1009,46 @@ fn handle_route_command(
         summary
             .attach_heat(ship, loadout, &heat_config)
             .context("failed to attach heat projection")?;
+    }
+
+    // Display diagnostic message boxes for warnings/info
+    let palette = crate::terminal::ColorPalette::default();
+    let supports_unicode = crate::terminal::supports_unicode();
+
+    for diagnostic in &plan.diagnostics {
+        match diagnostic {
+            RouteDiagnostic::SpatialIndexBuiltInMemory { system_count } => {
+                let msg = format!(
+                    "Spatial index not provided, building in-memory ({} systems). This may be slow for large datasets.",
+                    system_count
+                );
+                let box_content = build_message_box(
+                    MessageBoxLevel::Warn,
+                    &msg,
+                    &palette,
+                    supports_unicode,
+                    None,
+                );
+                eprintln!("{}", box_content);
+            }
+            RouteDiagnostic::SpatialIndexBuilt {
+                node_count,
+                systems_with_temp,
+            } => {
+                let msg = format!(
+                    "Built spatial index with {} nodes ({} systems with temperature data).",
+                    node_count, systems_with_temp
+                );
+                let box_content = build_message_box(
+                    MessageBoxLevel::Info,
+                    &msg,
+                    &palette,
+                    supports_unicode,
+                    None,
+                );
+                eprintln!("{}", box_content);
+            }
+        }
     }
 
     let show_temps = !args.options.no_temp;

@@ -2,7 +2,7 @@
 name = "evefrontier-service-route"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.91.1"
+rust-version = "1.93.0"
 description = "EVE Frontier route planning HTTP microservice"
 license = "MIT"
 repository = "https://github.com/Scetrov/evefrontier-rs"

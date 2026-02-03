@@ -561,12 +561,7 @@ impl SpatialIndex {
             tree.add(&node.coords, index);
         }
 
-        info!(
-            node_count = nodes.len(),
-            systems_with_temp = temp_lookup.values().filter(|t| t.is_some()).count(),
-            "built spatial index"
-        );
-
+        // Spatial index built successfully
         Self {
             tree,
             nodes,

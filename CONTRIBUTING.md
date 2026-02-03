@@ -443,10 +443,10 @@ Environment
 
 - Install `rustup` from the official site: <https://rustup.rs>
 
-- The repository uses Rust 1.91.1 (pinned in `.rust-toolchain`). When you enter the repository
+- The repository uses Rust 1.93.0 (pinned in `.rust-toolchain`). When you enter the repository
   directory, rustup will automatically use this version. To verify:
 
-  rustc --version # should show 1.91.1
+  rustc --version # should show 1.93.0
 
 2. Install Node.js and pnpm (for developer tooling)
 

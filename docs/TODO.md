@@ -108,8 +108,8 @@ For detailed alignment report, see `docs/adr-alignment-report_2025-12-30.md`
   - Updated PR template with ADR immutability checklist
 - [x] Create reproducible toolchain pins for Node (`.nvmrc` or Volta config) and confirm
       `.rust-toolchain` matches the intended compiler release. - Created `.nvmrc` with Node 20
-      (LTS) - Confirmed `.rust-toolchain` specifies Rust 1.91.1 - Updated all CI workflows to use
-      Rust 1.91.1 (matching `.rust-toolchain`) - Documented version pinning in `CONTRIBUTING.md`
+      (LTS) - Confirmed `.rust-toolchain` specifies Rust 1.93.0 - Updated all CI workflows to use
+      Rust 1.93.0 (matching `.rust-toolchain`) - Documented version pinning in `CONTRIBUTING.md`
 - [x] Introduce automation scripts under `scripts/` (e.g., dataset fixture sync, release helpers)
       and register them as Nx tasks if applicable.
   - Created `scripts/project.json` with 10 Nx targets for Python and Node scripts

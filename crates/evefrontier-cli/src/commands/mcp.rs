@@ -185,11 +185,7 @@ pub async fn run_server_loop(mut transport: StdioTransport, server: McpServerSta
                                _ => (None, None),
                            };
 
-                           if tool_name_opt.is_none() {
-                               let error = json!({"code": -32602, "message": "Invalid params for tools/call: expected object with string field 'name'."});
-                               json!({"jsonrpc": "2.0", "id": id, "error": error})
-                           } else {
-                               let tool_name = tool_name_opt.unwrap();
+                           if let Some(tool_name) = tool_name_opt {
                                let known_tool = matches!(tool_name, "route_plan" | "system_info" | "systems_nearby" | "gates_from");
 
                                if !known_tool {
@@ -200,6 +196,9 @@ pub async fn run_server_loop(mut transport: StdioTransport, server: McpServerSta
                                    let error = json!({"code": -32603, "message": format!("Tool '{}' is not yet implemented on the server.", tool_name)});
                                    json!({"jsonrpc": "2.0", "id": id, "error": error})
                                }
+                           } else {
+                               let error = json!({"code": -32602, "message": "Invalid params for tools/call: expected object with string field 'name'."});
+                               json!({"jsonrpc": "2.0", "id": id, "error": error})
                            }
                        } else if method == "resources/list" {
                            let result = json!({"resources": []});

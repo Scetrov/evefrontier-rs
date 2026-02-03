@@ -117,7 +117,7 @@ pub use path::{
 };
 pub use routing::{
     plan_route, select_planner, AStarPlanner, BfsPlanner, DijkstraPlanner, RouteAlgorithm,
-    RouteConstraints, RouteOptimization, RoutePlan, RoutePlanner, RouteRequest,
+    RouteConstraints, RouteDiagnostic, RouteOptimization, RoutePlan, RoutePlanner, RouteRequest,
 };
 pub use ship::{
     calculate_cooling_time, calculate_jump_fuel_cost, calculate_route_fuel,

@@ -11,7 +11,7 @@ image building, scanning, signing, and publishing.
 
 ## Technical Context
 
-**Language/Version**: Rust 1.91.1 (microservices), YAML (Docker/Kubernetes)
+**Language/Version**: Rust 1.93.0 (microservices), YAML (Docker/Kubernetes)
 **Primary Dependencies**: axum (HTTP server), tokio (async runtime), Traefik (ingress)
 **Storage**: SQLite dataset embedded at build time (same as Lambda)
 **Testing**: Integration tests via `docker compose`, Helm chart validation
