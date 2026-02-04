@@ -706,16 +706,21 @@ impl SpatialIndex {
             return Vec::new();
         }
 
+        // Security: Cap allocation size to prevent DoS via excessive memory allocation
+        // Max is 10,000 to handle legitimate large-scale spatial queries while preventing abuse
+        const MAX_ALLOCATION_SIZE: usize = 10_000;
+        let k = query.k.min(MAX_ALLOCATION_SIZE);
+
         let query_point = [point[0] as f32, point[1] as f32, point[2] as f32];
 
         // Over-fetch to account for filtering
-        let fetch_count = query.k.saturating_mul(2).max(query.k + 10);
+        let fetch_count = k.saturating_mul(2).max(k + 10);
 
         let candidates = self
             .tree
             .nearest_n::<SquaredEuclidean>(&query_point, fetch_count);
 
-        let mut results = Vec::with_capacity(query.k);
+        let mut results = Vec::with_capacity(k);
 
         for neighbor in candidates {
             let node = &self.nodes[neighbor.item];
@@ -740,7 +745,7 @@ impl SpatialIndex {
 
             results.push((node.system_id, distance));
 
-            if results.len() >= query.k {
+            if results.len() >= k {
                 break;
             }
         }

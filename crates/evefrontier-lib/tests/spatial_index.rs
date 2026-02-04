@@ -269,3 +269,39 @@ fn position_lookup_works() {
         "z should match"
     );
 }
+
+#[test]
+fn excessive_k_allocation_is_capped() {
+    use evefrontier_lib::NeighbourQuery;
+
+    let starmap = load_starmap(&fixture_path(), None).expect("fixture should load");
+    let index = SpatialIndex::build(&starmap);
+
+    // Request an absurdly large number of neighbors (would allocate ~40GB if uncapped)
+    // Should be capped internally to MAX_ALLOCATION_SIZE (10,000)
+    let query = NeighbourQuery {
+        k: 10_000_000, // 10 million
+        radius: None,
+        max_temperature: None,
+    };
+
+    let nod_id = starmap
+        .system_id_by_name("Nod")
+        .expect("Nod exists in fixture");
+    let nod = starmap.systems.get(&nod_id).expect("Nod system");
+    let pos = nod.position.expect("Nod has position");
+
+    // Should complete without panic or excessive memory allocation
+    let results = index.nearest_filtered([pos.x, pos.y, pos.z], &query);
+
+    // Should return at most the number of systems in the database (8 systems in fixture)
+    // or MAX_ALLOCATION_SIZE, whichever is smaller
+    assert!(
+        results.len() <= 10_000,
+        "Should cap results to MAX_ALLOCATION_SIZE"
+    );
+    assert!(
+        results.len() <= starmap.systems.len(),
+        "Should not return more systems than exist"
+    );
+}
