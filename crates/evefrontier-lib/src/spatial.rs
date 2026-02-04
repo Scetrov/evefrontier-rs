@@ -710,18 +710,13 @@ impl SpatialIndex {
         // Max is 10,000 to handle legitimate large-scale spatial queries while preventing abuse
         const MAX_ALLOCATION_SIZE: usize = 10_000;
         // Cap k by both the configured maximum and the number of available nodes
-        let k = query
-            .k
-            .min(MAX_ALLOCATION_SIZE)
-            .min(self.nodes.len());
+        let k = query.k.min(MAX_ALLOCATION_SIZE).min(self.nodes.len());
 
         let query_point = [point[0] as f32, point[1] as f32, point[2] as f32];
 
         // Over-fetch to account for filtering, but never beyond limits
         let base_fetch = k.saturating_mul(2).max(k.saturating_add(10));
-        let fetch_count = base_fetch
-            .min(MAX_ALLOCATION_SIZE)
-            .min(self.nodes.len());
+        let fetch_count = base_fetch.min(MAX_ALLOCATION_SIZE).min(self.nodes.len());
 
         let candidates = self
             .tree
