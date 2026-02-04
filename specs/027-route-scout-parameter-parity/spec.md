@@ -46,7 +46,7 @@ The `route` and `scout` commands have divergent parameter sets despite performin
 
 ### Goals
 
-1. **Shared Parameter Model:** Create reusable argument structs (`CommonRouteConstraints`, `CommonShipConfig`, `CommonHeatConfig`) in `crates/evefrontier-cli/src/common.rs`
+1. **Shared Parameter Model:** Create reusable argument structs (`CommonRouteConstraints`, `CommonShipConfig`, `CommonHeatConfig`) in `crates/evefrontier-cli/src/common_args.rs`
 2. **Consistent Naming:** Ensure identical parameters use identical flag names and value formats across all commands
 3. **Backward Compatibility:** Preserve existing CLI behavior; new parameters should be additive
 4. **Library-First:** Refactor library routing APIs to accept unified constraint structures

@@ -13,15 +13,11 @@ The `scout range` command now supports **all routing parameters** from the `rout
 
 | Parameter | Purpose | Example |
 |-----------|---------|---------|
-| `--algorithm` | Choose pathfinding algorithm (bfs/dijkstra/a-star) | `--algorithm a-star` |
-| `--max-jump` | Limit spatial jump distance | `--max-jump 50` |
 | `--avoid` | Exclude hostile/dangerous systems | `--avoid "Brana" --avoid "H:2L2S"` |
-| `--avoid-gates` | Find spatial-only routes | `--avoid-gates` |
+| `--avoid-gates` | Find spatial-only routes (excludes all gate-connected systems) | `--avoid-gates` |
 | `--avoid-critical-state` | Enable heat-aware routing | `--avoid-critical-state` |
 | `--no-avoid-critical-state` | Disable temperature constraints | `--no-avoid-critical-state` |
 | `--dynamic-mass` | Recalculate mass per hop as fuel burns | `--dynamic-mass` |
-| `--optimize` | Optimize for distance or fuel | `--optimize fuel` |
-| `--max-spatial-neighbours` | Limit spatial graph fan-out | `--max-spatial-neighbours 100` |
 
 ### Existing Parameters (No Changes)
 

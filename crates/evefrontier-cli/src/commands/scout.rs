@@ -374,13 +374,9 @@ pub fn handle_scout_range(
         .map(|s| s.to_lowercase())
         .collect();
 
-    // Build set of gate-connected systems to exclude when --avoid-gates is specified
+    // Build set of gate-connected system IDs to exclude (any system in the gate network)
     let gate_connected_ids: std::collections::HashSet<i64> = if args.constraints.avoid_gates {
-        starmap
-            .adjacency
-            .get(&system_id)
-            .map(|ids| ids.iter().copied().collect())
-            .unwrap_or_default()
+        starmap.adjacency.keys().copied().collect()
     } else {
         std::collections::HashSet::new()
     };

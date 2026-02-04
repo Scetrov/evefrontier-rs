@@ -99,8 +99,8 @@ struct RouteCommandArgs {
 | `--avoid-gates` | ✅ | ❌ | ✅ | 🆕 Added |
 | `--avoid-critical-state` | ✅ | ❌ | ✅ | 🆕 Added |
 | `--dynamic-mass` | ✅ | ❌ | ✅ | 🆕 Added |
-| `--optimize` | ✅ | ❌ | ✅ | 🆕 Added |
-| `--max-spatial-neighbours` | ✅ | ❌ | ✅ | 🆕 Added |
+| `--optimize` | ✅ | ❌ | ⚠️ | Deferred (routing-specific) |
+| `--max-spatial-neighbours` | ✅ | ❌ | ⚠️ | Deferred (routing-specific) |
 | `--no-avoid-critical-state` | ✅ | ❌ | ✅ | 🆕 Added |
 | `--max-temp` | ✅ | ✅ | ✅ | ✅ Already consistent |
 | `--ship` | ✅ | ✅ | ✅ | ✅ Already consistent |
@@ -110,7 +110,8 @@ struct RouteCommandArgs {
 | `--sys-temp-curve` | ✅ | ✅ | ✅ | ✅ Already consistent |
 | `--include-ccp-systems` | ❌ | ✅ | ✅ | 🆕 Add to route |
 
-**Result**: Full parameter parity achieved (15/15 parameters consistent)
+**Result**: Constraint/ship/heat parameter parity achieved (11 shared parameters consistent across commands).
+Routing-specific optimizations (--algorithm, --optimize, --max-spatial-neighbours, --max-jump) deferred as they don't apply to spatial-only scouting.
 
 ---
 

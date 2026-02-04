@@ -41,19 +41,19 @@ Where:
 - Most systems: **<5% error**
 - Max error: **~9 K** (very cold systems near detection limits)
 
-### Inverse-Tangent Heat-Signature Model (Research - Not Validated)
+### Inverse-Tangent Heat-Signature Model (Validated)
 
 This section documents the inverse-tangent model developed by community researcher
-[Ergod](https://awar.dev/). **Note: This model has NOT been validated against actual EVE Frontier
-temperatures and shows 45-99% errors compared to in-game measurements.**
+[Ergod](https://awar.dev/).
 
 **Reference:**
 [No more Traps, Inverse-Tangent Heat-Signature Model](https://thoughtfolio.xyz/No+more+Traps%2C+Inverse-Tangent+Heat-Signature+Model)
 (2026-01-29, updated 2026-01-31)
 
-**Status:** ✅ **VALIDATED** - This is the default temperature calculation method. Achieves ~1.2K MAE
-(< 2% error) against actual in-game measurements. The flux-based formulation uses radiative
-intensity (L/d²) rather than total luminosity, making it physically meaningful.
+**Status:** ✅ **VALIDATED** - This is the default temperature calculation method for the CLI `flux`
+curve. Achieves ~1.2K MAE (< 2% error) against actual in-game measurements. The flux-based
+formulation uses radiative intensity (L/d²) rather than total luminosity, making it physically
+meaningful.
 
 #### Final Formula (Flux-Based)
 
