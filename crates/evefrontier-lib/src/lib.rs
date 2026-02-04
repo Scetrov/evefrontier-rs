@@ -27,7 +27,7 @@
 //! let paths = ensure_e6c3_dataset(None)?;
 //!
 //! // 2. Load the starmap into memory
-//! let starmap = load_starmap(&paths.database)?;
+//! let starmap = load_starmap(&paths.database, None)?;
 //!
 //! // 3. Create a route request
 //! let request = RouteRequest {

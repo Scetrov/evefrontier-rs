@@ -11,7 +11,7 @@ fn fixture_path() -> PathBuf {
 #[test]
 fn load_fixture_and_find_route() -> Result<()> {
     let path = fixture_path();
-    let starmap = load_starmap(&path)?;
+    let starmap = load_starmap(&path, None)?;
 
     assert_eq!(starmap.systems.len(), 8, "fixture should have 8 systems");
     // Note: E1J-M5G has no gates, so it won't have adjacency entries in gate-only graph
@@ -69,7 +69,7 @@ fn load_legacy_schema() -> Result<()> {
     )?;
     drop(conn);
 
-    let starmap = load_starmap(file.path())?;
+    let starmap = load_starmap(file.path(), None)?;
     assert_eq!(starmap.systems.len(), 3);
     assert_eq!(starmap.adjacency.len(), 3);
 
@@ -101,6 +101,6 @@ fn rejects_schema_with_missing_columns() {
     .expect("create schema");
     drop(conn);
 
-    let err = load_starmap(file.path()).expect_err("should reject schema");
+    let err = load_starmap(file.path(), None).expect_err("should reject schema");
     assert!(matches!(err, Error::UnsupportedSchema));
 }

@@ -85,7 +85,7 @@ fn test_gate_only_routes_find_paths() {
         return;
     }
 
-    let starmap = load_starmap(&db_path).expect("Failed to load starmap");
+    let starmap = load_starmap(&db_path, None).expect("Failed to load starmap");
     let graph = build_hybrid_graph(&starmap);
     let testable = load_testable_routes();
     let constraints = PathConstraints {
@@ -150,7 +150,7 @@ fn test_spatial_routes_find_paths() {
         return;
     }
 
-    let starmap = load_starmap(&db_path).expect("Failed to load starmap");
+    let starmap = load_starmap(&db_path, None).expect("Failed to load starmap");
     let graph = build_spatial_graph(&starmap);
     let testable = load_testable_routes();
 
@@ -219,7 +219,7 @@ fn test_hybrid_routes_find_paths() {
         return;
     }
 
-    let starmap = load_starmap(&db_path).expect("Failed to load starmap");
+    let starmap = load_starmap(&db_path, None).expect("Failed to load starmap");
     let graph = build_hybrid_graph(&starmap);
     let testable = load_testable_routes();
 
@@ -286,7 +286,7 @@ fn test_route_length_sanity() {
         return;
     }
 
-    let starmap = load_starmap(&db_path).expect("Failed to load starmap");
+    let starmap = load_starmap(&db_path, None).expect("Failed to load starmap");
     let graph = build_hybrid_graph(&starmap);
     let testable = load_testable_routes();
 
@@ -357,7 +357,7 @@ fn test_known_routes() {
         return;
     }
 
-    let starmap = load_starmap(&db_path).expect("Failed to load starmap");
+    let starmap = load_starmap(&db_path, None).expect("Failed to load starmap");
     let graph = build_hybrid_graph(&starmap);
     let constraints = PathConstraints {
         max_jump: Some(80.0),

@@ -8,6 +8,7 @@ use serde::Serialize;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 mod commands;
+mod common_args;
 mod output;
 mod output_helpers;
 mod terminal;
@@ -29,37 +30,16 @@ pub use output::OutputFormat;
 
 // === Value parser helpers for clap f64 validation ===
 
-/// Parse fuel quality, validating range 1.0-100.0
-fn parse_fuel_quality(s: &str) -> Result<f64, String> {
-    let val: f64 = s
-        .parse()
-        .map_err(|_| format!("'{}' is not a valid number", s))?;
-    if !(1.0..=100.0).contains(&val) {
-        return Err(format!(
-            "fuel quality must be between 1 and 100, got {}",
-            val
-        ));
-    }
-    Ok(val)
-}
-
-/// Parse non-negative f64 values (for cargo_mass, fuel_load)
-fn parse_non_negative(s: &str) -> Result<f64, String> {
-    let val: f64 = s
-        .parse()
-        .map_err(|_| format!("'{}' is not a valid number", s))?;
-    if val < 0.0 {
-        return Err(format!("value must be non-negative, got {}", val));
-    }
-    Ok(val)
-}
-
 #[derive(Parser, Debug)]
 #[command(
     author,
     version,
     about = "EVE Frontier dataset utilities",
-    long_about = None,
+    long_about = "EVE Frontier dataset utilities\n\n\
+Heat calculation models based on community research by:\n  \
+• Ergod (awar.dev) - Inverse-tangent heat-signature model (0.15% MAE)\n  \
+• Anteris - Initial temperature data gathering and validation\n\n\
+For details, see: https://thoughtfolio.xyz/No+more+Traps%2C+Inverse-Tangent+Heat-Signature+Model",
     propagate_version = true,
     arg_required_else_help = true
 )]
@@ -138,6 +118,15 @@ pub struct ScoutRangeArgs {
     /// System name to query (case-sensitive; fuzzy suggestions on mismatch).
     pub system: String,
 
+    #[command(flatten)]
+    pub constraints: common_args::CommonRouteConstraints,
+
+    #[command(flatten)]
+    pub ship_config: common_args::CommonShipConfig,
+
+    #[command(flatten)]
+    pub heat: common_args::CommonHeatConfig,
+
     /// Maximum number of results to return (1-100).
     #[arg(long, short = 'n', default_value = "10")]
     pub limit: usize,
@@ -146,29 +135,9 @@ pub struct ScoutRangeArgs {
     #[arg(long, short = 'r')]
     pub radius: Option<f64>,
 
-    /// Maximum star temperature in Kelvin (filters out hotter systems).
-    #[arg(long = "max-temp", short = 't')]
-    pub max_temp: Option<f64>,
-
     /// Include CCP developer/staging systems (AD###, V-###) in results.
     #[arg(long, action = ArgAction::SetTrue)]
     pub include_ccp_systems: bool,
-
-    /// Ship name for fuel/heat projections (enables route planning mode).
-    #[arg(long, short = 's')]
-    pub ship: Option<String>,
-
-    /// Fuel quality rating (1-100). Higher quality = more efficient jumps.
-    #[arg(long = "fuel-quality", default_value = "10.0", value_parser = parse_fuel_quality)]
-    pub fuel_quality: f64,
-
-    /// Cargo mass in kilograms (added to ship mass for fuel/heat calculations).
-    #[arg(long = "cargo-mass", default_value = "0", value_parser = parse_non_negative)]
-    pub cargo_mass: f64,
-
-    /// Starting fuel load in units (defaults to ship's fuel capacity).
-    #[arg(long = "fuel-load", value_parser = parse_non_negative)]
-    pub fuel_load: Option<f64>,
 }
 
 #[derive(Subcommand, Debug)]
@@ -230,11 +199,11 @@ impl RouteCommandArgs {
             goal: self.endpoints.to.clone(),
             algorithm: self.options.algorithm.into(),
             constraints: RouteConstraints {
-                max_jump: self.options.max_jump,
-                avoid_systems: self.options.avoid.clone(),
-                avoid_gates: self.options.avoid_gates,
-                max_temperature: self.options.max_temp,
-                avoid_critical_state: self.options.avoid_critical_state,
+                max_jump: self.options.constraints.max_jump,
+                avoid_systems: self.options.constraints.avoid.clone(),
+                avoid_gates: self.options.constraints.avoid_gates,
+                max_temperature: self.options.constraints.max_temp,
+                avoid_critical_state: self.options.heat.avoid_critical_state,
                 ship: None,
                 loadout: None,
                 heat_config: None,
@@ -246,8 +215,8 @@ impl RouteCommandArgs {
                 RouteOptimizeArg::Fuel => evefrontier_lib::routing::RouteOptimization::Fuel,
             },
             fuel_config: evefrontier_lib::ship::FuelConfig {
-                quality: self.options.fuel_quality as f64,
-                dynamic_mass: self.options.dynamic_mass,
+                quality: self.options.ship_config.fuel_quality,
+                dynamic_mass: self.options.ship_config.dynamic_mass,
             },
         }
     }
@@ -269,58 +238,18 @@ struct RouteOptionsArgs {
     #[arg(long, value_enum, default_value_t = RouteAlgorithmArg::default())]
     algorithm: RouteAlgorithmArg,
 
-    /// Maximum jump distance (light-years) when computing the route.
-    #[arg(long = "max-jump")]
-    max_jump: Option<f64>,
+    #[command(flatten)]
+    constraints: common_args::CommonRouteConstraints,
 
-    /// Systems to avoid when building the path. Repeat for multiple systems.
-    #[arg(long = "avoid")]
-    avoid: Vec<String>,
+    #[command(flatten)]
+    ship_config: common_args::CommonShipConfig,
 
-    /// Avoid gates entirely (prefer spatial or traversal routes).
-    #[arg(long = "avoid-gates", action = ArgAction::SetTrue)]
-    avoid_gates: bool,
-
-    /// Maximum system temperature threshold in Kelvin.
-    ///
-    /// Only applies to spatial jumps - systems with star temperature above this
-    /// threshold cannot be reached via spatial jumps (ships would overheat).
-    /// Gate jumps are unaffected by temperature.
-    #[arg(long = "max-temp")]
-    max_temp: Option<f64>,
+    #[command(flatten)]
+    heat: common_args::CommonHeatConfig,
 
     /// Suppress minimum external temperature annotations in route output.
     #[arg(long = "no-temp", action = ArgAction::SetTrue)]
     no_temp: bool,
-
-    /// Ship name for fuel projection (case-insensitive).
-    #[arg(long = "ship")]
-    ship: Option<String>,
-
-    /// Fuel quality rating (1-100, default 10).
-    #[arg(long = "fuel-quality", default_value = "10")]
-    fuel_quality: i64,
-
-    /// Cargo mass in kilograms.
-    #[arg(long = "cargo-mass", default_value = "0")]
-    cargo_mass: f64,
-
-    /// Initial fuel load (units). Defaults to full capacity.
-    #[arg(long = "fuel-load")]
-    fuel_load: Option<f64>,
-
-    /// Recalculate mass after each hop as fuel is consumed.
-    #[arg(long = "dynamic-mass", action = ArgAction::SetTrue)]
-    dynamic_mass: bool,
-
-    /// Heat-aware routing enabled by default (uses Reflex if --ship not specified);
-    /// rejects jumps reaching critical temperature (≥150K).
-    #[arg(long = "avoid-critical-state", action = ArgAction::SetTrue)]
-    avoid_critical_state: bool,
-
-    /// Disable temperature constraints for gate-only networks or intentional high-risk planning.
-    #[arg(long = "no-avoid-critical-state", action = ArgAction::SetTrue)]
-    no_avoid_critical_state: bool,
 
     /// Maximum number of spatial neighbours to consider when building the spatial/hybrid graph.
     /// Defaults to 250 to limit fan-out for common runs and improve performance.
@@ -571,7 +500,7 @@ fn handle_index_build(context: &AppContext, args: &IndexBuildArgs) -> Result<()>
     }
 
     println!("Loading starmap from {}...", paths.database.display());
-    let starmap = load_starmap(&paths.database)
+    let starmap = load_starmap(&paths.database, None)
         .with_context(|| format!("failed to load dataset from {}", paths.database.display()))?;
 
     // Compute dataset checksum for freshness verification (v2 format)
@@ -814,8 +743,11 @@ fn handle_route_command(
     })
     .context("failed to locate or download the EVE Frontier dataset")?;
 
-    let starmap = load_starmap(&paths.database)
-        .with_context(|| format!("failed to load dataset from {}", paths.database.display()))?;
+    let starmap = load_starmap(
+        &paths.database,
+        Some(args.options.heat.sys_temp_curve.into()),
+    )
+    .with_context(|| format!("failed to load dataset from {}", paths.database.display()))?;
 
     // Only load the spatial index when the selected algorithm can make use of it.
     // BFS does not use spatial indexing, so we avoid unnecessary I/O in that case.
@@ -835,7 +767,7 @@ fn handle_route_command(
     // - If user explicitly requested heat-aware planning (`--avoid-critical-state`) they must
     //   also provide `--ship`. This preserves the historical behavior and avoids surprising
     //   automatic ship injection when the user explicitly opted into heat checks.
-    if args.options.avoid_critical_state && args.options.ship.is_none() {
+    if args.options.heat.avoid_critical_state && args.options.ship_config.ship.is_none() {
         return Err(anyhow::anyhow!(
             "--ship is required for heat-aware planning"
         ));
@@ -843,24 +775,24 @@ fn handle_route_command(
 
     // Determine whether the user provided any route-specific options; if not, we're in
     // a zero-config invocation and may apply friendly defaults (like default ship).
-    let user_provided_options = args.options.max_jump.is_some()
+    let user_provided_options = args.options.constraints.max_jump.is_some()
         || args.options.algorithm != RouteAlgorithmArg::default()
         || args.options.optimize.is_some()
-        || !args.options.avoid.is_empty()
-        || args.options.avoid_gates
-        || args.options.max_temp.is_some()
-        || args.options.ship.is_some()
-        || args.options.fuel_quality != 10
-        || args.options.cargo_mass != 0.0
-        || args.options.fuel_load.is_some()
-        || args.options.dynamic_mass
-        || args.options.no_avoid_critical_state
-        || args.options.avoid_critical_state
+        || !args.options.constraints.avoid.is_empty()
+        || args.options.constraints.avoid_gates
+        || args.options.constraints.max_temp.is_some()
+        || args.options.ship_config.ship.is_some()
+        || args.options.ship_config.fuel_quality != 10.0
+        || args.options.ship_config.cargo_mass != 0.0
+        || args.options.ship_config.fuel_load.is_some()
+        || args.options.ship_config.dynamic_mass
+        || args.options.heat.no_avoid_critical_state
+        || args.options.heat.avoid_critical_state
         || args.options.max_spatial_neighbours != 250usize;
 
     // Determine the effective ship name (support 'None' to explicitly disable ship-based planning).
     // Only inject a default ship when the user did not provide other routing options (zero-config case).
-    let effective_ship_name: Option<String> = match args.options.ship.as_deref() {
+    let effective_ship_name: Option<String> = match args.options.ship_config.ship.as_deref() {
         Some(s) if s.eq_ignore_ascii_case("none") => None,
         Some(s) => Some(s.to_string()),
         None => {
@@ -874,7 +806,7 @@ fn handle_route_command(
 
     // Heat-aware routing is enabled by default (uses Reflex as default ship).
     // Only disabled if user explicitly passes --no-avoid-critical-state.
-    let avoid_critical = !args.options.no_avoid_critical_state;
+    let avoid_critical = !args.options.heat.no_avoid_critical_state;
 
     request.constraints.avoid_critical_state = avoid_critical;
 
@@ -896,9 +828,14 @@ fn handle_route_command(
                     anyhow::anyhow!(format!("ship {} not found in catalog", ship_name))
                 })?;
 
-                let fuel_load = args.options.fuel_load.unwrap_or(ship.fuel_capacity);
-                let loadout = ShipLoadout::new(ship, fuel_load, args.options.cargo_mass)
-                    .context("invalid ship loadout")?;
+                let fuel_load = args
+                    .options
+                    .ship_config
+                    .fuel_load
+                    .unwrap_or(ship.fuel_capacity);
+                let loadout =
+                    ShipLoadout::new(ship, fuel_load, args.options.ship_config.cargo_mass)
+                        .context("invalid ship loadout")?;
 
                 request.constraints.ship = Some(ship.clone());
                 request.constraints.loadout = Some(loadout);
@@ -907,13 +844,13 @@ fn handle_route_command(
                 if request.constraints.avoid_critical_state {
                     let heat_config = evefrontier_lib::ship::HeatConfig {
                         calibration_constant: 1e-7,
-                        dynamic_mass: args.options.dynamic_mass,
+                        dynamic_mass: args.options.ship_config.dynamic_mass,
                     };
                     request.constraints.heat_config = Some(heat_config);
                 }
             }
             Err(e) => {
-                if args.options.ship.is_some() {
+                if args.options.ship_config.ship.is_some() {
                     // User explicitly requested a ship — this is an error we should propagate.
                     return Err(e).context("failed to load requested ship data");
                 } else {
@@ -1252,7 +1189,7 @@ fn handle_fmap_encode(context: &AppContext, args: &FmapEncodeArgs) -> Result<()>
         if needs_db_lookup {
             let paths = ensure_dataset(context.target_path(), context.dataset_release())
                 .context("failed to locate or download the EVE Frontier dataset")?;
-            Some(load_starmap(&paths.database).with_context(|| {
+            Some(load_starmap(&paths.database, None).with_context(|| {
                 format!("failed to load dataset from {}", paths.database.display())
             })?)
         } else {

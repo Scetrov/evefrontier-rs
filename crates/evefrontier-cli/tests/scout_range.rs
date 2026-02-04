@@ -309,3 +309,253 @@ fn test_scout_range_note_format() {
         // Note format uses in-game hyperlinks
         .stdout(predicate::str::contains("<a href=\"showinfo:5//"));
 }
+
+#[test]
+fn test_scout_range_with_avoid() {
+    let (mut cmd, _temp) = prepare_command();
+    cmd.arg("--format")
+        .arg("json")
+        .arg("scout")
+        .arg("range")
+        .arg("Nod")
+        .arg("--radius")
+        .arg("200.0")
+        .arg("--avoid")
+        .arg("Brana")
+        .arg("--avoid")
+        .arg("H:2L2S");
+
+    let assert = cmd.assert().success();
+    let output = assert.get_output();
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    let json: serde_json::Value = serde_json::from_str(&stdout).expect("valid JSON output");
+
+    // Check that Brana and H:2L2S are not in the results
+    let systems = json["systems"].as_array().expect("systems is an array");
+    for system in systems {
+        let name = system["name"].as_str().expect("name is a string");
+        assert_ne!(name, "Brana", "Brana should be excluded by --avoid");
+        assert_ne!(name, "H:2L2S", "H:2L2S should be excluded by --avoid");
+    }
+}
+
+#[test]
+fn test_scout_range_with_max_jump() {
+    let (mut cmd, _temp) = prepare_command();
+    cmd.arg("--format")
+        .arg("json")
+        .arg("scout")
+        .arg("range")
+        .arg("Nod")
+        .arg("--radius")
+        .arg("100.0")
+        .arg("--max-jump")
+        .arg("50.0");
+
+    // This test verifies the command accepts --max-jump parameter
+    // Note: --max-jump affects pathfinding, not direct spatial queries,
+    // so its effect is limited in scout range without route planning mode
+    let assert = cmd.assert().success();
+    let output = assert.get_output();
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    let _json: serde_json::Value = serde_json::from_str(&stdout).expect("valid JSON output");
+    // Just verify it parses successfully - max-jump doesn't filter scout range results directly
+}
+
+#[test]
+fn test_scout_range_with_avoid_gates() {
+    let (mut cmd, _temp) = prepare_command();
+    cmd.arg("--format")
+        .arg("json")
+        .arg("scout")
+        .arg("range")
+        .arg("Nod")
+        .arg("--radius")
+        .arg("50.0")
+        .arg("--avoid-gates");
+
+    // This test verifies --avoid-gates excludes gate-connected systems
+    // Nod has 3 gate neighbors in fixture: D:2NAS, H:2L2S, J:35IA
+    let assert = cmd.assert().success();
+    let output = assert.get_output();
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    let json: serde_json::Value = serde_json::from_str(&stdout).expect("valid JSON output");
+    let systems = json["systems"].as_array().expect("systems array");
+
+    // Verify none of the gate-connected neighbors appear in results
+    let gate_neighbors = ["D:2NAS", "H:2L2S", "J:35IA"];
+    for system in systems {
+        let name = system["name"].as_str().expect("system name");
+        assert!(
+            !gate_neighbors.contains(&name),
+            "Gate-connected system {} should be excluded with --avoid-gates",
+            name
+        );
+    }
+}
+
+#[test]
+fn test_scout_range_with_dynamic_mass() {
+    let (mut cmd, _temp) = prepare_command();
+    cmd.arg("--format")
+        .arg("json")
+        .arg("scout")
+        .arg("range")
+        .arg("Nod")
+        .arg("--radius")
+        .arg("50.0")
+        .arg("--ship")
+        .arg("Reflex")
+        .arg("--dynamic-mass");
+
+    // This test verifies the command accepts --dynamic-mass parameter
+    // Dynamic mass enables per-hop mass recalculation for fuel projections
+    let assert = cmd.assert().success();
+    let output = assert.get_output();
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    let json: serde_json::Value = serde_json::from_str(&stdout).expect("valid JSON output");
+    let systems = json["systems"].as_array().expect("systems array");
+
+    // Verify fuel projections exist when ship is specified
+    if !systems.is_empty() {
+        let first_system = &systems[0];
+        // Fuel info should be present when ship specified
+        assert!(
+            first_system.get("fuel_info").is_some(),
+            "fuel_info present with --ship"
+        );
+    }
+}
+
+#[test]
+fn test_scout_range_static_vs_dynamic_mass() {
+    // Test that static mass (default) and dynamic mass produce different results
+    // when cargo is consumed (dynamic mass should show decreasing mass over route)
+
+    let (mut cmd_static, _temp1) = prepare_command();
+    cmd_static
+        .arg("--format")
+        .arg("json")
+        .arg("scout")
+        .arg("range")
+        .arg("Nod")
+        .arg("--radius")
+        .arg("50.0")
+        .arg("--ship")
+        .arg("Reflex")
+        .arg("--cargo-mass")
+        .arg("1000.0"); // Add cargo to make mass difference visible
+
+    let assert_static = cmd_static.assert().success();
+    let output_static = assert_static.get_output();
+    let stdout_static = String::from_utf8_lossy(&output_static.stdout);
+    let json_static: serde_json::Value = serde_json::from_str(&stdout_static).expect("valid JSON");
+
+    let (mut cmd_dynamic, _temp2) = prepare_command();
+    cmd_dynamic
+        .arg("--format")
+        .arg("json")
+        .arg("scout")
+        .arg("range")
+        .arg("Nod")
+        .arg("--radius")
+        .arg("50.0")
+        .arg("--ship")
+        .arg("Reflex")
+        .arg("--cargo-mass")
+        .arg("1000.0")
+        .arg("--dynamic-mass");
+
+    let assert_dynamic = cmd_dynamic.assert().success();
+    let output_dynamic = assert_dynamic.get_output();
+    let stdout_dynamic = String::from_utf8_lossy(&output_dynamic.stdout);
+    let json_dynamic: serde_json::Value =
+        serde_json::from_str(&stdout_dynamic).expect("valid JSON");
+
+    // Both should succeed and return systems
+    let systems_static = json_static["systems"].as_array().expect("systems array");
+    let systems_dynamic = json_dynamic["systems"].as_array().expect("systems array");
+
+    assert_eq!(
+        systems_static.len(),
+        systems_dynamic.len(),
+        "Same systems returned regardless of mass calculation mode"
+    );
+
+    // Note: The actual fuel consumption difference would be visible in the fuel_info
+    // field if we implemented detailed per-system fuel tracking. For now, we just
+    // verify both modes execute successfully.
+}
+
+#[test]
+fn test_scout_range_avoid_critical_state() {
+    let (mut cmd, _temp) = prepare_command();
+    cmd.arg("--format")
+        .arg("json")
+        .arg("scout")
+        .arg("range")
+        .arg("Nod")
+        .arg("--radius")
+        .arg("100.0")
+        .arg("--avoid-critical-state");
+
+    // This test verifies --avoid-critical-state parameter works
+    // It should limit max_temperature to 150K
+    let assert = cmd.assert().success();
+    let output = assert.get_output();
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    let json: serde_json::Value = serde_json::from_str(&stdout).expect("valid JSON output");
+
+    // Verify query parameters reflect heat constraint
+    let query = &json["query"];
+    assert_eq!(
+        query["max_temperature"], 150.0,
+        "--avoid-critical-state should set max_temperature to 150K"
+    );
+
+    // All returned systems should have temperature <= 150K
+    let systems = json["systems"].as_array().expect("systems array");
+    for system in systems {
+        if let Some(temp) = system["external_temp_k"].as_f64() {
+            assert!(
+                temp <= 150.0,
+                "System {} has temperature {}K > 150K (critical threshold)",
+                system["name"],
+                temp
+            );
+        }
+    }
+}
+
+#[test]
+fn test_scout_range_no_avoid_critical_state() {
+    // Test that --no-avoid-critical-state disables heat constraints
+    let (mut cmd, _temp) = prepare_command();
+    cmd.arg("--format")
+        .arg("json")
+        .arg("scout")
+        .arg("range")
+        .arg("Nod")
+        .arg("--radius")
+        .arg("100.0")
+        .arg("--avoid-critical-state")
+        .arg("--no-avoid-critical-state"); // This should override
+
+    let assert = cmd.assert().success();
+    let output = assert.get_output();
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    let json: serde_json::Value = serde_json::from_str(&stdout).expect("valid JSON output");
+
+    // Verify query parameters show no temperature limit
+    let query = &json["query"];
+    assert!(
+        query["max_temperature"].is_null(),
+        "--no-avoid-critical-state should override --avoid-critical-state"
+    );
+}

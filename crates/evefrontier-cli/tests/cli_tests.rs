@@ -94,7 +94,7 @@ impl TestEnv {
     fn build_v1_index(&self) {
         use evefrontier_lib::{load_starmap, SpatialIndex};
 
-        let starmap = load_starmap(&self.db_path).expect("load starmap");
+        let starmap = load_starmap(&self.db_path, None).expect("load starmap");
         let index = SpatialIndex::build(&starmap); // v1 format (no metadata)
         index.save(&self.index_path).expect("save index");
     }

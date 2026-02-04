@@ -8,7 +8,7 @@ fn fixture_path() -> PathBuf {
 
 #[test]
 fn bfs_route_plan_succeeds() {
-    let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+    let starmap = load_starmap(&fixture_path(), None).expect("fixture loads");
     let request = RouteRequest::bfs("Nod", "Brana");
     let plan = plan_route(&starmap, &request).expect("route exists");
 
@@ -20,7 +20,7 @@ fn bfs_route_plan_succeeds() {
 
 #[test]
 fn dijkstra_route_plan_succeeds() {
-    let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+    let starmap = load_starmap(&fixture_path(), None).expect("fixture loads");
     let request = RouteRequest {
         start: "Nod".to_string(),
         goal: "Brana".to_string(),
@@ -41,7 +41,7 @@ fn dijkstra_route_plan_succeeds() {
 
 #[test]
 fn a_star_respects_max_jump_constraint() {
-    let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+    let starmap = load_starmap(&fixture_path(), None).expect("fixture loads");
     // Test spatial routing without gates
     // Note: Nod and Brana are ~297 ly apart, so we need a large max_jump to test this
     let request = RouteRequest {
@@ -71,7 +71,7 @@ fn a_star_respects_max_jump_constraint() {
 
 #[test]
 fn avoided_goal_rejects_route() {
-    let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+    let starmap = load_starmap(&fixture_path(), None).expect("fixture loads");
     let request = RouteRequest {
         start: "Nod".to_string(),
         goal: "Brana".to_string(),
@@ -92,7 +92,7 @@ fn avoided_goal_rejects_route() {
 
 #[test]
 fn temperature_limit_blocks_hot_systems() {
-    let mut starmap = load_starmap(&fixture_path()).expect("fixture loads");
+    let mut starmap = load_starmap(&fixture_path(), None).expect("fixture loads");
     let brana_id = starmap.system_id_by_name("Brana").unwrap();
     starmap
         .systems
@@ -121,7 +121,7 @@ fn temperature_limit_blocks_hot_systems() {
 
 #[test]
 fn avoid_gates_switches_to_spatial_graph() {
-    let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+    let starmap = load_starmap(&fixture_path(), None).expect("fixture loads");
 
     let request = RouteRequest {
         start: "Nod".to_string(),

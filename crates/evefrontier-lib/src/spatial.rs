@@ -46,7 +46,7 @@
 //! use evefrontier_lib::{load_starmap, SpatialIndex, NeighbourQuery};
 //!
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! let starmap = load_starmap(std::path::Path::new("static_data.db"))?;
+//! let starmap = load_starmap(std::path::Path::new("static_data.db"), None)?;
 //! let index = SpatialIndex::build(&starmap);
 //!
 //! // Query 10 nearest systems to a position, excluding those above 50K
@@ -585,7 +585,7 @@ impl SpatialIndex {
     ///
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let db_path = Path::new("static_data.db");
-    /// let starmap = load_starmap(db_path)?;
+    /// let starmap = load_starmap(db_path, None)?;
     ///
     /// let checksum = compute_dataset_checksum(db_path)?;
     /// let metadata = DatasetMetadata {
@@ -706,16 +706,23 @@ impl SpatialIndex {
             return Vec::new();
         }
 
+        // Security: Cap allocation size to prevent DoS via excessive memory allocation
+        // Max is 10,000 to handle legitimate large-scale spatial queries while preventing abuse
+        const MAX_ALLOCATION_SIZE: usize = 10_000;
+        // Cap k by both the configured maximum and the number of available nodes
+        let k = query.k.min(MAX_ALLOCATION_SIZE).min(self.nodes.len());
+
         let query_point = [point[0] as f32, point[1] as f32, point[2] as f32];
 
-        // Over-fetch to account for filtering
-        let fetch_count = query.k.saturating_mul(2).max(query.k + 10);
+        // Over-fetch to account for filtering, but never beyond limits
+        let base_fetch = k.saturating_mul(2).max(k.saturating_add(10));
+        let fetch_count = base_fetch.min(MAX_ALLOCATION_SIZE).min(self.nodes.len());
 
         let candidates = self
             .tree
             .nearest_n::<SquaredEuclidean>(&query_point, fetch_count);
 
-        let mut results = Vec::with_capacity(query.k);
+        let mut results = Vec::with_capacity(k);
 
         for neighbor in candidates {
             let node = &self.nodes[neighbor.item];
@@ -740,7 +747,7 @@ impl SpatialIndex {
 
             results.push((node.system_id, distance));
 
-            if results.len() >= query.k {
+            if results.len() >= k {
                 break;
             }
         }

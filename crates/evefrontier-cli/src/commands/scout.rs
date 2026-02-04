@@ -177,7 +177,7 @@ pub fn handle_scout_gates(
     let paths = tokio::task::block_in_place(|| ensure_dataset(data_dir, DatasetRelease::latest()))
         .context("failed to locate or download the EVE Frontier dataset")?;
 
-    let starmap = load_starmap(&paths.database)
+    let starmap = load_starmap(&paths.database, None)
         .with_context(|| format!("failed to load dataset from {}", paths.database.display()))?;
 
     // Resolve system by name
@@ -284,7 +284,7 @@ pub fn handle_scout_range(
     }
 
     // Validate positive temperature if specified
-    if let Some(t) = args.max_temp {
+    if let Some(t) = args.constraints.max_temp {
         if t <= 0.0 {
             return Err(anyhow::anyhow!("max-temp must be a positive number"));
         }
@@ -293,7 +293,7 @@ pub fn handle_scout_range(
     // Determine the effective ship name (support 'None' to explicitly disable ship-based planning).
     // HARD REQUIREMENT: Default to "Reflex" unless user explicitly specifies --ship <name> or --ship none.
     // Query constraints (--radius, --max-temp, --limit) do NOT affect ship defaulting.
-    let effective_ship_name: Option<String> = match args.ship.as_deref() {
+    let effective_ship_name: Option<String> = match args.ship_config.ship.as_deref() {
         Some(s) if s.eq_ignore_ascii_case("none") => None,
         Some(s) => Some(s.to_string()),
         None => Some("Reflex".to_string()),
@@ -303,7 +303,7 @@ pub fn handle_scout_range(
     let paths = tokio::task::block_in_place(|| ensure_dataset(data_dir, DatasetRelease::latest()))
         .context("failed to locate or download the EVE Frontier dataset")?;
 
-    let starmap = load_starmap(&paths.database)
+    let starmap = load_starmap(&paths.database, Some(args.heat.sys_temp_curve.into()))
         .with_context(|| format!("failed to load dataset from {}", paths.database.display()))?;
 
     // Load spatial index (auto-build if missing with warning)
@@ -360,11 +360,26 @@ pub fn handle_scout_range(
     let query = NeighbourQuery {
         k: args.limit + 1 + extra_buffer, // +1 to exclude the origin system, +buffer for filtering
         radius: args.radius,
-        max_temperature: args.max_temp,
+        max_temperature: args.heat.effective_max_temp(args.constraints.max_temp),
     };
 
     // Find nearby systems
     let results = spatial_index.nearest_filtered(position, &query);
+
+    // Build set of systems to avoid (case-insensitive matching)
+    let avoid_set: std::collections::HashSet<String> = args
+        .constraints
+        .avoid
+        .iter()
+        .map(|s| s.to_lowercase())
+        .collect();
+
+    // Build set of gate-connected system IDs to exclude (any system in the gate network)
+    let gate_connected_ids: std::collections::HashSet<i64> = if args.constraints.avoid_gates {
+        starmap.adjacency.keys().copied().collect()
+    } else {
+        std::collections::HashSet::new()
+    };
 
     // Convert to intermediate format with positions for nearest-neighbor ordering
     let include_ccp = args.include_ccp_systems;
@@ -375,6 +390,14 @@ pub fn handle_scout_range(
             let name = starmap.system_name(id)?;
             // Filter out CCP developer/staging systems unless explicitly included
             if !include_ccp && is_ccp_system(name) {
+                return None;
+            }
+            // Filter out avoided systems (case-insensitive)
+            if avoid_set.contains(&name.to_lowercase()) {
+                return None;
+            }
+            // Filter out gate-connected systems when --avoid-gates is specified
+            if gate_connected_ids.contains(&id) {
                 return None;
             }
             let sys = starmap.systems.get(&id)?;
@@ -437,7 +460,7 @@ pub fn handle_scout_range(
                             )
                         };
 
-                        if args.ship.is_some() {
+                        if args.ship_config.ship.is_some() {
                             // User explicitly requested this ship - error
                             return Err(err);
                         } else {
@@ -453,7 +476,7 @@ pub fn handle_scout_range(
                 }
             }
             Err(e) => {
-                if args.ship.is_some() {
+                if args.ship_config.ship.is_some() {
                     // User explicitly requested a ship - this is an error
                     return Err(e).context("failed to load ship catalog");
                 } else {
@@ -469,14 +492,14 @@ pub fn handle_scout_range(
 
         if let Some((ship, _catalog)) = ship_and_catalog {
             // Create ship loadout (validates fuel_load and cargo_mass)
-            let fuel_load = args.fuel_load.unwrap_or(ship.fuel_capacity);
-            let _loadout = ShipLoadout::new(&ship, fuel_load, args.cargo_mass)
+            let fuel_load = args.ship_config.fuel_load.unwrap_or(ship.fuel_capacity);
+            let _loadout = ShipLoadout::new(&ship, fuel_load, args.ship_config.cargo_mass)
                 .map_err(|e| anyhow::anyhow!("Invalid loadout: {}", e))?;
 
             // Create fuel config
             let fuel_config = FuelConfig {
-                quality: args.fuel_quality,
-                dynamic_mass: true, // Always use dynamic mass for scout routes
+                quality: args.ship_config.fuel_quality,
+                dynamic_mass: args.ship_config.dynamic_mass,
             };
 
             // Apply nearest-neighbor ordering
@@ -502,7 +525,7 @@ pub fn handle_scout_range(
                 // Calculate fuel cost using current mass (dynamic mass mode)
                 let current_mass = ship.base_mass_kg
                     + (remaining_fuel * evefrontier_lib::FUEL_MASS_PER_UNIT_KG)
-                    + args.cargo_mass;
+                    + args.ship_config.cargo_mass;
                 let hop_fuel = evefrontier_lib::calculate_jump_fuel_cost(
                     current_mass,
                     hop_distance,
@@ -576,12 +599,12 @@ pub fn handle_scout_range(
                 query: RangeQueryParams {
                     limit: args.limit,
                     radius: args.radius,
-                    max_temperature: args.max_temp,
+                    max_temperature: args.heat.effective_max_temp(args.constraints.max_temp),
                 },
                 ship: Some(ShipInfo {
                     name: ship.name.clone(),
                     fuel_capacity: ship.fuel_capacity,
-                    fuel_quality: args.fuel_quality,
+                    fuel_quality: args.ship_config.fuel_quality,
                 }),
                 count: ordered_systems.len(),
                 total_distance_ly: Some(total_distance),
@@ -607,7 +630,7 @@ pub fn handle_scout_range(
                 query: RangeQueryParams {
                     limit: args.limit,
                     radius: args.radius,
-                    max_temperature: args.max_temp,
+                    max_temperature: args.heat.effective_max_temp(args.constraints.max_temp),
                 },
                 ship: None,
                 count: systems.len(),
@@ -631,7 +654,7 @@ pub fn handle_scout_range(
             query: RangeQueryParams {
                 limit: args.limit,
                 radius: args.radius,
-                max_temperature: args.max_temp,
+                max_temperature: args.heat.effective_max_temp(args.constraints.max_temp),
             },
             ship: None,
             count: systems.len(),

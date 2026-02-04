@@ -50,7 +50,9 @@ pub fn fixture_db_bytes() -> &'static [u8] {
 /// This avoids repeated database loading across multiple tests.
 pub fn fixture_starmap() -> &'static Starmap {
     static STARMAP: OnceLock<Starmap> = OnceLock::new();
-    STARMAP.get_or_init(|| load_starmap(&fixture_db_path()).expect("fixture starmap should load"))
+    STARMAP.get_or_init(|| {
+        load_starmap(&fixture_db_path(), None).expect("fixture starmap should load")
+    })
 }
 
 /// Build a spatial index from the fixture starmap.

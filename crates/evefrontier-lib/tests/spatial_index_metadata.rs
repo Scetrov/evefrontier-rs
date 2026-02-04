@@ -58,7 +58,7 @@ impl TestFixture {
 
     /// Build and save a v2 spatial index with metadata.
     fn build_v2_index(&self) -> DatasetMetadata {
-        let starmap = load_starmap(&self.db_path).expect("load starmap");
+        let starmap = load_starmap(&self.db_path, None).expect("load starmap");
         let checksum = compute_dataset_checksum(&self.db_path).expect("compute checksum");
         let release_tag = read_release_tag(&self.db_path);
         let build_timestamp = std::time::SystemTime::now()
@@ -290,7 +290,7 @@ fn test_verify_freshness_legacy_format() {
     let fixture = TestFixture::new();
 
     // Build a v1 index (without metadata) using the old API
-    let starmap = load_starmap(&fixture.db_path).expect("load starmap");
+    let starmap = load_starmap(&fixture.db_path, None).expect("load starmap");
     let index = SpatialIndex::build(&starmap);
     index.save(&fixture.index_path).expect("save v1 index");
 
@@ -335,7 +335,7 @@ fn test_verify_freshness_dataset_missing() {
 fn test_build_with_metadata() {
     // T024: Verify build_with_metadata creates index with embedded metadata
     let fixture = TestFixture::new();
-    let starmap = load_starmap(&fixture.db_path).expect("load starmap");
+    let starmap = load_starmap(&fixture.db_path, None).expect("load starmap");
 
     let checksum = [0x42; 32];
     let metadata = DatasetMetadata {
@@ -357,7 +357,7 @@ fn test_build_with_metadata() {
 fn test_source_metadata_accessor() {
     // T025: Verify source_metadata() returns None for index built without metadata
     let fixture = TestFixture::new();
-    let starmap = load_starmap(&fixture.db_path).expect("load starmap");
+    let starmap = load_starmap(&fixture.db_path, None).expect("load starmap");
 
     let index = SpatialIndex::build(&starmap);
     assert!(
@@ -370,7 +370,7 @@ fn test_source_metadata_accessor() {
 fn test_save_load_v2_format() {
     // T026: Verify v2 format round-trip preserves metadata
     let fixture = TestFixture::new();
-    let starmap = load_starmap(&fixture.db_path).expect("load starmap");
+    let starmap = load_starmap(&fixture.db_path, None).expect("load starmap");
 
     let checksum = [0xAB; 32];
     let metadata = DatasetMetadata {
@@ -396,7 +396,7 @@ fn test_save_load_v2_format() {
 fn test_load_v1_format_no_metadata() {
     // T027: Verify loading v1 format returns index with None metadata
     let fixture = TestFixture::new();
-    let starmap = load_starmap(&fixture.db_path).expect("load starmap");
+    let starmap = load_starmap(&fixture.db_path, None).expect("load starmap");
 
     // Build and save v1 index (no metadata)
     let index = SpatialIndex::build(&starmap);
@@ -415,7 +415,7 @@ fn test_load_v1_format_no_metadata() {
 fn test_v2_header_flags() {
     // T028: Verify v2 header has correct version and flags
     let fixture = TestFixture::new();
-    let starmap = load_starmap(&fixture.db_path).expect("load starmap");
+    let starmap = load_starmap(&fixture.db_path, None).expect("load starmap");
 
     let metadata = DatasetMetadata {
         checksum: [0; 32],

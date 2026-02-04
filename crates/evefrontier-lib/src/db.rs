@@ -236,9 +236,17 @@ impl SchemaVariant {
 /// constellation, and security status. The loader also verifies that
 /// referenced jump endpoints exist in the dataset to avoid propagating corrupt
 /// edges into the in-memory graph.
-pub fn load_starmap(db_path: &Path) -> Result<Starmap> {
+///
+/// # Arguments
+///
+/// * `db_path` - Path to the SQLite database file
+/// * `temperature_method` - Optional temperature calculation model. If `None`, uses the default (flux-based).
+pub fn load_starmap(
+    db_path: &Path,
+    temperature_method: Option<crate::temperature::TemperatureMethod>,
+) -> Result<Starmap> {
     let connection = Connection::open(db_path)?;
-    load_starmap_from_connection(&connection)
+    load_starmap_from_connection(&connection, temperature_method)
 }
 
 /// Load systems and jumps from an already-opened database connection.
@@ -246,17 +254,26 @@ pub fn load_starmap(db_path: &Path) -> Result<Starmap> {
 /// This is useful for loading from in-memory databases (e.g., Lambda with
 /// bundled data) or when the connection is managed externally.
 ///
+/// # Arguments
+///
+/// * `connection` - Active SQLite database connection
+/// * `temperature_method` - Optional temperature calculation model. If `None`, uses the default (flux-based).
+///
 /// # Example
 ///
 /// ```no_run
 /// use rusqlite::Connection;
 /// use evefrontier_lib::db::load_starmap_from_connection;
+/// use evefrontier_lib::temperature::TemperatureMethod;
 ///
 /// let conn = Connection::open_in_memory().unwrap();
 /// // ... deserialize database bytes into conn ...
-/// let starmap = load_starmap_from_connection(&conn).unwrap();
+/// let starmap = load_starmap_from_connection(&conn, Some(TemperatureMethod::LogisticCurve)).unwrap();
 /// ```
-pub fn load_starmap_from_connection(connection: &Connection) -> Result<Starmap> {
+pub fn load_starmap_from_connection(
+    connection: &Connection,
+    temperature_method: Option<crate::temperature::TemperatureMethod>,
+) -> Result<Starmap> {
     let schema = detect_schema(connection)?;
     debug!(schema = %schema.variant, "loading starmap from connection");
 
@@ -264,7 +281,7 @@ pub fn load_starmap_from_connection(connection: &Connection) -> Result<Starmap> 
     let adjacency = Arc::new(load_adjacency(connection, &schema, &systems)?);
 
     // Calculate minimum external temperatures for systems (if celestial data available)
-    calculate_min_external_temps(connection, &mut systems)?;
+    calculate_min_external_temps(connection, &mut systems, temperature_method)?;
 
     // Load planet and moon counts for systems (if tables exist)
     load_celestial_counts(connection, &mut systems)?;
@@ -486,6 +503,7 @@ fn load_adjacency(
 fn calculate_min_external_temps(
     connection: &Connection,
     systems: &mut HashMap<SystemId, System>,
+    temperature_method: Option<crate::temperature::TemperatureMethod>,
 ) -> Result<()> {
     use crate::temperature::{
         compute_temperature_light_seconds, constants::METERS_IN_LIGHT_SECOND,
@@ -498,7 +516,11 @@ fn calculate_min_external_temps(
         return Ok(());
     }
 
-    let params = TemperatureModelParams::default();
+    let method = temperature_method.unwrap_or_default();
+    let params = TemperatureModelParams {
+        method,
+        ..Default::default()
+    };
 
     // Query all planets with their 3D coordinates
     let planet_query = "
