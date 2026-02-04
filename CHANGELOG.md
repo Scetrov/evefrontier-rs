@@ -7,11 +7,18 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - **CLI** (`evefrontier-cli`)
-  - Added fuel and heat projection to `scout range` command when `--ship` is specified
-  - New options for `scout range`: `--ship`, `--fuel-quality`, `--cargo-mass`, `--fuel-load`
-  - Nearest-neighbor ordering for scout range results when ship is specified (minimizes hop distances)
-  - Fuel warnings (⚠ REFUEL) when fuel insufficient for hop
-  - Heat warnings (⚠ OVERHEATED, 🔥 CRITICAL with cooldown time) based on cumulative heat thresholds
+  - **Parameter Parity Feature**: Unified parameter model across `route` and `scout` commands for consistent CLI experience
+  - **Shared Argument Structs**: Created `CommonRouteConstraints`, `CommonShipConfig`, `CommonHeatConfig` modules to eliminate parameter duplication across commands
+  - **Scout Range Enhancements**:
+    - Added avoidance constraints: `--avoid <SYSTEM>` (repeatable), `--max-jump`, `--max-temp` parameters
+    - Added ship configuration: `--ship`, `--fuel-quality`, `--cargo-mass`, `--fuel-load`, `--dynamic-mass` parameters
+    - Added heat-aware routing: `--avoid-critical-state`, `--no-avoid-critical-state`, `--sys-temp-curve` parameters
+    - Added spatial-only mode: `--avoid-gates` flag filters out gate-connected systems from results
+    - Fuel and heat projection displayed when `--ship` is specified
+    - Nearest-neighbor ordering for results when ship specified (minimizes hop distances)
+    - Fuel warnings (⚠ REFUEL) when fuel insufficient for hop
+    - Heat warnings (⚠ OVERHEATED, 🔥 CRITICAL with cooldown time) based on cumulative heat thresholds
+  - **Route Command Refactoring**: Migrated to use shared argument structs (`constraints.*`, `ship_config.*`, `heat.*` field access pattern)
 
 - **Library** (`evefrontier-lib`)
   - Exported `HEAT_OVERHEATED`, `HEAT_CRITICAL`, `compute_cooling_constant`, and `calculate_cooling_time`
