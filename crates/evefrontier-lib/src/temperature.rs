@@ -74,14 +74,14 @@ pub mod constants {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum TemperatureMethod {
     /// Legacy logistic curve model (validated against e6c3 dataset and game measurements)
-    #[default]
     LogisticCurve,
     /// Validated inverse-tangent (flux-based) model by Ergod.
     ///
     /// This model is production-validated (≈1.2 K MAE on e6c3 measurements)
-    /// and is used as the default for the CLI `flux` curve. See
+    /// and is the default temperature calculation method. See
     /// `docs/HEAT_MECHANICS.md` for calibration details and comparison to
     /// the logistic curve model.
+    #[default]
     InverseTangent,
 }
 
@@ -199,12 +199,11 @@ pub fn compute_temperature_inverse_tangent(
 
 /// Calculate external temperature using the custom parameterized model.
 ///
-/// Note: `TemperatureModelParams::default()` currently uses the logistic curve model
-/// (`TemperatureMethod::LogisticCurve`). The CLI defaults to the flux-based inverse-tangent
-/// model for the `flux` curve via explicit parameter selection. To use the inverse-tangent
-/// model, set `params.method = TemperatureMethod::InverseTangent`.
+/// Note: `TemperatureModelParams::default()` uses the inverse-tangent (flux-based) model
+/// (`TemperatureMethod::InverseTangent`), which matches the CLI default. To use the legacy
+/// logistic curve model, set `params.method = TemperatureMethod::LogisticCurve`.
 ///
-/// # Inverse-Tangent Model (validated, ~1.2K MAE)
+/// # Inverse-Tangent Model (default, validated, ~1.2K MAE)
 ///
 /// ```text
 /// H_EXT(D) = A · (2/π) · arctan(λD)
