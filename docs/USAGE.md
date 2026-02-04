@@ -185,14 +185,16 @@ evefrontier-cli route --from "Nod" --to "Brana" --avoid-gates --avoid-critical-s
 ### Fuel projection (optional)
 
 When planning routes, you can optionally calculate fuel consumption by specifying a ship and fuel
-quality. The CLI will display fuel cost for each hop and total fuel required for the route.
+quality. **When --ship is omitted, routes use the Reflex (default ship) for heat and fuel
+calculations.** Heat-aware routing (--avoid-critical-state) is enabled by default using Reflex
+stats unless explicitly disabled with --no-avoid-critical-state.
 
 ```bash
 # Use default ship (Reflex) and fuel quality (10%) - no flags needed
 evefrontier-cli route --from "Nod" --to "Brana"
 
 # Specify a different ship
-evefrontier-cli route --from "Nod" --to "Brana" --ship "Reflex"
+evefrontier-cli route --from "Nod" --to "Brana" --ship "Vanguard"
 
 # Adjust fuel quality (1-100, default 10)
 evefrontier-cli route --from "Nod" --to "Brana" --fuel-quality 15
@@ -476,6 +478,7 @@ evefrontier-cli scout range "Nod" --limit 5 --ship Reflex --format json
 - `--fuel-quality <1-100>` — fuel quality percentage (default: 10)
 - `--cargo-mass <KG>` — additional cargo mass in kg (default: 0)
 - `--fuel-load <UNITS>` — fuel units loaded (default: ship's capacity)
+- `--dynamic-mass` — recalculate mass after each hop as fuel is consumed (more accurate for long routes)
 
 **Warnings:**
 
@@ -499,11 +502,43 @@ Systems in range of Nod (5 found):
   Distance: 142.3 ly  │  Fuel: 85.4 / 1000 (914.6 remaining)  │  Final Heat: 285.4
 ```
 
+##### Routing Constraints
+
+The `scout range` command now supports **all routing parameters** from the `route` command for
+consistent behavior across both commands. This enables avoidance constraints, heat mechanics,
+and spatial-only scouting when discovering nearby systems.
+
+```bash
+# Avoid hostile systems while scouting
+evefrontier-cli scout range "Nod" --radius 50 --avoid "Brana" --avoid "H:2L2S"
+
+# Heat-aware scouting (reject high-temperature systems)
+evefrontier-cli scout range "Nod" --radius 100 --avoid-critical-state --sys-temp-curve flux
+
+# Spatial-only scouting (no gate-connected systems)
+evefrontier-cli scout range "Nod" --radius 50 --avoid-gates
+
+# Limit spatial jump distance
+evefrontier-cli scout range "Nod" --radius 80 --max-jump 50
+```
+
+**Routing Constraint Options:**
+
+- `--max-jump <LIGHT-YEARS>` — maximum jump distance for spatial hops (gate jumps unaffected)
+- `--avoid <SYSTEM>` — systems to exclude from results (repeat for multiple systems)
+- `--avoid-gates` — find spatial-only routes (exclude gate-connected neighbors)
+- `--max-temp <KELVIN>` — maximum system temperature threshold for spatial jumps
+
+**Heat Mechanics Options:**
+
+- `--avoid-critical-state` — enable heat-aware routing (rejects jumps ≥150K)
+- `--no-avoid-critical-state` — explicitly disable temperature constraints
+- `--sys-temp-curve <flux|logistic>` — temperature calculation model (default: flux)
+
 **Options:**
 
 - `--limit <N>` — maximum number of results (1-100, default: 10)
 - `--radius <LIGHT-YEARS>` — maximum spatial distance from origin
-- `--max-temp <KELVIN>` — filter systems by maximum star temperature
 - `--include-ccp-systems` — include CCP developer/staging systems (AD###, V-###) in results
 
 **Note on CCP Systems:**

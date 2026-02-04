@@ -108,7 +108,7 @@ impl AppState {
 
         // Load the starmap
         tracing::info!(path = %db_path.display(), "loading starmap");
-        let starmap = load_starmap(db_path)?;
+        let starmap = load_starmap(db_path, None)?;
         tracing::info!(
             system_count = starmap.systems.len(),
             "starmap loaded successfully"

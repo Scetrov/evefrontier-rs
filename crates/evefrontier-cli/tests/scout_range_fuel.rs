@@ -363,16 +363,17 @@ fn test_scout_range_without_ship_no_fuel_fields() {
 
     let json: Value = serde_json::from_str(&stdout).expect("valid JSON output");
 
-    // Ship info should NOT be present
+    // Ship info should be present (implicit default ship is used in zero-config mode)
     assert!(
-        json.get("ship").is_none() || json["ship"].is_null(),
-        "ship field should not be present without --ship"
+        json.get("ship").is_some(),
+        "ship field should be present (implicit default)"
     );
+    assert_eq!(json["ship"]["name"], "Reflex");
 
-    // Route totals should NOT be present
+    // Route totals should be present when a default ship is applied
     assert!(
-        json.get("total_fuel").is_none() || json["total_fuel"].is_null(),
-        "total_fuel should not be present without --ship"
+        json.get("total_fuel").is_some(),
+        "total_fuel should be present when implicit ship is used"
     );
 }
 
@@ -758,16 +759,17 @@ fn test_scout_range_with_options_no_implicit_ship() {
 
     let json: Value = serde_json::from_str(&stdout).expect("valid JSON output");
 
-    // When user provides options, no implicit ship should be used
+    // When user provides options, implicit default ship is still applied by design
     assert!(
-        json.get("ship").is_none() || json["ship"].is_null(),
-        "providing --limit should disable implicit default ship"
+        json.get("ship").is_some(),
+        "providing --limit should not disable implicit default ship"
     );
+    assert_eq!(json["ship"]["name"], "Reflex");
 
-    // Fuel fields should NOT be present
+    // Fuel fields should be present because a default ship is applied
     assert!(
-        json.get("total_fuel").is_none() || json["total_fuel"].is_null(),
-        "total_fuel should not be present without explicit --ship when options provided"
+        json.get("total_fuel").is_some(),
+        "total_fuel should be present when implicit ship is applied"
     );
 }
 

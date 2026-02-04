@@ -10,7 +10,7 @@ fn fixture_path() -> PathBuf {
 
 #[test]
 fn fuzzy_matches_returns_similar_names() {
-    let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+    let starmap = load_starmap(&fixture_path(), None).expect("fixture loads");
 
     // Test exact match doesn't use fuzzy
     let exact = starmap.fuzzy_system_matches("Nod", 3);
@@ -34,7 +34,7 @@ fn fuzzy_matches_returns_similar_names() {
 
 #[test]
 fn unknown_system_includes_suggestions() {
-    let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+    let starmap = load_starmap(&fixture_path(), None).expect("fixture loads");
 
     let request = RouteRequest::bfs("Bran", "Brana"); // Typo: missing 'a'
     let err = plan_route(&starmap, &request).expect_err("should fail with unknown system");
@@ -56,7 +56,7 @@ fn unknown_system_includes_suggestions() {
 
 #[test]
 fn fuzzy_matches_respects_limit() {
-    let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+    let starmap = load_starmap(&fixture_path(), None).expect("fixture loads");
 
     let matches = starmap.fuzzy_system_matches("Test", 2);
     assert!(matches.len() <= 2, "should respect limit of 2");
@@ -64,7 +64,7 @@ fn fuzzy_matches_respects_limit() {
 
 #[test]
 fn fuzzy_matches_filters_low_similarity() {
-    let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+    let starmap = load_starmap(&fixture_path(), None).expect("fixture loads");
 
     // Very different name should return no matches
     let no_match = starmap.fuzzy_system_matches("CompletlyWrongXYZ", 3);
@@ -76,7 +76,7 @@ fn fuzzy_matches_filters_low_similarity() {
 
 #[test]
 fn avoided_system_typo_includes_suggestions() {
-    let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+    let starmap = load_starmap(&fixture_path(), None).expect("fixture loads");
 
     let request = RouteRequest {
         start: "Nod".to_string(),

@@ -31,6 +31,7 @@ use tracing::{error, info};
 use evefrontier_lib::db::{load_starmap_from_connection, Starmap};
 use evefrontier_lib::ship::ShipCatalog;
 use evefrontier_lib::spatial::SpatialIndex;
+use evefrontier_lib::temperature::TemperatureMethod;
 use evefrontier_lib::Error as LibError;
 
 use crate::problem::ProblemDetails;
@@ -242,9 +243,12 @@ fn load_starmap_from_bytes(db_bytes: &'static [u8]) -> Result<Starmap, InitError
             message: format!("Failed to deserialize database: {}", e),
         })?;
 
-    let starmap = load_starmap_from_connection(&conn).map_err(|e| InitError {
-        message: format!("Failed to load starmap: {}", e),
-    })?;
+    // Use InverseTangent method to match CLI default flux curve behavior
+    let temperature_method = Some(TemperatureMethod::InverseTangent);
+    let starmap =
+        load_starmap_from_connection(&conn, temperature_method).map_err(|e| InitError {
+            message: format!("Failed to load starmap: {}", e),
+        })?;
 
     Ok(starmap)
 }

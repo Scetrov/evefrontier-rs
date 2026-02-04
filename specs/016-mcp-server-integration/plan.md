@@ -12,7 +12,7 @@ uses the official Rust MCP SDK (`rmcp`) and follows the existing library-first a
 
 ## Technical Context
 
-**Language/Version**: Rust 1.91.1 (per `.rust-toolchain`)  
+**Language/Version**: Rust 1.93.0 (per `.rust-toolchain`)  
 **Primary Dependencies**: `rmcp` (official MCP SDK), `tokio`, `serde`, `schemars` (JSON Schema)  
 **Storage**: SQLite database (bundled EVE Frontier dataset from `evefrontier_datasets` repo)  
 **Testing**: `cargo test` with integration tests using fixture dataset  

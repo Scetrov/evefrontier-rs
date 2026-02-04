@@ -18,7 +18,7 @@ fn fixture_path() -> PathBuf {
 
 #[test]
 fn build_index_from_fixture() {
-    let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+    let starmap = load_starmap(&fixture_path(), None).expect("fixture loads");
     let index = SpatialIndex::build(&starmap);
 
     // Fixture has 8 systems, all should have positions
@@ -39,7 +39,7 @@ fn build_index_from_fixture() {
 
 #[test]
 fn serialize_deserialize_round_trip() {
-    let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+    let starmap = load_starmap(&fixture_path(), None).expect("fixture loads");
     let original = SpatialIndex::build(&starmap);
 
     let temp_dir = tempfile::tempdir().expect("temp dir");
@@ -68,7 +68,7 @@ fn serialize_deserialize_round_trip() {
 
 #[test]
 fn nearest_query_returns_ordered_results() {
-    let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+    let starmap = load_starmap(&fixture_path(), None).expect("fixture loads");
     let index = SpatialIndex::build(&starmap);
 
     // Get Nod's position
@@ -101,7 +101,7 @@ fn nearest_query_returns_ordered_results() {
 
 #[test]
 fn radius_query_respects_distance() {
-    let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+    let starmap = load_starmap(&fixture_path(), None).expect("fixture loads");
     let index = SpatialIndex::build(&starmap);
 
     // Query from origin with small radius
@@ -119,7 +119,7 @@ fn radius_query_respects_distance() {
 
 #[test]
 fn temperature_filter_excludes_hot_systems() {
-    let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+    let starmap = load_starmap(&fixture_path(), None).expect("fixture loads");
     let index = SpatialIndex::build(&starmap);
 
     // Get Nod which has ~18K temperature (hot)
@@ -166,7 +166,7 @@ fn temperature_filter_excludes_hot_systems() {
 
 #[test]
 fn none_temperature_passes_filter() {
-    let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+    let starmap = load_starmap(&fixture_path(), None).expect("fixture loads");
     let index = SpatialIndex::build(&starmap);
 
     // Find a system without temperature data (if any)
@@ -212,7 +212,7 @@ fn none_temperature_passes_filter() {
 
 #[test]
 fn corrupted_checksum_fails_to_load() {
-    let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+    let starmap = load_starmap(&fixture_path(), None).expect("fixture loads");
     let index = SpatialIndex::build(&starmap);
 
     let temp_dir = tempfile::tempdir().expect("temp dir");
@@ -244,7 +244,7 @@ fn corrupted_checksum_fails_to_load() {
 
 #[test]
 fn position_lookup_works() {
-    let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+    let starmap = load_starmap(&fixture_path(), None).expect("fixture loads");
     let index = SpatialIndex::build(&starmap);
 
     let nod_id = starmap
@@ -267,5 +267,41 @@ fn position_lookup_works() {
     assert!(
         (indexed_pos[2] as f64 - nod_pos.z).abs() < 0.01,
         "z should match"
+    );
+}
+
+#[test]
+fn excessive_k_allocation_is_capped() {
+    use evefrontier_lib::NeighbourQuery;
+
+    let starmap = load_starmap(&fixture_path(), None).expect("fixture should load");
+    let index = SpatialIndex::build(&starmap);
+
+    // Request an absurdly large number of neighbors (would allocate ~40GB if uncapped)
+    // Should be capped internally to MAX_ALLOCATION_SIZE (10,000)
+    let query = NeighbourQuery {
+        k: 10_000_000, // 10 million
+        radius: None,
+        max_temperature: None,
+    };
+
+    let nod_id = starmap
+        .system_id_by_name("Nod")
+        .expect("Nod exists in fixture");
+    let nod = starmap.systems.get(&nod_id).expect("Nod system");
+    let pos = nod.position.expect("Nod has position");
+
+    // Should complete without panic or excessive memory allocation
+    let results = index.nearest_filtered([pos.x, pos.y, pos.z], &query);
+
+    // Should return at most the number of systems in the database (8 systems in fixture)
+    // or MAX_ALLOCATION_SIZE, whichever is smaller
+    assert!(
+        results.len() <= 10_000,
+        "Should cap results to MAX_ALLOCATION_SIZE"
+    );
+    assert!(
+        results.len() <= starmap.systems.len(),
+        "Should not return more systems than exist"
     );
 }

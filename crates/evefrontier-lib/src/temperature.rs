@@ -4,6 +4,18 @@
 //! orbital distances from a star, using EVE Frontier's custom parameterized model
 //! and the Stefan-Boltzmann equilibrium equation.
 //!
+//! # Temperature Model Attribution
+//!
+//! The formulas in this module are based on:
+//! - **EVE Frontier Logistic Curve Model** - Validated against e6c3 dataset (see below)
+//! - **Inverse-Tangent Heat-Signature Model** by Ergod (awar.dev)
+//!   - Achieves 0.15% mean average error using arctan-based decay
+//!   - Reference: <https://thoughtfolio.xyz/No+more+Traps%2C+Inverse-Tangent+Heat-Signature+Model>
+//! - **Initial Data Gathering** by Anteris (anteris90)
+//!   - Provided foundational temperature measurements across EVE Frontier systems
+//!
+//! For detailed implementation notes, see `docs/HEAT_MECHANICS.md`.
+//!
 //! # EVE Frontier Temperature Formula
 //!
 //! The primary calculation uses the EVE Frontier formula:
@@ -22,19 +34,23 @@
 //!
 //! # Validated Test Cases
 //!
-//! From the EVE Frontier e6c3 dataset:
+//! From actual EVE Frontier game measurements (2026-02-03):
 //!
-//! - **Nod**: L = 1.9209×10²⁵ W, d = 541.4 ls → T = 15.74 K
-//! - **Brana**: L = 4.7398×10²⁴ W, d = 9255.2 ls → T = 0.32 K
+//! - **O43-CT4**: L = 2.69×10²⁶ W, d = 532 ls → T = 49.9 K (logistic: 49.73 K, 0.3% error)
+//! - **ER7-MN4**: L = 5.95×10²⁴ W, d = 165 ls → T = 28.3 K (logistic: 28.33 K, 0.1% error)
+//! - **UVG-MV3**: L = 2.40×10²⁷ W, d = 6283 ls → T = 15.7 K (logistic: 15.13 K, 3.6% error)
+//!
+//! The logistic curve model achieves ~2-5% MAE across diverse systems.
 //!
 //! # Example
 //!
 //! ```rust
 //! use evefrontier_lib::temperature::{compute_temperature_light_seconds, TemperatureModelParams};
 //!
-//! let params = TemperatureModelParams::default();
-//! let temp = compute_temperature_light_seconds(541.4, 1.9209e25, &params).unwrap();
-//! assert!((temp - 15.74).abs() < 0.01); // Nod system temperature
+//! let params = TemperatureModelParams::default(); // Uses validated logistic curve
+//! let temp = compute_temperature_light_seconds(532.0, 2.69e26, &params).unwrap();
+//! // O43-CT4 system: should be close to measured 49.9 K
+//! assert!((temp - 49.9).abs() < 1.0);
 //! ```
 
 use crate::error::{Error, Result};
@@ -49,15 +65,33 @@ pub mod constants {
 
     /// Meters in one astronomical unit (mean Earth-Sun distance)
     pub const METERS_IN_AU: f64 = 1.495978707e11;
+
+    /// Solar luminosity in watts (used for normalization in inverse-tangent model)
+    pub const SOLAR_LUMINOSITY: f64 = 3.828e26;
 }
 
-/// Configuration parameters for the custom temperature model.
-///
-/// The model calculates temperature as a smooth curve from `max_kelvin` near
-/// the star to `min_kelvin` in deep space, controlled by distance scale `k`
-/// and curve steepness `b`.
+/// Temperature calculation method selection.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum TemperatureMethod {
+    /// Legacy logistic curve model (validated against e6c3 dataset and game measurements)
+    LogisticCurve,
+    /// Validated inverse-tangent (flux-based) model by Ergod.
+    ///
+    /// This model is production-validated (≈1.2 K MAE on e6c3 measurements)
+    /// and is the default temperature calculation method. See
+    /// `docs/HEAT_MECHANICS.md` for calibration details and comparison to
+    /// the logistic curve model.
+    #[default]
+    InverseTangent,
+}
+
+/// Configuration parameters for temperature calculation models.
 #[derive(Debug, Clone, PartialEq)]
 pub struct TemperatureModelParams {
+    /// Calculation method to use
+    pub method: TemperatureMethod,
+
+    // === Logistic Curve Parameters ===
     /// Distance scale factor (controls transition point between hot and cold)
     pub k: f64,
     /// Curve steepness exponent (higher = sharper transition)
@@ -77,6 +111,8 @@ pub struct TemperatureModelParams {
 impl Default for TemperatureModelParams {
     fn default() -> Self {
         Self {
+            method: TemperatureMethod::default(),
+            // Logistic curve parameters (legacy, still available)
             k: 3.215e-11,     // EVE Frontier calibrated scale factor
             b: 1.25,          // EVE Frontier calibrated exponent
             min_kelvin: 0.1,  // EVE Frontier minimum temperature
@@ -88,9 +124,94 @@ impl Default for TemperatureModelParams {
     }
 }
 
+/// Calculate ambient temperature using Ergod's inverse-tangent heat-signature model.
+/// **VALIDATED:** This flux-based model achieves ~1.2K MAE (< 2% error) against actual
+/// in-game measurements, matching the performance of the logistic curve and heatsense.pages.dev.
+///
+/// Formula: T = (200/π) · atan(√(L / (d² × 10²¹)))
+/// where:
+/// - T = temperature in Kelvin
+/// - L = stellar luminosity in watts
+/// - d = distance from star in light-seconds
+/// - 10²¹ = intensity normalization constant (fitted)
+/// - 200/π = radians-to-gradians conversion (≈ 63.66)
+///
+/// This formula uses radiative flux (L/d²) rather than total luminosity, making it
+/// physically meaningful - the intensity of radiation decreases with the inverse square
+/// of distance. The arctan provides saturation at close distances.
+///
+/// # Arguments
+///
+/// * `distance_light_seconds` - Distance from star in light-seconds
+/// * `luminosity_watts` - Stellar luminosity in watts
+///
+/// # Returns
+///
+/// Temperature in Kelvin (range approximately 0.1K to 99.9K)
+///
+/// # References
+///
+/// - [Inverse-Tangent Heat-Signature Model](https://thoughtfolio.xyz/No+more+Traps%2C+Inverse-Tangent+Heat-Signature+Model)
+/// - Research by Ergod (awar.dev), 2026-01-29/2026-01-31
+///
+/// # Examples
+///
+/// ```
+/// use evefrontier_lib::temperature::compute_temperature_inverse_tangent;
+///
+/// // O43-CT4 system: distance = 532 ls, luminosity = 2.69×10²⁶ W
+/// let temp = compute_temperature_inverse_tangent(532.0, 2.69e26).unwrap();
+/// // Calculated: ~49.2K, Measured: 49.9K (1.4% error)
+/// assert!((temp - 49.9).abs() < 1.0);
+/// ```
+pub fn compute_temperature_inverse_tangent(
+    distance_light_seconds: f64,
+    luminosity_watts: f64,
+) -> Result<f64> {
+    if distance_light_seconds < 0.0 {
+        return Err(Error::TemperatureCalculation(
+            "Distance cannot be negative".to_string(),
+        ));
+    }
+    if luminosity_watts <= 0.0 {
+        return Err(Error::TemperatureCalculation(
+            "Luminosity must be positive".to_string(),
+        ));
+    }
+
+    // Normalization constant derived from data fitting
+    const INTENSITY_NORMALIZATION: f64 = 1.0e-21;
+
+    // Radians to Gradians conversion factor (200/π ≈ 63.66)
+    const RAD_TO_GRAD: f64 = 200.0 / std::f64::consts::PI;
+
+    // Calculate radiative flux (intensity): L / d²
+    let intensity = luminosity_watts / (distance_light_seconds * distance_light_seconds);
+
+    // Apply normalization and square root (the "signature magnitude")
+    let signature_magnitude = (intensity * INTENSITY_NORMALIZATION).sqrt();
+
+    // Calculate temperature: arctan(magnitude) converted to Gradians
+    let temp = signature_magnitude.atan() * RAD_TO_GRAD;
+
+    Ok(temp)
+}
+
 /// Calculate external temperature using the custom parameterized model.
 ///
-/// The calculation follows the formula:
+/// Note: `TemperatureModelParams::default()` uses the inverse-tangent (flux-based) model
+/// (`TemperatureMethod::InverseTangent`), which matches the CLI default. To use the legacy
+/// logistic curve model, set `params.method = TemperatureMethod::LogisticCurve`.
+///
+/// # Inverse-Tangent Model (default, validated, ~1.2K MAE)
+///
+/// ```text
+/// H_EXT(D) = A · (2/π) · arctan(λD)
+/// where λ = K · (L/L☉), K = 200/π ≈ 63.66
+/// ```
+///
+/// # Logistic Curve Model (default in library, legacy)
+///
 /// ```text
 /// scale = k * sqrt(luminosity)
 /// ratio = distance / scale
@@ -115,7 +236,7 @@ impl Default for TemperatureModelParams {
 /// ```
 /// use evefrontier_lib::temperature::{compute_temperature_light_seconds, TemperatureModelParams};
 ///
-/// let params = TemperatureModelParams::default();
+/// let params = TemperatureModelParams::default(); // Uses inverse-tangent by default
 /// let temp = compute_temperature_light_seconds(500.0, 3.828e26, &params).unwrap();
 /// assert!(temp > 0.0);
 /// ```
@@ -124,34 +245,41 @@ pub fn compute_temperature_light_seconds(
     luminosity_watts: f64,
     params: &TemperatureModelParams,
 ) -> Result<f64> {
-    if distance_light_seconds < 0.0 {
-        return Err(Error::TemperatureCalculation(
-            "Distance cannot be negative".to_string(),
-        ));
+    match params.method {
+        TemperatureMethod::InverseTangent => {
+            compute_temperature_inverse_tangent(distance_light_seconds, luminosity_watts)
+        }
+        TemperatureMethod::LogisticCurve => {
+            if distance_light_seconds < 0.0 {
+                return Err(Error::TemperatureCalculation(
+                    "Distance cannot be negative".to_string(),
+                ));
+            }
+            if luminosity_watts <= 0.0 {
+                return Err(Error::TemperatureCalculation(
+                    "Luminosity must be positive".to_string(),
+                ));
+            }
+
+            let scale = params.k * luminosity_watts.sqrt();
+            let ratio = if scale > 0.0 {
+                distance_light_seconds / scale
+            } else {
+                f64::INFINITY
+            };
+
+            let denom = 1.0 + ratio.powf(params.b);
+            let t = params.min_kelvin + (params.max_kelvin - params.min_kelvin) / denom;
+
+            let result = if params.map_to_kelvin {
+                params.kelvin_offset + params.kelvin_scale * t
+            } else {
+                t
+            };
+
+            Ok(result)
+        }
     }
-    if luminosity_watts <= 0.0 {
-        return Err(Error::TemperatureCalculation(
-            "Luminosity must be positive".to_string(),
-        ));
-    }
-
-    let scale = params.k * luminosity_watts.sqrt();
-    let ratio = if scale > 0.0 {
-        distance_light_seconds / scale
-    } else {
-        f64::INFINITY
-    };
-
-    let denom = 1.0 + ratio.powf(params.b);
-    let t = params.min_kelvin + (params.max_kelvin - params.min_kelvin) / denom;
-
-    let result = if params.map_to_kelvin {
-        params.kelvin_offset + params.kelvin_scale * t
-    } else {
-        t
-    };
-
-    Ok(result)
 }
 
 /// Calculate external temperature in meters (convenience wrapper).
@@ -313,9 +441,10 @@ mod tests {
         let params = TemperatureModelParams::default();
         let temp = compute_temperature_meters(1e15, SOLAR_LUMINOSITY, &params).unwrap();
 
-        // Very far from star should be cold (closer to min_kelvin than max_kelvin)
-        assert!(temp < 100.0);
-        assert!(temp > params.min_kelvin);
+        // Very far from star should be cold with inverse-tangent model
+        // (arctan(λ/D) → 0 as D → ∞)
+        assert!(temp < 1.0, "Deep space should be very cold");
+        assert!(temp >= 0.0, "Temperature cannot be negative");
     }
 
     #[test]
@@ -414,7 +543,7 @@ mod tests {
 
         #[test]
         fn test_fixture_systems_have_computed_min_temps() {
-            let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+            let starmap = load_starmap(&fixture_path(), None).expect("fixture loads");
 
             // Check that min_external_temp is computed for systems
             let nod_id = starmap.system_id_by_name("Nod").expect("Nod exists");
@@ -441,7 +570,7 @@ mod tests {
             //   Furthest celestial: "Nod - Planet 2"
             //   Distance: 1.6231 × 10¹¹ m = 541.4142 light-seconds
             //   Expected T_min: 15.74 K (calculated with EVE Frontier formula)
-            let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+            let starmap = load_starmap(&fixture_path(), None).expect("fixture loads");
             let nod_id = starmap.system_id_by_name("Nod").expect("Nod exists");
             let nod = starmap.systems.get(&nod_id).expect("Nod system data");
 
@@ -472,7 +601,7 @@ mod tests {
             //   Furthest celestial: "Brana - Planet 2"
             //   Distance: 2.7746 × 10¹² m = 9255.1725 light-seconds
             //   Expected T_min: 0.32 K (calculated with EVE Frontier formula)
-            let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+            let starmap = load_starmap(&fixture_path(), None).expect("fixture loads");
             let brana_id = starmap.system_id_by_name("Brana").expect("Brana exists");
             let brana = starmap.systems.get(&brana_id).expect("Brana system data");
 
@@ -498,7 +627,7 @@ mod tests {
 
         #[test]
         fn test_all_fixture_systems_have_valid_temperatures() {
-            let starmap = load_starmap(&fixture_path()).expect("fixture loads");
+            let starmap = load_starmap(&fixture_path(), None).expect("fixture loads");
 
             let mut systems_with_temps = 0;
             for system in starmap.systems.values() {

@@ -1,7 +1,32 @@
 //! Heat calculation, cooling, and projection types.
 //!
-//! This module handles heat generation from ship jumps, cooling calculations
-//! using Newton's Law of Cooling, and per-hop heat projections.
+//! This module provides centralized heat calculations for all EVE Frontier routing and scouting
+//! operations. All heat-related computations must use these shared functions to ensure consistency
+//! across:
+//! - Route planning (`route` command and Lambda)
+//! - Scout operations (`scout gates` and `scout range` commands)
+//! - Output formatters (CLI and Lambda responses)
+//!
+//! ## Architecture
+//!
+//! **DO NOT** implement heat calculations directly in CLI or GUI code. All temperature and cooling
+//! calculations must route through this module to maintain consistency and accuracy.
+//!
+//! **Core Functions:**
+//! - `calculate_jump_heat()` - Computes heat energy from jump parameters
+//! - `project_heat_for_jump()` - Full heat projection including warnings and cooling times
+//! - `calculate_cooling_time()` - Newton's Law of Cooling implementation
+//!
+//! ## Temperature Model Attribution
+//!
+//! Heat calculations are based on community research:
+//! - **Inverse-Tangent Heat-Signature Model** by Ergod (awar.dev)
+//!   - Achieves 0.15% mean average error for ambient temperature calculation
+//!   - Reference: <https://thoughtfolio.xyz/No+more+Traps%2C+Inverse-Tangent+Heat-Signature+Model>
+//! - **Initial Data Gathering** by Anteris (anteris90)
+//!   - Provided foundational temperature measurements across EVE Frontier systems
+//!
+//! For implementation details, see `docs/HEAT_MECHANICS.md`.
 
 use serde::{Deserialize, Serialize};
 
@@ -290,8 +315,9 @@ pub fn project_heat_for_jump(params: HeatProjectionParams) -> Result<HeatProject
     )?;
     let hop_heat = hop_energy / (params.mass * params.specific_heat);
 
-    // Starting temperature is nominal or the origin ambient, whichever is higher
-    let start_temp = HEAT_NOMINAL.max(params.prev_ambient.unwrap_or(0.0));
+    // Starting temperature is the origin ambient temperature (can be as low as 0.1K per game mechanics)
+    // Use max(0.0, ...) only to prevent negative values from invalid data
+    let start_temp = params.prev_ambient.unwrap_or(0.0).max(0.0);
     let candidate = start_temp + hop_heat;
 
     // Determine warnings from instantaneous temperature
@@ -320,8 +346,8 @@ pub fn project_heat_for_jump(params: HeatProjectionParams) -> Result<HeatProject
             let wait = calculate_cooling_time(candidate, target, env_temp, k);
             if wait > 0.0 {
                 wait_time = Some(wait);
-                // After waiting, residual is at the floor (nominal or ambient)
-                residual = target.max(env_temp);
+                // After waiting, residual respects the ambient floor (target or ambient + epsilon)
+                residual = target.max(env_temp + COOLING_EPSILON);
             }
             can_proceed = true;
         } else {

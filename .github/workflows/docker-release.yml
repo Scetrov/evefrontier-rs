@@ -79,7 +79,7 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@f7ccc83f9ed1e5b9c81d8a67d7ad1a747e22a561 # master
         with:
-          toolchain: 1.91.1
+          toolchain: "1.93.0"
           targets: ${{ matrix.target }}
 
       - name: Install cargo-zigbuild
@@ -87,7 +87,7 @@ jobs:
           cargo install cargo-zigbuild
 
       - name: Install zig
-        uses: goto-bus-stop/setup-zig@7ab2955eb728f5440978d5824358023be3a2802d # v2.2.1
+        uses: goto-bus-stop/setup-zig@abea47f85e598557f500fa1fd2ab7464fcb39406 # v2.2.1
         with:
           version: 0.13.0
 
@@ -134,13 +134,13 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Download amd64 binaries
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: binaries-amd64
           path: artifacts/amd64
 
       - name: Download arm64 binaries
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: binaries-arm64
           path: artifacts/arm64
@@ -157,7 +157,7 @@ jobs:
 
       - name: Extract metadata
         id: meta
-        uses: docker/metadata-action@902fa8ec7d6ecbf8d84d538b9b233a880e428804 # v5.7.0
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
         with:
           images: ${{ env.IMAGE_PREFIX }}/evefrontier-service-${{ matrix.service }}
           tags: |
@@ -232,7 +232,7 @@ jobs:
           ignore-unfixed: true
 
       - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: 'trivy-results-${{ matrix.service }}.sarif'

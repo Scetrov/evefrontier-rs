@@ -10,7 +10,8 @@ fn fixture_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/fixtures/minimal/static_data.db")
 }
 
-static STARMAP: Lazy<Starmap> = Lazy::new(|| load_starmap(&fixture_path()).expect("fixture loads"));
+static STARMAP: Lazy<Starmap> =
+    Lazy::new(|| load_starmap(&fixture_path(), None).expect("fixture loads"));
 static BFS_REQUEST: Lazy<RouteRequest> = Lazy::new(|| RouteRequest::bfs("Nod", "Brana"));
 static DIJKSTRA_REQUEST: Lazy<RouteRequest> = Lazy::new(|| RouteRequest {
     start: "Nod".to_string(),

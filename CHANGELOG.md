@@ -7,15 +7,32 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - **CLI** (`evefrontier-cli`)
-  - Added fuel and heat projection to `scout range` command when `--ship` is specified
-  - New options for `scout range`: `--ship`, `--fuel-quality`, `--cargo-mass`, `--fuel-load`
-  - Nearest-neighbor ordering for scout range results when ship is specified (minimizes hop distances)
-  - Fuel warnings (⚠ REFUEL) when fuel insufficient for hop
-  - Heat warnings (⚠ OVERHEATED, 🔥 CRITICAL with cooldown time) based on cumulative heat thresholds
+  - **Parameter Parity Feature**: Unified parameter model across `route` and `scout` commands for consistent CLI experience
+  - **Shared Argument Structs**: Created `CommonRouteConstraints`, `CommonShipConfig`, `CommonHeatConfig` modules to eliminate parameter duplication across commands
+  - **Scout Range Enhancements**:
+    - Added avoidance constraints: `--avoid <SYSTEM>` (repeatable), `--max-jump`, `--max-temp` parameters
+    - Added ship configuration: `--ship`, `--fuel-quality`, `--cargo-mass`, `--fuel-load`, `--dynamic-mass` parameters
+    - Added heat-aware routing: `--avoid-critical-state`, `--no-avoid-critical-state`, `--sys-temp-curve` parameters
+    - Added spatial-only mode: `--avoid-gates` flag filters out gate-connected systems from results
+    - Fuel and heat projection displayed when `--ship` is specified
+    - Nearest-neighbor ordering for results when ship specified (minimizes hop distances)
+    - Fuel warnings (⚠ REFUEL) when fuel insufficient for hop
+    - Heat warnings (⚠ OVERHEATED, 🔥 CRITICAL with cooldown time) based on cumulative heat thresholds
+  - **Route Command Refactoring**: Migrated to use shared argument structs (`constraints.*`, `ship_config.*`, `heat.*` field access pattern)
 
 - **Library** (`evefrontier-lib`)
   - Exported `HEAT_OVERHEATED`, `HEAT_CRITICAL`, `compute_cooling_constant`, and `calculate_cooling_time`
     from the public API for use by CLI and other consumers
+
+### Fixed
+
+### Changed
+
+- **Maintenance**
+  - Consolidated 15 dependency updates across Cargo, NPM, and GitHub Actions ecosystems
+  - Updated Rust dependencies: `axum-test`, `reqwest`, `schemars`, `tracing`, `uuid`, `bytes`
+  - Updated Node/Nx dependencies: `nx`, `prettier`, `lint-staged`, `cross-env`
+  - Updated GitHub Actions: `download-artifact`, `metadata-action`, `codeql-action`, `setup-zig`, `action-setup`
 
 ### Fixed
 
@@ -41,6 +58,8 @@ All notable changes to this project will be documented in this file.
   - Default route optimization changed from `Fuel` to `Distance`. The `Fuel` optimization (and ship
     injection) now strictly only occurs in "zero-config" runs (where no custom constraints like
     `--max-jump` are provided) to prevent misleading warnings when a ship is missing.
+  - **Infrastructure**: Bumped pinned Rust toolchain to **1.93.0** and updated CI workflows, Docker
+    base images, and documentation to match the new MSRV.
 - **Library** (`evefrontier-lib`)
   - Fuel projections no longer consume fuel on gate hops; gate steps report zero fuel cost
   - Cooldown time estimates are now suppressed for steps immediately preceding a gate jump and for

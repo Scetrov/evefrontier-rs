@@ -11,7 +11,7 @@ Integrate heat mechanics into route planning by calculating per-hop heat generat
 
 ## Technical Context
 
-**Language/Version**: Rust 1.91.1 (pinned via `.rust-toolchain`)  
+**Language/Version**: Rust 1.93.0 (pinned via `.rust-toolchain`)  
 **Primary Dependencies**: 
 - `serde` 1.0 (JSON serialization for heat data in API responses)
 - `thiserror` (error handling for heat validation failures)

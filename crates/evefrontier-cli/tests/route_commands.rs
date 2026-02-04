@@ -97,7 +97,7 @@ fn route_not_found_error_suggests_next_steps() {
         .stderr(predicate::str::contains(
             "No route found between Nod and H:2L2S.",
         ))
-        .stderr(predicate::str::contains("Try a different algorithm"));
+        .stderr(predicate::str::contains("Try omit --avoid-critical-state"));
 }
 
 #[test]
@@ -202,7 +202,8 @@ fn avoid_gates_option_works() {
         .arg("Nod")
         .arg("--to")
         .arg("Brana")
-        .arg("--avoid-gates");
+        .arg("--avoid-gates")
+        .arg("--no-avoid-critical-state"); // Disable heat checks since no ship specified
 
     cmd.assert().success();
 }

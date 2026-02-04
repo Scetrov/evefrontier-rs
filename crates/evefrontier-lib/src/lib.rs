@@ -27,7 +27,7 @@
 //! let paths = ensure_e6c3_dataset(None)?;
 //!
 //! // 2. Load the starmap into memory
-//! let starmap = load_starmap(&paths.database)?;
+//! let starmap = load_starmap(&paths.database, None)?;
 //!
 //! // 3. Create a route request
 //! let request = RouteRequest {
@@ -117,7 +117,7 @@ pub use path::{
 };
 pub use routing::{
     plan_route, select_planner, AStarPlanner, BfsPlanner, DijkstraPlanner, RouteAlgorithm,
-    RouteConstraints, RouteOptimization, RoutePlan, RoutePlanner, RouteRequest,
+    RouteConstraints, RouteDiagnostic, RouteOptimization, RoutePlan, RoutePlanner, RouteRequest,
 };
 pub use ship::{
     calculate_cooling_time, calculate_jump_fuel_cost, calculate_route_fuel,

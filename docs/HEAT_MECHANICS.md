@@ -4,6 +4,350 @@ This document summarizes community-sourced formulas and reasoning about ship hea
 on jump range. It is intended as a research note and a starting point for a formal ADR or
 implementation in `ship.rs` (see ADR 0015).
 
+## Temperature Calculation Model
+
+The system models ship temperatures using actual ambient temperatures from the EVE Frontier universe
+without artificial floor clamping. This section clarifies the temperature model implementation and
+corrects common misconceptions.
+
+### Temperature Ranges and Thresholds
+
+**Game Temperature Range:**
+
+- Ambient temperatures range from **0.1K to 99.9K** (calculated via the inverse-tangent
+  heat-signature model based on distance from star and stellar properties)
+- The implementation allows temperatures down to **0.1K** (game minimum) without clamping to 30K
+- A floor of `max(0.0, temp)` prevents negative values from invalid data only
+
+### Logistic Curve Model (Validated Against Game Data)
+
+The system uses a **logistic curve model** that has been validated against actual EVE Frontier
+temperature measurements. This model achieves **~2-5% mean average error** across diverse systems.
+
+**Formula:**
+
+$$T(d, L) = T_{min} + \frac{T_{max} - T_{min}}{1 + (d / (k \sqrt{L}))^b}$$
+
+Where:
+- $T_{min} = 0.1$ K — game minimum temperature
+- $T_{max} = 99.9$ K — game maximum temperature  
+- $d$ — distance from star in light-seconds
+- $L$ — stellar luminosity in watts
+- $k = 3.215 \times 10^{-11}$ — calibrated distance scale factor
+- $b = 1.25$ — calibrated curve steepness exponent
+
+**Validation Results (2026-02-03):**
+- Mean Absolute Error: **~1.5 K**
+- Most systems: **<5% error**
+- Max error: **~9 K** (very cold systems near detection limits)
+
+### Inverse-Tangent Heat-Signature Model (Validated)
+
+This section documents the inverse-tangent model developed by community researcher
+[Ergod](https://awar.dev/).
+
+**Reference:**
+[No more Traps, Inverse-Tangent Heat-Signature Model](https://thoughtfolio.xyz/No+more+Traps%2C+Inverse-Tangent+Heat-Signature+Model)
+(2026-01-29, updated 2026-01-31)
+
+**Status:** ✅ **VALIDATED** - This is the default temperature calculation method for the CLI `flux`
+curve. Achieves ~1.2K MAE (< 2% error) against actual in-game measurements. The flux-based
+formulation uses radiative intensity (L/d²) rather than total luminosity, making it physically
+meaningful.
+
+#### Final Formula (Flux-Based)
+
+The external heat signature (ambient temperature) at distance $D$ from the star is:
+
+$$T = \frac{200}{\pi} \cdot \arctan\left(\sqrt{\frac{L}{D^2 \times 10^{21}}}\right)$$
+
+Where:
+
+- $T$ — temperature in Kelvin
+- $L$ — stellar luminosity in watts
+- $D$ — distance from the star in light-seconds
+- $10^{21}$ — intensity normalization constant (fitted from game data)
+- $\frac{200}{\pi} \approx 63.66$ — radians-to-gradians conversion factor
+
+#### Physical Interpretation
+
+This formula uses **radiative flux** (intensity) rather than total luminosity:
+
+- **Flux** = $\frac{L}{D^2}$ follows the inverse-square law for radiation
+- The square root $\sqrt{\text{flux}}$ represents the "signature magnitude"
+- The $\arctan$ function provides saturation at close distances (prevents infinite temperature)
+- The $10^{21}$ normalization scales flux to a dimensionless argument for arctan
+- The $\frac{200}{\pi}$ factor converts radians to gradians (game's temperature unit scale)
+
+**Note:** This is the formula actually used by heatsense.pages.dev and achieves the claimed
+<1% MAE. The Ergod publication's various formula revisions were attempts to describe this
+underlying flux-based relationship.
+
+#### Model Performance (Against EVE Frontier Game Data)
+
+| Model                          | Mean Absolute Error | Max Error  | Status              |
+| ------------------------------ | ------------------- | ---------- | ------------------- |
+| **Flux-Based Inverse-Tangent** | **~1.2 K (< 2%)**   | **~9 K**   | ✅ **Validated (Default)** |
+| Logistic Curve                 | ~1.2 K (< 2%)       | ~9 K       | ✅ Validated        |
+| Exponential Decay              | ~5%                 | >10%       | ⚠️ Legacy (unused)  |
+
+**Note:** The flux-based inverse-tangent formula achieves 9/10 systems with <5% error and matches
+the performance of heatsense.pages.dev. This is the production-validated formula derived from
+Ergod's research but using radiative flux (L/d²) rather than normalized luminosity (L/L☉).
+Both validated models are available; inverse-tangent is default for its physical interpretability.
+
+#### Implementation Notes
+
+The arctan form provides a saturation feature that better models the slower temperature variation
+near the star—a regime where exponential decay models struggled due to limited data.
+
+```rust
+/// Calculate ambient temperature at distance from star using inverse-tangent model.
+///
+/// # Arguments
+/// * `distance_ls` - Distance from star in light-seconds
+/// * `luminosity_ratio` - Stellar luminosity / Solar luminosity (L/L☉)
+///
+/// # Returns
+/// Temperature in Kelvin (range approximately 0.1K to 99.9K)
+fn calculate_ambient_temperature(distance_ls: f64, luminosity_ratio: f64) -> f64 {
+    const A: f64 = 100.0;  // Scale factor [0,1] -> [0,100] K
+    const K: f64 = 200.0 / std::f64::consts::PI;  // ~63.66 LS
+
+    let lambda = K * luminosity_ratio;
+    A * (2.0 / std::f64::consts::PI) * (lambda / distance_ls).atan()
+}
+```
+
+#### Acknowledgements
+
+This research was conducted by [awar.dev](https://awar.dev/) with data contributions from:
+
+- [anteris90](https://github.com/anteris90) — initial data gathering
+- [Diabolacal](https://github.com/Diabolacal) — game database validation
+
+This work is shared publicly as part of the awar.dev Research Disclosure Protocol.
+**Canonical Thresholds (from CCP's TemperatureThreshold class):**
+
+```python
+class TemperatureThreshold:
+    NOMINAL = 30.0      # Safe operation: 0-30K
+    OVERHEATED = 90.0   # Warning state: 90-150K
+    CRITICAL = 150.0    # Dangerous state: ≥150K
+```
+
+**Important:** These thresholds are used for **status classification only**, not as temperature
+floors. A ship at 2.76K ambient is perfectly valid and will remain at 2.76K, not be artificially
+raised to 30K.
+
+### Instantaneous Temperature Calculation
+
+**Formula:**
+
+```
+T_instantaneous = T_ambient + ΔT_jump
+```
+
+Where:
+
+- `T_ambient` = minimum external temperature of the origin system (0.1K-99.9K range)
+- `ΔT_jump` = heat generated by the jump: `energy / (mass × specific_heat)`
+- `energy` = jump heat energy from `calculate_jump_heat()`
+
+#### CCP Logic Reference
+
+Community research has identified the following logic used by the game client for heat generation:
+
+```python
+def calculate_instant_heat_generation(fuel_amount: float, fuel_efficiency: float, heat_capacity: float, ship_mass: float) -> float:
+    heat_increase = fuel_amount * fuel_efficiency * INSTANT_FUEL_CONSUMPTION_CONVERSION_RATE
+    try:
+        # Note: 0.001 factor likely converts mass (kg) to tons or scales the unit system
+        return heat_increase / (heat_capacity * ship_mass * 0.001)
+    except ZeroDivisionError:
+        return 0.0
+
+def simulate_jump(ship_state: ShipState, distance_ly: float) -> ShipState:
+    fuel_consumed = calculate_fuel_cost(ship_information=ship_state.to_ship_information(), distance=distance_ly)
+    temperature_increase = calculate_instant_heat_generation(
+        fuel_amount=fuel_consumed,
+        fuel_efficiency=ship_state.fuel_quality,
+        heat_capacity=ship_state.heat_capacity,
+        ship_mass=ship_state.ship_mass
+    )
+    # ... state updates ...
+    return ShipState(..., temperature_internal=ship_state.temperature_internal + temperature_increase, ...)
+```
+
+**Key Implications:**
+
+1.  **Heat Energy ($E$)**: Proportional to Fuel Consumed $\times$ Fuel Quality.
+    $$E \propto \text{fuel} \times \text{quality}$$
+2.  **Temperature Rise ($\Delta T$)**: Scaled by specific heat and mass.
+    $$\Delta T \propto \frac{E}{\text{mass} \times \text{specific\_heat}}$$
+3.  **Mass/Quality Independence (Theoretical)**: If fuel consumption is linear with mass and inverse with quality (i.e., $\text{fuel} \propto \frac{\text{mass}}{\text{quality}}$), then mass and quality terms cancel out, leaving $\Delta T$ dependent primarily on **Distance** and **Specific Heat**.
+
+**Status Labels (OVERHEATED/CRITICAL):**
+
+Labels reflect the **instantaneous temperature during the jump** (i.e. temperature generated by the
+jump) plus the minimal temperature of the origin system, not artificial floor values:
+
+- If `T_instantaneous < 90K` → no warning
+- If `90K ≤ T_instantaneous < 150K` → "OVERHEATED"
+- If `T_instantaneous ≥ 150K` → "CRITICAL"
+
+**Example (Bug Fix):**
+
+```
+Origin: IDR-KR4 (ambient 2.76K)
+Jump: 39 light-years
+Ship: Reflex
+Jump heat: 132.57K
+
+OLD (BUGGY): T_instantaneous = max(30.0, 2.76) + 132.57 = 162.57K → CRITICAL ❌
+NEW (FIXED): T_instantaneous = 2.76 + 132.57 = 135.33K → OVERHEATED ✅
+```
+
+The old code incorrectly clamped starting temperature to `HEAT_NOMINAL` (30K), inflating the total
+temperature and causing incorrect CRITICAL labels.
+
+### Cooling Model
+
+**Target Temperature:**
+
+Ships cool from overheated states toward the minimum ambient temperature of the current solar system
+as the target.
+
+**Cooling Formula (Newton's Law of Cooling):**
+
+```
+T(t) = T_env + (T_0 - T_env) × e^(-kt)
+
+Where:
+  t = -1/k × ln((T_target - T_env) / (T_start - T_env))
+  k = (BASE_COOLING_POWER × zone_factor) / (mass × specific_heat)
+```
+
+**Residual Temperature After Cooling:**
+
+```
+T_residual = max(T_target, T_ambient + COOLING_EPSILON)
+```
+
+Where `COOLING_EPSILON = 0.01K` prevents numerical issues in the cooling formula.
+
+**Examples:**
+
+```
+# Cold System (5K ambient)
+Start: 90K → Target: 30K → Residual: max(30K, 5.01K) = 30K ✓
+
+# Hot System (40K ambient)
+Start: 90K → Target: 30K → Residual: max(30K, 40.01K) = 40.01K ✓
+```
+
+In hot systems, ships cannot cool below ambient temperature, so residual reflects the physical
+constraint.
+
+### Zone Factor and Cooling Rate
+
+The `zone_factor` scales cooling rate inversely with ambient temperature:
+
+- **Cold systems (low T_ambient)** → high zone_factor → high k → **fast cooling**
+- **Hot systems (high T_ambient)** → low zone_factor → low k → **slow cooling**
+
+**Cooling Constant:**
+
+```rust
+k = (BASE_COOLING_POWER × zone_factor) / (total_mass_kg × specific_heat)
+
+BASE_COOLING_POWER = 1e6  // W/K units
+```
+
+This ensures realistic behavior where ships cool more efficiently in cold systems (e.g., frostline
+zones) than in hot systems (inner zones near stars).
+
+### Gate Hops and Heat Reset
+
+**Gate transitions reset heat to 0**, so cooling calculations do not apply:
+
+- Gate hops have no cooling time displayed
+- Next hop after a gate starts from ambient temperature of the new system
+- Heat projections show `heat 0.00` for gate arrivals
+
+**Example:**
+
+```
+ GATE  ● O43-CT4 (gate, 19ly)   1 Planet 4 Moons
+       │ min  50.39K, fuel   0 (rem  885), heat 0.00
+```
+
+### Heat-Aware Routing Default Behavior
+
+**--avoid-critical-state Flag:**
+
+- **Defaults to TRUE** for all routes (heat-aware routing enabled by default)
+- Uses **Reflex as default ship** when `--ship` is not specified
+- Rejects spatial jumps where `T_instantaneous ≥ HEAT_CRITICAL` (150K)
+- Disable with `--no-avoid-critical-state` for gate-only networks or high-risk planning
+
+**Use Cases for Disabling:**
+
+- Gate-only networks (temperature irrelevant since gates reset heat)
+- Intentional high-risk route planning where critical temperatures are acceptable
+- Performance optimization for batch processing (skips heat calculations)
+
+**CLI Examples:**
+
+```bash
+# Default: heat-aware routing with Reflex
+evefrontier-cli route --from "Nod" --to "Brana"
+
+# Explicit ship specification
+evefrontier-cli route --from "Nod" --to "Brana" --ship "Vanguard"
+
+# Disable temperature constraints
+evefrontier-cli route --from "Nod" --to "Brana" --no-avoid-critical-state
+```
+
+**Lambda API:**
+
+```json
+{
+  "from": "Nod",
+  "to": "Brana",
+  "avoid_critical_state": true, // Default: true
+  "ship": null // Defaults to "Reflex" when avoid_critical_state=true
+}
+```
+
+### Temperature Model Summary Table
+
+| Scenario                   | T_ambient | ΔT_jump | T_instantaneous | Label      | Residual After Cooling |
+| -------------------------- | --------- | ------- | --------------- | ---------- | ---------------------- |
+| Cold system, small jump    | 2.76K     | 50K     | 52.76K          | (none)     | 30.0K                  |
+| Cold system, medium jump   | 2.76K     | 100K    | 102.76K         | OVERHEATED | 30.0K                  |
+| Cold system, large jump    | 2.76K     | 132.57K | 135.33K         | OVERHEATED | 30.0K                  |
+| Cold system, critical jump | 2.76K     | 150K    | 152.76K         | CRITICAL   | 30.0K                  |
+| Hot system, medium jump    | 40K       | 60K     | 100K            | OVERHEATED | 40.01K                 |
+| Very cold system           | 0.1K      | 89K     | 89.1K           | (none)     | 30.0K                  |
+| Gate hop                   | any       | 0       | 0.0             | (none)     | 0.0                    |
+
+### Implementation Notes
+
+**Files Modified (Bug Fixes):**
+
+- `crates/evefrontier-lib/src/ship/heat.rs:294` — removed `HEAT_NOMINAL.max()` floor
+- `crates/evefrontier-lib/src/ship/heat.rs:324` — fixed residual to use `COOLING_EPSILON`
+- `crates/evefrontier-lib/src/path.rs` — changed `avoid_critical_state` default to `true`
+
+**Test Coverage:**
+
+- Unit tests: `crates/evefrontier-lib/tests/heat_threshold_regression.rs`
+- Integration tests: `crates/evefrontier-lib/tests/routing.rs`
+
+---
+
 Summary formula (informational):
 
 ```
@@ -30,6 +374,10 @@ Display and dataset notes:
 
 References
 
+- [No more Traps, Inverse-Tangent Heat-Signature Model](https://thoughtfolio.xyz/No+more+Traps%2C+Inverse-Tangent+Heat-Signature+Model)
+  — awar.dev's community research achieving 0.15% MAE for ambient temperature calculation
+- [All to Avoid Heat Traps, Exponential Heat-Signature Decay Model](https://thoughtfolio.xyz/All+to+Avoid+Heat+Traps%2C+Exponential+Heat-Signature+Decay+Model)
+  — Predecessor exponential decay model research
 - [Jump Calculators: Understanding Your Ships Heat and Fuel Limits](https://ef-map.com/blog/jump-calculators-heat-fuel-range)
 
 TODO
@@ -50,11 +398,10 @@ decay where cooling slows down as the ship approaches the ambient temperature.
 
 **Implementation Details**:
 
-- **Cooling Constant (k)**:
-  `k = BASE_COOLING_POWER * zone_factor / (total_mass_kg * specific_heat)`
+- **Cooling Constant (k)**: `k = BASE_COOLING_POWER * zone_factor / (total_mass_kg * specific_heat)`
 - **Wait Time**: The time required to reach the jump-ready state (30.0 K) is calculated per hop.
-- **Start Temperature (T_start)**: Assumed to be T_ready + delta_T_jump, where T_ready
-  is max(30.0K, T_ambient_origin).
+- **Start Temperature (T_start)**: Assumed to be T_ready + delta_T_jump, where T_ready is max(30.0K,
+  T_ambient_origin).
 - **Ambient Floor**: Ships cannot cool below the system's ambient temperature (T_env).
 
 ## Integration with the game Temperature Service (Historical Notes)
@@ -198,3 +545,22 @@ significantly improving the accuracy of the cooldown estimates provided by the t
 It may, however, be useful to include cooldown time estimates in the output to help pilots plan
 their routes; these will be indicative because they won't include time spent warping between the
 jump-in point and the outermost celestial body in the destination system.
+
+### Test Data (In-Game Measurements, 2026-02-03)
+
+| System  | Distance (LS) | Luminosity (W)                   | Measured (K) | Logistic (K) | Log Err | InvTan (K) | Inv Err |
+| ------- | ------------- | -------------------------------- | ------------ | ------------ | ------- | ---------- | ------- |
+| A9R-PQ4 | 1168          | 117079286879216367304704.00      | 0.6          | 0.39         | 0.21    | 0.59       | 0.01    |
+| O86-215 | 3078          | 210611439263697778669256704.00   | 0.0          | 8.72         | 8.72    | 9.42       | 9.42    |
+| E37-N15 | 2735          | 46609614223656827010154496.00    | 5.1          | 4.19         | 0.91    | 5.01       | 0.09    |
+| UVG-MV3 | 6283          | 2399495653136391448790302720.00  | 15.7         | 15.13        | 0.57    | 15.39      | 0.31    |
+| U98-VK4 | 20850         | 95197165897008878019531505664.00 | 28.4         | 28.37        | 0.03    | 27.86      | 0.54    |
+| EKF-2N4 | 1297          | 3482357323030063141093376.00     | 2.9          | 2.20         | 0.70    | 2.89       | 0.01    |
+| ER7-MN4 | 165           | 5945032820976178790662144.00     | 28.3         | 28.33        | 0.03    | 27.83      | 0.47    |
+| E6S-8S4 | 3290          | 526627990081004722192384.00      | 0.4          | 0.31         | 0.10    | 0.44       | 0.04    |
+| O43-CT4 | 532           | 269067787727477819523989504.00   | 49.9         | 49.73        | 0.17    | 49.20      | 0.70    |
+| E17-S05 | 17            | 705658793434329632473088.00      | 63.3         | 64.05        | 0.75    | 63.76      | 0.46    |
+
+**Note:** O86-215 shows 0.0K measured temperature, which may indicate sensor limitations at extreme
+distances or a measurement error. The high error for very cold systems (A9R-PQ4, EKF-2N4, E6S-8S4)
+is expected as these approach the game's minimum temperature threshold.

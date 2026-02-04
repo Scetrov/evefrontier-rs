@@ -138,7 +138,16 @@ fn handle_route_request(request: &RouteRequest, request_id: &str) -> Response {
             Err(e) => return Response::Error(from_lib_error(&e, request_id)),
         };
 
-    if let Some(ship_name) = request.ship.as_ref() {
+    // Default to Reflex when ship not specified and heat-aware routing enabled (matches CLI behavior)
+    let effective_ship_name = request.ship.as_deref().or({
+        if request.avoid_critical_state {
+            Some("Reflex")
+        } else {
+            None
+        }
+    });
+
+    if let Some(ship_name) = effective_ship_name {
         let ship_name_trimmed = ship_name.trim();
         if ship_name_trimmed.is_empty() {
             return Response::Error(ProblemDetails::bad_request(
@@ -391,7 +400,8 @@ mod tests {
                 assert_eq!(inner.data.summary.hops, 3);
                 assert_eq!(inner.data.summary.gates, 1);
                 assert_eq!(inner.data.summary.jumps, 2);
-                assert!(inner.data.summary.fuel.is_none());
+                // Fuel is present because a default ship is injected
+                assert!(inner.data.summary.fuel.is_some());
             }
             Response::Error(err) => {
                 panic!("unexpected error: {:?}", err);
