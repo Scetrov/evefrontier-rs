@@ -75,6 +75,10 @@ use tracing::{debug, info, warn};
 use crate::db::{Starmap, SystemId, SystemPosition};
 use crate::error::{Error, Result};
 
+/// Hard upper bound on the number of neighbours returned by spatial queries.
+/// This prevents unbounded memory allocation and excessive work from user-controlled inputs.
+const MAX_NEIGHBOURS: usize = 1000;
+
 /// Magic bytes identifying a spatial index file.
 const INDEX_MAGIC: &[u8; 4] = b"EFSI";
 
@@ -706,9 +710,9 @@ impl SpatialIndex {
             return Vec::new();
         }
 
-        // Clamp requested neighbours to the number of available nodes to avoid
-        // unbounded allocations based on user input.
-        let max_k = query.k.min(self.nodes.len());
+        // Clamp requested neighbours to a hard maximum and to the number of available nodes
+        // to avoid unbounded allocations based on user input.
+        let max_k = query.k.min(MAX_NEIGHBOURS).min(self.nodes.len());
 
         let query_point = [point[0] as f32, point[1] as f32, point[2] as f32];
 
@@ -744,7 +748,7 @@ impl SpatialIndex {
 
             results.push((node.system_id, distance));
 
-            if results.len() >= query.k {
+            if results.len() >= max_k {
                 break;
             }
         }
