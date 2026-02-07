@@ -86,7 +86,7 @@ repository = "https://github.com/scetrov/evefrontier-rs"
 description = "Workspace for EVE Frontier pathfinding library, CLI, and AWS Lambda functions."
 
 [workspace.dependencies]
-anyhow = "1.0.100"
+anyhow = "1.0.101"
 directories = "6.0.0"
 thiserror = "2.0.17"
 serde = { version = "1.0.228", features = ["derive"] }
