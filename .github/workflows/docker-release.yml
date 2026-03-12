@@ -106,7 +106,7 @@ jobs:
           cp target/${{ matrix.target }}/release/evefrontier-service-scout-range artifacts/${{ matrix.arch }}/
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: binaries-${{ matrix.arch }}
           path: artifacts/${{ matrix.arch }}
@@ -297,7 +297,7 @@ jobs:
             -o cyclonedx-json=sbom-${{ matrix.service }}.cyclonedx.json
 
       - name: Upload SBOM artifacts
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: sbom-${{ matrix.service }}
           path: |
