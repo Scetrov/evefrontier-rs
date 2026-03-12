@@ -15,12 +15,14 @@ fn spawn_server() -> std::io::Result<Child> {
         .unwrap()
         .parent()
         .unwrap();
+    let fixture_db = workspace_root.join("docs/fixtures/minimal/static_data.db");
 
     Command::new("cargo")
         .arg("run")
         .arg("-p")
         .arg("evefrontier-mcp")
         .arg("--")
+        .env("EVEFRONTIER_DATA_DIR", fixture_db)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::null()) // Suppress logging output

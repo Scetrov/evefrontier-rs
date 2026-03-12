@@ -11,23 +11,22 @@ path = "src/main.rs"
 
 [dependencies]
 evefrontier-lib = { path = "../evefrontier-lib", features = ["mcp"] }
-rmcp = { version = "0.12", features = ["server"] }
-tokio = { version = "1.40", features = ["full"] }
+tokio = { version = "1.50", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 schemars = { version = "1.2", features = ["derive"] }
-thiserror = "1.0"
+thiserror = "2.0"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "ansi"] }
 anyhow = "1.0"
 futures = "0.3"
 chrono = { version = "0.4", features = ["serde"] }
-directories = "5.0"
-dirs = "5.0"
+directories = "6.0"
+dirs = "6.0"
 
 [dev-dependencies]
 tokio-test = "0.4"
-assert_cmd = "2.0"
+assert_cmd = "2.2"
 predicates = "3.0"
 
 [features]

@@ -27,7 +27,7 @@ tracing-subscriber.workspace = true
 
 # MCP subcommand dependencies
 evefrontier-mcp = { path = "../evefrontier-mcp" }
-tokio = { version = "1.30", features = ["io-util", "macros", "signal", "rt-multi-thread"] }
+tokio = { version = "1.50", features = ["io-util", "macros", "signal", "rt-multi-thread"] }
 
 [dev-dependencies]
 assert_cmd.workspace = true
