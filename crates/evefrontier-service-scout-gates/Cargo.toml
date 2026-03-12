@@ -2,7 +2,7 @@
 name = "evefrontier-service-scout-gates"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.93.0"
+rust-version = "1.94.0"
 description = "EVE Frontier gate scout HTTP microservice"
 license = "MIT"
 repository = "https://github.com/Scetrov/evefrontier-rs"
@@ -22,7 +22,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 
 [dev-dependencies]
-axum-test = "18.4"
+axum-test = "19.1"
 
 [[bin]]
 name = "evefrontier-service-scout-gates"
