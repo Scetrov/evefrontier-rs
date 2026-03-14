@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- 2026-03-14 - Scetrov - [deps] - Consolidated Dependabot PRs #119, #120, #121, #122,
+  and #123 into a single Rust dependency maintenance update for lambda_runtime 1.1.1,
+  zip 8.2.0, tracing-subscriber 0.3.23, rusqlite 0.38.0, and clap 4.6.0.
+
 ### Added
 
 - **CLI** (`evefrontier-cli`)

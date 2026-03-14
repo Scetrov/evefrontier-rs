@@ -60,8 +60,11 @@ fn count_tables(conn: &Connection, tables: &HashMap<String, u64>) -> HashMap<Str
         let mut stmt = tx
             .prepare(&format!("SELECT COUNT(*) FROM {table}"))
             .expect("prepared count");
-        let value: u64 = stmt.query_row([], |row| row.get(0)).expect("row count");
-        counts.insert(table.clone(), value);
+        let value: i64 = stmt.query_row([], |row| row.get(0)).expect("row count");
+        counts.insert(
+            table.clone(),
+            value.try_into().expect("row count is non-negative"),
+        );
     }
     tx.commit().expect("commit");
     counts
