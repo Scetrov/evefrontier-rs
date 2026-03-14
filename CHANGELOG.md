@@ -33,6 +33,8 @@ All notable changes to this project will be documented in this file.
   - Updated Rust dependencies: `axum-test`, `bytes`, `lambda_runtime`, `reqwest`, `schemars`, `tracing`, `uuid`
   - Updated Node/Nx dependencies: `nx`, `prettier`, `lint-staged`, `cross-env`
   - Updated GitHub Actions: `download-artifact`, `metadata-action`, `codeql-action`, `setup-zig`, `action-setup`
+  - Consolidated Dependabot PRs #119–#123 into a single Rust dependency maintenance update for
+    `lambda_runtime 1.1.1`, `zip 8.2.0`, `tracing-subscriber 0.3.23`, `rusqlite 0.38.0`, and `clap 4.6.0`.
 
 ### Fixed
 
