@@ -217,7 +217,7 @@ For more details, see:
 ## Tooling requirements
 
 - Node.js: use the version pinned in `.nvmrc` (currently 24 LTS as of November 2025). Install via `nvm use`.
-- Package manager: pnpm 10+. The repository declares `"packageManager": "pnpm@10.0.0"` and
+- Package manager: pnpm 10+. The repository declares `"packageManager": "pnpm@10.33.0"` and
   enforces `engines.pnpm >= 10.0.0`.
 
 Quick setup:
@@ -443,10 +443,10 @@ Environment
 
 - Install `rustup` from the official site: <https://rustup.rs>
 
-- The repository uses Rust 1.93.0 (pinned in `.rust-toolchain`). When you enter the repository
+- The repository uses Rust 1.94.0 (pinned in `.rust-toolchain`). When you enter the repository
   directory, rustup will automatically use this version. To verify:
 
-  rustc --version # should show 1.93.0
+  rustc --version # should show 1.94.0
 
 2. Install Node.js and pnpm (for developer tooling)
 
@@ -463,7 +463,7 @@ Environment
 - Install `pnpm` (recommended using corepack for version consistency):
 
   corepack enable
-  corepack prepare pnpm@10.0.0 --activate
+  corepack prepare pnpm@10.33.0 --activate
 
   Alternatively, install globally with version pin:
 

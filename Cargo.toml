@@ -39,7 +39,7 @@ pre-commit = """
         echo "❌ Error: pnpm is required for pre-commit hooks."
         echo "   Recommended setup using corepack (respects packageManager in package.json):"
         echo "     corepack enable"
-        echo "     corepack prepare pnpm@10.0.0 --activate"
+        echo "     corepack prepare pnpm@10.33.0 --activate"
         echo ""
         echo "   Alternative: npm install -g pnpm@10"
         echo "   See CONTRIBUTING.md for detailed setup instructions."
@@ -47,6 +47,7 @@ pre-commit = """
     fi
 
     echo "🔍 Running pre-commit checks via Nx..."
+    export NX_INTERACTIVE=false
 
     # 1. Format check
     echo "  → Checking code formatting..."

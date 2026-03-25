@@ -7,6 +7,7 @@ echo ""
 # 0. Stabilize environment to avoid target dir races
 export CARGO_TARGET_DIR="$PWD/target"
 export NX_DAEMON=false
+export NX_INTERACTIVE=false
 
 # 1. Format (Rust)
 echo "1️⃣  Checking Rust formatting..."
