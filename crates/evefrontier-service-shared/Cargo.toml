@@ -31,7 +31,7 @@ metrics = "0.24"
 metrics-exporter-prometheus = "0.18"
 
 # Observability: Request ID generation
-uuid = { version = "1.22", features = ["v7"] }
+uuid = { version = "1.23", features = ["v7"] }
 
 # Observability: Timestamp formatting
 chrono.workspace = true
