@@ -50,6 +50,11 @@
     }
   },
   "plugins": [],
+  "pluginsConfig": {
+    "@nx/js": {
+      "analyzeLockfile": false
+    }
+  },
   "generators": {},
   "release": {
     "version": {
