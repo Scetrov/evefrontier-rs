@@ -50,7 +50,8 @@ fn compute_sha256(path: &Path) -> String {
         }
         hasher.update(&buf[..n]);
     }
-    format!("{:x}", hasher.finalize())
+    let digest = hasher.finalize();
+    hex::encode(digest)
 }
 
 fn count_tables(conn: &Connection, tables: &HashMap<String, u64>) -> HashMap<String, u64> {

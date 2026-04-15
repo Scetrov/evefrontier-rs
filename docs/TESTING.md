@@ -223,7 +223,7 @@ Cache key: `cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}`
 
 ### Dependency Pinning
 
-- Rust toolchain: **1.90.0** (via `.rust-toolchain` or workflow)
+- Rust toolchain: **1.94.1** (via `.rust-toolchain` or workflow)
 - Dependencies: Locked via `Cargo.lock` (committed to repo)
 
 ## Troubleshooting

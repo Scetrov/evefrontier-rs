@@ -73,7 +73,8 @@ fn download_from_source_with_cache_copies_ship_csv_from_directory() {
     let data = std::fs::read(&cached_ship).expect("read ship csv");
     let mut hasher = Sha256::new();
     hasher.update(&data);
-    let actual = format!("{:x}", hasher.finalize());
+    let digest = hasher.finalize();
+    let actual = hex::encode(digest);
     let expected = std::fs::read_to_string(sidecar)
         .expect("read sidecar")
         .trim()

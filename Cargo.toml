@@ -96,17 +96,17 @@ rusqlite = { version = "0.39.0", features = ["bundled", "serialize"] }
 clap = { version = "4.6.0", features = ["derive"] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["fmt", "env-filter"] }
-reqwest = { version = "0.12.28", default-features = false, features = ["blocking", "json", "rustls-tls"] }
+reqwest = { version = "0.13.2", default-features = false, features = ["blocking", "json", "rustls"] }
 tempfile = "3.23.0"
-zip = { version = "8.2.0", default-features = false, features = ["deflate"] }
+zip = { version = "8.5.1", default-features = false, features = ["deflate"] }
 assert_cmd = "2.1.1"
 predicates = "3.1.3"
 once_cell = "1.21.3"
 rusty-hook = "0.11.2"
 lambda_runtime = "1.1"
-tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1.52.0", features = ["rt-multi-thread", "macros"] }
 http = "1.4.0"
-axum = "0.8"
+axum = "0.8.9"
 tower-http = { version = "0.6", features = ["trace", "cors"] }
 axum-test = "18.4"
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }

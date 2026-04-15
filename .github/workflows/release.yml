@@ -52,7 +52,7 @@ jobs:
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@a54c7afa936fefeb4456b2dd8068152669aa8203 # stable
         with:
-          toolchain: "1.94.0"
+          toolchain: "1.94.1"
           targets: ${{ matrix.target }}
 
       - name: Cache cargo directories
@@ -222,7 +222,7 @@ jobs:
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@a54c7afa936fefeb4456b2dd8068152669aa8203 # stable
         with:
-          toolchain: "1.94.0"
+          toolchain: "1.94.1"
 
       - name: Install cargo-sbom
         run: cargo install cargo-sbom@0.9.1 --locked
@@ -341,7 +341,7 @@ jobs:
           cat release_notes.md
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2.6.1
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
           name: "v${{ needs.package.outputs.version }}"
           body_path: release_notes.md

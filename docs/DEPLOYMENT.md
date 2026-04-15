@@ -214,7 +214,7 @@ kubectl delete pvc -l app.kubernetes.io/name=evefrontier
 | Tool           | Version  | Purpose                   |
 | -------------- | -------- | ------------------------- |
 | Terraform      | >= 1.5.0 | Infrastructure deployment |
-| Rust           | 1.93+    | Building Lambda binaries  |
+| Rust           | 1.94+    | Building Lambda binaries  |
 | AWS CLI        | v2       | AWS authentication        |
 | Cross-compiler | Latest   | ARM64 cross-compilation   |
 
@@ -348,7 +348,7 @@ terraform version
 
 # Check Rust version
 rustc --version
-# Should show >= 1.93.0
+# Should show >= 1.94.1
 
 # Check AWS credentials
 aws sts get-caller-identity

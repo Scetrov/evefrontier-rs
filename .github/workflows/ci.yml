@@ -27,7 +27,7 @@ jobs:
           node-version-file: '.nvmrc'
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v5
+        uses: pnpm/action-setup@08c4be7e2e672a47d11bd04269e27e5f3e8529cb # v6
 
       - name: Install Node dependencies
         run: pnpm install --frozen-lockfile
@@ -35,7 +35,7 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@v1
         with:
-          toolchain: "1.94.0"
+          toolchain: "1.94.1"
           components: clippy, rustfmt
 
       - name: Cache cargo directories
@@ -73,7 +73,7 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@v1
         with:
-          toolchain: "1.94.0"
+          toolchain: "1.94.1"
 
       - name: Install jq for JSON validation
         run: sudo apt-get update && sudo apt-get install -y jq
@@ -123,7 +123,7 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@v1
         with:
-          toolchain: "1.94.0"
+          toolchain: "1.94.1"
 
       - name: Cache cargo directories
         uses: actions/cache@v5
@@ -153,7 +153,7 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@v1
         with:
-          toolchain: "1.94.0"
+          toolchain: "1.94.1"
 
       - name: Cache cargo directories
         uses: actions/cache@v5
@@ -195,7 +195,7 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@v1
         with:
-          toolchain: "1.94.0"
+          toolchain: "1.94.1"
           components: clippy
 
       - name: Cache cargo directories
@@ -262,7 +262,7 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@v1
         with:
-            toolchain: "1.94.0"
+            toolchain: "1.94.1"
 
       - name: Cache cargo directories
         uses: actions/cache@v5

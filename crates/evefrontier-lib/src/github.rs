@@ -1,5 +1,6 @@
 use std::env;
 use std::fmt;
+use std::fmt::Write as _;
 use std::fs::{self, File};
 use std::io::{self, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
@@ -743,7 +744,16 @@ fn compute_sha256_hex(path: &Path) -> Result<String> {
     let data = fs::read(path)?;
     let mut hasher = Sha256::new();
     hasher.update(&data);
-    Ok(format!("{:x}", hasher.finalize()))
+    let digest = hasher.finalize();
+    Ok(encode_lower_hex(digest.as_ref()))
+}
+
+fn encode_lower_hex(bytes: &[u8]) -> String {
+    let mut output = String::with_capacity(bytes.len() * 2);
+    for byte in bytes {
+        write!(&mut output, "{byte:02x}").expect("writing to String cannot fail");
+    }
+    output
 }
 
 fn write_checksum_sidecar(file: &Path, checksum: &str) -> Result<()> {
