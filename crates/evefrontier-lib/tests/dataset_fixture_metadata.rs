@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt::Write as _;
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -39,6 +40,14 @@ fn read_metadata() -> FixtureMetadata {
     serde_json::from_reader(file).expect("metadata parses")
 }
 
+fn encode_lower_hex(bytes: &[u8]) -> String {
+    let mut output = String::with_capacity(bytes.len() * 2);
+    for byte in bytes {
+        write!(&mut output, "{byte:02x}").expect("writing to String cannot fail");
+    }
+    output
+}
+
 fn compute_sha256(path: &Path) -> String {
     let mut file = File::open(path).expect("fixture readable");
     let mut hasher = Sha256::new();
@@ -51,7 +60,7 @@ fn compute_sha256(path: &Path) -> String {
         hasher.update(&buf[..n]);
     }
     let digest = hasher.finalize();
-    digest.iter().map(|byte| format!("{byte:02x}")).collect()
+    encode_lower_hex(digest.as_ref())
 }
 
 fn count_tables(conn: &Connection, tables: &HashMap<String, u64>) -> HashMap<String, u64> {
