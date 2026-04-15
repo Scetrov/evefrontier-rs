@@ -1,18 +1,9 @@
-use std::fmt::Write as _;
 use std::path::PathBuf;
 
 use evefrontier_lib::ship::ShipCatalog;
 
 fn fixture_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/fixtures")
-}
-
-fn encode_lower_hex(bytes: &[u8]) -> String {
-    let mut output = String::with_capacity(bytes.len() * 2);
-    for byte in bytes {
-        write!(&mut output, "{byte:02x}").expect("writing to String cannot fail");
-    }
-    output
 }
 
 /// Test that ship_data.csv can be located and loaded from the fixtures directory.
@@ -83,7 +74,7 @@ fn download_from_source_with_cache_copies_ship_csv_from_directory() {
     let mut hasher = Sha256::new();
     hasher.update(&data);
     let digest = hasher.finalize();
-    let actual = encode_lower_hex(digest.as_ref());
+    let actual = hex::encode(digest);
     let expected = std::fs::read_to_string(sidecar)
         .expect("read sidecar")
         .trim()
