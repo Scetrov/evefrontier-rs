@@ -743,7 +743,8 @@ fn compute_sha256_hex(path: &Path) -> Result<String> {
     let data = fs::read(path)?;
     let mut hasher = Sha256::new();
     hasher.update(&data);
-    Ok(format!("{:x}", hasher.finalize()))
+    let digest = hasher.finalize();
+    Ok(digest.iter().map(|byte| format!("{byte:02x}")).collect())
 }
 
 fn write_checksum_sidecar(file: &Path, checksum: &str) -> Result<()> {

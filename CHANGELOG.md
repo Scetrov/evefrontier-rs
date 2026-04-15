@@ -29,6 +29,9 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - **Maintenance**
+  - Consolidated Dependabot PRs #157 and #160 into the workspace dependency refresh
+  - Updated GitHub Actions `pnpm/action-setup` to `v6` and `softprops/action-gh-release` to `v3.0.0`
+  - Updated Rust/tooling pins to Rust `1.94.1`, `tokio 1.52.0`, `axum 0.8.9`, `zip 8.5.1`, `kiddo 5.3.1`, `sha2 0.11.0`, `reqwest 0.13.2`, and `prettier 3.8.3`
   - Consolidated 16 dependency updates across Cargo, NPM, and GitHub Actions ecosystems
   - Updated Rust dependencies: `axum-test`, `bytes`, `lambda_runtime`, `reqwest`, `schemars`, `tracing`, `uuid`
   - Updated Node/Nx dependencies: `nx`, `prettier`, `lint-staged`, `cross-env`
