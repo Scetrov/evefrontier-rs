@@ -108,5 +108,5 @@ tokio = { version = "1.52.0", features = ["rt-multi-thread", "macros"] }
 http = "1.4.0"
 axum = "0.8.9"
 tower-http = { version = "0.6", features = ["trace", "cors"] }
-axum-test = "18.4"
+axum-test = "20.0.0"
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
