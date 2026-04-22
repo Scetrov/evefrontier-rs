@@ -41,7 +41,14 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- **CLI** (`evefrontier-cli`)
+- **Security** — Updated `rustls-webpki` from `0.103.12` to `0.103.13` to resolve
+  [`RUSTSEC-2026-0104`](https://rustsec.org/advisories/RUSTSEC-2026-0104) (reachable panic in CRL
+  parsing). The crate entered the dependency graph transitively via `quinn`, `metrics-exporter-prometheus`,
+  and `hyper-rustls`. Refreshed broader dependency set (`assert_cmd`, `aws-lc-rs`, `aws-lc-sys`,
+  `lambda_runtime`, `tokio`, `typenum`, `uuid`, `webpki-root-certs`) to latest compatible versions.
+- **Maintenance** — Aligned `axum-test` workspace dependency to `20.0.0` and switched service crates
+  (`evefrontier-service-route`, `evefrontier-service-scout-gates`, `evefrontier-service-scout-range`)
+  to reference it via `{ workspace = true }` for consistency.
   - GOAL step in `--format enhanced` now displays status line (min temp, planets, moons) like all
     other steps
   - Added "Black Hole" indicator for systems 30000001-30000003 which have no celestial bodies
