@@ -26,6 +26,11 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- 2026-05-31 — auto-llm:gpt-5 [auto-llm]: Fixed Dependabot Cargo update
+  configuration by replacing the invalid `versioning-strategy` value with `auto`.
+  Details: Dependabot accepts `lockfile-only` or `auto` for this Cargo updater
+  configuration. Files changed: `.github/dependabot.yml`, `CHANGELOG.md`.
+
 - 2026-05-31 — auto-llm:gpt-5 [auto-llm]: Restored CI compatibility for
   `evefrontier-lib` tests by pinning `rusqlite` to `0.39.0`.
   Details: `rusqlite 0.40.0` resolves to `libsqlite3-sys 0.38.0`, whose build

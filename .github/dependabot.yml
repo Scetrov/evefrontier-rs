@@ -13,7 +13,7 @@ updates:
       cargo-dependencies:
         patterns:
           - "*"
-    versioning-strategy: increase-if-necessary
+    versioning-strategy: auto
     cooldown:
       default-days: 5
   
