@@ -40,9 +40,9 @@
   "devDependencies": {
     "cross-env": "^10.1.0",
     "husky": "^9.1.7",
-    "lint-staged": "^17.0.4",
+    "lint-staged": "^17.0.5",
     "markdownlint-cli2": "^0.22.1",
-    "nx": "^22.7.2",
+    "nx": "^22.7.3",
     "prettier": "^3.8.3"
   },
   "overrides": {
