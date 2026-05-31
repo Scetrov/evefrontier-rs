@@ -13,6 +13,9 @@ updates:
       cargo-dependencies:
         patterns:
           - "*"
+    versioning-strategy: increase-if-necessary
+    cooldown:
+      default-days: 5
   
   - package-ecosystem: "npm"
     directory: "/"
