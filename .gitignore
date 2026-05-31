@@ -159,3 +159,6 @@ examples/target/
 
 # Local generated docs
 docs/_book/
+
+# Agents
+.pi

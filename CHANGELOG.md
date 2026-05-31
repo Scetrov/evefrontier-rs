@@ -26,7 +26,28 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- 2026-05-31 — auto-llm:gpt-5 [auto-llm]: Fixed Dependabot Cargo update
+  configuration by replacing the invalid `versioning-strategy` value with `auto`.
+  Details: Dependabot accepts `lockfile-only` or `auto` for this Cargo updater
+  configuration. Files changed: `.github/dependabot.yml`, `CHANGELOG.md`.
+
+- 2026-05-31 — auto-llm:gpt-5 [auto-llm]: Restored CI compatibility for
+  `evefrontier-lib` tests by pinning `rusqlite` to `0.39.0`.
+  Details: `rusqlite 0.40.0` resolves to `libsqlite3-sys 0.38.0`, whose build
+  script uses the unstable `cfg_select` library feature on the repository's
+  previously pinned Rust 1.94.x toolchain. Files changed: `Cargo.toml`, `Cargo.lock`.
+
 ### Changed
+
+- 2026-05-31 — auto-llm:gpt-5 [auto-llm]: Bumped the pinned Rust toolchain and service MSRV to
+  `1.96.0`.
+  Details: Updated `.rust-toolchain`, GitHub Actions Rust setup steps, service crate
+  `rust-version` fields, Docker builder images, and current toolchain documentation. Files changed:
+  `.rust-toolchain`, `.github/workflows/ci.yml`, `.github/workflows/dependency-check.yml`,
+  `.github/workflows/docker-release.yml`, `.github/workflows/release.yml`,
+  `crates/evefrontier-service-*/Cargo.toml`, `crates/evefrontier-service-*/Dockerfile`,
+  `docs/TESTING.md`, `docs/RELEASE.md`, `docs/DEPLOYMENT.md`,
+  `.github/agents/copilot-instructions.md`.
 
 - **Maintenance**
   - Consolidated Dependabot PRs #157 and #160 into the workspace dependency refresh
