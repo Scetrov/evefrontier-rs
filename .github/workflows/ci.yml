@@ -24,7 +24,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version-file: '.nvmrc'
+          node-version-file: ".nvmrc"
 
       - name: Install pnpm
         uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6
@@ -119,13 +119,51 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Detect dependency audit scopes
+        id: audit-scope
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+            git diff --name-only "$BASE_SHA" "$HEAD_SHA" > changed-files.txt
+          else
+            # Pushes to main are the integration safety net; run every audit scope.
+            printf '%s\n' Cargo.lock package.json > changed-files.txt
+          fi
+
+          rust_changed=false
+          node_changed=false
+
+          if grep -Eq '^(Cargo\.toml|Cargo\.lock|\.cargo/|\.rust-toolchain|rust-toolchain\.toml|clippy\.toml|rustfmt\.toml|crates/|src/|examples/|benches/|tests/|\.github/workflows/)' changed-files.txt; then
+            rust_changed=true
+          fi
+
+          if grep -Eq '^(package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|nx\.json|\.nvmrc|\.npmrc|scripts/|\.github/workflows/)' changed-files.txt; then
+            node_changed=true
+          fi
+
+          echo "rust_changed=$rust_changed" >> "$GITHUB_OUTPUT"
+          echo "node_changed=$node_changed" >> "$GITHUB_OUTPUT"
+
+          echo "Changed files considered for dependency audits:"
+          cat changed-files.txt
+          echo "Rust audit required: $rust_changed"
+          echo "Node audit required: $node_changed"
 
       - name: Set up Rust
+        if: steps.audit-scope.outputs.rust_changed == 'true'
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: "1.96.0"
 
       - name: Cache cargo directories
+        if: steps.audit-scope.outputs.rust_changed == 'true'
         uses: actions/cache@v6
         with:
           path: |
@@ -137,15 +175,41 @@ jobs:
             cargo-${{ runner.os }}-
 
       - name: Install cargo-audit
+        if: steps.audit-scope.outputs.rust_changed == 'true'
         run: cargo install cargo-audit --locked
 
-      - name: Run security audit
+      - name: Run Rust security audit
+        if: steps.audit-scope.outputs.rust_changed == 'true'
         run: cargo audit
+
+      - name: Set up Node.js
+        if: steps.audit-scope.outputs.node_changed == 'true'
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: ".nvmrc"
+
+      - name: Install pnpm
+        if: steps.audit-scope.outputs.node_changed == 'true'
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6
+
+      - name: Install Node dependencies
+        if: steps.audit-scope.outputs.node_changed == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Node security audit
+        if: steps.audit-scope.outputs.node_changed == 'true'
+        run: pnpm audit --audit-level high
+
+      - name: Skip security audits
+        if:
+          steps.audit-scope.outputs.rust_changed != 'true' && steps.audit-scope.outputs.node_changed
+          != 'true'
+        run: echo "No Rust or Node dependency-impacting paths changed; skipping dependency audits."
 
   spatial-index-freshness:
     name: Verify spatial index freshness
     runs-on: ubuntu-latest
-    needs: build-and-test  # Run after tests pass
+    needs: build-and-test # Run after tests pass
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -236,7 +300,7 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@v1
         with:
-            toolchain: "1.96.0"
+          toolchain: "1.96.0"
 
       - name: Cache cargo directories
         uses: actions/cache@v6

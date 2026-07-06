@@ -12,7 +12,8 @@ We employ a layered security scanning approach:
 2. **Container Image Scanning** (Trivy): Scans Docker images for OS-level and application
    vulnerabilities
 
-Both tools run automatically in CI pipelines and have specific policies for handling vulnerabilities.
+Both tools run automatically in CI pipelines and have specific policies for handling
+vulnerabilities.
 
 ---
 
@@ -21,7 +22,9 @@ Both tools run automatically in CI pipelines and have specific policies for hand
 We use `cargo-audit` to scan our dependencies for known security vulnerabilities from the
 [RustSec Advisory Database](https://rustsec.org/). The audit runs automatically in:
 
-- **CI Pipeline**: Every push and pull request
+- **CI Pipeline**: Every push to `main`, and pull requests that change Rust-impacting paths
+  (`Cargo.*`, `.cargo/`, `.rust-toolchain`, `clippy.toml`, `rustfmt.toml`, `crates/`, `src/`,
+  `examples/`, `benches/`, `tests/`, or GitHub workflow files)
 - **Pre-commit Hook**: Before every commit (via rusty-hook)
 - **Manual Runs**: Via `make audit` or `cargo audit`
 
@@ -55,14 +58,16 @@ cargo audit
 
 ### In CI
 
-The GitHub Actions workflow includes a dedicated `security-audit` job that:
+The GitHub Actions workflow includes a dedicated `security-audit` job that detects which dependency
+surfaces changed and runs each audit independently:
 
-1. Checks out the code
-2. Sets up Rust toolchain
-3. Installs `cargo-audit`
-4. Runs `cargo audit`
+1. Checks out the code with enough history to compare PR changes against the target branch
+2. Runs `cargo audit` only when Rust-impacting paths changed
+3. Runs `pnpm audit --audit-level high` only when Node/tooling-impacting paths changed
+4. Skips both audit commands when neither Rust nor Node dependency-impacting paths changed
 
-If vulnerabilities are found, the CI build will **fail**, blocking merges.
+Pushes to `main` remain the integration safety net and run both audit scopes. If vulnerabilities are
+found in a required scope, the CI build will **fail**, blocking merges.
 
 ### In Pre-commit Hook
 
@@ -297,15 +302,16 @@ trivy image --format sarif --output results.sarif \
 
 ### Difference from cargo-audit
 
-| Aspect              | cargo-audit                  | Trivy (Container)             |
-| ------------------- | ---------------------------- | ----------------------------- |
-| **Scope**           | Rust crate dependencies      | Full container image          |
-| **Database**        | RustSec Advisory DB          | NVD, vendor advisories, etc.  |
-| **Runs When**       | Pre-commit, CI, manual       | Docker release workflow       |
-| **Unfixed Policy**  | Warn only (yanked crates)    | Ignore (no upstream fix)      |
-| **Failure Mode**    | Fail on security advisories  | Fail on fixable CRITICAL/HIGH |
+| Aspect             | cargo-audit                 | Trivy (Container)             |
+| ------------------ | --------------------------- | ----------------------------- |
+| **Scope**          | Rust crate dependencies     | Full container image          |
+| **Database**       | RustSec Advisory DB         | NVD, vendor advisories, etc.  |
+| **Runs When**      | Pre-commit, CI, manual      | Docker release workflow       |
+| **Unfixed Policy** | Warn only (yanked crates)   | Ignore (no upstream fix)      |
+| **Failure Mode**   | Fail on security advisories | Fail on fixable CRITICAL/HIGH |
 
 Both tools complement each other:
+
 - `cargo-audit` catches vulnerabilities in our Rust code's dependencies
 - Trivy catches vulnerabilities in the runtime environment (OS packages, base image)
 
@@ -320,6 +326,7 @@ Ship data (CSV format) is loaded from both bundled fixtures and remote GitHub re
 ### CSV Input Validation
 
 `ShipCatalog::from_reader()` validates:
+
 - Required columns present and correct type
 - Each ship record has finite positive numeric fields
 - Ship names are non-empty
