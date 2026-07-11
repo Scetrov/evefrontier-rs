@@ -42,8 +42,8 @@
     "husky": "^9.1.7",
     "lint-staged": "^17.0.8",
     "markdownlint-cli2": "^0.23.0",
-    "nx": "^23.0.1",
-    "prettier": "^3.9.4"
+    "nx": "^23.0.2",
+    "prettier": "^3.9.5"
   },
   "overrides": {
     "js-yaml": "^4.1.1"
