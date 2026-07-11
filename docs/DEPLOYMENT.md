@@ -348,7 +348,7 @@ terraform version
 
 # Check Rust version
 rustc --version
-# Should show >= 1.96.0
+# Should show >= 1.97.0
 
 # Check AWS credentials
 aws sts get-caller-identity

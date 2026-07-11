@@ -29,6 +29,19 @@
     "prepare": "husky || true",
     "precommit": "lint-staged"
   },
+  "nx": {
+    "includedScripts": [
+      "audit",
+      "outdated",
+      "outdated:node",
+      "lint:md",
+      "lint:md:fix",
+      "format",
+      "format:check",
+      "prepare",
+      "precommit"
+    ]
+  },
   "lint-staged": {
     "*.md": [
       "markdownlint-cli2 --fix"
