@@ -54,8 +54,8 @@
     "cross-env": "^10.1.0",
     "husky": "^9.1.7",
     "lint-staged": "^17.0.8",
-    "markdownlint-cli2": "^0.23.0",
-    "nx": "^23.0.2",
+    "markdownlint-cli2": "^0.23.1",
+    "nx": "^23.1.0",
     "prettier": "^3.9.5"
   },
   "overrides": {
