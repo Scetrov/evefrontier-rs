@@ -65,9 +65,15 @@ jobs:
 
       - name: Determine version
         id: version
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            VERSION="${{ inputs.tag }}"
+            if [[ ! "$INPUT_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z][0-9A-Za-z.-]*)?(\+[0-9A-Za-z][0-9A-Za-z.-]*)?$ ]]; then
+              echo "workflow_dispatch tag must be a v-prefixed semantic version" >&2
+              exit 1
+            fi
+            VERSION="$INPUT_TAG"
           else
             VERSION="${{ github.ref_name }}"
           fi
@@ -188,6 +194,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          provenance: mode=max
           build-args: |
             SERVICE=${{ matrix.service }}
 
@@ -232,7 +239,7 @@ jobs:
           ignore-unfixed: true
 
       - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@7188fc363630916deb702c7fdcf4e481b751f97a # v4
         if: always()
         with:
           sarif_file: 'trivy-results-${{ matrix.service }}.sarif'
@@ -277,7 +284,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
+      packages: read
 
     strategy:
       matrix:
