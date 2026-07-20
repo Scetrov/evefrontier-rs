@@ -1012,8 +1012,21 @@ impl SpatialIndex {
         } else {
             0
         };
-        let compressed_size =
-            file_metadata.len() as usize - HEADER_SIZE - metadata_section_size - CHECKSUM_SIZE;
+        // Calculate compressed data size using checked arithmetic to reject
+        // truncated files before allocating.
+        let file_len = file_metadata.len() as usize;
+        let compressed_size = file_len
+            .checked_sub(HEADER_SIZE)
+            .and_then(|s| s.checked_sub(metadata_section_size))
+            .and_then(|s| s.checked_sub(CHECKSUM_SIZE))
+            .ok_or_else(|| Error::SpatialIndexLoad {
+                path: path.to_path_buf(),
+                message: format!(
+                    "file too small for declared header, metadata, and checksum sections: \
+                     file_len={file_len}, header={HEADER_SIZE}, \
+                     metadata_section={metadata_section_size}, checksum={CHECKSUM_SIZE}"
+                ),
+            })?;
 
         let mut compressed = vec![0u8; compressed_size];
         reader

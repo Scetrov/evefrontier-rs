@@ -1,0 +1,88 @@
+{
+  "name": "evefrontier-fuzz",
+  "$schema": "../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "fuzz/fuzz_targets",
+  "tags": ["type:tool", "lang:rust", "kind:fuzz"],
+  "targets": {
+    "fuzz-fmap": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "RUSTUP_TOOLCHAIN=nightly cargo fuzz run fmap_roundtrip -- -max_total_time=30 -rss_limit_mb=2048",
+        "cwd": "{workspaceRoot}"
+      },
+      "inputs": [
+        "{projectRoot}/fuzz_targets/fmap_roundtrip.rs",
+        "{projectRoot}/Cargo.toml",
+        "{projectRoot}/Cargo.lock",
+        "{workspaceRoot}/crates/evefrontier-lib/src/fmap.rs",
+        "{workspaceRoot}/crates/evefrontier-lib/src/error.rs"
+      ],
+      "cache": false,
+      "parallel": false,
+      "metadata": {
+        "description": "Bounded cargo-fuzz run for fmap token decode + round-trip invariants",
+        "budgets": {
+          "duration_seconds": 30,
+          "rss_limit_mb": 2048
+        }
+      }
+    },
+    "fuzz-spatial-index": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "RUSTUP_TOOLCHAIN=nightly cargo fuzz run spatial_index_load -- -max_total_time=30 -rss_limit_mb=2048",
+        "cwd": "{workspaceRoot}"
+      },
+      "inputs": [
+        "{projectRoot}/fuzz_targets/spatial_index_load.rs",
+        "{projectRoot}/Cargo.toml",
+        "{projectRoot}/Cargo.lock",
+        "{workspaceRoot}/crates/evefrontier-lib/src/spatial.rs",
+        "{workspaceRoot}/crates/evefrontier-lib/src/error.rs"
+      ],
+      "cache": false,
+      "parallel": false,
+      "metadata": {
+        "description": "Bounded cargo-fuzz run for spatial-index byte loader",
+        "budgets": {
+          "duration_seconds": 30,
+          "rss_limit_mb": 2048
+        }
+      }
+    },
+    "fuzz-dataset-zip": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "RUSTUP_TOOLCHAIN=nightly cargo fuzz run dataset_zip_extract -- -max_total_time=30 -rss_limit_mb=2048",
+        "cwd": "{workspaceRoot}"
+      },
+      "inputs": [
+        "{projectRoot}/fuzz_targets/dataset_zip_extract.rs",
+        "{projectRoot}/Cargo.toml",
+        "{projectRoot}/Cargo.lock"
+      ],
+      "cache": false,
+      "parallel": false,
+      "metadata": {
+        "description": "Bounded cargo-fuzz run for dataset ZIP extraction path-safety",
+        "budgets": {
+          "duration_seconds": 30,
+          "rss_limit_mb": 2048
+        }
+      }
+    },
+    "fuzz": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["fuzz-fmap", "fuzz-spatial-index", "fuzz-dataset-zip"],
+      "options": {
+        "command": "echo 'All fuzz targets completed.'"
+      },
+      "cache": false,
+      "parallel": false,
+      "metadata": {
+        "description": "Run all bounded fuzz targets serially"
+      }
+    }
+  }
+}

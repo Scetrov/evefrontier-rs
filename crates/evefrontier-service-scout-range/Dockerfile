@@ -1,5 +1,5 @@
 # Build stage
-FROM rust:1.97.0-bookworm AS builder
+FROM rust:1.97.0-bookworm@sha256:8fa55b2f3ddf97471ab6a767bfa3f37e6bad0986ba823e75fea57e2a2a5c3073 AS builder
 
 WORKDIR /app
 
@@ -24,7 +24,7 @@ RUN cargo build --release -p evefrontier-service-scout-range
 RUN strip /app/target/release/evefrontier-service-scout-range
 
 # Runtime stage - using Distroless for minimal attack surface
-FROM gcr.io/distroless/cc-debian12:nonroot
+FROM gcr.io/distroless/cc-debian12:nonroot@sha256:66aa873a4a14fb164aa01296058efd8253744606d72715e45acface073359faa
 
 # Copy the binary from builder
 COPY --from=builder /app/target/release/evefrontier-service-scout-range /usr/local/bin/evefrontier-service-scout-range

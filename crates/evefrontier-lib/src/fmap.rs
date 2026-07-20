@@ -216,6 +216,14 @@ fn encode_raw_bitpacked(waypoints: &[Waypoint]) -> Result<Vec<u8>, Error> {
         return Err(Error::FmapInvalidBitWidth { k });
     }
 
+    // Reject waypoint counts that cannot fit the u16 count field.
+    if waypoints.len() > u16::MAX as usize {
+        return Err(Error::FmapTooManyWaypoints {
+            count: waypoints.len(),
+            max: u16::MAX as usize,
+        });
+    }
+
     // Build header
     let count = waypoints.len() as u16;
     let mut header = vec![FMAP_VERSION, k, 0u8, 0u8];

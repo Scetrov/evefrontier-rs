@@ -12,6 +12,9 @@ members = [
     "crates/evefrontier-service-scout-gates",
     "crates/evefrontier-service-scout-range",
 ]
+# Standalone cargo-fuzz project is deliberately excluded from the production
+# workspace so libfuzzer-sys and fuzz-only dependencies never leak into release builds.
+exclude = ["fuzz"]
 resolver = "2"
 
 # Root package for workspace-level tooling (pre-commit hooks, etc.)

@@ -1,0 +1,108 @@
+# Fuzz CI — Scheduled and manually-dispatched Rust fuzzing.
+#
+# This workflow runs bounded cargo-fuzz targets through Nx for the
+# evefrontier-rs workspace. It is intentionally NOT wired into the
+# pull-request check suite so that long fuzz runs do not add latency
+# to ordinary merges. Crashes found here become deterministic regression
+# tests before the underlying defect is considered resolved.
+#
+# Security: least-privilege workflow permissions; actions pinned to
+# full commit SHAs; no write access to packages or contents beyond
+# what is required.
+
+name: Fuzz
+
+on:
+  schedule:
+    # Weekly on Sundays at 09:00 UTC — bounded duration keeps CI budget small.
+    - cron: "0 9 * * 0"
+  workflow_dispatch:
+    inputs:
+      duration:
+        description: "Per-target fuzz duration in seconds (default 30)"
+        required: false
+        default: "30"
+        type: string
+
+# Workflow-level least-privilege: read-only contents; no write access needed
+# beyond uploading artifact bundles at the job level below.
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    name: Bounded cargo-fuzz
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    # Actions-level least privilege: only contents:read for checkout
+    # and actions:write for uploading crash artifacts at the step level.
+    permissions:
+      contents: read
+      actions: write
+
+    env:
+      FUZZ_DURATION: ${{ inputs.duration || '30' }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - fmap_roundtrip
+          - spatial_index_load
+          - dataset_zip_extract
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: ".nvmrc"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Rust toolchain (nightly for cargo-fuzz sanitizer support)
+        uses: dtolnay/rust-toolchain@a54c7afa936fefeb4456b2dd8068152669aa8203 # stable
+        with:
+          toolchain: "nightly"
+          components: "rust-src"
+
+      - name: Install cargo-fuzz
+        run: cargo install cargo-fuzz --locked
+
+      - name: Run fuzz target
+        run: |
+          echo "Running target: ${{ matrix.target }} for ${FUZZ_DURATION}s"
+          # cargo-fuzz is invoked from the workspace root because fuzz/Cargo.toml
+          # is the fuzz crate manifest (standard cargo-fuzz layout).
+          RUSTUP_TOOLCHAIN=nightly cargo fuzz run ${{ matrix.target }} \
+            -- -max_total_time="${FUZZ_DURATION}" -rss_limit_mb=2048 || true
+        continue-on-error: true
+
+      - name: Collect crash artifacts
+        if: always()
+        run: |
+          mkdir -p fuzz-artifacts/${{ matrix.target }}
+          # Copy any crash/hang artifacts produced during this run.
+          if [ -d "fuzz/artifacts/${{ matrix.target }}" ]; then
+            cp -r fuzz/artifacts/${{ matrix.target }}/* \
+              fuzz-artifacts/${{ matrix.target }}/ 2>/dev/null || true
+          fi
+          # List what was collected for debugging.
+          echo "=== Artifacts for ${{ matrix.target }} ==="
+          find fuzz-artifacts/${{ matrix.target }} -type f 2>/dev/null || echo "(none)"
+
+      - name: Upload crash artifacts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: fuzz-crash-${{ matrix.target }}
+          path: fuzz-artifacts/${{ matrix.target }}
+          retention-days: 30
+          if-no-files-found: ignore

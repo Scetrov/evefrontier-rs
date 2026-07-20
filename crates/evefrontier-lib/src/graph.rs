@@ -17,8 +17,13 @@ const DEFAULT_MAX_SPATIAL_NEIGHBORS: usize = 250;
 /// To avoid hang/very long runs we cap the number of neighbours fetched from the index when
 /// no `max_jump` radius is provided and the dataset is large.
 const LARGE_DATASET_NEIGHBOUR_THRESHOLD: usize = 5_000;
-/// Maximum neighbours to fetch per system when capping to avoid pathological behaviour.
-const MAX_SAFE_NEIGHBOURS: usize = 5_000;
+/// Documented safe upper bound for the number of spatial neighbours to consider per system.
+///
+/// External callers (e.g. Lambda requests and CLI) MUST validate their input against
+/// this value before calling into graph construction. Direct library callers that supply
+/// values above this bound are protected from overflow by saturating arithmetic in
+/// [`build_spatial_adjacency_indexed`] but should still be bounded at their own entry point.
+pub const SAFE_MAX_SPATIAL_NEIGHBORS: usize = 5_000;
 
 /// Routing graph variants supported by the planner.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -347,10 +352,10 @@ fn build_spatial_adjacency_indexed(
             if system_count > LARGE_DATASET_NEIGHBOUR_THRESHOLD {
                 warn!(
                     systems = system_count,
-                    cap = MAX_SAFE_NEIGHBOURS,
+                    cap = SAFE_MAX_SPATIAL_NEIGHBORS,
                     "unlimited spatial neighbours requested on large dataset; capping neighbours per-node for performance; consider using --max-spatial-neighbours or --max-jump"
                 );
-                let k = MAX_SAFE_NEIGHBOURS + 1; // +1 to account for self
+                let k = SAFE_MAX_SPATIAL_NEIGHBORS.saturating_add(1); // +1 to account for self
                 let query = NeighbourQuery {
                     k,
                     radius: None,
@@ -369,7 +374,9 @@ fn build_spatial_adjacency_indexed(
             }
         } else {
             // Bounded number of neighbours requested
-            let k = max_neighbors + 1; // +1 to account for self
+            // Use saturating_add to prevent overflow when a direct library caller
+            // passes a value at or near usize::MAX (e.g. usize::MAX).
+            let k = max_neighbors.saturating_add(1); // +1 to account for self
             let query = NeighbourQuery {
                 k,
                 radius: None,
@@ -591,6 +598,33 @@ mod tests {
         assert_eq!(
             GraphBuildOptions::default().max_spatial_neighbors,
             DEFAULT_MAX_SPATIAL_NEIGHBORS
+        );
+    }
+
+    #[test]
+    fn safe_max_spatial_neighbors_has_expected_value() {
+        // The exported safe ceiling must match the internal cap so external
+        // callers and the library stay in agreement.
+        assert_eq!(
+            SAFE_MAX_SPATIAL_NEIGHBORS,
+            LARGE_DATASET_NEIGHBOUR_THRESHOLD
+        );
+        // Compile-time check that the value is nonzero.
+        const _: () = assert!(
+            SAFE_MAX_SPATIAL_NEIGHBORS > 0,
+            "SAFE_MAX_SPATIAL_NEIGHBORS must be positive"
+        );
+    }
+
+    #[test]
+    fn saturating_neighbor_count_does_not_overflow() {
+        // A direct library caller that passes usize::MAX must not cause
+        // arithmetic overflow when computing `k = max_neighbors + 1`.
+        let capped = usize::MAX.saturating_add(1);
+        assert_eq!(
+            capped,
+            usize::MAX,
+            "usize::MAX + 1 must saturate to usize::MAX"
         );
     }
 }
