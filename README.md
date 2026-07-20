@@ -5,6 +5,7 @@
 [![Build Status](https://github.com/Scetrov/evefrontier-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/Scetrov/evefrontier-rs/actions/workflows/ci.yml)
 [![GitHub Release](https://img.shields.io/github/v/release/Scetrov/evefrontier-rs)](https://github.com/Scetrov/evefrontier-rs/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/13672/badge)](https://www.bestpractices.dev/projects/13672)
 [![Maintenance](https://img.shields.io/badge/maintenance-active-green.svg)](#)
 
 A comprehensive Rust workspace for working with EVE Frontier static datasets, providing pathfinding
