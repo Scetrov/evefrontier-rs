@@ -1,0 +1,174 @@
+{
+  "runId": "26f17981-1a1f-46f8-94a5-83d3ece47a09",
+  "agent": "reviewer",
+  "task": "[Read from: /home/scetrov/source/evefrontier-rs/plan.md, /home/scetrov/source/evefrontier-rs/progress.md]\n\nRead-only governance/supply-chain review of /home/scetrov/source/evefrontier-rs for ten open Scorecard alerts #42-#51: 6 Docker pinned-dependency alerts plus Branch-Protection, Code-Review, CII-Best-Practices, and Fuzzing. Independently classify each as stale/false-positive, accepted single-maintainer limitation, or actionable improvement. Inspect current GitHub settings via gh if available, repo files/history, and provide evidence with file/line or API facts. Do not modify project/source files.\n\n---\n**Output:**\nWrite your findings to exactly this path: /home/scetrov/source/evefrontier-rs/.pi-subagents/artifacts/outputs/26f17981-1a1f-46f8-94a5-83d3ece47a09/scorecard-independent-review.md\nThis path is authoritative for this run.\nIgnore any other output filename or output path mentioned elsewhere, including output destinations in the base agent prompt, system prompt, or task instructions.\n\n## Acceptance Contract\nAcceptance level: checked\nCompletion is not accepted from prose alone. End with a structured acceptance report.\n\nCriteria:\n- criterion-1: Return concrete findings with file paths and severity when applicable\n\nRequired evidence: changed-files, tests-added, commands-run, residual-risks, no-staged-files\n\nFinish with a fenced JSON block tagged `acceptance-report` in this shape:\nUse empty arrays when no items apply; array fields contain strings unless object entries are shown.\n`criteriaSatisfied[].status` must be exactly one of: satisfied, not-satisfied, not-applicable.\n`commandsRun[].result` must be exactly one of: passed, failed, not-run.\n`manualNotes` and `notes` are optional strings; an empty string means no note and does not satisfy `manual-notes` evidence.\n```acceptance-report\n{\n  \"criteriaSatisfied\": [\n    {\n      \"id\": \"criterion-1\",\n      \"status\": \"satisfied\",\n      \"evidence\": \"specific proof\"\n    }\n  ],\n  \"changedFiles\": [\n    \"src/file.ts\"\n  ],\n  \"testsAddedOrUpdated\": [\n    \"test/file.test.ts\"\n  ],\n  \"commandsRun\": [\n    {\n      \"command\": \"command\",\n      \"result\": \"passed\",\n      \"summary\": \"short result\"\n    }\n  ],\n  \"validationOutput\": [\n    \"validation output or concise summary\"\n  ],\n  \"residualRisks\": [\n    \"none\"\n  ],\n  \"noStagedFiles\": true,\n  \"diffSummary\": \"short description of the diff\",\n  \"reviewFindings\": [\n    \"blocker: file.ts:12 - issue found, or no blockers\"\n  ],\n  \"manualNotes\": \"anything else the parent should know\"\n}\n```",
+  "exitCode": 0,
+  "model": "openai-codex/gpt-5.6-terra:high",
+  "attemptedModels": [
+    "openai-codex/gpt-5.6-terra:high"
+  ],
+  "modelAttempts": [
+    {
+      "model": "openai-codex/gpt-5.6-terra:high",
+      "success": true,
+      "exitCode": 0,
+      "usage": {
+        "input": 94891,
+        "output": 11996,
+        "cacheRead": 600064,
+        "cacheWrite": 0,
+        "cost": 0.5671835000000002,
+        "turns": 12
+      }
+    }
+  ],
+  "acceptance": {
+    "status": "checked",
+    "explicit": true,
+    "effectiveAcceptance": {
+      "level": "checked",
+      "explicit": true,
+      "inferredReason": [
+        "read-only/reviewer-style agent"
+      ],
+      "criteria": [
+        {
+          "id": "criterion-1",
+          "must": "Return concrete findings with file paths and severity when applicable",
+          "evidence": [
+            "changed-files",
+            "tests-added",
+            "commands-run",
+            "residual-risks",
+            "no-staged-files"
+          ],
+          "severity": "required"
+        }
+      ],
+      "evidence": [
+        "changed-files",
+        "tests-added",
+        "commands-run",
+        "residual-risks",
+        "no-staged-files"
+      ],
+      "verify": [],
+      "stopRules": []
+    },
+    "inferredReason": [
+      "read-only/reviewer-style agent"
+    ],
+    "criteria": [
+      {
+        "id": "criterion-1",
+        "must": "Return concrete findings with file paths and severity when applicable",
+        "evidence": [
+          "changed-files",
+          "tests-added",
+          "commands-run",
+          "residual-risks",
+          "no-staged-files"
+        ],
+        "severity": "required"
+      }
+    ],
+    "runtimeChecks": [
+      {
+        "id": "criterion:criterion-1",
+        "status": "passed",
+        "message": "Required criterion 'criterion-1' satisfied."
+      },
+      {
+        "id": "evidence:changed-files",
+        "status": "not-applicable",
+        "message": "changed-files evidence explicitly reported as not applicable."
+      },
+      {
+        "id": "evidence:tests-added",
+        "status": "not-applicable",
+        "message": "tests-added evidence explicitly reported as not applicable."
+      },
+      {
+        "id": "evidence:commands-run",
+        "status": "passed",
+        "message": "commands-run evidence present."
+      },
+      {
+        "id": "evidence:residual-risks",
+        "status": "passed",
+        "message": "residual-risks evidence present."
+      },
+      {
+        "id": "evidence:no-staged-files",
+        "status": "passed",
+        "message": "no-staged-files evidence present."
+      },
+      {
+        "id": "no-staged-files",
+        "status": "passed",
+        "message": "No staged files detected."
+      }
+    ],
+    "verifyRuns": [],
+    "childReport": {
+      "criteriaSatisfied": [
+        {
+          "id": "criterion-1",
+          "status": "satisfied",
+          "evidence": "All ten open Scorecard alerts #42-#51 are individually classified with Scorecard severity, exact GitHub API facts, and file/line evidence where applicable."
+        }
+      ],
+      "changedFiles": [],
+      "testsAddedOrUpdated": [],
+      "commandsRun": [
+        {
+          "command": "gh api repos/Scetrov/evefrontier-rs/code-scanning/alerts/{42..51}",
+          "result": "passed",
+          "summary": "Retrieved all ten live Scorecard alerts, severities, messages, and locations."
+        },
+        {
+          "command": "gh api repos/Scetrov/evefrontier-rs/rulesets/9651727 and gh api repos/Scetrov/evefrontier-rs/collaborators?affiliation=direct",
+          "result": "passed",
+          "summary": "Verified the active main ruleset and its zero required approvals, plus the single direct collaborator."
+        },
+        {
+          "command": "gh run list/view --workflow scorecard.yml",
+          "result": "passed",
+          "summary": "Verified the latest scheduled Scorecard run completed successfully on main commit 33e8b916."
+        },
+        {
+          "command": "pnpm nx run-many -t test --all --parallel=1",
+          "result": "failed",
+          "summary": "Could not start: pnpm reports Command \"nx\" not found (dependencies/Nx executable unavailable locally). No code changed, so no replacement direct test run was needed for this governance-only review."
+        },
+        {
+          "command": "git diff --check; git diff --cached --check; git diff --cached --name-only; git status --porcelain=v1",
+          "result": "passed",
+          "summary": "No staged files and no tracked diff/check errors; only the permitted untracked .pi-subagents/ artifact area is present."
+        }
+      ],
+      "validationOutput": [
+        "Live GitHub API confirms alerts #42-#51 remain open.",
+        "No CODEOWNERS file or fuzzing/property-test integration was found in tracked repository content.",
+        "No source changes or staged files were introduced by this review."
+      ],
+      "residualRisks": [
+        "High: main can merge without independent approval while one administrator is the only direct collaborator.",
+        "Medium: all three Compose Docker builds and the generated release Dockerfile can resolve mutable base-image tags.",
+        "Medium: no automated fuzzing covers decompression/archive/binary parser boundaries; Scorecard may not detect cargo-fuzz alone."
+      ],
+      "noStagedFiles": true,
+      "diffSummary": "Read-only governance/supply-chain review; no project/source diff. Required report artifact only.",
+      "reviewFindings": [
+        "blocker: GitHub ruleset mainline has required_approving_review_count 0 and the sole direct collaborator is Scetrov; #42 and #49 are valid high-severity governance gaps under a documented single-maintainer exception.",
+        "medium: #43-#48 correctly identify six mutable Docker FROM tags in Compose-used Dockerfiles; the generated release Dockerfile has an additional unpinned distroless FROM at .github/workflows/docker-release.yml:178.",
+        "low: #50 is an accurate missing OpenSSF Best Practices registration, suitable for an administrative improvement.",
+        "medium: #51 accurately reflects no detected fuzz integration; add Rust fuzzing and a Scorecard-recognized integration if alert closure is required."
+      ],
+      "manualNotes": "Root plan.md and progress.md were requested but absent (ENOENT). Nx test validation could not start because the local pnpm environment has no nx executable."
+    }
+  },
+  "transcriptPath": "/home/scetrov/source/evefrontier-rs/.pi-subagents/artifacts/26f17981-1a1f-46f8-94a5-83d3ece47a09_reviewer_2_transcript.jsonl",
+  "skills": [],
+  "timestamp": 1784567538210
+}

@@ -1,0 +1,159 @@
+{
+  "runId": "c82e595a-b67b-4893-b67f-fe5a9f0d9fac",
+  "agent": "oracle",
+  "task": "You are a delegated subagent running from a fork of the parent session. Treat the inherited conversation as reference-only context, not a live thread to continue. Do not continue or answer prior messages as if they are waiting for a reply. Your sole job is to execute the task below and return a focused result for that task using your tools.\n\nTask:\nChallenge and refine the remediation direction for the ten OpenSSF Scorecard alerts in this repository. Inherited context contains the full local/API investigation. Decide what a proportionate single-maintainer OpenSpec proposal should include versus explicitly accept/defer. Address: six Docker digest pins + update automation; branch ruleset strict checks versus impossible independent approvals; Code-Review accepted risk; OpenSSF Best Practices registration; Rust fuzzing despite Scorecard detection limits; whether known parser/resource-boundary bugs discovered during fuzz-target analysis belong in this change. Return a concise prioritized scope, non-goals, and rationale. Do not modify files.\n\n---\n**Output:**\nWrite your findings to exactly this path: /home/scetrov/source/evefrontier-rs/.pi-subagents/artifacts/outputs/c82e595a-b67b-4893-b67f-fe5a9f0d9fac/scorecard-proposal-scope-oracle.md\nThis path is authoritative for this run.\nIgnore any other output filename or output path mentioned elsewhere, including output destinations in the base agent prompt, system prompt, or task instructions.\n\n## Acceptance Contract\nAcceptance level: checked\nCompletion is not accepted from prose alone. End with a structured acceptance report.\n\nCriteria:\n- criterion-1: Return concrete findings with file paths and severity when applicable\n\nRequired evidence: changed-files, tests-added, commands-run, residual-risks, no-staged-files\n\nFinish with a fenced JSON block tagged `acceptance-report` in this shape:\nUse empty arrays when no items apply; array fields contain strings unless object entries are shown.\n`criteriaSatisfied[].status` must be exactly one of: satisfied, not-satisfied, not-applicable.\n`commandsRun[].result` must be exactly one of: passed, failed, not-run.\n`manualNotes` and `notes` are optional strings; an empty string means no note and does not satisfy `manual-notes` evidence.\n```acceptance-report\n{\n  \"criteriaSatisfied\": [\n    {\n      \"id\": \"criterion-1\",\n      \"status\": \"satisfied\",\n      \"evidence\": \"specific proof\"\n    }\n  ],\n  \"changedFiles\": [\n    \"src/file.ts\"\n  ],\n  \"testsAddedOrUpdated\": [\n    \"test/file.test.ts\"\n  ],\n  \"commandsRun\": [\n    {\n      \"command\": \"command\",\n      \"result\": \"passed\",\n      \"summary\": \"short result\"\n    }\n  ],\n  \"validationOutput\": [\n    \"validation output or concise summary\"\n  ],\n  \"residualRisks\": [\n    \"none\"\n  ],\n  \"noStagedFiles\": true,\n  \"diffSummary\": \"short description of the diff\",\n  \"reviewFindings\": [\n    \"blocker: file.ts:12 - issue found, or no blockers\"\n  ],\n  \"manualNotes\": \"anything else the parent should know\"\n}\n```",
+  "exitCode": 0,
+  "model": "openai-codex/gpt-5.6-terra:high",
+  "attemptedModels": [
+    "openai-codex/gpt-5.6-terra:high"
+  ],
+  "modelAttempts": [
+    {
+      "model": "openai-codex/gpt-5.6-terra:high",
+      "success": true,
+      "exitCode": 0,
+      "usage": {
+        "input": 247049,
+        "output": 4349,
+        "cacheRead": 2048,
+        "cacheWrite": 0,
+        "cost": 0.6833695000000001,
+        "turns": 2
+      }
+    }
+  ],
+  "acceptance": {
+    "status": "checked",
+    "explicit": true,
+    "effectiveAcceptance": {
+      "level": "checked",
+      "explicit": true,
+      "inferredReason": [
+        "read-only task wording"
+      ],
+      "criteria": [
+        {
+          "id": "criterion-1",
+          "must": "Return concrete findings with file paths and severity when applicable",
+          "evidence": [
+            "changed-files",
+            "tests-added",
+            "commands-run",
+            "residual-risks",
+            "no-staged-files"
+          ],
+          "severity": "required"
+        }
+      ],
+      "evidence": [
+        "changed-files",
+        "tests-added",
+        "commands-run",
+        "residual-risks",
+        "no-staged-files"
+      ],
+      "verify": [],
+      "stopRules": []
+    },
+    "inferredReason": [
+      "read-only task wording"
+    ],
+    "criteria": [
+      {
+        "id": "criterion-1",
+        "must": "Return concrete findings with file paths and severity when applicable",
+        "evidence": [
+          "changed-files",
+          "tests-added",
+          "commands-run",
+          "residual-risks",
+          "no-staged-files"
+        ],
+        "severity": "required"
+      }
+    ],
+    "runtimeChecks": [
+      {
+        "id": "criterion:criterion-1",
+        "status": "passed",
+        "message": "Required criterion 'criterion-1' satisfied."
+      },
+      {
+        "id": "evidence:changed-files",
+        "status": "passed",
+        "message": "changed-files evidence present."
+      },
+      {
+        "id": "evidence:tests-added",
+        "status": "not-applicable",
+        "message": "tests-added evidence explicitly reported as not applicable."
+      },
+      {
+        "id": "evidence:commands-run",
+        "status": "passed",
+        "message": "commands-run evidence present."
+      },
+      {
+        "id": "evidence:residual-risks",
+        "status": "passed",
+        "message": "residual-risks evidence present."
+      },
+      {
+        "id": "evidence:no-staged-files",
+        "status": "passed",
+        "message": "no-staged-files evidence present."
+      },
+      {
+        "id": "no-staged-files",
+        "status": "passed",
+        "message": "No staged files detected."
+      }
+    ],
+    "verifyRuns": [],
+    "childReport": {
+      "criteriaSatisfied": [
+        {
+          "id": "criterion-1",
+          "status": "satisfied",
+          "evidence": "Concrete, prioritized findings cite affected Dockerfiles, workflow, graph, fmap, and spatial source paths with applicable severity."
+        }
+      ],
+      "changedFiles": [
+        "/home/scetrov/source/evefrontier-rs/.pi-subagents/artifacts/outputs/c82e595a-b67b-4893-b67f-fe5a9f0d9fac/scorecard-proposal-scope-oracle.md"
+      ],
+      "testsAddedOrUpdated": [],
+      "commandsRun": [
+        {
+          "command": "git status --short; git diff --cached --name-only; git diff --check; git diff --cached --check",
+          "result": "passed",
+          "summary": "Only the permitted .pi-subagents artifact area is untracked; no staged files or diff-check errors."
+        },
+        {
+          "command": "rg Docker FROM references, Dependabot ecosystems, fuzz inventory, and affected parser arithmetic",
+          "result": "passed",
+          "summary": "Verified six mutable Dockerfile FROM references, no Docker Dependabot ecosystem, no fuzz harness, and the identified source locations."
+        }
+      ],
+      "validationOutput": [
+        "Scope separates actionable technical remediation from structurally infeasible single-maintainer Scorecard criteria.",
+        "Proposal includes the otherwise omitted generated release Dockerfile base image."
+      ],
+      "residualRisks": [
+        "Independent human review remains unavailable until a second maintainer exists.",
+        "Scorecard may retain Fuzzing and Code-Review findings after proportionate remediation.",
+        "Unbounded decompression/archive resource controls require a separately designed compatibility policy."
+      ],
+      "noStagedFiles": true,
+      "diffSummary": "Read-only oracle assessment; only the required output artifact is persisted.",
+      "reviewFindings": [
+        "high: crates/evefrontier-lib/src/graph.rs:372 performs unchecked addition on externally controllable neighbor count.",
+        "medium: crates/evefrontier-lib/src/fmap.rs:220 truncates oversized waypoint counts.",
+        "medium: crates/evefrontier-lib/src/spatial.rs:1015-1018 derives allocation size through unchecked subtraction."
+      ],
+      "manualNotes": "Do not equate Scorecard score maximization with security: self-approval, self-CODEOWNERS, and AI review are not independent-review controls."
+    }
+  },
+  "transcriptPath": "/home/scetrov/source/evefrontier-rs/.pi-subagents/artifacts/c82e595a-b67b-4893-b67f-fe5a9f0d9fac_oracle_transcript.jsonl",
+  "skills": [],
+  "timestamp": 1784567695000
+}

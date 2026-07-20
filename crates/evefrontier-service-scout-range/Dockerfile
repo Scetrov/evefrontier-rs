@@ -24,7 +24,7 @@ RUN cargo build --release -p evefrontier-service-scout-range
 RUN strip /app/target/release/evefrontier-service-scout-range
 
 # Runtime stage - using Distroless for minimal attack surface
-FROM gcr.io/distroless/cc-debian12:nonroot@sha256:66aa873a4a14fb164aa01296058efd8253744606d72715e45acface073359faa
+FROM gcr.io/distroless/cc-debian12:nonroot@sha256:fccdbb0a547c14e23fcf4ce8ad62ca5d43b4faae8d22cd292f490fef9946c96e
 
 # Copy the binary from builder
 COPY --from=builder /app/target/release/evefrontier-service-scout-range /usr/local/bin/evefrontier-service-scout-range

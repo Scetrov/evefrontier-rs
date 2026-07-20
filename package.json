@@ -53,7 +53,7 @@
   "devDependencies": {
     "cross-env": "^10.1.0",
     "husky": "^9.1.7",
-    "lint-staged": "^17.0.8",
+    "lint-staged": "^17.1.0",
     "markdownlint-cli2": "^0.23.1",
     "nx": "^23.1.0",
     "prettier": "^3.9.5"
@@ -61,7 +61,11 @@
   "overrides": {
     "js-yaml": "^4.1.1"
   },
-  "pnpm": {},
+  "pnpm": {
+    "overrides": {
+      "axios": ">=1.18.0"
+    }
+  },
   "workspaces": [
     "."
   ]
