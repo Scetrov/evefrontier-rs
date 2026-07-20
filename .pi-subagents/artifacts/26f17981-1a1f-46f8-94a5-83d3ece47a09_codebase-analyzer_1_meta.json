@@ -1,0 +1,157 @@
+{
+  "runId": "26f17981-1a1f-46f8-94a5-83d3ece47a09",
+  "agent": "codebase-analyzer",
+  "task": "Read-only investigation of /home/scetrov/source/evefrontier-rs. Assess the OpenSSF Fuzzing finding against actual Rust attack surfaces and tests. Identify 2-4 concrete high-value fuzz/property-test targets with file/line evidence, likely harness boundaries, and expected security/quality benefit. Also identify whether existing fuzzing/property testing already exists. Do not modify any files.\n\n---\n**Output:**\nReturn the complete artifact in your final response.\nThe runtime will persist it to exactly this path: /home/scetrov/source/evefrontier-rs/.pi-subagents/artifacts/outputs/26f17981-1a1f-46f8-94a5-83d3ece47a09/fuzzing-local-analysis.md\nDo not call contact_supervisor merely because no write-capable tool is available.\nThis path is authoritative for this run.\nIgnore any other output filename or output path mentioned elsewhere, including output destinations in the base agent prompt, system prompt, or task instructions.\n\n## Acceptance Contract\nAcceptance level: checked\nCompletion is not accepted from prose alone. End with a structured acceptance report.\n\nCriteria:\n- criterion-1: Return concrete findings with file paths and severity when applicable\n\nRequired evidence: changed-files, tests-added, commands-run, residual-risks, no-staged-files\n\nFinish with a fenced JSON block tagged `acceptance-report` in this shape:\nUse empty arrays when no items apply; array fields contain strings unless object entries are shown.\n`criteriaSatisfied[].status` must be exactly one of: satisfied, not-satisfied, not-applicable.\n`commandsRun[].result` must be exactly one of: passed, failed, not-run.\n`manualNotes` and `notes` are optional strings; an empty string means no note and does not satisfy `manual-notes` evidence.\n```acceptance-report\n{\n  \"criteriaSatisfied\": [\n    {\n      \"id\": \"criterion-1\",\n      \"status\": \"satisfied\",\n      \"evidence\": \"specific proof\"\n    }\n  ],\n  \"changedFiles\": [\n    \"src/file.ts\"\n  ],\n  \"testsAddedOrUpdated\": [\n    \"test/file.test.ts\"\n  ],\n  \"commandsRun\": [\n    {\n      \"command\": \"command\",\n      \"result\": \"passed\",\n      \"summary\": \"short result\"\n    }\n  ],\n  \"validationOutput\": [\n    \"validation output or concise summary\"\n  ],\n  \"residualRisks\": [\n    \"none\"\n  ],\n  \"noStagedFiles\": true,\n  \"diffSummary\": \"short description of the diff\",\n  \"reviewFindings\": [\n    \"blocker: file.ts:12 - issue found, or no blockers\"\n  ],\n  \"manualNotes\": \"anything else the parent should know\"\n}\n```",
+  "exitCode": 0,
+  "model": "openai-codex/gpt-5.6-terra",
+  "attemptedModels": [
+    "openai-codex/gpt-5.6-terra"
+  ],
+  "modelAttempts": [
+    {
+      "model": "openai-codex/gpt-5.6-terra",
+      "success": true,
+      "exitCode": 0,
+      "usage": {
+        "input": 155756,
+        "output": 11557,
+        "cacheRead": 962560,
+        "cacheWrite": 0,
+        "cost": 0.803385,
+        "turns": 13
+      }
+    }
+  ],
+  "acceptance": {
+    "status": "checked",
+    "explicit": true,
+    "effectiveAcceptance": {
+      "level": "checked",
+      "explicit": true,
+      "inferredReason": [
+        "read-only task wording"
+      ],
+      "criteria": [
+        {
+          "id": "criterion-1",
+          "must": "Return concrete findings with file paths and severity when applicable",
+          "evidence": [
+            "changed-files",
+            "tests-added",
+            "commands-run",
+            "residual-risks",
+            "no-staged-files"
+          ],
+          "severity": "required"
+        }
+      ],
+      "evidence": [
+        "changed-files",
+        "tests-added",
+        "commands-run",
+        "residual-risks",
+        "no-staged-files"
+      ],
+      "verify": [],
+      "stopRules": []
+    },
+    "inferredReason": [
+      "read-only task wording"
+    ],
+    "criteria": [
+      {
+        "id": "criterion-1",
+        "must": "Return concrete findings with file paths and severity when applicable",
+        "evidence": [
+          "changed-files",
+          "tests-added",
+          "commands-run",
+          "residual-risks",
+          "no-staged-files"
+        ],
+        "severity": "required"
+      }
+    ],
+    "runtimeChecks": [
+      {
+        "id": "criterion:criterion-1",
+        "status": "passed",
+        "message": "Required criterion 'criterion-1' satisfied."
+      },
+      {
+        "id": "evidence:changed-files",
+        "status": "not-applicable",
+        "message": "changed-files evidence explicitly reported as not applicable."
+      },
+      {
+        "id": "evidence:tests-added",
+        "status": "not-applicable",
+        "message": "tests-added evidence explicitly reported as not applicable."
+      },
+      {
+        "id": "evidence:commands-run",
+        "status": "passed",
+        "message": "commands-run evidence present."
+      },
+      {
+        "id": "evidence:residual-risks",
+        "status": "passed",
+        "message": "residual-risks evidence present."
+      },
+      {
+        "id": "evidence:no-staged-files",
+        "status": "passed",
+        "message": "no-staged-files evidence present."
+      },
+      {
+        "id": "no-staged-files",
+        "status": "passed",
+        "message": "No staged files detected."
+      }
+    ],
+    "verifyRuns": [],
+    "childReport": {
+      "criteriaSatisfied": [
+        {
+          "id": "criterion-1",
+          "status": "satisfied",
+          "evidence": "Four concrete targets and findings include severity plus file:line evidence: spatial loader (spatial.rs:901-1081), fmap decoder (fmap.rs:307-365), ZIP extraction (github.rs:931-971), and Lambda graph fan-out (requests.rs:23-85; graph.rs:372-378)."
+        }
+      ],
+      "changedFiles": [],
+      "testsAddedOrUpdated": [],
+      "commandsRun": [
+        {
+          "command": "cargo test --workspace",
+          "result": "not-run",
+          "summary": "Read-only investigation; no test execution was required or performed."
+        },
+        {
+          "command": "git diff --cached --name-only",
+          "result": "not-run",
+          "summary": "No shell command executor was available; this investigation made no writes or staging operations."
+        }
+      ],
+      "validationOutput": [
+        "Repository-wide source/dependency inspection found no cargo-fuzz, libFuzzer, proptest, quickcheck, arbitrary, or existing fuzz target.",
+        "No files were modified during this read-only investigation."
+      ],
+      "residualRisks": [
+        "No fuzz harness was executed, so parser panic and resource-exhaustion behavior remains unmeasured.",
+        "Compressed-input paths currently lack visible decompression/extraction resource bounds."
+      ],
+      "noStagedFiles": true,
+      "diffSummary": "No diff; read-only analysis only.",
+      "reviewFindings": [
+        "high: crates/evefrontier-lib/src/spatial.rs:1015-1018 - malformed short index can underflow compressed-size calculation before checksum verification.",
+        "high: crates/evefrontier-lib/src/fmap.rs:313-318 - user-controlled gzip token is decompressed into an unbounded Vec.",
+        "high: crates/evefrontier-lib/src/github.rs:960-967 - archive extraction copies selected entries without extraction-size limits.",
+        "medium: crates/evefrontier-lib/src/graph.rs:372 - unvalidated Lambda max_spatial_neighbors can overflow on +1."
+      ],
+      "manualNotes": "No files were staged by this investigation."
+    }
+  },
+  "transcriptPath": "/home/scetrov/source/evefrontier-rs/.pi-subagents/artifacts/26f17981-1a1f-46f8-94a5-83d3ece47a09_codebase-analyzer_1_transcript.jsonl",
+  "skills": [],
+  "timestamp": 1784567516554
+}

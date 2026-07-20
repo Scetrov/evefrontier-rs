@@ -1,0 +1,170 @@
+{
+  "runId": "4ae34ea3-f0e9-4978-86c1-24756ebf495e",
+  "agent": "reviewer",
+  "task": "Review the finalized OpenSpec change at openspec/changes/harden-scorecard-supply-chain-and-input-boundaries/ against the live repository and the ten Scorecard alerts #42-#51. Do not modify files. Find only concrete blockers/concerns: internal contradictions among proposal/design/specs/tasks; claims not grounded in current APIs/files; impossible or unsafe requirements; missed mapping of any alert; violations of Nx/ADR 0017; tasks that cannot verify a requirement. Return severity, exact artifact path/section, evidence, and smallest correction. Treat single-maintainer independent approval and Rust Scorecard fuzz detection limitations as intentional constraints.\n\n---\n**Output:**\nWrite your findings to exactly this path: /home/scetrov/source/evefrontier-rs/.pi-subagents/artifacts/outputs/4ae34ea3-f0e9-4978-86c1-24756ebf495e/openspec-scorecard-review.md\nThis path is authoritative for this run.\nIgnore any other output filename or output path mentioned elsewhere, including output destinations in the base agent prompt, system prompt, or task instructions.\n\n## Acceptance Contract\nAcceptance level: checked\nCompletion is not accepted from prose alone. End with a structured acceptance report.\n\nCriteria:\n- criterion-1: Return concrete findings with file paths and severity when applicable\n\nRequired evidence: changed-files, tests-added, commands-run, residual-risks, no-staged-files\n\nFinish with a fenced JSON block tagged `acceptance-report` in this shape:\nUse empty arrays when no items apply; array fields contain strings unless object entries are shown.\n`criteriaSatisfied[].status` must be exactly one of: satisfied, not-satisfied, not-applicable.\n`commandsRun[].result` must be exactly one of: passed, failed, not-run.\n`manualNotes` and `notes` are optional strings; an empty string means no note and does not satisfy `manual-notes` evidence.\n```acceptance-report\n{\n  \"criteriaSatisfied\": [\n    {\n      \"id\": \"criterion-1\",\n      \"status\": \"satisfied\",\n      \"evidence\": \"specific proof\"\n    }\n  ],\n  \"changedFiles\": [\n    \"src/file.ts\"\n  ],\n  \"testsAddedOrUpdated\": [\n    \"test/file.test.ts\"\n  ],\n  \"commandsRun\": [\n    {\n      \"command\": \"command\",\n      \"result\": \"passed\",\n      \"summary\": \"short result\"\n    }\n  ],\n  \"validationOutput\": [\n    \"validation output or concise summary\"\n  ],\n  \"residualRisks\": [\n    \"none\"\n  ],\n  \"noStagedFiles\": true,\n  \"diffSummary\": \"short description of the diff\",\n  \"reviewFindings\": [\n    \"blocker: file.ts:12 - issue found, or no blockers\"\n  ],\n  \"manualNotes\": \"anything else the parent should know\"\n}\n```",
+  "exitCode": 0,
+  "model": "openai-codex/gpt-5.6-terra:high",
+  "attemptedModels": [
+    "openai-codex/gpt-5.6-terra:high"
+  ],
+  "modelAttempts": [
+    {
+      "model": "openai-codex/gpt-5.6-terra:high",
+      "success": true,
+      "exitCode": 0,
+      "usage": {
+        "input": 128456,
+        "output": 10098,
+        "cacheRead": 597504,
+        "cacheWrite": 0,
+        "cost": 0.6219860000000001,
+        "turns": 10
+      }
+    }
+  ],
+  "acceptance": {
+    "status": "checked",
+    "explicit": true,
+    "effectiveAcceptance": {
+      "level": "checked",
+      "explicit": true,
+      "inferredReason": [
+        "read-only/reviewer-style agent"
+      ],
+      "criteria": [
+        {
+          "id": "criterion-1",
+          "must": "Return concrete findings with file paths and severity when applicable",
+          "evidence": [
+            "changed-files",
+            "tests-added",
+            "commands-run",
+            "residual-risks",
+            "no-staged-files"
+          ],
+          "severity": "required"
+        }
+      ],
+      "evidence": [
+        "changed-files",
+        "tests-added",
+        "commands-run",
+        "residual-risks",
+        "no-staged-files"
+      ],
+      "verify": [],
+      "stopRules": []
+    },
+    "inferredReason": [
+      "read-only/reviewer-style agent"
+    ],
+    "criteria": [
+      {
+        "id": "criterion-1",
+        "must": "Return concrete findings with file paths and severity when applicable",
+        "evidence": [
+          "changed-files",
+          "tests-added",
+          "commands-run",
+          "residual-risks",
+          "no-staged-files"
+        ],
+        "severity": "required"
+      }
+    ],
+    "runtimeChecks": [
+      {
+        "id": "criterion:criterion-1",
+        "status": "passed",
+        "message": "Required criterion 'criterion-1' satisfied."
+      },
+      {
+        "id": "evidence:changed-files",
+        "status": "passed",
+        "message": "changed-files evidence present."
+      },
+      {
+        "id": "evidence:tests-added",
+        "status": "not-applicable",
+        "message": "tests-added evidence explicitly reported as not applicable."
+      },
+      {
+        "id": "evidence:commands-run",
+        "status": "passed",
+        "message": "commands-run evidence present."
+      },
+      {
+        "id": "evidence:residual-risks",
+        "status": "passed",
+        "message": "residual-risks evidence present."
+      },
+      {
+        "id": "evidence:no-staged-files",
+        "status": "passed",
+        "message": "no-staged-files evidence present."
+      },
+      {
+        "id": "no-staged-files",
+        "status": "passed",
+        "message": "No staged files detected."
+      }
+    ],
+    "verifyRuns": [],
+    "childReport": {
+      "criteriaSatisfied": [
+        {
+          "id": "criterion-1",
+          "status": "satisfied",
+          "evidence": "Three concrete concerns cite exact OpenSpec paths/lines and live repository/API evidence; all ten alerts were independently enumerated."
+        }
+      ],
+      "changedFiles": [
+        "openspec/changes/harden-scorecard-supply-chain-and-input-boundaries/proposal.md",
+        "openspec/changes/harden-scorecard-supply-chain-and-input-boundaries/design.md",
+        "openspec/changes/harden-scorecard-supply-chain-and-input-boundaries/tasks.md",
+        "openspec/changes/harden-scorecard-supply-chain-and-input-boundaries/specs/container-build-integrity/spec.md",
+        "openspec/changes/harden-scorecard-supply-chain-and-input-boundaries/specs/input-boundary-resilience/spec.md",
+        "openspec/changes/harden-scorecard-supply-chain-and-input-boundaries/specs/repository-change-governance/spec.md",
+        "openspec/changes/harden-scorecard-supply-chain-and-input-boundaries/specs/security-posture-evidence/spec.md"
+      ],
+      "testsAddedOrUpdated": [],
+      "commandsRun": [
+        {
+          "command": "git status --short && git diff --cached --name-only",
+          "result": "passed",
+          "summary": "OpenSpec change and reviewer artifact directory are untracked; no staged files."
+        },
+        {
+          "command": "gh api repos/Scetrov/evefrontier-rs/rulesets and gh api repos/Scetrov/evefrontier-rs/code-scanning/alerts",
+          "result": "passed",
+          "summary": "Verified the active mainline ruleset and alerts #42–#51."
+        },
+        {
+          "command": "pnpm nx show project evefrontier-rs --json",
+          "result": "failed",
+          "summary": "Nx is unavailable because node_modules is not installed (pnpm: Command nx not found)."
+        }
+      ],
+      "validationOutput": [
+        "Static inspection confirmed current fmap truncation, spatial file-size subtraction, Lambda pre-graph validation location, workflow/action pinning baseline, Nx target defaults, ruleset JSON, and alert mapping.",
+        "No source files were modified; no implementation tests were applicable."
+      ],
+      "residualRisks": [
+        "External-contribution review remains documentation-only unless the requirement is narrowed or an enforceable policy becomes feasible.",
+        "A new fuzz workflow could introduce mutable action dependencies unless task 4.6 explicitly retains SHA pinning and least privilege.",
+        "Nx execution was not available in this checkout."
+      ],
+      "noStagedFiles": true,
+      "diffSummary": "Review-only assessment of the untracked finalized OpenSpec change; no repository implementation diff exists.",
+      "reviewFindings": [
+        "medium: specs/repository-change-governance/spec.md:24-26 has an external-review behavior that tasks cannot enforce or verify under the single-maintainer constraint.",
+        "medium: tasks.md:30 omits required SHA pinning and minimum permissions for the new fuzz workflow.",
+        "low: proposal.md:7 and :9 conflict with the checked-in-release-Dockerfile decision and the live mainline ruleset name."
+      ],
+      "manualNotes": "Single-maintainer independent approval and Rust Scorecard fuzz-detection limitations were treated as intentional constraints, not findings."
+    }
+  },
+  "transcriptPath": "/home/scetrov/source/evefrontier-rs/.pi-subagents/artifacts/4ae34ea3-f0e9-4978-86c1-24756ebf495e_reviewer_transcript.jsonl",
+  "skills": [],
+  "timestamp": 1784568183853
+}

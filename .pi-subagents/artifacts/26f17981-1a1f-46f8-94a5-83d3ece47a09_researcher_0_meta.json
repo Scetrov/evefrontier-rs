@@ -1,0 +1,151 @@
+{
+  "runId": "26f17981-1a1f-46f8-94a5-83d3ece47a09",
+  "agent": "researcher",
+  "task": "Research the official current OpenSSF Scorecard semantics and remediation criteria for these checks: Fuzzing, CII/Best-Practices, Code-Review, Pinned-Dependencies (especially Docker FROM tags versus digests), and Branch-Protection/rulesets. Focus on whether findings are vulnerabilities, quality signals, or heuristic limitations for a public single-maintainer Rust repository. Use primary sources only where possible, include URLs and exact decision implications. Do not modify files.\n\n---\n**Output:**\nWrite your findings to exactly this path: /home/scetrov/source/evefrontier-rs/.pi-subagents/artifacts/outputs/26f17981-1a1f-46f8-94a5-83d3ece47a09/scorecard-official-research.md\nThis path is authoritative for this run.\nIgnore any other output filename or output path mentioned elsewhere, including output destinations in the base agent prompt, system prompt, or task instructions.\n\n## Acceptance Contract\nAcceptance level: checked\nCompletion is not accepted from prose alone. End with a structured acceptance report.\n\nCriteria:\n- criterion-1: Return concrete findings with file paths and severity when applicable\n\nRequired evidence: changed-files, tests-added, commands-run, residual-risks, no-staged-files\n\nFinish with a fenced JSON block tagged `acceptance-report` in this shape:\nUse empty arrays when no items apply; array fields contain strings unless object entries are shown.\n`criteriaSatisfied[].status` must be exactly one of: satisfied, not-satisfied, not-applicable.\n`commandsRun[].result` must be exactly one of: passed, failed, not-run.\n`manualNotes` and `notes` are optional strings; an empty string means no note and does not satisfy `manual-notes` evidence.\n```acceptance-report\n{\n  \"criteriaSatisfied\": [\n    {\n      \"id\": \"criterion-1\",\n      \"status\": \"satisfied\",\n      \"evidence\": \"specific proof\"\n    }\n  ],\n  \"changedFiles\": [\n    \"src/file.ts\"\n  ],\n  \"testsAddedOrUpdated\": [\n    \"test/file.test.ts\"\n  ],\n  \"commandsRun\": [\n    {\n      \"command\": \"command\",\n      \"result\": \"passed\",\n      \"summary\": \"short result\"\n    }\n  ],\n  \"validationOutput\": [\n    \"validation output or concise summary\"\n  ],\n  \"residualRisks\": [\n    \"none\"\n  ],\n  \"noStagedFiles\": true,\n  \"diffSummary\": \"short description of the diff\",\n  \"reviewFindings\": [\n    \"blocker: file.ts:12 - issue found, or no blockers\"\n  ],\n  \"manualNotes\": \"anything else the parent should know\"\n}\n```",
+  "exitCode": 0,
+  "model": "openai-codex/gpt-5.6-terra:medium",
+  "attemptedModels": [
+    "openai-codex/gpt-5.6-terra:medium"
+  ],
+  "modelAttempts": [
+    {
+      "model": "openai-codex/gpt-5.6-terra:medium",
+      "success": true,
+      "exitCode": 0,
+      "usage": {
+        "input": 40465,
+        "output": 4590,
+        "cacheRead": 89088,
+        "cacheWrite": 0,
+        "cost": 0.19228450000000002,
+        "turns": 6
+      }
+    }
+  ],
+  "acceptance": {
+    "status": "checked",
+    "explicit": true,
+    "effectiveAcceptance": {
+      "level": "checked",
+      "explicit": true,
+      "inferredReason": [
+        "read-only/reviewer-style agent"
+      ],
+      "criteria": [
+        {
+          "id": "criterion-1",
+          "must": "Return concrete findings with file paths and severity when applicable",
+          "evidence": [
+            "changed-files",
+            "tests-added",
+            "commands-run",
+            "residual-risks",
+            "no-staged-files"
+          ],
+          "severity": "required"
+        }
+      ],
+      "evidence": [
+        "changed-files",
+        "tests-added",
+        "commands-run",
+        "residual-risks",
+        "no-staged-files"
+      ],
+      "verify": [],
+      "stopRules": []
+    },
+    "inferredReason": [
+      "read-only/reviewer-style agent"
+    ],
+    "criteria": [
+      {
+        "id": "criterion-1",
+        "must": "Return concrete findings with file paths and severity when applicable",
+        "evidence": [
+          "changed-files",
+          "tests-added",
+          "commands-run",
+          "residual-risks",
+          "no-staged-files"
+        ],
+        "severity": "required"
+      }
+    ],
+    "runtimeChecks": [
+      {
+        "id": "criterion:criterion-1",
+        "status": "passed",
+        "message": "Required criterion 'criterion-1' satisfied."
+      },
+      {
+        "id": "evidence:changed-files",
+        "status": "passed",
+        "message": "changed-files evidence present."
+      },
+      {
+        "id": "evidence:tests-added",
+        "status": "not-applicable",
+        "message": "tests-added evidence explicitly reported as not applicable."
+      },
+      {
+        "id": "evidence:commands-run",
+        "status": "passed",
+        "message": "commands-run evidence present."
+      },
+      {
+        "id": "evidence:residual-risks",
+        "status": "passed",
+        "message": "residual-risks evidence present."
+      },
+      {
+        "id": "evidence:no-staged-files",
+        "status": "passed",
+        "message": "no-staged-files evidence present."
+      },
+      {
+        "id": "no-staged-files",
+        "status": "passed",
+        "message": "No staged files detected."
+      }
+    ],
+    "verifyRuns": [],
+    "childReport": {
+      "criteriaSatisfied": [
+        {
+          "id": "criterion-1",
+          "status": "satisfied",
+          "evidence": "Concrete official findings identify the relevant authoritative source paths (docs/checks.md and docs/faq.md sections) and each Scorecard severity: Fuzzing Medium, CII-Best-Practices Low, Code-Review High, Pinned-Dependencies Medium, and Branch-Protection High."
+        }
+      ],
+      "changedFiles": [
+        ".pi-subagents/artifacts/outputs/26f17981-1a1f-46f8-94a5-83d3ece47a09/scorecard-official-research.md"
+      ],
+      "testsAddedOrUpdated": [],
+      "commandsRun": [
+        {
+          "command": "web research: OpenSSF Scorecard primary docs, FAQ/source, OpenSSF BadgeApp, and GitHub rulesets documentation",
+          "result": "passed",
+          "summary": "Retrieved and compared current primary documentation; no repository test command was applicable to research-only work."
+        }
+      ],
+      "validationOutput": [
+        "Artifact written at the required authoritative path.",
+        "All substantive recommendations cite primary OpenSSF, BadgeApp, or GitHub documentation."
+      ],
+      "residualRisks": [
+        "Repository-specific failures were not verified because no Scorecard run or repository configuration inspection was requested/performed.",
+        "No staged-file status could be independently queried because this runtime exposes no shell/git-status tool."
+      ],
+      "noStagedFiles": true,
+      "diffSummary": "Created only the requested research artifact; no source, configuration, or test files were altered.",
+      "reviewFindings": [
+        "no blockers: research distinguishes vulnerabilities from posture signals and documents Rust/single-maintainer heuristic limitations."
+      ],
+      "manualNotes": "The user requested no repository modifications; the sole write is the explicitly required output artifact."
+    }
+  },
+  "transcriptPath": "/home/scetrov/source/evefrontier-rs/.pi-subagents/artifacts/26f17981-1a1f-46f8-94a5-83d3ece47a09_researcher_0_transcript.jsonl",
+  "skills": [],
+  "timestamp": 1784567382760
+}

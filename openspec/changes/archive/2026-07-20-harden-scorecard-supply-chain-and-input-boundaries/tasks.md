@@ -39,7 +39,7 @@
 
 ## 6. Publish and Reconcile Security Posture Evidence
 
-- [ ] 6.1 Register the repository with the OpenSSF Best Practices program and complete an evidence-backed initial questionnaire without overstating unmet criteria.
+- [x] 6.1 Register the repository with the OpenSSF Best Practices program and complete an evidence-backed initial questionnaire without overstating unmet criteria.
 - [x] 6.2 Publish the awarded in-progress or passing badge/status in the README or security documentation and link it to the public project record.
 - [x] 6.3 Document that Scorecard findings are posture signals requiring verification, not confirmed vulnerabilities, and record the evidence/classification for alerts #42-#51.
 - [x] 6.4 Rerun Scorecard after remediation and record which alerts closed, which remain accepted single-maintainer risks, and whether Rust cargo-fuzz remains undetected.
