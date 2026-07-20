@@ -264,6 +264,97 @@ brew install jq
 sudo pacman -S jq
 ```
 
+## Fuzz Testing
+
+The workspace includes a standalone cargo-fuzz project at `fuzz/` for coverage-guided fuzzing
+of custom parsers and loaders. Fuzz targets exercise fmap token decode/round-trip, the
+spatial-index byte loader, and local dataset ZIP extraction.
+
+### Requirements
+
+```bash
+# cargo-fuzz requires nightly Rust for sanitizer support.
+rustup toolchain install nightly
+
+# Install cargo-fuzz (libFuzzer wrapper)
+cargo +nightly install cargo-fuzz --locked
+```
+
+### Running a Single Target Locally
+
+Run through Nx (recommended — applies budgets and non-cacheable settings):
+
+```bash
+# 30-second bounded run (default)
+nx run evefrontier-fuzz:fuzz-fmap
+nx run evefrontier-fuzz:fuzz-spatial-index
+nx run evefrontier-fuzz:fuzz-dataset-zip
+
+# All three targets serially
+nx run evefrontier-fuzz:fuzz
+```
+
+Or directly with cargo-fuzz (from workspace root; the fuzz crate lives at `fuzz/`):
+
+```bash
+# Run a target for 60 seconds (cargo-fuzz must be invoked from the workspace root)
+RUSTUP_TOOLCHAIN=nightly cargo fuzz run fmap_roundtrip -- -max_total_time=60 -rss_limit_mb=2048
+RUSTUP_TOOLCHAIN=nightly cargo fuzz run spatial_index_load -- -max_total_time=60 -rss_limit_mb=2048
+RUSTUP_TOOLCHAIN=nightly cargo fuzz run dataset_zip_extract -- -max_total_time=60 -rss_limit_mb=2048
+```
+
+### Seed Corpora
+
+Valid seed inputs live under `fuzz/corpus/<target>/`. Commit new valid samples here so
+subsequent runs cover known-good structure. Seeds should be small representative tokens,
+spatial-index files, or ZIP archives that exercise all major branches of the parser.
+
+```bash
+# List committed seeds for a target
+ls fuzz/corpus/fmap_roundtrip/
+```
+
+### Crash Minimization
+
+When a crash or timeout is found:
+
+1. **Locate the crash input** in `fuzz/artifacts/<target>/`.
+2. **Minimize it** to the smallest reproducer:
+   ```bash
+   RUSTUP_TOOLCHAIN=nightly cargo fuzz tmin <target> fuzz/artifacts/<target>/crash-<id>
+   ```
+3. **Reproduce deterministically**:
+   ```bash
+   RUSTUP_TOOLCHAIN=nightly cargo fuzz run <target> -- fuzz/artifacts/<target>/crash-<id> -runs=1
+   ```
+4. **Convert to a regression test**:
+   Add the minimized input as a test case in the corresponding crate's test suite
+   (e.g. `crates/evefrontier-lib/tests/fmap_decode.rs` for fmap crashes). The defect
+   is not considered resolved until a deterministic regression test exists for it.
+
+### Converting Fixed Crashes into Regression Tests
+
+Whenever a fuzz-discovered crash is fixed:
+
+1. Minimize the crash input.
+2. Add it as a test case (binary fixture or inline byte literal) in the relevant test file.
+3. Assert the function returns a typed error (not a panic).
+4. Commit both the fix and the regression test in the same change.
+5. Retire the artifact from `fuzz/artifacts/` unless it documents an accepted risk.
+
+### CI and Scheduling
+
+Fuzz runs are orchestrated through `nx run evefrontier-fuzz:fuzz` in
+`.github/workflows/fuzz.yml`. The workflow:
+
+- Runs weekly (Sunday 09:00 UTC) and on manual dispatch.
+- Is bounded to 30 seconds per target by default (configurable via `duration` input).
+- Is NOT part of the pull-request check suite — PRs retain only deterministic tests.
+- Uploads crash artifacts as workflow artifacts for 30 days.
+- Uses least-privilege permissions and full-commit-SHA-pinned actions.
+
+See `.github/workflows/fuzz.yml` for the exact configuration.
+
 ## Future Enhancements
 
 See `docs/TODO.md` for planned testing improvements:

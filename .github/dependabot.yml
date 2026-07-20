@@ -34,3 +34,20 @@ updates:
       github-actions-dependencies:
         patterns:
           - "*"
+
+  # Docker base-image updates for service and release Dockerfiles.
+  # Dependabot will open a single reviewable PR per image update that
+  # refreshes both the readable tag and the SHA-256 digest pin.
+  - package-ecosystem: "docker"
+    directories:
+      - "/"
+      - "/crates/evefrontier-service-route"
+      - "/crates/evefrontier-service-scout-gates"
+      - "/crates/evefrontier-service-scout-range"
+    schedule:
+      interval: "weekly"
+    groups:
+      docker-base-images:
+        patterns:
+          - "rust"
+          - "gcr.io/distroless/cc-debian12"

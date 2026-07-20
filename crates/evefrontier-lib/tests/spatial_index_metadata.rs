@@ -442,3 +442,118 @@ fn test_v2_header_flags() {
         "FLAG_HAS_METADATA (bit 1) should be set"
     );
 }
+
+// =============================================================================
+// Malformed spatial-index regression tests
+// =============================================================================
+//
+// These tests verify that loading a recognized-header spatial index file with
+// missing or truncated payload, metadata, or checksum sections returns a typed
+// error without panicking or allocating an oversized buffer.
+
+/// Build a valid header (16 bytes) for use in malformed-index tests.
+fn make_header(version: u8, flags: u8, node_count: u32) -> [u8; 16] {
+    let mut header = [0u8; 16];
+    header[0..4].copy_from_slice(b"EFSI");
+    header[4] = version;
+    header[5] = flags;
+    header[6..10].copy_from_slice(&node_count.to_le_bytes());
+    header
+}
+
+/// Write bytes to a temp file and attempt to load as a spatial index.
+fn try_load_bytes(dir: &TempDir, data: &[u8]) -> Result<SpatialIndex, evefrontier_lib::Error> {
+    let path = dir.path().join("malformed.bin");
+    fs::write(&path, data).expect("write malformed file");
+    SpatialIndex::load(&path)
+}
+
+#[test]
+fn test_malformed_header_only_no_payload_no_checksum() {
+    // A bare 16-byte header with v1 and no metadata flag, but no compressed data or checksum.
+    let tmp = TempDir::new().unwrap();
+    let header = make_header(1, 0, 0);
+    let result = try_load_bytes(&tmp, &header);
+    assert!(result.is_err(), "header-only file must fail to load");
+    let err_msg = result.unwrap_err().to_string();
+    assert!(
+        err_msg.contains("too small") || err_msg.contains("failed to"),
+        "expected typed load error, got: {err_msg}"
+    );
+}
+
+#[test]
+fn test_malformed_v1_truncated_before_checksum() {
+    // v1 header + a small payload with no trailing 32-byte checksum.
+    let tmp = TempDir::new().unwrap();
+    let header = make_header(1, 0, 0);
+    let payload = b"some compressed data that is not a real index";
+    let mut data = Vec::new();
+    data.extend_from_slice(&header);
+    data.extend_from_slice(payload);
+    // Intentionally omit the 32-byte checksum
+    let result = try_load_bytes(&tmp, &data);
+    assert!(
+        result.is_err(),
+        "truncated file (no checksum) must fail to load"
+    );
+}
+
+#[test]
+fn test_malformed_v2_missing_metadata_section() {
+    // v2 header with FLAG_HAS_METADATA set but no metadata bytes after the header.
+    let tmp = TempDir::new().unwrap();
+    let header = make_header(2, 0x02, 0); // FLAG_HAS_METADATA = bit 1
+    let result = try_load_bytes(&tmp, &header);
+    assert!(
+        result.is_err(),
+        "v2 with metadata flag but no metadata bytes must fail"
+    );
+}
+
+#[test]
+fn test_malformed_v2_partial_metadata_truncated() {
+    // v2 header with metadata flag set, but only a partial metadata section.
+    // The metadata section requires at least 32 + 2 + 0 + 8 = 42 bytes.
+    let tmp = TempDir::new().unwrap();
+    let header = make_header(2, 0x02, 0);
+    let partial_metadata = vec![0u8; 16]; // Too short for a valid metadata section
+    let mut combined = Vec::with_capacity(header.len() + partial_metadata.len());
+    combined.extend_from_slice(&header);
+    combined.extend_from_slice(&partial_metadata);
+    let result = try_load_bytes(&tmp, &combined);
+    assert!(
+        result.is_err(),
+        "v2 with partial metadata must fail to load"
+    );
+}
+
+#[test]
+fn test_malformed_empty_file_has_header_only() {
+    // A file with exactly HEADER_SIZE bytes (16) but no compressed data or checksum.
+    // The checked arithmetic must reject this without underflow.
+    let tmp = TempDir::new().unwrap();
+    let header = make_header(1, 0, 5); // node_count=5 (but file is truncated)
+    let result = try_load_bytes(&tmp, &header);
+    assert!(
+        result.is_err(),
+        "16-byte file with header must fail without panicking"
+    );
+    let err_msg = result.unwrap_err().to_string();
+    assert!(
+        err_msg.contains("too small"),
+        "expected 'file too small' error from checked arithmetic, got: {err_msg}"
+    );
+}
+
+#[test]
+fn test_malformed_file_smaller_than_header() {
+    // A file shorter than the header itself must fail cleanly.
+    let tmp = TempDir::new().unwrap();
+    let too_short = vec![0u8; 8]; // Only 8 bytes, header needs 16
+    let result = try_load_bytes(&tmp, &too_short);
+    assert!(
+        result.is_err(),
+        "file shorter than header must fail cleanly"
+    );
+}

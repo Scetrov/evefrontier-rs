@@ -4,6 +4,15 @@ use serde::{Deserialize, Serialize};
 
 use crate::ProblemDetails;
 
+/// Maximum safe value accepted for `max_spatial_neighbors`.
+///
+/// Values above this bound are rejected with a client-facing problem response
+/// before graph construction. A value of `0` retains the documented "unlimited
+/// (library-default)" sentinel semantics and is always accepted.
+fn is_valid_spatial_neighbor_count(count: usize) -> bool {
+    count == 0 || count <= evefrontier_lib::SAFE_MAX_SPATIAL_NEIGHBORS
+}
+
 /// Validation trait for Lambda request types.
 ///
 /// Implementations should validate all fields and return a `ProblemDetails`
@@ -194,6 +203,19 @@ impl Validate for RouteRequest {
             if fuel_load < 0.0 {
                 return Err(Box::new(ProblemDetails::bad_request(
                     "The 'fuel_load' field must be zero or greater",
+                    request_id,
+                )));
+            }
+        }
+
+        if let Some(max_neighbors) = self.max_spatial_neighbors {
+            if !is_valid_spatial_neighbor_count(max_neighbors) {
+                return Err(Box::new(ProblemDetails::bad_request(
+                    format!(
+                        "The 'max_spatial_neighbors' field must be 0 (default/unlimited) or at \
+                         most {} (safe ceiling)",
+                        evefrontier_lib::SAFE_MAX_SPATIAL_NEIGHBORS
+                    ),
                     request_id,
                 )));
             }
@@ -580,5 +602,78 @@ mod tests {
         assert_eq!(request.to, "Brana");
         assert!(request.avoid_critical_state);
         assert_eq!(request.algorithm, RouteAlgorithm::AStar);
+    }
+
+    // =========================================================================
+    // Spatial-neighbor boundary regression tests
+    // =========================================================================
+
+    fn valid_route_request() -> RouteRequest {
+        RouteRequest {
+            from: "Nod".to_string(),
+            to: "Brana".to_string(),
+            algorithm: RouteAlgorithm::AStar,
+            max_jump: None,
+            avoid: vec![],
+            avoid_gates: false,
+            max_temperature: None,
+            ship: None,
+            fuel_quality: None,
+            cargo_mass: None,
+            fuel_load: None,
+            dynamic_mass: None,
+            avoid_critical_state: true,
+            max_spatial_neighbors: None,
+            optimization: None,
+        }
+    }
+
+    #[test]
+    fn test_route_request_default_spatial_neighbors_valid() {
+        // Default (None) is always accepted and means use-library default.
+        let mut req = valid_route_request();
+        req.max_spatial_neighbors = None;
+        assert!(req.validate("req-default").is_ok());
+    }
+
+    #[test]
+    fn test_route_request_zero_spatial_neighbors_valid() {
+        // Zero is the documented "unlimited (library-default)" sentinel.
+        let mut req = valid_route_request();
+        req.max_spatial_neighbors = Some(0);
+        assert!(req.validate("req-zero").is_ok());
+    }
+
+    #[test]
+    fn test_route_request_safe_max_boundary_valid() {
+        // At the safe maximum must still be accepted.
+        let mut req = valid_route_request();
+        req.max_spatial_neighbors = Some(evefrontier_lib::SAFE_MAX_SPATIAL_NEIGHBORS);
+        assert!(req.validate("req-boundary").is_ok());
+    }
+
+    #[test]
+    fn test_route_request_one_above_safe_max_rejected() {
+        // One above the ceiling must be rejected.
+        let mut req = valid_route_request();
+        req.max_spatial_neighbors = Some(evefrontier_lib::SAFE_MAX_SPATIAL_NEIGHBORS + 1);
+        let err = req.validate("req-above-max").unwrap_err();
+        assert!(
+            err.detail
+                .as_ref()
+                .unwrap()
+                .contains("max_spatial_neighbors"),
+            "expected max_spatial_neighbors in error detail, got: {:?}",
+            err.detail
+        );
+    }
+
+    #[test]
+    fn test_route_request_usize_max_rejected() {
+        // usize::MAX must be rejected without panicking.
+        let mut req = valid_route_request();
+        req.max_spatial_neighbors = Some(usize::MAX);
+        let err = req.validate("req-usize-max").unwrap_err();
+        assert!(err.detail.unwrap().contains("max_spatial_neighbors"));
     }
 }

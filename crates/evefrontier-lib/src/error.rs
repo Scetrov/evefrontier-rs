@@ -132,6 +132,13 @@ pub enum Error {
     #[error("invalid fmap bit width {k}, must be 1-30")]
     FmapInvalidBitWidth { k: u8 },
 
+    /// Fmap encoding rejected: too many waypoints for the u16 count field.
+    ///
+    /// The fmap binary format stores the waypoint count as a big-endian u16,
+    /// so at most `u16::MAX` (65 535) waypoints can be represented.
+    #[error("too many waypoints: {count} exceeds fmap maximum {max}")]
+    FmapTooManyWaypoints { count: usize, max: usize },
+
     /// Invalid fmap token encountered during decoding: waypoint type value is outside the valid range.
     ///
     /// This error indicates that a waypoint type value read from the fmap stream is not one of the

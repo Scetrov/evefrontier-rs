@@ -107,7 +107,7 @@ pub use github::DatasetRelease;
 pub use graph::{
     build_gate_graph, build_graph, build_hybrid_graph, build_hybrid_graph_indexed,
     build_spatial_graph, build_spatial_graph_indexed, Edge, EdgeKind, Graph, GraphBuildOptions,
-    GraphMode,
+    GraphMode, SAFE_MAX_SPATIAL_NEIGHBORS,
 };
 pub use output::{
     FuelSummary, RouteEndpoint, RouteOutputKind, RouteRenderMode, RouteStep, RouteSummary,

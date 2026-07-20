@@ -1,0 +1,50 @@
+[package]
+name = "evefrontier-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+# cargo-fuzz builds require this to be a binary crate.
+# The package is intentionally excluded from the production workspace so that
+# `libfuzzer-sys` (and other fuzz-only dependencies) never leak into release builds.
+
+[package.metadata]
+# Fuzz-only crate — do not include in the workspace.
+# cargo-fuzz requires this key to recognise the manifest.
+cargo-fuzz = true
+
+[dependencies]
+evefrontier-lib = { path = "../crates/evefrontier-lib" }
+libfuzzer-sys = { version = "0.4", features = ["arbitrary-derive"] }
+arbitrary = { version = "1", features = ["derive"] }
+tempfile = "3"
+zip = "8"
+
+# Pin tooling versions for reproducible fuzz runs.
+# See docs/threat-model.md § Container base-image digest pinning for the rationale.
+
+[[bin]]
+name = "fmap_roundtrip"
+path = "fuzz_targets/fmap_roundtrip.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "spatial_index_load"
+path = "fuzz_targets/spatial_index_load.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "dataset_zip_extract"
+path = "fuzz_targets/dataset_zip_extract.rs"
+test = false
+doc = false
+
+[profile.dev]
+# Keep startup fast; sanitizer flags are supplied by `cargo fuzz`.
+opt-level = 0
+
+[profile.release]
+# Release profile tuned for coverage-guided fuzzing throughput.
+opt-level = 3
+debug = false

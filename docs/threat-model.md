@@ -64,6 +64,62 @@ publishing.
 Use GitHub secret expressions rather than hardcoded values and limit token permissions.
 Administrators must enable secret scanning and push protection.
 
+## Change governance and review
+
+### Single-maintainer independent-review exception
+
+While fewer than two independent trusted human maintainers exist in this repository,
+owner-authored changes receive required automated controls (CI, dependency review, CodeQL,
+fuzzing, Scorecard posture checks) but **cannot receive independent human approval**.
+This limitation is not represented by AI/bot review, self-owned `CODEOWNERS`, or alternate
+self-controlled accounts — none of those satisfy the "independent accountable human"
+requirement. External contributions are reviewed and merged by the maintainer only after
+required automated controls pass.
+
+#### Residual account-compromise risk
+
+The single-maintainer exception carries an accepted residual risk: compromise of the sole
+maintainer account is sufficient to approve and merge malicious code through CI-only
+gatekeeping. This risk is mitigated by:
+
+- The active `mainline` ruleset retaining no-bypass actors, PR-only changes, no force-push,
+  no branch deletion, squash-only merges, required review thread resolution, required CodeQL
+  and code-quality checks, and required build and dependency-review status checks.
+- Phishing-resistant account security (passkeys / hardware 2FA) on the maintainer account
+  and all repository-administrative accounts, enforced outside repository code.
+- Required dependency review and SBOM/signing/attestation evidence on every release.
+
+#### Activation trigger for independent review
+
+The exception is re-evaluated when:
+
+- A second independent trusted human maintainer becomes available to review changes
+  regularly; **or**
+- The project is adopted in a materially higher-impact deployment where independent review
+  is appropriate.
+
+Once either trigger fires, before the exception is retired, the maintainer **must**:
+
+1. Maintain a `CODEOWNERS` file covering the source tree.
+2. Require at least one approving review per pull request through the `mainline` ruleset.
+3. Require approval of the latest reviewable push (`require_last_push_approval: true`).
+4. Enable `code_owner_review` enforcement.
+
+### Scorecard findings as posture signals
+
+OpenSSF Scorecard alerts are **posture signals that require verification**, not confirmed
+exploitable vulnerabilities. Each maintained alert must be classified by the maintainer as:
+
+| Classification | Meaning | Action |
+|---|---|---|
+| **Actionable finding** | Directly remediable by a repository or settings change | Fix and verify post-remediation |
+| **Accepted single-maintainer risk** | Remedy requires independent review capability not currently available | Retain with documented rationale |
+| **Detector limitation** | Heuristic does not map to this repository's architecture | Retain with rationale and re-evaluation trigger |
+| **False positive** | Not reproducible under the repository's actual configuration | Dismiss or comment accordingly |
+
+Maintainers should not optimise solely for score maximisation; the goal is honest, evidence-
+backed posture that reflects the repository's real controls.
+
 ## Security-sensitive decisions
 
 - Docker releases use GitHub OIDC-backed cosign signing and now request Buildx provenance for

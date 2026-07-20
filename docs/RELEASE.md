@@ -848,6 +848,90 @@ The container images follow security best practices:
 - **Capabilities**: All capabilities dropped
 - **Scanning**: Trivy scans block on CRITICAL/HIGH vulnerabilities
 
+## Container Base-Image Digest Pinning
+
+All checked-in and generated container builds reference external base images by a **readable
+human tag plus an immutable SHA-256 manifest-list digest**. This makes builds reproducible
+while Dependabot `docker` ecosystem updates keep pins fresh.
+
+| Image | Tag | Digest (manifest-list) |
+|-------|-----|------------------------|
+| `docker.io/library/rust` | `1.97.0-bookworm` | `sha256:8fa55b2f3ddf97471ab6a767bfa3f37e6bad0986ba823e75fea57e2a2a5c3073` |
+| `gcr.io/distroless/cc-debian12` | `nonroot` | `sha256:66aa873a4a14fb164aa01296058efd8253744606d72715e45acface073359faa` |
+
+### Affected files
+
+- `crates/evefrontier-service-route/Dockerfile`
+- `crates/evefrontier-service-scout-gates/Dockerfile`
+- `crates/evefrontier-service-scout-range/Dockerfile`
+- `Dockerfile.release` (multi-architecture release build)
+- `.github/dependabot.yml` (`docker` ecosystem, `docker-base-images` group)
+
+### Automated refresh
+
+Dependabot opens a single reviewable pull request per upstream image update that advances
+the tag and (where the updater supports it) the SHA-256 digest across every affected
+Dockerfile in the `docker-base-images` group.
+
+### Manual manifest-digest refresh
+
+If a base-image reference must be refreshed outside the Dependabot cycle (for example,
+when the automation does not support the registry format in use), follow this procedure:
+
+1. **Resolve the current manifest-list digest.**
+   Use one of:
+   ```bash
+   # Option A — Docker CLI (preferred)
+   docker manifest inspect --verbose gcr.io/distroless/cc-debian12:nonroot \
+     | jq -r '.Descriptor.digest'
+
+   # Option B — curl against the registry (no Docker required)
+   TOKEN=$(curl -s 'https://gcr.io/v2/token?service=gcr.io&scope=repository:distroless/cc-debian12:pull' \
+     | python3 -c 'import sys,json; print(json.load(sys.stdin)["token"])')
+   curl -s -I \
+     -H "Authorization: Bearer $TOKEN" \
+     -H 'Accept: application/vnd.docker.distribution.manifest.list.v2+json,\
+ application/vnd.oci.image.index.v1+json' \
+     'https://gcr.io/v2/distroless/cc-debian12/manifests/nonroot' \
+     | grep -i docker-content-digest
+   ```
+
+2. **Verify the digest is a manifest list / OCI image index.**
+   The response body must contain a `manifests` array (multi-platform), not a single
+   `config`/`layers` payload. Confirm that at least `linux/amd64` and `linux/arm64`
+   appear in the platform list.
+
+   ```bash
+   curl -s \
+     -H "Authorization: Bearer $TOKEN" \
+     -H 'Accept: application/vnd.docker.distribution.manifest.list.v2+json,\
+ application/vnd.oci.image.index.v1+json' \
+     'https://gcr.io/v2/distroless/cc-debian12/manifests/<tag>' \
+     | python3 -c '
+   import json, sys
+   data = json.load(sys.stdin)
+   if "manifests" not in data: sys.exit("NOT a manifest list")
+   archs = {m["platform"]["architecture"] for m in data["manifests"]}
+   assert {"amd64","arm64"} <= archs, f"missing archs: {archs}"
+   print("OK — manifest list covering amd64 + arm64")
+   '
+   ```
+
+3. **Update every affected Dockerfile.**
+   Replace the `@sha256:...` suffix with the new digest across all three service
+   Dockerfiles and `Dockerfile.release`. Keep the readable tag prefix so the intent
+   remains human-readable.
+
+4. **Verify with a test build.**
+   ```bash
+   docker buildx build --platform linux/amd64,linux/arm64 \
+     -f Dockerfile.release --build-arg SERVICE=route .
+   ```
+
+5. **Commit the change.**
+   Include the tag, digest, and platform evidence in the commit message.
+   Dependabot will continue to track updates against the new digest afterwards.
+
 ---
 
 ## CI Integration Notes

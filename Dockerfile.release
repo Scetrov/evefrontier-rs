@@ -1,0 +1,29 @@
+# Checked-in release Dockerfile for multi-architecture image builds.
+#
+# This file is used by .github/workflows/docker-release.yml to build
+# production images for all services. The runtime base is pinned by
+# multi-architecture manifest-list digest to ensure build immutability.
+#
+# To refresh the digest, see docs/RELEASE.md (digest refresh procedure).
+
+# Pinned manifest-list digest (linux/amd64 + linux/arm64 + others).
+# Resolve with:
+#   docker manifest inspect --verbose gcr.io/distroless/cc-debian12:nonroot
+# or via registry API:
+#   curl -s -H "Authorization: Bearer <token>" \
+#     -H "Accept: application/vnd.docker.distribution.manifest.list.v2+json,\
+# application/vnd.oci.image.index.v1+json" \
+#     -I https://gcr.io/v2/distroless/cc-debian12/manifests/nonroot
+FROM gcr.io/distroless/cc-debian12:nonroot@sha256:66aa873a4a14fb164aa01296058efd8253744606d72715e45acface073359faa
+
+ARG TARGETARCH
+ARG SERVICE
+
+COPY artifacts/${TARGETARCH}/evefrontier-service-${SERVICE} /service
+
+# nonroot UID in distroless:nonroot
+USER 65532:65532
+
+EXPOSE 8080
+
+ENTRYPOINT ["/service"]

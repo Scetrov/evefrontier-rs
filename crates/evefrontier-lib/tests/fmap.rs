@@ -1,5 +1,5 @@
 use evefrontier_lib::fmap::{
-    encode_fmap_token, Waypoint, WaypointType, BASE_SYSTEM_ID, FMAP_VERSION,
+    decode_fmap_token, encode_fmap_token, Waypoint, WaypointType, BASE_SYSTEM_ID, FMAP_VERSION,
 };
 
 #[test]
@@ -76,4 +76,49 @@ fn test_encode_edge_case_max_offset() {
 
     let token = encode_fmap_token(&waypoints).expect("encode failed");
     assert_eq!(token.bit_width, 30);
+}
+
+/// Boundary: encoding exactly `u16::MAX` waypoints must succeed.
+///
+/// Use a minimal offset (all at BASE_SYSTEM_ID) so bit width is 1 and the
+/// payload is small enough to round-trip cheaply.
+#[test]
+fn test_encode_boundary_u16_max_waypoints_round_trip() {
+    let count = u16::MAX as usize;
+    let waypoints: Vec<Waypoint> = (0..count)
+        .map(|_| Waypoint {
+            // offset 0 → bit width 1; all identical system IDs
+            system_id: BASE_SYSTEM_ID,
+            waypoint_type: WaypointType::Start,
+        })
+        .collect();
+
+    let token = encode_fmap_token(&waypoints).expect("u16::MAX waypoints must encode successfully");
+    assert_eq!(token.waypoint_count, count);
+
+    // Round-trip: decode must reproduce the same count and system IDs.
+    let decoded =
+        decode_fmap_token(&token.token).expect("u16::MAX waypoints must decode successfully");
+    assert_eq!(decoded.waypoint_count, count);
+    assert_eq!(decoded.waypoints.len(), count);
+}
+
+/// Boundary: encoding `u16::MAX + 1` waypoints must return a typed error
+/// *without* constructing a truncated token.
+#[test]
+fn test_encode_rejects_u16_max_plus_one() {
+    let count = (u16::MAX as usize) + 1;
+    let waypoints: Vec<Waypoint> = (0..count)
+        .map(|_| Waypoint {
+            system_id: BASE_SYSTEM_ID,
+            waypoint_type: WaypointType::Start,
+        })
+        .collect();
+
+    let err = encode_fmap_token(&waypoints)
+        .expect_err("u16::MAX + 1 waypoints must be rejected with FmapTooManyWaypoints");
+    assert!(
+        err.to_string().contains("too many waypoints"),
+        "expected FmapTooManyWaypoints error, got: {err}"
+    );
 }

@@ -162,3 +162,7 @@ docs/_book/
 
 # Agents
 .pi
+
+### Cargo-fuzz ###
+# Crash artifacts are committed when converted to deterministic regression tests.
+fuzz/artifacts/
