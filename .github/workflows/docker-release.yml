@@ -22,11 +22,11 @@ name: Docker Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Version tag to build (e.g., v0.1.0)'
+        description: "Version tag to build (e.g., v0.1.0)"
         required: true
         type: string
 
@@ -187,7 +187,9 @@ jobs:
             SERVICE=${{ matrix.service }}
 
       - name: Log image digest
-        run: echo "Image digest for ${{ matrix.service }}:${{ needs.build-binaries.outputs.version }} is ${{ steps.build.outputs.digest }}"
+        run:
+          echo "Image digest for ${{ matrix.service }}:${{ needs.build-binaries.outputs.version }}
+          is ${{ steps.build.outputs.digest }}"
 
   scan-images:
     name: Scan Images
@@ -208,11 +210,13 @@ jobs:
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: '${{ env.IMAGE_PREFIX }}/evefrontier-service-${{ matrix.service }}:${{ needs.build-binaries.outputs.version }}'
-          format: 'sarif'
-          output: 'trivy-results-${{ matrix.service }}.sarif'
-          severity: 'CRITICAL,HIGH'
-          exit-code: '1'
+          image-ref:
+            "${{ env.IMAGE_PREFIX }}/evefrontier-service-${{ matrix.service }}:${{
+            needs.build-binaries.outputs.version }}"
+          format: "sarif"
+          output: "trivy-results-${{ matrix.service }}.sarif"
+          severity: "CRITICAL,HIGH"
+          exit-code: "1"
           # NOTE: We ignore "unfixed" vulnerabilities in the container base image.
           # - Rust dependencies are scanned separately with `cargo-audit`.
           # - Trivy scans the full container image (including the distroless base).
@@ -230,8 +234,8 @@ jobs:
         uses: github/codeql-action/upload-sarif@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4
         if: always()
         with:
-          sarif_file: 'trivy-results-${{ matrix.service }}.sarif'
-          category: 'trivy-${{ matrix.service }}'
+          sarif_file: "trivy-results-${{ matrix.service }}.sarif"
+          category: "trivy-${{ matrix.service }}"
 
   sign-images:
     name: Sign Images
