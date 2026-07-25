@@ -22,11 +22,11 @@ name: Docker Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Version tag to build (e.g., v0.1.0)'
+        description: "Version tag to build (e.g., v0.1.0)"
         required: true
         type: string
 
@@ -155,7 +155,7 @@ jobs:
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7 # v4.5.1
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -187,7 +187,9 @@ jobs:
             SERVICE=${{ matrix.service }}
 
       - name: Log image digest
-        run: echo "Image digest for ${{ matrix.service }}:${{ needs.build-binaries.outputs.version }} is ${{ steps.build.outputs.digest }}"
+        run:
+          echo "Image digest for ${{ matrix.service }}:${{ needs.build-binaries.outputs.version }}
+          is ${{ steps.build.outputs.digest }}"
 
   scan-images:
     name: Scan Images
@@ -208,11 +210,13 @@ jobs:
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: '${{ env.IMAGE_PREFIX }}/evefrontier-service-${{ matrix.service }}:${{ needs.build-binaries.outputs.version }}'
-          format: 'sarif'
-          output: 'trivy-results-${{ matrix.service }}.sarif'
-          severity: 'CRITICAL,HIGH'
-          exit-code: '1'
+          image-ref:
+            "${{ env.IMAGE_PREFIX }}/evefrontier-service-${{ matrix.service }}:${{
+            needs.build-binaries.outputs.version }}"
+          format: "sarif"
+          output: "trivy-results-${{ matrix.service }}.sarif"
+          severity: "CRITICAL,HIGH"
+          exit-code: "1"
           # NOTE: We ignore "unfixed" vulnerabilities in the container base image.
           # - Rust dependencies are scanned separately with `cargo-audit`.
           # - Trivy scans the full container image (including the distroless base).
@@ -227,11 +231,11 @@ jobs:
           ignore-unfixed: true
 
       - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@7188fc363630916deb702c7fdcf4e481b751f97a # v4
+        uses: github/codeql-action/upload-sarif@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4
         if: always()
         with:
-          sarif_file: 'trivy-results-${{ matrix.service }}.sarif'
-          category: 'trivy-${{ matrix.service }}'
+          sarif_file: "trivy-results-${{ matrix.service }}.sarif"
+          category: "trivy-${{ matrix.service }}"
 
   sign-images:
     name: Sign Images
@@ -254,7 +258,7 @@ jobs:
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7 # v4.5.1
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
