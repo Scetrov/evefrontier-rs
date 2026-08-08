@@ -27,7 +27,7 @@ jobs:
           node-version-file: ".nvmrc"
 
       - name: Install pnpm
-        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
 
       - name: Install Node dependencies
         run: pnpm install --frozen-lockfile
@@ -190,7 +190,7 @@ jobs:
 
       - name: Install pnpm
         if: steps.audit-scope.outputs.node_changed == 'true'
-        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
 
       - name: Install Node dependencies
         if: steps.audit-scope.outputs.node_changed == 'true'
