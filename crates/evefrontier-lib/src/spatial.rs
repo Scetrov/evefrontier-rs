@@ -64,10 +64,10 @@
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Read, Write};
+use std::num::NonZeroUsize;
 use std::path::Path;
 
-use kiddo::float::kdtree::KdTree;
-use kiddo::SquaredEuclidean;
+use kiddo::{Eytzinger, KdTree, SquaredEuclidean, VecOfArrays};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use tracing::{debug, info, warn};
@@ -101,6 +101,10 @@ const COMPRESSION_LEVEL: i32 = 3;
 
 /// KD-tree bucket size (kiddo default).
 const BUCKET_SIZE: usize = 32;
+
+/// Mutable Kiddo v6 tree storing indexes into [`SpatialIndex::nodes`].
+type SpatialKdTree =
+    KdTree<f32, usize, Eytzinger, VecOfArrays<f32, usize, 3, BUCKET_SIZE>, 3, BUCKET_SIZE>;
 
 // =============================================================================
 // Source Metadata Types (v2 format)
@@ -510,7 +514,7 @@ fn hex_encode(bytes: &[u8]) -> String {
 /// loading at application startup (especially important for Lambda cold-starts).
 pub struct SpatialIndex {
     /// KD-tree for spatial queries. Uses usize as item type (index into nodes vec).
-    tree: KdTree<f32, usize, 3, BUCKET_SIZE, u32>,
+    tree: SpatialKdTree,
     /// Indexed nodes containing system data.
     nodes: Vec<IndexNode>,
     /// Fast lookup from system ID to temperature.
@@ -555,11 +559,13 @@ impl SpatialIndex {
             nodes.push(node);
         }
 
-        // Build the KD-tree
-        let mut tree: KdTree<f32, usize, 3, BUCKET_SIZE, u32> = KdTree::new();
-        for (index, node) in nodes.iter().enumerate() {
-            tree.add(&node.coords, index);
-        }
+        // Build the KD-tree.
+        let tree = SpatialKdTree::new_from_source(
+            &nodes,
+            |node, dimension| node.coords[dimension],
+            |index, _| index,
+        )
+        .expect("spatial index coordinates must be valid");
 
         // Spatial index built successfully
         Self {
@@ -649,7 +655,11 @@ impl SpatialIndex {
         }
 
         let query_point = [point[0] as f32, point[1] as f32, point[2] as f32];
-        let results = self.tree.nearest_n::<SquaredEuclidean>(&query_point, k);
+        let results = self
+            .tree
+            .query(&query_point)
+            .nearest_n::<SquaredEuclidean<f32>>(NonZeroUsize::new(k).expect("k is non-zero"))
+            .execute();
 
         results
             .into_iter()
@@ -673,7 +683,9 @@ impl SpatialIndex {
         let squared_radius = (radius * radius) as f32;
         let results = self
             .tree
-            .within::<SquaredEuclidean>(&query_point, squared_radius);
+            .query(&query_point)
+            .within::<SquaredEuclidean<f32>>(squared_radius)
+            .execute();
 
         let mut neighbors: Vec<(SystemId, f64)> = results
             .into_iter()
@@ -720,7 +732,11 @@ impl SpatialIndex {
 
         let candidates = self
             .tree
-            .nearest_n::<SquaredEuclidean>(&query_point, fetch_count);
+            .query(&query_point)
+            .nearest_n::<SquaredEuclidean<f32>>(
+                NonZeroUsize::new(fetch_count).expect("fetch count is non-zero"),
+            )
+            .execute();
 
         let mut results = Vec::with_capacity(k);
 
@@ -770,7 +786,9 @@ impl SpatialIndex {
         let squared_radius = (radius * radius) as f32;
         let candidates = self
             .tree
-            .within::<SquaredEuclidean>(&query_point, squared_radius);
+            .query(&query_point)
+            .within::<SquaredEuclidean<f32>>(squared_radius)
+            .execute();
 
         let mut results: Vec<(SystemId, f64)> = candidates
             .into_iter()
@@ -1076,15 +1094,24 @@ impl SpatialIndex {
         }
 
         // Rebuild tree and lookups
-        let mut tree: KdTree<f32, usize, 3, BUCKET_SIZE, u32> = KdTree::new();
-        let mut temp_lookup = HashMap::new();
-        let mut id_to_index = HashMap::new();
-
-        for (index, node) in nodes.iter().enumerate() {
-            tree.add(&node.coords, index);
-            temp_lookup.insert(node.system_id, node.min_external_temp);
-            id_to_index.insert(node.system_id, index);
-        }
+        let tree = SpatialKdTree::new_from_source(
+            &nodes,
+            |node, dimension| node.coords[dimension],
+            |index, _| index,
+        )
+        .map_err(|error| Error::SpatialIndexLoad {
+            path: path.to_path_buf(),
+            message: format!("invalid coordinates: {error}"),
+        })?;
+        let temp_lookup: HashMap<_, _> = nodes
+            .iter()
+            .map(|node| (node.system_id, node.min_external_temp))
+            .collect();
+        let id_to_index: HashMap<_, _> = nodes
+            .iter()
+            .enumerate()
+            .map(|(index, node)| (node.system_id, index))
+            .collect();
 
         info!(
             node_count = nodes.len(),
@@ -1258,15 +1285,23 @@ impl SpatialIndex {
         }
 
         // Rebuild tree and lookups
-        let mut tree: KdTree<f32, usize, 3, BUCKET_SIZE, u32> = KdTree::new();
-        let mut temp_lookup = HashMap::new();
-        let mut id_to_index = HashMap::new();
-
-        for (index, node) in nodes.iter().enumerate() {
-            tree.add(&node.coords, index);
-            temp_lookup.insert(node.system_id, node.min_external_temp);
-            id_to_index.insert(node.system_id, index);
-        }
+        let tree = SpatialKdTree::new_from_source(
+            &nodes,
+            |node, dimension| node.coords[dimension],
+            |index, _| index,
+        )
+        .map_err(|error| Error::SpatialIndexDeserialize {
+            message: format!("invalid coordinates: {error}"),
+        })?;
+        let temp_lookup: HashMap<_, _> = nodes
+            .iter()
+            .map(|node| (node.system_id, node.min_external_temp))
+            .collect();
+        let id_to_index: HashMap<_, _> = nodes
+            .iter()
+            .enumerate()
+            .map(|(index, node)| (node.system_id, index))
+            .collect();
 
         info!(
             node_count = nodes.len(),
@@ -1360,15 +1395,21 @@ mod tests {
             test_node(3, 2.0, 0.0, 0.0, Some(30.0)),
         ];
 
-        let mut tree: KdTree<f32, usize, 3, BUCKET_SIZE, u32> = KdTree::new();
-        let mut temp_lookup = HashMap::new();
-        let mut id_to_index = HashMap::new();
-
-        for (index, node) in nodes.iter().enumerate() {
-            tree.add(&node.coords, index);
-            temp_lookup.insert(node.system_id, node.min_external_temp);
-            id_to_index.insert(node.system_id, index);
-        }
+        let tree = SpatialKdTree::new_from_source(
+            &nodes,
+            |node, dimension| node.coords[dimension],
+            |index, _| index,
+        )
+        .expect("test spatial index coordinates must be valid");
+        let temp_lookup = nodes
+            .iter()
+            .map(|node| (node.system_id, node.min_external_temp))
+            .collect();
+        let id_to_index = nodes
+            .iter()
+            .enumerate()
+            .map(|(index, node)| (node.system_id, index))
+            .collect();
 
         let index = SpatialIndex {
             tree,
@@ -1394,15 +1435,21 @@ mod tests {
             test_node(4, 3.0, 0.0, 0.0, Some(20.0)),
         ];
 
-        let mut tree: KdTree<f32, usize, 3, BUCKET_SIZE, u32> = KdTree::new();
-        let mut temp_lookup = HashMap::new();
-        let mut id_to_index = HashMap::new();
-
-        for (index, node) in nodes.iter().enumerate() {
-            tree.add(&node.coords, index);
-            temp_lookup.insert(node.system_id, node.min_external_temp);
-            id_to_index.insert(node.system_id, index);
-        }
+        let tree = SpatialKdTree::new_from_source(
+            &nodes,
+            |node, dimension| node.coords[dimension],
+            |index, _| index,
+        )
+        .expect("test spatial index coordinates must be valid");
+        let temp_lookup = nodes
+            .iter()
+            .map(|node| (node.system_id, node.min_external_temp))
+            .collect();
+        let id_to_index = nodes
+            .iter()
+            .enumerate()
+            .map(|(index, node)| (node.system_id, index))
+            .collect();
 
         let index = SpatialIndex {
             tree,
@@ -1439,15 +1486,21 @@ mod tests {
             test_node(3, 15.0, 0.0, 0.0, None), // Outside radius
         ];
 
-        let mut tree: KdTree<f32, usize, 3, BUCKET_SIZE, u32> = KdTree::new();
-        let mut temp_lookup = HashMap::new();
-        let mut id_to_index = HashMap::new();
-
-        for (index, node) in nodes.iter().enumerate() {
-            tree.add(&node.coords, index);
-            temp_lookup.insert(node.system_id, node.min_external_temp);
-            id_to_index.insert(node.system_id, index);
-        }
+        let tree = SpatialKdTree::new_from_source(
+            &nodes,
+            |node, dimension| node.coords[dimension],
+            |index, _| index,
+        )
+        .expect("test spatial index coordinates must be valid");
+        let temp_lookup = nodes
+            .iter()
+            .map(|node| (node.system_id, node.min_external_temp))
+            .collect();
+        let id_to_index = nodes
+            .iter()
+            .enumerate()
+            .map(|(index, node)| (node.system_id, index))
+            .collect();
 
         let index = SpatialIndex {
             tree,
