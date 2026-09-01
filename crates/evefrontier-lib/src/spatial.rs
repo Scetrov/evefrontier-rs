@@ -738,7 +738,9 @@ impl SpatialIndex {
             )
             .execute();
 
-        let mut results = Vec::with_capacity(k);
+        // Grow only as filtered candidates are accepted. Avoid reserving memory from a
+        // caller-controlled result limit upfront.
+        let mut results = Vec::new();
 
         for neighbor in candidates {
             let node = &self.nodes[neighbor.item];
