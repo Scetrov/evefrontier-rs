@@ -34,8 +34,11 @@ jobs:
           restore-keys: |
             cargo-outdated-${{ runner.os }}-
 
-      - name: Install cargo-outdated
-        run: cargo install cargo-outdated --locked || true
+      - name: Install cargo-outdated when not cached
+        run: |
+          if ! command -v cargo-outdated >/dev/null 2>&1; then
+            cargo install cargo-outdated --locked
+          fi
 
       - name: Check for outdated Rust dependencies (JSON)
         run: |
